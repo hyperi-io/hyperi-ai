@@ -1,7 +1,7 @@
-# Session state files (created by scripts, not tracked)
-STATE.md
-CLAUDE.md
-TODO.md
+# Session state files (created by scripts in project root, not tracked)
+/STATE.md
+/CLAUDE.md
+/TODO.md
 
 # Claude Code configuration (created by claude-code.sh)
 .claude/
