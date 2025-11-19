@@ -1,0 +1,374 @@
+# HyperSec Coding Standards
+
+**Comprehensive coding standards for all HyperSec projects**
+
+---
+
+## Core Principles
+
+**Everything in HyperSec standards, AI guides, and HS-CI automation is built around three key principles:**
+
+### 1. Reduce Cognitive Load
+
+**For developers AND AI-assisted workflows:**
+- Simple, readable code (minimize extraneous cognitive load)
+- Self-documenting patterns (clear names, early returns, explicit logic)
+- Consistent patterns across all projects (mental model transfers)
+- Human-first design (no AI conventions to learn)
+
+**Research:** 23-45 minute recovery time after context switches, working memory limited to 4-7 concepts
+
+### 2. Reduce Context Switching Overhead
+
+**For developers AND AI-assisted workflows:**
+- Project-specific context files (STATE.md, TODO.md, ARCHITECTURE.md)
+- Standardized infrastructure (hyperlib, HS-CI, same tools everywhere)
+- Meaningful commits and documentation (faster "resume" time)
+- Time-boxed work (minimum 2-hour chunks per project)
+
+**Cost:** $50k/year per developer in lost productivity from context switching
+
+### 3. Automated Standards Enforcement
+
+**Make conforming to standards light work:**
+- Automated checks (ruff, black, isort, mypy, bandit)
+- Pre-commit hooks (validation before commit, not after)
+- CI pipeline enforcement (tests, lint, security scans)
+- Simple commands abstract complex tasks (`./ci/run check`, `./ci/run build`)
+
+**Result:** Standards are enforced automatically, not manually remembered
+
+**These three principles work together:**
+- Standards reduce cognitive load → easier to follow
+- Automation enforces standards → no manual effort
+- Reduced context switching → standards become muscle memory
+
+---
+
+## Quick Start
+
+**New to HyperSec?** Start here:
+1. Read [common/QUICK-REFERENCE.md](common/QUICK-REFERENCE.md) - One-page cheat sheet
+2. Read [common/CODING.md](common/CODING.md) - Core language-agnostic standards
+3. **Python projects:** Read [python/CODING.md](python/CODING.md)
+4. Read [common/GIT-WORKFLOW.md](common/GIT-WORKFLOW.md) - Git conventions
+
+---
+
+## Directory Structure
+
+```
+standards/
+├── STANDARDS.md (this file - entry point)
+│
+├── Core Standards (root level)
+├── CHARS-POLICY.md
+├── CODE-HEADER.md
+├── QUICK-REFERENCE.md
+├── GIT-WORKFLOW.md
+│
+├── code-assistant/ (AI guidance - loaded on session start)
+│   ├── COMMON.md (session mgmt, bash, commits)
+│   ├── HS-CI.md (CI infrastructure guidance)
+│   ├── PYTHON.md (Python-specific guidance)
+│   └── AI-GUIDELINES.md (cognitive load research)
+│
+├── ai/ (AI workflow docs - NOT loaded on session start)
+│   └── TOKEN-ENGINEERING.md (token optimization workflow)
+│
+├── common/ (language-agnostic standards)
+│   ├── CODING.md (core coding standards)
+│   ├── CONTAINERIZATION.md (k8s + HELM + ArgoCD)
+│   ├── DESIGN-PRINCIPLES.md (SOLID, DRY, KISS)
+│   ├── ERROR-HANDLING.md (security-first errors)
+│   ├── NO-MOCKS-POLICY.md (production code policy)
+│   └── TEST-FIRST.md (test-first development)
+│
+└── python/ (Python-specific standards)
+    ├── CODING.md (Python coding standards)
+    ├── PEP8.md (comprehensive PEP 8 guide)
+    └── HS-CI.md (HS-CI Python integration)
+```
+
+---
+
+## Standards by Topic
+
+### Code Quality
+
+**Core principles:**
+- SOLID, DRY, KISS, YAGNI → [common/DESIGN-PRINCIPLES.md](common/DESIGN-PRINCIPLES.md)
+- Clarity over cleverness → [common/CODING.md](common/CODING.md)
+- No mocks in production → [common/NO-MOCKS-POLICY.md](common/NO-MOCKS-POLICY.md)
+
+**Language-specific:**
+- Python PEP 8 → [python/PEP8.md](python/PEP8.md)
+- Python coding standards → [python/CODING.md](python/CODING.md)
+
+### Error Handling
+
+**Quick reference:** [QUICK-REFERENCE.md](QUICK-REFERENCE.md#error-handling)
+**Comprehensive guide:** [common/ERROR-HANDLING.md](common/ERROR-HANDLING.md)
+
+**Key rules:**
+- Never expose stack traces to users
+- Always log with context (user_id, request_id, timestamp)
+- Use specific exception types
+- Never log sensitive data (passwords, tokens, PII)
+
+### Testing
+
+**Quick reference:** [QUICK-REFERENCE.md](QUICK-REFERENCE.md#testing)
+**Test-first development:** [common/TEST-FIRST.md](common/TEST-FIRST.md)
+**Python testing:** [python/HS-CI.md](python/HS-CI.md#testing)
+
+**Key rules:**
+- 80% minimum coverage
+- Tests run before build/release
+- Unit + integration + e2e tests
+- No mocks in production code
+- Write tests before modifying existing code
+
+### Containerization & Deployment
+
+**Full guide:** [common/CONTAINERIZATION.md](common/CONTAINERIZATION.md)
+
+**Quick tips:**
+- Kubernetes + HELM + ArgoCD deployment
+- Multi-stage Dockerfile (build vs runtime)
+- Include debug utilities (curl, nc, ping)
+- Health checks required (/health/live, /health/ready, /health/startup)
+- Non-root user always
+
+### Git Workflow
+
+**Full guide:** [GIT-WORKFLOW.md](GIT-WORKFLOW.md)
+
+**Quick tips:**
+- Commit format: `<type>: <description>`
+- Use `fix:` by default (not `feat:`)
+- Branch format: `<type>/<description>`
+- Conventional Commits standard
+
+### AI Code Assistants
+
+**Mandatory guidance:** [code-assistant/COMMON.md](code-assistant/COMMON.md)
+**Detailed research:** [code-assistant/AI-GUIDELINES.md](code-assistant/AI-GUIDELINES.md)
+**Token optimization:** [ai/TOKEN-ENGINEERING.md](ai/TOKEN-ENGINEERING.md) (workflow doc, not loaded on start)
+
+**Key warnings:**
+- AI code has 4x higher defect rates - always review
+- Human-first design principle (no AI conventions)
+- Cognitive load must be same or less than human-written code
+
+---
+
+## Standards by Role
+
+### For Developers (Daily Use)
+
+**Read once:**
+1. [QUICK-REFERENCE.md](QUICK-REFERENCE.md) - Keep this handy!
+2. [common/CODING.md](common/CODING.md) - Core standards
+3. [GIT-WORKFLOW.md](GIT-WORKFLOW.md) - Commit conventions
+
+**Python developers also read:**
+4. [python/CODING.md](python/CODING.md)
+
+**Bookmark for reference:**
+- [common/ERROR-HANDLING.md](common/ERROR-HANDLING.md) - When writing error handling
+- [common/DESIGN-PRINCIPLES.md](common/DESIGN-PRINCIPLES.md) - When designing architecture
+- [python/PEP8.md](python/PEP8.md) - When Python linter complains
+
+### For Code Reviewers
+
+**Check against:**
+1. [common/CODING.md](common/CODING.md) - Core standards compliance
+2. [common/NO-MOCKS-POLICY.md](common/NO-MOCKS-POLICY.md) - No placeholder code
+3. [common/ERROR-HANDLING.md](common/ERROR-HANDLING.md) - Security-first errors
+4. [code-assistant/AI-GUIDELINES.md](code-assistant/AI-GUIDELINES.md) - Extra scrutiny for AI code
+
+**Python projects:**
+5. [python/CODING.md](python/CODING.md) - PEP 8, type hints
+6. [python/HS-CI.md](python/HS-CI.md) - HS-CI checks
+
+### For Project Leads
+
+**Architecture decisions:**
+- [common/DESIGN-PRINCIPLES.md](common/DESIGN-PRINCIPLES.md) - SOLID, DRY, KISS, YAGNI
+- [common/CONTAINERIZATION.md](common/CONTAINERIZATION.md) - Deployment architecture
+
+**Process enforcement:**
+- [GIT-WORKFLOW.md](GIT-WORKFLOW.md) - Git conventions
+- [python/HS-CI.md](python/HS-CI.md) - Automated enforcement
+
+---
+
+## Compliance Checklist
+
+**Before committing code, verify:**
+
+- [ ] Follows language-agnostic standards ([common/CODING.md](common/CODING.md))
+- [ ] Follows language-specific standards (Python: [python/CODING.md](python/CODING.md))
+- [ ] No TODO/FIXME comments in src/ ([common/NO-MOCKS-POLICY.md](common/NO-MOCKS-POLICY.md))
+- [ ] Error handling is security-first ([common/ERROR-HANDLING.md](common/ERROR-HANDLING.md))
+- [ ] Tests pass (80%+ coverage)
+- [ ] Commit message follows format ([GIT-WORKFLOW.md](GIT-WORKFLOW.md))
+- [ ] No sensitive data logged
+- [ ] Files/dirs follow naming rules ([CHARS-POLICY.md](CHARS-POLICY.md))
+
+**Python projects also verify:**
+- [ ] PEP 8 compliant (ruff, black, isort)
+- [ ] Type hints present (pyright)
+- [ ] Security scan passes (bandit)
+- [ ] Uses hyperlib infrastructure (not custom)
+
+---
+
+## For Code Assistants (Context-Adaptive Loading)
+
+**Context-adaptive = Load based on your context window size.**
+
+### Your Model and Context Window
+
+**First, report what you're using:**
+- Model name: (e.g., Claude Sonnet 4.5, GPT-4, Gemini 1.5 Pro)
+- Context window: (e.g., 200K tokens, 1M tokens, 2M tokens)
+
+**This helps developers understand your capabilities and limitations.**
+
+### Loading Strategy: Context-Adaptive
+
+**If your context window >= 500K tokens: FULL CAG (Load All)**
+
+Load ALL standards files using glob patterns:
+
+```bash
+# 1. All code-assistant files (AI guidance - ALWAYS load)
+Glob: ci/docs/standards/code-assistant/*.md
+Read: ALL matches
+
+# 2. All common files (language-agnostic standards)
+Glob: ci/docs/standards/common/*.md
+Read: ALL matches
+
+# 3. All language-specific files (Python example)
+Glob: ci/docs/standards/python/*.md
+Read: ALL matches (for Python projects)
+
+# 4. Project overrides (if exist)
+Glob: ci-local/code-assistant/*.md
+Read: ALL matches (if any)
+```
+
+### Benefits
+
+- ✅ **Maintenance-free** - New files automatically loaded via glob
+- ✅ **Most reliable** - All standards always available, zero guessing
+- ✅ **Zero hallucination risk** - Complete context loaded upfront
+- ✅ **Plenty of room for work** - 500K+ context has ample space
+
+---
+
+**If your context window < 500K tokens: CAG/RAG Hybrid (Two-Tier)**
+
+### Tier 1 - MANDATORY LOAD (Session Start)
+
+Load essential files:
+
+**1. All code-assistant/ files (AI guidance - ALWAYS load):**
+```
+Glob: ci/docs/standards/code-assistant/*.md
+Read: ALL matches
+```
+Includes: COMMON.md, AI-GUIDELINES.md, PYTHON.md, HS-CI.md
+
+**2. Essential common/ files (ALWAYS load):**
+- Read: `ci/docs/standards/common/QUICK-REFERENCE.md`
+- Read: `ci/docs/standards/common/GIT-WORKFLOW.md`
+- Read: `ci/docs/standards/common/CHARS-POLICY.md`
+- Read: `ci/docs/standards/common/CODE-HEADER.md`
+
+**3. Python essentials (ALWAYS load for Python projects):**
+- Read: `ci/docs/standards/python/CODING-PYTHON.md`
+
+**4. Project overrides (if exist - ALWAYS load):**
+```
+Glob: ci-local/code-assistant/*.md
+Read: ALL matches (if any)
+```
+
+---
+
+**Tier 2 - ON-DEMAND (Load When Topic Discussed):**
+
+Load these files when specific topics arise:
+
+### RAG Index: When to Load Which File
+
+**Architecture & Design:**
+- Discussing SOLID, DRY, KISS, YAGNI? → Load [common/DESIGN-PRINCIPLES.md](common/DESIGN-PRINCIPLES.md)
+- Designing container deployment? → Load [common/CONTAINERIZATION.md](common/CONTAINERIZATION.md)
+
+**Error Handling:**
+- Implementing error handling? → Load [common/ERROR-HANDLING.md](common/ERROR-HANDLING.md)
+- Security concerns about errors? → Load [common/ERROR-HANDLING.md](common/ERROR-HANDLING.md)
+
+**Code Quality:**
+- Reviewing code for mocks/TODOs/placeholders? → Load [common/NO-MOCKS-POLICY.md](common/NO-MOCKS-POLICY.md)
+- General code review? → Load [common/CODING.md](common/CODING.md)
+
+**Testing:**
+- Writing tests for existing code? → Load [common/TEST-FIRST.md](common/TEST-FIRST.md)
+- Test-first methodology questions? → Load [common/TEST-FIRST.md](common/TEST-FIRST.md)
+
+**Python Deep Dives:**
+- PEP 8 compliance questions? → Load [python/PEP8.md](python/PEP8.md)
+- HS-CI tool details (ruff, black, pytest)? → Load [python/HS-CI.md](python/HS-CI.md)
+- Core Python standards? → Already loaded ([python/CODING-PYTHON.md](python/CODING-PYTHON.md))
+
+**CI/CD Infrastructure:**
+- Working on HS-CI scripts? → Already loaded ([code-assistant/HS-CI.md](code-assistant/HS-CI.md))
+- Git workflow questions? → Already loaded ([common/GIT-WORKFLOW.md](common/GIT-WORKFLOW.md))
+
+### Why Context-Adaptive Loading?
+
+**500K+ context (Full CAG):**
+- ✅ **Most reliable** - No guessing when to load files
+- ✅ **Zero hallucination risk** - All standards always available
+- ✅ **Simpler for AI** - No RAG index maintenance
+- ✅ **Plenty of room for work** - Ample context remaining
+
+**<500K context (CAG/RAG Hybrid):**
+- ✅ **Loads less upfront** - Essential standards only
+- ✅ **More context available** for actual work
+- ✅ **Essential standards always loaded** (git, naming, Python basics)
+- ✅ **Faster session start**
+
+**Trade-off for <500K:**
+- Manual maintenance of RAG index (concept → file mapping)
+- AI must recognize when to load on-demand files
+
+---
+
+## Contributing to Standards
+
+**Found an issue or want to propose changes?**
+
+1. Discuss in #standards Slack channel
+2. Create GitHub issue with proposal
+3. Submit PR with changes
+4. Get approval from 2+ team leads
+5. Update version and last-updated date
+
+### Version History
+
+- **v1.4.0** (2025-11-15) - Context-adaptive loading (500K+ full CAG with glob, <500K hybrid)
+- **v1.3.0** (2025-11-13) - CAG/RAG hybrid strategy
+- **v1.2.0** (2025-11-12) - CAG-only strategy, moved TOKEN-ENGINEERING.md to ai/
+- **v1.1.0** (2025-11-12) - Restructured directory layout, added LLM RAG strategy
+- **v1.0.0** (2025-11-10) - Initial structured release
+
+---
+
+**Questions?** Ask in #standards Slack channel or create GitHub issue.
