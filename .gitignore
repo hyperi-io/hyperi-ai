@@ -1,4 +1,12 @@
-# Python
+# Session state files (created by scripts, not tracked)
+STATE.md
+CLAUDE.md
+TODO.md
+
+# Claude Code configuration (created by claude-code.sh)
+.claude/
+
+# Python (legacy reference only - no Python in this project)
 __pycache__/
 *.py[cod]
 *$py.class
@@ -20,8 +28,9 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual environments (not used in this project)
 venv/
+.venv/
 ENV/
 env/
 
@@ -39,3 +48,6 @@ Thumbs.db
 # Local overrides
 *.local.*
 local/
+
+# Test environment
+/projects/ai-test/

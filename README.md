@@ -1,128 +1,175 @@
 # HyperSec AI Code Assistant Standards
 
 **Repository:** https://github.com/hypersec-io/ai
-**Purpose:** Code standards, AI assistant guidance, and development templates
-**License:** Apache-2.0
+**Purpose:** Standards, guidance, and templates that "tack on" to any project
+**License:** HyperSec EULA (proprietary)
 
 ---
 
 ## Overview
 
-This repository contains:
-- **Code standards** - Language-agnostic and language-specific coding standards
-- **AI assistant guidance** - Instructions for AI code completion tools (Claude Code, GitHub Copilot, etc.)
-- **Development templates** - Claude Code configuration, slash commands, documentation templates
+This repository provides **standards and templates for AI code assistants** that can be attached to any project.
 
-**This is a standards repository** - it contains no executable code, only documentation and configuration templates.
+**What's included:**
+- **Standards** - AI assistant guidance, coding standards, best practices
+- **Templates** - STATE.md, TODO.md, Claude Code configuration
+- **Setup scripts** - Simple bash scripts for installation (NO Python required)
+
+**Design principle:** Radical simplification - 95% reduction in complexity vs legacy hs-ci/ai
+
+**Key features:**
+- Works as git submodule, clone, or ZIP download
+- Pure bash scripts (bash 3.2+ compatible - works on macOS, Linux, WSL)
+- No dependencies beyond standard Unix tools
+- Path-agnostic (can be attached anywhere, not just `/ai`)
+- Cross-LLM session state (STATE.md, TODO.md work for all AI assistants)
+
+---
+
+## Quick Start
+
+**Attach to your project (choose ONE method):**
+
+```bash
+# Method 1: Git submodule (recommended - get updates automatically)
+git submodule add https://github.com/hypersec-io/ai.git ai
+
+# Method 2: Git clone (point-in-time copy)
+git clone https://github.com/hypersec-io/ai.git ai
+cd ai && rm -rf .git
+
+# Method 3: Download ZIP (standalone)
+curl -L https://github.com/hypersec-io/ai/archive/refs/heads/main.zip -o ai.zip
+unzip ai.zip && mv ai-main ai
+```
+
+**Run installation:**
+
+```bash
+# From inside the attached directory (e.g., ai/)
+./install.sh
+
+# This creates in your project root:
+# - STATE.md (session state)
+# - TODO.md (task tracking)
+```
+
+**Setup Claude Code (optional):**
+
+```bash
+./claude-code.sh
+
+# This creates:
+# - .claude/ directory with settings
+# - CLAUDE.md -> STATE.md symlink
+```
 
 ---
 
 ## Repository Structure
 
-```
-ai/
-├── docs/
-│   └── standards/
-│       ├── STANDARDS.md           # Entry point with CAG/RAG loading strategy
-│       ├── ai/                    # AI principles and token engineering
-│       ├── code-assistant/        # AI-specific guidance (COMMON, PYTHON, HS-CI)
-│       ├── common/                # Language-agnostic standards
-│       └── python/                # Python-specific standards
-└── templates/
-    ├── claude-code/               # Claude Code integration
-    │   ├── settings.json          # Permissions and configuration
-    │   └── commands/              # Slash commands (/start, /save)
-    ├── STATE.md                   # Project state template
-    └── SETTINGS-PROFILES.md       # AI configuration profiles
+**Path variables used in documentation:**
+- `$AI_ROOT` = Where this repo is attached (e.g., `ai/`, `standards/`, `.ai/`)
+- `$PROJECT_ROOT` = Parent project root (where STATE.md, TODO.md are deployed)
+
+```text
+parent-project/              # Your project ($PROJECT_ROOT)
+├── ai/                      # This repository ($AI_ROOT - can be any name)
+│   ├── install.sh           # Installation script
+│   ├── claude-code.sh       # Claude Code setup
+│   │
+│   ├── standards/           # AI assistant guidance (main product)
+│   │   ├── STANDARDS.md     # Entry point with loading strategy
+│   │   ├── code-assistant/  # AI-specific guidance
+│   │   ├── common/          # Language-agnostic standards
+│   │   └── python/          # Python-specific standards
+│   │
+│   └── templates/           # Configuration templates
+│       ├── STATE.md         # Cross-LLM session state template
+│       ├── TODO.md          # Cross-LLM task tracking template
+│       └── claude-code/     # Claude Code specific
+│
+├── STATE.md                 # Created by install.sh
+├── TODO.md                  # Created by install.sh
+├── .claude/                 # Created by claude-code.sh
+└── CLAUDE.md -> STATE.md    # Symlink created by claude-code.sh
 ```
 
 ---
 
-## Usage
+## For AI Code Assistants
 
-### For Projects
+**Standards are path-agnostic - reference using `$AI_ROOT` variable.**
 
-**Add as submodule:**
-```bash
-git submodule add https://github.com/hypersec-io/ai.git ai
-git submodule update --init --recursive
-```
+**Loading strategy:**
 
-**Reference in CI/bootstrap:**
-- Copy templates from `ai/templates/` to project root
-- Load standards from `ai/docs/standards/` in `/start` command
-- Reference documentation in project STATE.md
+- **Context window >= 500K tokens:** Load ALL standards (full CAG)
+- **Context window < 500K tokens:** Load Tier 1 mandatory, Tier 2 on-demand (CAG/RAG hybrid)
 
-### For AI Code Assistants
-
-**Loading strategy (from STANDARDS.md):**
-
-**If context window >= 500K tokens:**
-- Load ALL standards using glob patterns
-- Full CAG (Context-Aware Generation)
-
-**If context window < 500K tokens:**
-- Load Tier 1 (mandatory): code-assistant/, essential common files
-- Load Tier 2 (on-demand): specific standards as needed
-- CAG/RAG Hybrid approach
-
-**See [docs/standards/STANDARDS.md](docs/standards/STANDARDS.md) for complete loading instructions.**
+**See [standards/STANDARDS.md](standards/STANDARDS.md) for complete loading instructions.**
 
 ---
 
-## Standards Included
+## What's Included
 
-### Code Standards
-- **Language-agnostic:** SOLID, DRY, KISS, YAGNI, error handling, testing, security
-- **Python:** PEP 8, type hints, testing, HS-CI integration
-- **Git:** Conventional Commits, branching, PR standards
+### Standards Documentation (`standards/`)
 
-### AI Guidance
-- **AI-GUIDELINES.md** - Quality warnings, best practices, platform-specific guides
-- **COMMON.md** - Session management, CI infrastructure, commit messages
-- **PYTHON.md** - Python virtual environments, testing, version sync
-- **HS-CI.md** - CI-specific workflow (for CI development only)
+**AI-specific guidance:**
+- Session management, commit messages, CI workflows
+- Platform-specific guides (Claude Code, GitHub Copilot)
+- Quality warnings (4x higher defect rates in AI code)
+- Token optimization and context management
 
-### Design Principles
-- SOLID principles with examples
+**Coding standards:**
+- Language-agnostic (SOLID, DRY, KISS, YAGNI)
+- Python (PEP 8, type hints, testing)
 - Error handling (security-first)
+- Git workflow (Conventional Commits)
+
+**Design principles:**
 - No mocks policy
 - Test-first development
-- Containerization standards
+- Containerization (Docker, Kubernetes)
+- Cross-platform compatibility
+
+### Templates (`templates/`)
+
+**Cross-LLM (all AI assistants):**
+- `STATE.md` - Project state and session history
+- `TODO.md` - Task tracking with time estimates
+
+**Claude Code specific:**
+- `settings.json` - Permissions, model config
+- `commands/start.md` - Session initialization
+- `commands/save.md` - Progress checkpointing
+
+### Setup Scripts (root)
+
+- `install.sh` - Deploy templates to project root
+- `claude-code.sh` - Configure Claude Code (creates .claude/ and symlinks)
+
+**All scripts:**
+- Pure bash (bash 3.2+ compatible)
+- Self-contained (< 200 lines each)
+- Idempotent (safe to run multiple times)
+- No dependencies beyond Unix basics
 
 ---
 
-## Integration with HS-CI
+## Relationship with HS-CI
 
-This repository is **separate from hs-ci** (CI/CD infrastructure).
+This repository is **independent** of hs-ci (CI/CD infrastructure).
 
-**Separation:**
+**Separation of concerns:**
 - `ai` - Standards, documentation, AI guidance (this repo)
-- `ci` - Build/test/release automation, git hooks, CI scripts
+- `ci` - Build/test/release automation, git hooks
 
-**Projects typically use both:**
-```
-myproject/
-├── ai/    (submodule → github.com/hypersec-io/ai)
-├── ci/    (submodule → github.com/hypersec-io/ci)
-```
+**Can be used:**
+- Together with hs-ci (common for HyperSec projects)
+- Standalone (no hs-ci dependency required)
+- With any other CI/CD system
 
----
-
-## Claude Code Integration
-
-**Templates provided:**
-- `templates/claude-code/settings.json` - Permissions, model config
-- `templates/claude-code/commands/start.md` - Session initialization
-- `templates/claude-code/commands/save.md` - Progress checkpointing
-
-**Setup:**
-```bash
-# Copy templates to project
-cp -r ai/templates/claude-code/.claude/ .
-
-# Templates reference ai/docs/standards/ for loading
-```
+**Migration note:** Legacy hs-ci/ai code has been split out and radically simplified.
 
 ---
 
@@ -148,20 +195,20 @@ To propose standards changes:
 - **MINOR:** New standards added, non-breaking updates
 - **PATCH:** Typo fixes, clarifications, examples
 
-**Current version:** See [docs/standards/STANDARDS.md](docs/standards/STANDARDS.md)
+**Current version:** See [standards/STANDARDS.md](standards/STANDARDS.md)
 
 ---
 
 ## License
 
-Apache License 2.0 - See [LICENSE](LICENSE)
+HyperSec EULA (Proprietary) - See [LICENSE](LICENSE)
 
-**Copyright:** (c) 2025 HyperSec
+**Copyright:** (c) 2025 HyperSec Pty Ltd
 
 ---
 
 ## Links
 
-- **Standards documentation:** [docs/standards/STANDARDS.md](docs/standards/STANDARDS.md)
+- **Standards documentation:** [standards/STANDARDS.md](standards/STANDARDS.md)
 - **HS-CI repository:** https://github.com/hypersec-io/ci
 - **Issue tracker:** https://github.com/hypersec-io/ai/issues
