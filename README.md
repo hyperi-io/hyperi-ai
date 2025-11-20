@@ -69,6 +69,136 @@ unzip ai.zip && mv ai-main ai
 
 ---
 
+## AI Assistant Setup
+
+### Claude Code (Anthropic)
+
+**Setup:**
+
+```bash
+./claude-code.sh
+```
+
+**What it creates:**
+
+- `.claude/settings.json` - Permissions, model configuration, context settings
+- `.claude/commands/start.md` - Session initialization slash command
+- `.claude/commands/save.md` - Progress checkpoint slash command
+- `CLAUDE.md` → `STATE.md` symlink
+
+**Slash commands:**
+
+**`/start`** - Initialize your session
+
+- Reads STATE.md (project state and history)
+- Reads TODO.md (current tasks)
+- Loads standards based on context window
+- Checks git status and recent commits
+- Verifies environment setup
+
+**`/save`** - Checkpoint your progress
+
+- Updates STATE.md with current session progress
+- Rationalizes STATE.md (removes stale info)
+- Updates TODO.md (marks completed, adds new tasks)
+- Fixes markdown linting errors
+- Creates clean checkpoint for next session
+
+**Best practices:**
+
+- Run `/start` at the beginning of every session
+- Run `/save` after major milestones or every 30-40 exchanges
+- Run `/save` before breaks to preserve context
+- STATE.md and TODO.md persist across sessions
+
+---
+
+### GitHub Copilot/Codex (OpenAI)
+
+**Setup:**
+
+```bash
+./copilot.sh
+```
+
+**What it creates:**
+
+- `.github/copilot-instructions.md` - Custom instructions for Copilot/Codex
+- `COPILOT.md` → `STATE.md` symlink
+
+**How it works:**
+
+- Copilot reads `.github/copilot-instructions.md` automatically
+- Instructions reference `$AI_ROOT/standards/` for coding standards
+- STATE.md provides project context
+- TODO.md guides task prioritization
+
+**Best practices:**
+
+- Keep STATE.md and TODO.md updated manually (no slash commands)
+- Copilot uses these files for better code suggestions
+- Works with both GitHub Copilot and OpenAI Codex
+
+---
+
+### Cursor IDE
+
+**Setup:**
+
+```bash
+./cursor.sh
+```
+
+**What it creates:**
+
+- `.cursor/cli.json` - Cursor permissions and settings
+- `.cursor/rules/` - AI instruction rules (.mdc files)
+- `CURSOR.md` → `STATE.md` symlink
+
+**Cursor AI Rules:**
+
+- Rules files (`.mdc`) loaded automatically by Cursor
+- Reference `$AI_ROOT/standards/` for coding standards
+- STATE.md provides project context
+- TODO.md guides current tasks
+
+**Best practices:**
+
+- Update STATE.md and TODO.md as you work
+- Cursor automatically applies rules from `.cursor/rules/`
+- Use Cursor's built-in chat to reference STATE.md context
+
+---
+
+### Gemini Code (Google)
+
+**Setup:**
+
+```bash
+./gemini.sh
+```
+
+**What it creates:**
+
+- `.gemini/settings.json` - Gemini configuration
+- `.gemini/commands/` - Custom commands (if supported)
+- `GEMINI.md` → `STATE.md` symlink
+
+**How it works:**
+
+- Gemini reads configuration from `.gemini/`
+- References `$AI_ROOT/standards/` for coding standards
+- STATE.md provides project context
+- TODO.md guides task prioritization
+
+**Best practices:**
+
+- Keep STATE.md and TODO.md current
+- Gemini has large context window (1M+ tokens) - can load full standards
+- Reference GEMINI.md in chat for project context
+
+---
+
 ## Overview
 
 This repository provides **coding standards and project templates** for three user types:
