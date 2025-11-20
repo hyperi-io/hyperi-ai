@@ -49,7 +49,7 @@ Context-adaptive loading strategy for AI models:
 
 **Standards** - Coding standards, AI guidance, best practices (in `standards/`)
 **Templates** - STATE.md, TODO.md, AI assistant configurations (in `templates/`)
-**Setup scripts** - Pure bash installation, assistant-specific setup (NO Python required)
+**Setup scripts** - Pure bash, assistant-specific setup
 
 **Design principle:** Radical simplification - 95% reduction vs deprecated hs-ci/ai code
 

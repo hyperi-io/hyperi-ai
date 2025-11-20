@@ -42,8 +42,6 @@ chore/PROJ-456/update-deps
 docs/no-ref/api-guide
 ```
 
-**Validation:** Enforced by `ci/common/ci.d/10-branch-name.py` during CI checks
-
 ## Commit Message Convention
 
 **Format:** Conventional Commits (https://www.conventionalcommits.org/)
