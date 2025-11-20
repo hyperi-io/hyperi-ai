@@ -246,28 +246,7 @@ To propose standards changes:
 3. Get approval from 2+ team leads
 4. Update version in STANDARDS.md
 
-**Version history tracked in STANDARDS.md**
-
 ---
-
-## Release Process
-
-Releases are fully automated via semantic-release on push to `main`:
-
-- VERSION file contains current version (e.g., `1.2.3`)
-- CHANGELOG.md contains release history
-- Git tags track versions (e.g., `1.2.3` without `v` prefix)
-- GitHub releases created automatically
-
-**Commit types that trigger releases:**
-
-- `feat:` - Minor version bump (1.0.0 → 1.1.0)
-- `fix:`, `perf:`, `refactor:`, `sec:`, `hotfix:` - Patch version bump (1.0.0 → 1.0.1)
-- `BREAKING CHANGE:` footer - Major version bump (1.0.0 → 2.0.0)
-- Other types (`docs:`, `test:`, `chore:`, etc.) - No version bump
-
----
-
 ## License
 
 HyperSec EULA (Proprietary) - See [LICENSE](LICENSE)

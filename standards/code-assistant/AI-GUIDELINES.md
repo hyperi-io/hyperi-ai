@@ -4,7 +4,7 @@
 
 ⚠️ **CRITICAL:** AI-assisted projects must be indistinguishable from human-only projects.
 
-**Background:** [AI-PRINCIPLES.md](../ai/AI-PRINCIPLES.md) (research, cognitive load, defect rates)
+**Background:** [AI-PRINCIPLES.md](../../docs/AI-PRINCIPLES.md) (research, cognitive load, defect rates)
 
 ---
 
@@ -156,7 +156,7 @@ def initialize_color_picker():
 **Use Cursor:** Multi-model flexibility
 **Use Gemini:** 100k+ line codebases, multi-modal content
 
-⚠️ **AI-generated code has 4x higher defects** - see [AI-PRINCIPLES.md](../ai/AI-PRINCIPLES.md)
+⚠️ **AI-generated code has 4x higher defects** - see [AI-PRINCIPLES.md](../../docs/AI-PRINCIPLES.md)
 
 ---
 
