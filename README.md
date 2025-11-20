@@ -195,7 +195,26 @@ To propose standards changes:
 - **MINOR:** New standards added, non-breaking updates
 - **PATCH:** Typo fixes, clarifications, examples
 
-**Current version:** See [standards/STANDARDS.md](standards/STANDARDS.md)
+**Current version:** See [VERSION](VERSION) file or git tags
+
+### Release Process
+
+Releases are automated via semantic-release when commits are pushed to `main`:
+
+1. Commits are analyzed for conventional commit types
+2. Version is determined automatically (MAJOR.MINOR.PATCH)
+3. CHANGELOG.md is updated with release notes
+4. VERSION file is updated with new version (e.g., `1.2.3` without `v` prefix)
+5. Git tag is created (e.g., `1.2.3` without `v` prefix)
+6. GitHub release is created with notes
+
+**To trigger a release:** Simply push commits with conventional commit messages to `main`
+
+**Commit types that trigger releases:**
+- `feat:` - Minor version bump (1.0.0 → 1.1.0)
+- `fix:`, `perf:`, `refactor:`, `sec:`, `hotfix:` - Patch version bump (1.0.0 → 1.0.1)
+- `BREAKING CHANGE:` footer - Major version bump (1.0.0 → 2.0.0)
+- Other types (`docs:`, `test:`, `chore:`, etc.) - No version bump
 
 ---
 
