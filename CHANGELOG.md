@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/hypersec-io/ai/compare/1.2.0...1.2.1) (2025-11-20)
+
+
+### Bug Fixes
+
+* correct markdown link paths in AI-GUIDELINES.md ([0949f1b](https://github.com/hypersec-io/ai/commit/0949f1b0b4733a7361b45c4ed483e7988e9fa71a))
+
 ## [1.2.0](https://github.com/hypersec-io/ai/compare/1.1.1...1.2.0) (2025-11-20)
 
 
