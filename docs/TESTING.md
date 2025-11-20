@@ -965,6 +965,3 @@ When scripts change:
 
 ---
 
-**Last Updated:** 2025-01-20
-**Version:** 0.1.0
-**Status:** Planning Complete

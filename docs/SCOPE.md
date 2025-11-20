@@ -378,8 +378,5 @@ The legacy `/legacy/` code implemented a monolithic `ci/ai` tool in Python that:
 
 ---
 
-**Status:** Initial scope definition
-**Version:** 1.0.0
-**Last Updated:** 2025-01-20
 
 **License:** HyperSec EULA (proprietary)

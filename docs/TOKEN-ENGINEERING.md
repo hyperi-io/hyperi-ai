@@ -356,6 +356,4 @@ Preserve: Security rules (make concise)
 
 ---
 
-**Status:** Ready for use
-**Version:** 2.0
 **Last updated:** 2025-11-12

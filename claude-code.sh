@@ -7,7 +7,6 @@
 set -euo pipefail
 
 # Global variables
-VERSION="0.1.0"
 DRY_RUN=false
 FORCE=false
 VERBOSE=false
@@ -258,7 +257,6 @@ Examples:
   # Setup for custom project
   ./claude-code.sh --path /path/to/project
 
-Version: $VERSION
 EOF
 }
 

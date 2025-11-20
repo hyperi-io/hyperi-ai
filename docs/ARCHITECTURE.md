@@ -571,7 +571,6 @@ Templates include version markers:
 ```markdown
 # STATE.md
 
-**Last Updated:** 2025-01-20
 **Template Version:** 1.0.0
 ```
 
@@ -632,6 +631,3 @@ Templates include version markers:
 
 ---
 
-**Last Updated:** 2025-01-20
-**Version:** 0.1.0
-**Status:** Planning Complete
