@@ -1,3 +1,10 @@
+## [1.1.0](https://github.com/hypersec-io/ai/compare/1.0.2...1.1.0) (2025-11-20)
+
+
+### Features
+
+* add git hooks for standards enforcement ([ab92dac](https://github.com/hypersec-io/ai/commit/ab92dac513f2d796d4ccb4a4db8f55ac32083ac7))
+
 ## [1.0.2](https://github.com/hypersec-io/ai/compare/1.0.1...1.0.2) (2025-11-20)
 
 
