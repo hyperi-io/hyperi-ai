@@ -180,7 +180,7 @@ for row in data:
 
 **HS-CI enforcement via `./ci/run test`:** ruff (including I rules for import sorting), black (blocking), pyright (warnings), bandit, vulture
 
-**See [python/PEP8.md](python/PEP8.md) for comprehensive guide**
+**See `$AI_ROOT/standards/python/PEP8.md` for comprehensive guide**
 
 ---
 
@@ -194,7 +194,7 @@ for row in data:
 
 **Mocks allowed ONLY in:** `tests/`, `examples/`, documentation
 
-**See [details/NO-MOCKS-POLICY.md](details/NO-MOCKS-POLICY.md) for comprehensive guide**
+**See `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md` for comprehensive guide**
 
 ---
 

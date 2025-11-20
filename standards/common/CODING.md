@@ -162,7 +162,7 @@ async function getUser(userId) {
 - Always-successful operations (`return true`)
 - Generic exception handling (`catch (Exception) {}`)
 
-**See [details/NO-MOCKS-POLICY.md](details/NO-MOCKS-POLICY.md) for comprehensive policy guide with real-world examples.**
+**See `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md` for comprehensive policy guide with real-world examples.**
 
 ---
 
@@ -415,7 +415,7 @@ function processData(data) {
 - Don't add features "just in case"
 - Refactor when requirements actually change
 
-**See [details/DESIGN-PRINCIPLES.md](details/DESIGN-PRINCIPLES.md) for comprehensive examples and explanations.**
+**See `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` for comprehensive examples and explanations.**
 
 ---
 
@@ -455,7 +455,7 @@ try {
 }
 ```
 
-**See [details/ERROR-HANDLING.md](details/ERROR-HANDLING.md) for comprehensive error handling guide.**
+**See `$AI_ROOT/standards/common/ERROR-HANDLING.md` for comprehensive error handling guide.**
 
 ---
 ## Spelling and Language Guide
@@ -592,7 +592,7 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 - ✅ Code formatting/style fixes
 - ✅ Simple CRUD operations
 
-**See [details/AI-GUIDELINES.md](details/AI-GUIDELINES.md) for comprehensive AI code assistant guide with platform-specific best practices.**
+**See `$AI_ROOT/standards/code-assistant/AI-GUIDELINES.md` for comprehensive AI code assistant guide.**
 
 ---
 

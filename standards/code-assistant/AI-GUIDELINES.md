@@ -4,7 +4,7 @@
 
 ⚠️ **CRITICAL:** AI-assisted projects must be indistinguishable from human-only projects.
 
-**Background:** [AI-PRINCIPLES.md](../../docs/AI-PRINCIPLES.md) (research, cognitive load, defect rates)
+**Background:** `$AI_ROOT/docs/AI-PRINCIPLES.md` (research, cognitive load, defect rates)
 
 ---
 
@@ -156,7 +156,7 @@ def initialize_color_picker():
 **Use Cursor:** Multi-model flexibility
 **Use Gemini:** 100k+ line codebases, multi-modal content
 
-⚠️ **AI-generated code has 4x higher defects** - see [AI-PRINCIPLES.md](../../docs/AI-PRINCIPLES.md)
+⚠️ **AI-generated code has 4x higher defects** - see `$AI_ROOT/docs/AI-PRINCIPLES.md`
 
 ---
 
@@ -425,7 +425,7 @@ def test_calculate_discount():
 # AI can't rabbit-hole - tests define exactly what's needed
 ```
 
-**See [TEST-FIRST-DEVELOPMENT.md](TEST-FIRST-DEVELOPMENT.md) for details.**
+**See `$AI_ROOT/standards/common/TEST-FIRST.md` for details.**
 
 ### Strategy 6: YAGNI Enforcement
 

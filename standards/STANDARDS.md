@@ -2,6 +2,8 @@
 
 **Comprehensive coding standards for all HyperSec projects**
 
+**Path Convention:** All file references use `$AI_ROOT` to indicate the directory where this repository is attached (e.g., `ai/`, `standards/`, `.ai/`). This makes standards path-agnostic and works regardless of where the repository is located.
+
 ---
 
 ## Core Principles
@@ -48,10 +50,10 @@
 ## Quick Start
 
 **New to HyperSec?** Start here:
-1. Read [common/QUICK-REFERENCE.md](common/QUICK-REFERENCE.md) - One-page cheat sheet
-2. Read [common/CODING.md](common/CODING.md) - Core language-agnostic standards
-3. **Python projects:** Read [python/CODING.md](python/CODING.md)
-4. Read [common/GIT.md](common/GIT.md) - Git conventions
+1. Read `$AI_ROOT/standards/common/QUICK-REFERENCE.md` - One-page cheat sheet
+2. Read `$AI_ROOT/standards/common/CODING.md` - Core language-agnostic standards
+3. **Python projects:** Read `$AI_ROOT/standards/python/CODING-PYTHON.md`
+4. Read `$AI_ROOT/standards/common/GIT.md` - Git conventions
 
 ---
 
@@ -97,18 +99,18 @@ standards/
 ### Code Quality
 
 **Core principles:**
-- SOLID, DRY, KISS, YAGNI → [common/DESIGN-PRINCIPLES.md](common/DESIGN-PRINCIPLES.md)
-- Clarity over cleverness → [common/CODING.md](common/CODING.md)
-- No mocks in production → [common/NO-MOCKS-POLICY.md](common/NO-MOCKS-POLICY.md)
+- SOLID, DRY, KISS, YAGNI → `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md`
+- Clarity over cleverness → `$AI_ROOT/standards/common/CODING.md`
+- No mocks in production → `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
 
 **Language-specific:**
-- Python PEP 8 → [python/PEP8.md](python/PEP8.md)
-- Python coding standards → [python/CODING.md](python/CODING.md)
+- Python PEP 8 → `$AI_ROOT/standards/python/PEP8.md`
+- Python coding standards → `$AI_ROOT/standards/python/CODING-PYTHON.md`
 
 ### Error Handling
 
-**Quick reference:** [QUICK-REFERENCE.md](QUICK-REFERENCE.md#error-handling)
-**Comprehensive guide:** [common/ERROR-HANDLING.md](common/ERROR-HANDLING.md)
+**Quick reference:** `$AI_ROOT/standards/common/QUICK-REFERENCE.md` (error handling section)
+**Comprehensive guide:** `$AI_ROOT/standards/common/ERROR-HANDLING.md`
 
 **Key rules:**
 - Never expose stack traces to users
@@ -118,9 +120,8 @@ standards/
 
 ### Testing
 
-**Quick reference:** [QUICK-REFERENCE.md](QUICK-REFERENCE.md#testing)
-**Test-first development:** [common/TEST-FIRST.md](common/TEST-FIRST.md)
-**Python testing:** [python/HS-CI.md](python/HS-CI.md#testing)
+**Quick reference:** `$AI_ROOT/standards/common/QUICK-REFERENCE.md` (testing section)
+**Test-first development:** `$AI_ROOT/standards/common/TEST-FIRST.md`
 
 **Key rules:**
 - 80% minimum coverage
@@ -131,7 +132,7 @@ standards/
 
 ### Containerization & Deployment
 
-**Full guide:** [common/CONTAINERIZATION.md](common/CONTAINERIZATION.md)
+**Full guide:** `$AI_ROOT/standards/common/CONTAINERIZATION.md`
 
 **Quick tips:**
 - Kubernetes + HELM + ArgoCD deployment
@@ -142,7 +143,7 @@ standards/
 
 ### Git Workflow
 
-**Full guide:** [GIT.md](GIT.md)
+**Full guide:** `$AI_ROOT/standards/common/GIT.md`
 
 **Quick tips:**
 - Commit format: `<type>: <description>`
@@ -152,9 +153,9 @@ standards/
 
 ### AI Code Assistants
 
-**Mandatory guidance:** [code-assistant/COMMON.md](code-assistant/COMMON.md)
-**Detailed research:** [code-assistant/AI-GUIDELINES.md](code-assistant/AI-GUIDELINES.md)
-**Token optimization:** [ai/TOKEN-ENGINEERING.md](ai/TOKEN-ENGINEERING.md) (workflow doc, not loaded on start)
+**Mandatory guidance:** `$AI_ROOT/standards/code-assistant/COMMON.md`
+**Detailed research:** `$AI_ROOT/standards/code-assistant/AI-GUIDELINES.md`
+**Token optimization:** `$AI_ROOT/docs/TOKEN-ENGINEERING.md` (workflow doc, not loaded on start)
 
 **Key warnings:**
 - AI code has 4x higher defect rates - always review
@@ -168,39 +169,37 @@ standards/
 ### For Developers (Daily Use)
 
 **Read once:**
-1. [QUICK-REFERENCE.md](QUICK-REFERENCE.md) - Keep this handy!
-2. [common/CODING.md](common/CODING.md) - Core standards
-3. [GIT.md](GIT.md) - Commit conventions
+1. `$AI_ROOT/standards/common/QUICK-REFERENCE.md` - Keep this handy!
+2. `$AI_ROOT/standards/common/CODING.md` - Core standards
+3. `$AI_ROOT/standards/common/GIT.md` - Commit conventions
 
 **Python developers also read:**
-4. [python/CODING.md](python/CODING.md)
+4. `$AI_ROOT/standards/python/CODING-PYTHON.md`
 
 **Bookmark for reference:**
-- [common/ERROR-HANDLING.md](common/ERROR-HANDLING.md) - When writing error handling
-- [common/DESIGN-PRINCIPLES.md](common/DESIGN-PRINCIPLES.md) - When designing architecture
-- [python/PEP8.md](python/PEP8.md) - When Python linter complains
+- `$AI_ROOT/standards/common/ERROR-HANDLING.md` - When writing error handling
+- `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` - When designing architecture
+- `$AI_ROOT/standards/python/PEP8.md` - When Python linter complains
 
 ### For Code Reviewers
 
 **Check against:**
-1. [common/CODING.md](common/CODING.md) - Core standards compliance
-2. [common/NO-MOCKS-POLICY.md](common/NO-MOCKS-POLICY.md) - No placeholder code
-3. [common/ERROR-HANDLING.md](common/ERROR-HANDLING.md) - Security-first errors
-4. [code-assistant/AI-GUIDELINES.md](code-assistant/AI-GUIDELINES.md) - Extra scrutiny for AI code
+1. `$AI_ROOT/standards/common/CODING.md` - Core standards compliance
+2. `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md` - No placeholder code
+3. `$AI_ROOT/standards/common/ERROR-HANDLING.md` - Security-first errors
+4. `$AI_ROOT/standards/code-assistant/AI-GUIDELINES.md` - Extra scrutiny for AI code
 
 **Python projects:**
-5. [python/CODING.md](python/CODING.md) - PEP 8, type hints
-6. [python/HS-CI.md](python/HS-CI.md) - HS-CI checks
+5. `$AI_ROOT/standards/python/CODING-PYTHON.md` - PEP 8, type hints
 
 ### For Project Leads
 
 **Architecture decisions:**
-- [common/DESIGN-PRINCIPLES.md](common/DESIGN-PRINCIPLES.md) - SOLID, DRY, KISS, YAGNI
-- [common/CONTAINERIZATION.md](common/CONTAINERIZATION.md) - Deployment architecture
+- `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` - SOLID, DRY, KISS, YAGNI
+- `$AI_ROOT/standards/common/CONTAINERIZATION.md` - Deployment architecture
 
 **Process enforcement:**
-- [GIT.md](GIT.md) - Git conventions
-- [python/HS-CI.md](python/HS-CI.md) - Automated enforcement
+- `$AI_ROOT/standards/common/GIT.md` - Git conventions
 
 ---
 
@@ -208,14 +207,14 @@ standards/
 
 **Before committing code, verify:**
 
-- [ ] Follows language-agnostic standards ([common/CODING.md](common/CODING.md))
-- [ ] Follows language-specific standards (Python: [python/CODING.md](python/CODING.md))
-- [ ] No TODO/FIXME comments in src/ ([common/NO-MOCKS-POLICY.md](common/NO-MOCKS-POLICY.md))
-- [ ] Error handling is security-first ([common/ERROR-HANDLING.md](common/ERROR-HANDLING.md))
+- [ ] Follows language-agnostic standards (`$AI_ROOT/standards/common/CODING.md`)
+- [ ] Follows language-specific standards (Python: `$AI_ROOT/standards/python/CODING-PYTHON.md`)
+- [ ] No TODO/FIXME comments in src/ (`$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`)
+- [ ] Error handling is security-first (`$AI_ROOT/standards/common/ERROR-HANDLING.md`)
 - [ ] Tests pass (80%+ coverage)
-- [ ] Commit message follows format ([GIT.md](GIT.md))
+- [ ] Commit message follows format (`$AI_ROOT/standards/common/GIT.md`)
 - [ ] No sensitive data logged
-- [ ] Files/dirs follow naming rules ([CHARS-POLICY.md](CHARS-POLICY.md))
+- [ ] Files/dirs follow naming rules (`$AI_ROOT/standards/common/CHARS-POLICY.md`)
 
 **Python projects also verify:**
 - [ ] PEP 8 compliant (ruff, black, isort)
@@ -297,29 +296,27 @@ Load these files when specific topics arise:
 ### RAG Index: When to Load Which File
 
 **Architecture & Design:**
-- Discussing SOLID, DRY, KISS, YAGNI? → Load [common/DESIGN-PRINCIPLES.md](common/DESIGN-PRINCIPLES.md)
-- Designing container deployment? → Load [common/CONTAINERIZATION.md](common/CONTAINERIZATION.md)
+- Discussing SOLID, DRY, KISS, YAGNI? → Load `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md`
+- Designing container deployment? → Load `$AI_ROOT/standards/common/CONTAINERIZATION.md`
 
 **Error Handling:**
-- Implementing error handling? → Load [common/ERROR-HANDLING.md](common/ERROR-HANDLING.md)
-- Security concerns about errors? → Load [common/ERROR-HANDLING.md](common/ERROR-HANDLING.md)
+- Implementing error handling? → Load `$AI_ROOT/standards/common/ERROR-HANDLING.md`
+- Security concerns about errors? → Load `$AI_ROOT/standards/common/ERROR-HANDLING.md`
 
 **Code Quality:**
-- Reviewing code for mocks/TODOs/placeholders? → Load [common/NO-MOCKS-POLICY.md](common/NO-MOCKS-POLICY.md)
-- General code review? → Load [common/CODING.md](common/CODING.md)
+- Reviewing code for mocks/TODOs/placeholders? → Load `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
+- General code review? → Load `$AI_ROOT/standards/common/CODING.md`
 
 **Testing:**
-- Writing tests for existing code? → Load [common/TEST-FIRST.md](common/TEST-FIRST.md)
-- Test-first methodology questions? → Load [common/TEST-FIRST.md](common/TEST-FIRST.md)
+- Writing tests for existing code? → Load `$AI_ROOT/standards/common/TEST-FIRST.md`
+- Test-first methodology questions? → Load `$AI_ROOT/standards/common/TEST-FIRST.md`
 
 **Python Deep Dives:**
-- PEP 8 compliance questions? → Load [python/PEP8.md](python/PEP8.md)
-- HS-CI tool details (ruff, black, pytest)? → Load [python/HS-CI.md](python/HS-CI.md)
-- Core Python standards? → Already loaded ([python/CODING-PYTHON.md](python/CODING-PYTHON.md))
+- PEP 8 compliance questions? → Load `$AI_ROOT/standards/python/PEP8.md`
+- Core Python standards? → Already loaded (`$AI_ROOT/standards/python/CODING-PYTHON.md`)
 
 **CI/CD Infrastructure:**
-- Working on HS-CI scripts? → Already loaded ([code-assistant/HS-CI.md](code-assistant/HS-CI.md))
-- Git workflow questions? → Already loaded ([common/GIT.md](common/GIT.md))
+- Git questions? → Already loaded (`$AI_ROOT/standards/common/GIT.md`)
 
 ### Why Context-Adaptive Loading?
 
