@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/hypersec-io/ai/compare/1.1.0...1.1.1) (2025-11-20)
+
+
+### Refactoring
+
+* simplify git standards and rename to GIT.md ([541be82](https://github.com/hypersec-io/ai/commit/541be82dba6628d5bbcef89016cb3a8457db9f8f))
+
 ## [1.1.0](https://github.com/hypersec-io/ai/compare/1.0.2...1.1.0) (2025-11-20)
 
 
