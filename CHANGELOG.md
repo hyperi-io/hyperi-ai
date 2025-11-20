@@ -1,3 +1,10 @@
+## [1.2.2](https://github.com/hypersec-io/ai/compare/1.2.1...1.2.2) (2025-11-20)
+
+
+### Bug Fixes
+
+* update all standards paths to use $AI_ROOT variable ([65ef30d](https://github.com/hypersec-io/ai/commit/65ef30db0de864a353764f368108cf9ddbd9a6c3))
+
 ## [1.2.1](https://github.com/hypersec-io/ai/compare/1.2.0...1.2.1) (2025-11-20)
 
 
