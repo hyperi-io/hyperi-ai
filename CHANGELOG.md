@@ -1,3 +1,10 @@
+## [1.2.0](https://github.com/hypersec-io/ai/compare/1.1.1...1.2.0) (2025-11-20)
+
+
+### Features
+
+* add copilot, cursor, and gemini support ([96b9d11](https://github.com/hypersec-io/ai/commit/96b9d1196dd66f516b59a9b28c1fe952fb29b474))
+
 ## [1.1.1](https://github.com/hypersec-io/ai/compare/1.1.0...1.1.1) (2025-11-20)
 
 
