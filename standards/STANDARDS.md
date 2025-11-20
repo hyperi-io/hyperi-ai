@@ -51,7 +51,7 @@
 1. Read [common/QUICK-REFERENCE.md](common/QUICK-REFERENCE.md) - One-page cheat sheet
 2. Read [common/CODING.md](common/CODING.md) - Core language-agnostic standards
 3. **Python projects:** Read [python/CODING.md](python/CODING.md)
-4. Read [common/GIT-WORKFLOW.md](common/GIT-WORKFLOW.md) - Git conventions
+4. Read [common/GIT.md](common/GIT.md) - Git conventions
 
 ---
 
@@ -65,7 +65,7 @@ standards/
 ├── CHARS-POLICY.md
 ├── CODE-HEADER.md
 ├── QUICK-REFERENCE.md
-├── GIT-WORKFLOW.md
+├── GIT.md
 │
 ├── code-assistant/ (AI guidance - loaded on session start)
 │   ├── COMMON.md (session mgmt, bash, commits)
@@ -142,7 +142,7 @@ standards/
 
 ### Git Workflow
 
-**Full guide:** [GIT-WORKFLOW.md](GIT-WORKFLOW.md)
+**Full guide:** [GIT.md](GIT.md)
 
 **Quick tips:**
 - Commit format: `<type>: <description>`
@@ -170,7 +170,7 @@ standards/
 **Read once:**
 1. [QUICK-REFERENCE.md](QUICK-REFERENCE.md) - Keep this handy!
 2. [common/CODING.md](common/CODING.md) - Core standards
-3. [GIT-WORKFLOW.md](GIT-WORKFLOW.md) - Commit conventions
+3. [GIT.md](GIT.md) - Commit conventions
 
 **Python developers also read:**
 4. [python/CODING.md](python/CODING.md)
@@ -199,7 +199,7 @@ standards/
 - [common/CONTAINERIZATION.md](common/CONTAINERIZATION.md) - Deployment architecture
 
 **Process enforcement:**
-- [GIT-WORKFLOW.md](GIT-WORKFLOW.md) - Git conventions
+- [GIT.md](GIT.md) - Git conventions
 - [python/HS-CI.md](python/HS-CI.md) - Automated enforcement
 
 ---
@@ -213,7 +213,7 @@ standards/
 - [ ] No TODO/FIXME comments in src/ ([common/NO-MOCKS-POLICY.md](common/NO-MOCKS-POLICY.md))
 - [ ] Error handling is security-first ([common/ERROR-HANDLING.md](common/ERROR-HANDLING.md))
 - [ ] Tests pass (80%+ coverage)
-- [ ] Commit message follows format ([GIT-WORKFLOW.md](GIT-WORKFLOW.md))
+- [ ] Commit message follows format ([GIT.md](GIT.md))
 - [ ] No sensitive data logged
 - [ ] Files/dirs follow naming rules ([CHARS-POLICY.md](CHARS-POLICY.md))
 
@@ -285,7 +285,7 @@ Includes: COMMON.md, AI-GUIDELINES.md, PYTHON.md, HS-CI.md
 
 **2. Essential common/ files (ALWAYS load):**
 - Read: `ci/docs/standards/common/QUICK-REFERENCE.md`
-- Read: `ci/docs/standards/common/GIT-WORKFLOW.md`
+- Read: `ci/docs/standards/common/GIT.md`
 - Read: `ci/docs/standards/common/CHARS-POLICY.md`
 - Read: `ci/docs/standards/common/CODE-HEADER.md`
 
@@ -329,7 +329,7 @@ Load these files when specific topics arise:
 
 **CI/CD Infrastructure:**
 - Working on HS-CI scripts? → Already loaded ([code-assistant/HS-CI.md](code-assistant/HS-CI.md))
-- Git workflow questions? → Already loaded ([common/GIT-WORKFLOW.md](common/GIT-WORKFLOW.md))
+- Git workflow questions? → Already loaded ([common/GIT.md](common/GIT.md))
 
 ### Why Context-Adaptive Loading?
 

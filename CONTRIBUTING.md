@@ -166,7 +166,7 @@ docs/no-ref/update-readme        # Documentation change
 - Use actual ticket ID if exists (e.g., `AI-123`)
 - Use `no-ref` if no ticket
 
-See [standards/common/GIT-WORKFLOW.md](standards/common/GIT-WORKFLOW.md) for complete branching standards.
+See [standards/common/GIT.md](standards/common/GIT.md) for complete branching standards.
 
 ### Conventional Commits
 

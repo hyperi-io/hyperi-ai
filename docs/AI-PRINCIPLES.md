@@ -166,7 +166,7 @@ AI assistants often generate code with **high extraneous load:**
 
 **This Means:**
 - ✅ Use HyperSec/HS-CI standards (work for both humans and AI)
-- ✅ Write commits like humans do (see GIT-WORKFLOW.md)
+- ✅ Write commits like humans do (see GIT.md)
 - ✅ Code should be simple and readable (not over-engineered)
 - ✅ Documentation should be factual (not enthusiastic)
 - ✅ AI attribution in git footer only (not in code/docs)
@@ -178,7 +178,7 @@ AI assistants often generate code with **high extraneous load:**
 If a human can't tell whether code/commits were AI-assisted or human-written, you've succeeded.
 
 **See:**
-- [GIT-WORKFLOW.md](../GIT-WORKFLOW.md#human-style-git-commits-not-llm-style) - Human-style commits
+- [GIT.md](../GIT.md#human-style-git-commits-not-llm-style) - Human-style commits
 - [NO-MOCKS-POLICY.md](NO-MOCKS-POLICY.md) - No AI placeholders in production
 - [TEST-FIRST-DEVELOPMENT.md](TEST-FIRST-DEVELOPMENT.md) - Write tests, not AI prompts
 - [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md) - KISS, YAGNI, simplicity over cleverness

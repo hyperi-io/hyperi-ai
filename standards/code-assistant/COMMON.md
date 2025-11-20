@@ -15,7 +15,7 @@ This document provides critical guidance for AI code assistants working on any p
 3. ✅ Read language-specific standards:
    - Python projects: Read ci/docs/standards/PYTHON-STANDARDS.md
    - TypeScript projects: Read ci/docs/standards/TYPESCRIPT-STANDARDS.md (if exists)
-   - All projects: Read docs/standards/GIT-WORKFLOW.md, CHARS-POLICY.md
+   - All projects: Read docs/standards/GIT.md, CHARS-POLICY.md
 4. ✅ Review project structure for context:
    - Check `pyproject.toml` or equivalent for project metadata
    - Scan `src/` or equivalent for main code structure

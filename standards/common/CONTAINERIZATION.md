@@ -802,7 +802,7 @@ curl localhost:8000/health/live
 
 - [CODING-STANDARDS.md](CODING-STANDARDS.md) - General coding standards
 - [CODING-STANDARDS-PYTHON.md](CODING-STANDARDS-PYTHON.md) - Python-specific standards
-- [GIT-WORKFLOW.md](GIT-WORKFLOW.md) - Git and versioning
+- [GIT.md](GIT.md) - Git and versioning
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
 - [HELM Documentation](https://helm.sh/docs/)
 - [ArgoCD Documentation](https://argo-cd.readthedocs.io/)

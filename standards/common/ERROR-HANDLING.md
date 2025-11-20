@@ -12,8 +12,6 @@
 
 Exposing errors creates vulnerabilities: reveals database schemas, file paths, software versions, internal logic.
 
-**Cost of data breach (2024 average): $4.88 million**
-
 ### Rules
 
 ❌ **NEVER** display stack traces to end users

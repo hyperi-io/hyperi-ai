@@ -300,7 +300,7 @@ docs/update-readme
 - `details/AI-GUIDELINES.md` - AI code assistant best practices
 - `details/NO-MOCKS-POLICY.md` - No mocks policy explained
 - `details/SECURITY.md` - Security standards
-- `GIT-WORKFLOW.md` - Git conventions
+- `GIT.md` - Git conventions
 - `CHARS-POLICY.md` - Character restrictions
 - `CODE-HEADER.md` - File header standards
 
