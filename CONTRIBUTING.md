@@ -43,8 +43,8 @@ ai/
 git clone https://github.com/hypersec-io/ai.git
 cd ai
 
-# 2. Create feature branch
-git checkout -b fix/your-change
+# 2. Create feature branch (format: type/issue-ref/description)
+git checkout -b fix/no-ref/your-change
 
 # 3. Make changes
 # Edit standards/, templates/, or scripts
@@ -59,7 +59,7 @@ git add .
 git commit -m "fix: your change description"
 
 # 6. Push and create PR
-git push origin fix/your-change
+git push origin fix/no-ref/your-change
 gh pr create --title "fix: your change" --body "Description"
 
 # 7. After approval and merge, semantic-release auto-publishes
@@ -73,12 +73,12 @@ gh pr create --title "fix: your change" --body "Description"
 git clone https://github.com/YOUR-USERNAME/ai.git
 cd ai
 
-# 3. Create feature branch
-git checkout -b fix/your-change
+# 3. Create feature branch (format: type/issue-ref/description)
+git checkout -b fix/no-ref/your-change
 
 # 4. Make changes and test
 # 5. Commit and push to your fork
-git push origin fix/your-change
+git push origin fix/no-ref/your-change
 
 # 6. Create PR to hypersec-io/ai
 gh pr create --repo hypersec-io/ai
@@ -132,7 +132,26 @@ bats tests/claude-code.bats
 
 ---
 
-## Commit Guidelines
+## Git Workflow
+
+### Branch Naming
+
+All branches must follow HyperSec standards:
+
+**Format:** `<type>/<issue-ref>/<short-description>`
+
+**Examples:**
+```bash
+fix/no-ref/missing-template      # No issue ticket
+feat/AI-123/add-cursor-support   # With issue ticket
+docs/no-ref/update-readme        # Documentation change
+```
+
+**Issue reference:**
+- Use actual ticket ID if exists (e.g., `AI-123`)
+- Use `no-ref` if no ticket
+
+See [standards/common/GIT-WORKFLOW.md](standards/common/GIT-WORKFLOW.md) for complete branching standards.
 
 ### Conventional Commits
 
