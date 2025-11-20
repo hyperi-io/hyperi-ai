@@ -236,23 +236,6 @@ parent-project/              # Your project ($PROJECT_ROOT)
 
 ---
 
-## Relationship with HS-CI
-
-This repository is **independent** of hs-ci (CI/CD infrastructure).
-
-**Separation of concerns:**
-- `ai` - Standards, documentation, AI guidance (this repo)
-- `ci` - Build/test/release automation, git hooks
-
-**Can be used:**
-- Together with hs-ci (common for HyperSec projects)
-- Standalone (no hs-ci dependency required)
-- With any other CI/CD system
-
-**Migration note:** Deprecated hs-ci/ai code (in `deprecated/`) has been split out and radically simplified.
-
----
-
 ## Contributing
 
 **This repository is read-only for most projects.**
@@ -296,4 +279,3 @@ HyperSec EULA (Proprietary) - See [LICENSE](LICENSE)
 ## Links
 
 - **Standards documentation:** [standards/STANDARDS.md](standards/STANDARDS.md)
-- **Issue tracker:** https://github.com/hypersec-io/ai/issues
