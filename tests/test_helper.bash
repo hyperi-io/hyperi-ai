@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 
 # Test environment paths
-export TEST_ROOT="/projects/ai-test"
-export AI_SOURCE="/projects/ai"
+# Use TMPDIR for CI compatibility, /projects/ai-test for local development
+if [ -d "/projects/ai" ]; then
+    # Local development
+    export TEST_ROOT="/projects/ai-test"
+    export AI_SOURCE="/projects/ai"
+else
+    # CI environment
+    export TEST_ROOT="${TMPDIR:-/tmp}/ai-test"
+    _script_dir="$(dirname "${BASH_SOURCE[0]}")"
+    export AI_SOURCE="$(cd "$_script_dir/.." && pwd)"
+fi
 export TEST_SUBMODULE="$TEST_ROOT/test-submodule"
 export TEST_CLONE="$TEST_ROOT/test-clone"
 export TEST_STANDALONE="$TEST_ROOT/test-standalone"
