@@ -8,7 +8,7 @@
 
 ## Overview
 
-This repository provides **standards and templates for AI code assistants** that can be attached to any project.
+This repository provides **standards and templates for developers and AI code assistants** that can be attached to any project.
 
 **What's included:**
 - **Standards** - AI assistant guidance, coding standards, best practices
