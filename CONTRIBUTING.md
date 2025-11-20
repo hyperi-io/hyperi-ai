@@ -21,6 +21,21 @@ This document describes how to work with and contribute to this repository.
 
 ## Development Workflow
 
+### Initial Setup
+
+After cloning the repository, install git hooks:
+
+```bash
+# Install hooks for branch name validation and AI attribution removal
+ln -sf ../../hooks/commit-msg .git/hooks/commit-msg
+ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
+```
+
+These hooks will:
+- Validate branch names match HyperSec standards
+- Remove AI attribution from commit messages automatically
+
+
 ### Repository Structure
 
 ```

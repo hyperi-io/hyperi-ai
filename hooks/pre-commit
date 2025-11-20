@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Git pre-commit hook - Validate branch name
+# Install: ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
+
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+# Skip validation for trunk branches and detached HEAD
+if [[ "$CURRENT_BRANCH" =~ ^(main|master|develop|HEAD)$ ]]; then
+    exit 0
+fi
+
+# Validate branch name format: type/issue-ref/description
+# Examples: fix/no-ref/bug-name, feat/AI-123/new-feature, docs/no-ref/update
+
+VALID_TYPES="feat|fix|docs|test|chore|ci|cleanup|data|debt|design|infra|meta|ops|perf|refactor|review|sec|spike|ui|hotfix"
+BRANCH_PATTERN="^(${VALID_TYPES})/([A-Z]+-[0-9]+|no-ref)/[a-z0-9-]+$"
+
+if [[ ! "$CURRENT_BRANCH" =~ $BRANCH_PATTERN ]]; then
+    echo ""
+    echo "❌ Invalid branch name: $CURRENT_BRANCH"
+    echo ""
+    echo "Branch must follow format: <type>/<issue-ref>/<description>"
+    echo ""
+    echo "Examples:"
+    echo "  fix/no-ref/missing-template"
+    echo "  feat/AI-123/add-cursor-support"
+    echo "  docs/no-ref/update-readme"
+    echo ""
+    echo "Valid types: feat, fix, docs, test, chore, ci, perf, etc."
+    echo "Issue ref: Use ticket ID (e.g., AI-123) or 'no-ref'"
+    echo "Description: Lowercase with hyphens (e.g., add-new-feature)"
+    echo ""
+    echo "See: standards/common/GIT-WORKFLOW.md"
+    echo ""
+    exit 1
+fi
+
+exit 0
