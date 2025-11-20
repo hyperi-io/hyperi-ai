@@ -95,7 +95,7 @@ logger.error(
 **Required fields:**
 - [ ] User/session identifier (NOT passwords!)
 - [ ] Operation being performed
-- [ ] Timestamp (ISO 8601 format)
+- [ ] Timestamp (RFC3339 with timezone format)
 - [ ] Request/transaction ID for tracing
 - [ ] Full stack trace (exc_info=True)
 
@@ -108,7 +108,7 @@ logger.error(
 ### Example: Complete Error Logging
 
 ```python
-from hyperlib import logger
+from hs_lib import logger
 import traceback
 
 def process_payment(user_id, amount, card_token, request_id):
@@ -287,7 +287,7 @@ except PaymentGatewayError as e:
 
 **✅ ALWAYS:**
 - Log hashed/masked versions if needed
-- Use sanitization filters (hyperlib.logger)
+- Use sanitization filters (hs_lib.logger)
 - Audit logs for accidental leaks
 
 ### Examples
@@ -319,10 +319,10 @@ logger.info(f"Payment: card={masked_card}")
 
 ### Automatic Sanitization
 
-**Use hyperlib.logger (automatic masking):**
+**Use hs_lib.logger (automatic masking):**
 
 ```python
-from hyperlib import logger
+from hs_lib import logger
 
 # Automatically masks passwords, tokens, API keys
 logger.info("User login", username="alice", password="secret123")
@@ -419,7 +419,7 @@ raise HTTPException(
 **Track error rates:**
 
 ```python
-from hyperlib.metrics import create_metrics
+from hs_lib.metrics import create_metrics
 
 metrics = create_metrics("myapp")
 
@@ -441,9 +441,3 @@ def process_request():
 - Specific error types spike
 - Error rate change > 50% (anomaly detection)
 
----
-
-**See also:**
-- `CODING-STANDARDS.md` - Core standards
-- `DESIGN-PRINCIPLES.md` - SOLID, DRY, KISS, YAGNI
-- `../python/details/HYPERCI-INTEGRATION.md` - Automated error scanning

@@ -2,7 +2,7 @@
 
 **Complete Python style guide for HyperSec projects**
 
-**Official:** https://peps.python.org/pep-0008/ (current standard 2024-2025)
+**Official:** https://peps.python.org/pep-0008/ (latest version)
 **Enforcement:** Automated via HS-CI (Ruff, Black, isort)
 
 ---
@@ -180,7 +180,7 @@ import typer
 from fastapi import FastAPI
 
 # Local
-from hyperlib import logger
+from hs_lib import logger
 from myapp.models import User
 ```
 
@@ -190,7 +190,7 @@ import os
 from myapp.models import User  # Mixed groups
 import httpx
 import sys
-from hyperlib import logger
+from hs_lib import logger
 ```
 
 **HS-CI uses Ruff I rules to enforce this automatically.**
@@ -541,13 +541,3 @@ ignore = ["E501"]  # Black handles line length
 - Black: https://black.readthedocs.io/
 - Ruff: https://docs.astral.sh/ruff/ (includes I rules for import sorting)
 - pyright: https://microsoft.github.io/pyright/
-
-**HyperSec docs:**
-- [CODING-STANDARDS-PYTHON.md](../../CODING-STANDARDS-PYTHON.md) - Python standards overview
-- [HYPERCI-INTEGRATION.md](HYPERCI-INTEGRATION.md) - HS-CI tool details
-
----
-
-**Last Updated:** 2025-11-10
-**Version:** v1.0.0
-**Status:** Active

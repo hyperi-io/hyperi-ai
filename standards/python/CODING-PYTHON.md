@@ -54,37 +54,7 @@ app_temp.mkdir(exist_ok=True, mode=0o700)  # User-only
 
 ## Project Layout Standards
 
-### Source Root Detection (v1.0.25+)
-
-**CI tools use `get_source_root('python')` for consistent detection:**
-
-**Supported layouts:**
-1. **src/** (recommended) - `src/packagename/__init__.py`
-2. **Flat** - `PackageName/__init__.py` at root
-3. **App** - `app/`, `lib/`, `core/` directories
-4. **Empty** - Auto-creates `src/packagename/` skeleton
-
-**Auto-detection:** Runs during `./ci/bootstrap install`, stores in `ci-local/ci.yaml: python.source_root`
-
-**Override:** Set `CI_PYTHON_SOURCE_ROOT` env var or edit `ci-local/ci.yaml`
-
 ---
-
-## Testing Standards
-
-### Test Enforcement (v1.0.26+)
-
-**Tests REQUIRED before build/release:**
-
-```bash
-./ci/run test    # Run tests first
-./ci/run build   # Enforces tests passed
-./ci/run release # Enforces tests passed
-```
-
-**Emergency override (build only):** `./ci/run build`
-
-**Release has NO override** - tests must pass!
 
 ### Test Frameworks
 
@@ -105,55 +75,6 @@ tests/
 └── e2e/           # End-to-end
 ```
 
-**Selective execution:** `CI_TEST_LEVELS="unit" ./ci/run test`
-
-**Config:** `ci.yaml: tests.levels, tests.pytest_args`
-
----
-
-## Build and Release Standards
-
-### Build Patterns
-
-**Standard:** `./ci/run test && ./ci/run build` (wheel + sdist)
-
-**Nuitka:** `./ci/run build --nuitka` (compiled binary)
-
-**Version sync:** VERSION file = source of truth, auto-synced to pyproject.toml and `__init__.py`, pre-commit hook prevents corruption
-
-### Release Workflow
-
-**Automated:** `./ci/run test && ./ci/run release` (creates tag, pushes to remote)
-
-**Local/dry-run:** `./ci/run release --no-push` or `--dry-run`
-
----
-
-## Configuration Standards
-
-### Configuration Cascade
-
-**Precedence (highest to lowest):**
-1. ENV vars (CI_* prefix)
-2. `.env` (secrets)
-3. `ci-local/ci.yaml` (overrides)
-4. `ci/ci.yaml` (module defaults)
-5. `ci/modules/common/defaults.yaml` (global)
-
-**Example config and overrides:** See `ci-local/ci.yaml` for YAML format, use `CI_*` env vars to override
-
----
-
-## Virtual Environment Patterns
-
-### ONE .venv Strategy
-
-**Unified `.venv` at project root** - contains project code AND CI tools, managed by `uv`
-
-**Setup:** `./ci/bootstrap install` (creates .venv, installs deps)
-
-**Dependencies:** Define in `pyproject.toml [project.optional-dependencies] dev = [...]`
-
 ---
 
 ## Security Standards
@@ -167,64 +88,6 @@ tests/
 ### Dependency Scanning
 
 **pip-audit:** Scans deps against CVE database, fails on vulnerabilities
-
----
-
-## Hyperlib Infrastructure Standards
-
-**Mandatory for all HyperSec Python projects** - enterprise infrastructure
-
-| Need | Use | Import |
-|------|-----|--------|
-| **Logging** | hyperlib logger | `from hyperlib import logger` |
-| **Config** | hyperlib (7-layer cascade) | `from hyperlib.config import settings` |
-| **Paths** | hyperlib runtime (K8s/Docker/local) | `from hyperlib import get_runtime_paths` |
-| **Database** | hyperlib database | `from hyperlib import build_database_url` |
-| **Metrics** | hyperlib Prometheus | `from hyperlib import create_metrics` |
-| **CLI** | hyperlib (Typer wrapper) | `from hyperlib.cli import Typer` |
-| **Lifecycle** | hyperlib Application | `from hyperlib import Application` |
-
-### Quick Start
-
-**Option 1: Application framework (recommended)**
-```python
-from hyperlib import Application
-
-app = Application()
-app.logger.info("Started")
-app.config.database.host
-app.runtime.data_dir
-app.metrics.http_requests.inc()
-```
-
-**Option 2: Individual components**
-```python
-from hyperlib import logger, get_runtime_paths, create_metrics
-from hyperlib.config import settings
-from hyperlib import build_database_url
-
-logger.info("Service starting")
-runtime = get_runtime_paths()
-metrics = create_metrics(namespace="myapp")
-db_url = build_database_url("postgresql")
-```
-
-### Installation
-
-```bash
-pip install hyperlib  # Basic
-pip install hyperlib[api,cli,database,metrics,all]  # With features
-```
-
-**JFrog config:** Set `JF_USER` and `JF_PASSWORD` in `.env`
-
-### Why Hyperlib?
-
-✅ Zero config, container-aware (K8s/Docker/bare metal), production-ready (RFC 3339, structured logs), ENV-based (12-factor), consistent patterns
-
-❌ DON'T roll your own logging/config/metrics, use multiple libs, or hardcode paths/config
-
-**Docs:** `hyperlib.__doc__`, `help(Application)`, project README
 
 ---
 
@@ -307,7 +170,7 @@ for row in data:
 
 ## PEP 8 Compliance
 
-**Official Python style guide (current 2024-2025)**
+**Official Python style guide (latest version)**
 
 **Naming:** `snake_case` (vars/functions), `PascalCase` (classes), `UPPER_SNAKE_CASE` (constants), `_private` (internal)
 
@@ -342,29 +205,3 @@ for row in data:
 ### AI Pitfalls
 
 ❌ **Watch for:** Deprecated APIs (`from typing import List`), overly complex comprehensions, generic exception handling (`except Exception: pass`)
-
-### HS-CI + AI Workflow
-
-1. Write type hints/docstrings
-2. AI suggests implementation (review carefully)
-3. Run `./ci/run test` (catches mistakes)
-4. Iterate on failures
-5. Human review
-
-**HS-CI catches:** Missing type hints, PEP 8 violations, security issues, unused imports, dead code
-
-**See [details/AI-GUIDELINES.md](details/AI-GUIDELINES.md) for comprehensive guide**
-
----
-
-**Last Updated:** 2025-11-10
-**Version:** v1.1.0 (PEP 8 compliance + HS-CI integration + AI guidelines)
-**Status:** Active
-
-**This document defines comprehensive Python standards for all HyperSec projects.**
-
-**See also:**
-- `CODING-STANDARDS.md` - Language-agnostic standards
-- `ci/docs/standards/AI-GITHUB-COPILOT.md` - GitHub Copilot detailed guide (platform-specific)
-- `ci/docs/standards/AI-CLAUDE-CODE.md` - Claude Code detailed guide (platform-specific)
-- `ci/docs/standards/AI-CURSOR.md` - Cursor detailed guide (platform-specific)

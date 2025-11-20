@@ -116,18 +116,18 @@ def get_user(user_id):                          # ❌ Bad
 
 **Run via:** `./ci/run test`
 
-### Hyperlib Infrastructure
+### HS-Lib Infrastructure
 
-**Always use hyperlib (not custom implementations):**
+**Always use hs-lib (not custom implementations):**
 
 | Need | Use |
 |------|-----|
-| Logging | `from hyperlib import logger` |
-| Config | `from hyperlib.config import settings` |
-| Runtime paths | `from hyperlib import get_runtime_paths` |
-| Database URLs | `from hyperlib import build_database_url` |
-| Metrics | `from hyperlib import create_metrics` |
-| CLI | `from hyperlib import Application` |
+| Logging | `from hs_lib import logger` |
+| Config | `from hs_lib.config import settings` |
+| Runtime paths | `from hs_lib import get_runtime_paths` |
+| Database URLs | `from hs_lib import build_database_url` |
+| Metrics | `from hs_lib import create_metrics` |
+| CLI | `from hs_lib import Application` |
 
 **Why:** Zero-config, container-aware, production-ready, ENV-based
 
@@ -288,37 +288,3 @@ docs/update-readme
 - Memory leaks (unclosed resources)
 - Blocking operations in hot paths
 - Excessive logging in production
-
----
-
-## Full Documentation
-
-**Language-agnostic:**
-- `CODING-STANDARDS.md` - Complete language-agnostic standards
-- `details/DESIGN-PRINCIPLES.md` - SOLID, DRY, KISS, YAGNI details
-- `details/ERROR-HANDLING.md` - Comprehensive error handling
-- `details/AI-GUIDELINES.md` - AI code assistant best practices
-- `details/NO-MOCKS-POLICY.md` - No mocks policy explained
-- `details/SECURITY.md` - Security standards
-- `GIT.md` - Git conventions
-- `CHARS-POLICY.md` - Character restrictions
-- `CODE-HEADER.md` - File header standards
-
-**Python-specific:**
-- `CODING-STANDARDS-PYTHON.md` - Complete Python standards
-- `python/details/PEP8-GUIDE.md` - PEP 8 comprehensive guide
-- `python/details/HYPERCI-INTEGRATION.md` - HS-CI tool details
-- `python/details/TYPE-HINTS.md` - Type hints best practices
-
-**AI platforms:**
-- `ai-platforms/GITHUB-COPILOT.md` - GitHub Copilot guide
-- `ai-platforms/CLAUDE-CODE.md` - Claude Code guide
-- `ai-platforms/CURSOR.md` - Cursor guide
-
----
-
-**Last Updated:** 2025-11-10
-**Version:** v1.0.0
-**Status:** Active
-
-**This is a quick reference. See full documentation for comprehensive details.**

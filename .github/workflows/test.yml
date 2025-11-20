@@ -27,3 +27,4 @@ jobs:
         run: |
           ./install.sh --help
           ./claude-code.sh --help
+          ./gemini.sh --help

@@ -604,23 +604,3 @@ SUCCESS - Build complete
 ```
 
 **80% coverage minimum ensures tests exist.**
-
----
-
-## Resources
-
-**Testing frameworks:**
-- pytest (Python): https://docs.pytest.org/
-- Jest (JavaScript): https://jestjs.io/
-- JUnit (Java): https://junit.org/
-
-**HyperSec docs:**
-- [CODING-STANDARDS.md](../CODING-STANDARDS.md) - Testing standards
-- [HYPERCI-INTEGRATION.md](../python/details/HYPERCI-INTEGRATION.md) - Pytest + coverage
-- [AI-GUIDELINES.md](AI-GUIDELINES.md) - AI + testing workflow
-
----
-
-**Last Updated:** 2025-11-10
-**Version:** v1.0.0
-**Status:** Active

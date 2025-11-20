@@ -22,7 +22,7 @@
 
 **For developers AND AI-assisted workflows:**
 - Project-specific context files (STATE.md, TODO.md, ARCHITECTURE.md)
-- Standardized infrastructure (hyperlib, HS-CI, same tools everywhere)
+- Standardized infrastructure (hs-lib, HS-CI, same tools everywhere)
 - Meaningful commits and documentation (faster "resume" time)
 - Time-boxed work (minimum 2-hour chunks per project)
 
@@ -221,21 +221,11 @@ standards/
 - [ ] PEP 8 compliant (ruff, black, isort)
 - [ ] Type hints present (pyright)
 - [ ] Security scan passes (bandit)
-- [ ] Uses hyperlib infrastructure (not custom)
+- [ ] Uses hs-lib infrastructure (not custom)
 
 ---
 
 ## For Code Assistants (Context-Adaptive Loading)
-
-**Context-adaptive = Load based on your context window size.**
-
-### Your Model and Context Window
-
-**First, report what you're using:**
-- Model name: (e.g., Claude Sonnet 4.5, GPT-4, Gemini 1.5 Pro)
-- Context window: (e.g., 200K tokens, 1M tokens, 2M tokens)
-
-**This helps developers understand your capabilities and limitations.**
 
 ### Loading Strategy: Context-Adaptive
 
@@ -350,25 +340,3 @@ Load these files when specific topics arise:
 - AI must recognize when to load on-demand files
 
 ---
-
-## Contributing to Standards
-
-**Found an issue or want to propose changes?**
-
-1. Discuss in #standards Slack channel
-2. Create GitHub issue with proposal
-3. Submit PR with changes
-4. Get approval from 2+ team leads
-5. Update version and last-updated date
-
-### Version History
-
-- **v1.4.0** (2025-11-15) - Context-adaptive loading (500K+ full CAG with glob, <500K hybrid)
-- **v1.3.0** (2025-11-13) - CAG/RAG hybrid strategy
-- **v1.2.0** (2025-11-12) - CAG-only strategy, moved TOKEN-ENGINEERING.md to ai/
-- **v1.1.0** (2025-11-12) - Restructured directory layout, added LLM RAG strategy
-- **v1.0.0** (2025-11-10) - Initial structured release
-
----
-
-**Questions?** Ask in #standards Slack channel or create GitHub issue.

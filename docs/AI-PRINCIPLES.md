@@ -86,7 +86,7 @@ This isn't just theory - it's measurable. Research indicates that poor code qual
 
 3. **Minimize "mental model rebuild time":**
    - Consistent patterns across projects (use HyperSec standards)
-   - Same infrastructure (hyperlib, HS-CI)
+   - Same infrastructure (hs-lib, HS-CI)
    - Same tools (pytest, ruff, black, mypy)
    - Same deployment pattern (k8s + HELM + ArgoCD)
 

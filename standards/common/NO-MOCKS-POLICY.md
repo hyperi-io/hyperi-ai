@@ -571,10 +571,3 @@ def save_user(data: dict) -> int:
     user_id = db.save_user(clean_data)
     return user_id
 ```
-
----
-
-**See also:**
-- `CODING-STANDARDS.md` - Core coding standards
-- `AI-GUIDELINES.md` - AI code assistant best practices
-- `ERROR-HANDLING.md` - Comprehensive error handling

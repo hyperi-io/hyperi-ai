@@ -1,7 +1,5 @@
 # Code Header Standards (All Languages)
 
-**Auto-copied to `docs/standards/` by CI_AI_MERGE_MODE**
-
 This document defines code header standards for all AI assistants.
 Headers are language-specific, but rules are universal.
 
@@ -55,8 +53,6 @@ Notes:
 - Copyright: `(c) YYYY HyperSec` or `(c) YYYY <Author>`
 - File: `LICENSE` (Apache 2.0 text)
 
-**Future:** Can add MIT, BSD, GPL, etc.
-
 ### Configuration (ci.yaml):
 
 ```yaml
@@ -93,13 +89,13 @@ project:
 
 ```python
 # Python example
-#  Project:      hyperlib
+#  Project:      hs-lib
 #  File:         config.py
 #  Purpose:      Configuration management with Dynaconf
 #  Language:     Python
 #
 #  License:      Apache-2.0
-#  Copyright:    (c) 2025 HyperSec
+#  Copyright:    (c) YYYY HyperSec  # Use current year
 #
 #  Description:
 #      Provides configuration cascade: CLI > ENV > .env > yaml > defaults
@@ -164,7 +160,3 @@ elif license_type == "apache-2.0":
 **When creating new files:** Check project license (ci.yaml), get current year, load template, fill fields (project, filename, purpose, language), add at top.
 
 **When editing existing files:** Preserve headers (don't modify). If missing, add one. Update Purpose if changed significantly.
-
----
-
-**See language-specific CODE_HEADER.md for templates and examples.**

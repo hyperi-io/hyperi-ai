@@ -38,9 +38,9 @@ This guide covers image standards, debugging utilities, health checks, and deplo
 
 **Use official minimal base images:**
 
-- **Python:** `python:3.12-slim` or `python:3.12-alpine`
-- **Node.js:** `node:20-alpine`
-- **Go:** `golang:1.21-alpine` (build), `alpine:3.18` (runtime)
+- **Python:** `python:<version>-slim` or `python:<version>-alpine` (use latest stable)
+- **Node.js:** `node:<lts-version>-alpine` (use current LTS)
+- **Go:** `golang:<version>-alpine` (build), `alpine:latest` (runtime)
 
 **Why slim/alpine:** Smaller attack surface, faster pulls, lower storage costs
 
@@ -50,7 +50,7 @@ This guide covers image standards, debugging utilities, health checks, and deplo
 
 ```dockerfile
 # Stage 1: Build
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim AS builder  # Use current stable Python version
 WORKDIR /build
 COPY pyproject.toml uv.lock ./
 RUN pip install uv && uv sync --frozen --no-dev
@@ -58,7 +58,7 @@ COPY src/ ./src/
 RUN uv build
 
 # Stage 2: Runtime
-FROM python:3.12-slim
+FROM python:3.12-slim  # Use current stable Python version
 WORKDIR /app
 COPY --from=builder /build/dist/*.whl ./
 RUN pip install *.whl && rm *.whl
@@ -800,9 +800,6 @@ curl localhost:8000/health/live
 
 ## See Also
 
-- [CODING-STANDARDS.md](CODING-STANDARDS.md) - General coding standards
-- [CODING-STANDARDS-PYTHON.md](CODING-STANDARDS-PYTHON.md) - Python-specific standards
-- [GIT.md](GIT.md) - Git and versioning
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
 - [HELM Documentation](https://helm.sh/docs/)
 - [ArgoCD Documentation](https://argo-cd.readthedocs.io/)

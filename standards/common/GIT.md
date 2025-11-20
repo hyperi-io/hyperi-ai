@@ -111,6 +111,3 @@ Git hooks automatically remove AI attribution:
 
 No need to manually remove - hooks handle this automatically.
 
----
-
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for complete git workflow.

@@ -13,8 +13,8 @@ This document provides critical guidance for AI code assistants working on any p
 1. ✅ Read STATE.md (project context and CI documentation)
 2. ✅ Read TODO.md (current tasks and priorities)
 3. ✅ Read language-specific standards:
-   - Python projects: Read ci/docs/standards/PYTHON-STANDARDS.md
-   - TypeScript projects: Read ci/docs/standards/TYPESCRIPT-STANDARDS.md (if exists)
+   - Python projects: Read $AI_ROOT/standards/python/CODING-PYTHON.md
+   - TypeScript projects: Read $AI_ROOT/standards/typescript/CODING-TYPESCRIPT.md (if exists)
    - All projects: Read docs/standards/GIT.md, CHARS-POLICY.md
 4. ✅ Review project structure for context:
    - Check `pyproject.toml` or equivalent for project metadata
@@ -126,40 +126,6 @@ This document provides critical guidance for AI code assistants working on any p
 - Better to save early than lose information
 
 ---
-
-## CI Infrastructure: READ-ONLY, DO NOT REVIEW
-
-**CRITICAL: The ci/ directory is a git submodule providing CI infrastructure.**
-
-### What You MUST NOT Do:
-
-❌ **DO NOT scan or review files in ci/** - Wastes tokens on infrastructure code
-❌ **DO NOT read ci/ files** unless specifically asked by the user
-❌ **DO NOT use Glob/Grep on ci/** during general codebase exploration
-❌ **DO NOT suggest changes to ci/** - It's a read-only git submodule
-❌ **DO NOT get confused between project code and ci/ infrastructure**
-
-### What ci/ Is:
-
-- ✅ **Read-only git submodule** - External CI infrastructure attached to project
-- ✅ **Not part of your work scope** - Focus on project code (src/, tests/, docs/)
-- ✅ **Documentation available in STATE.md** - CI docs auto-appended there
-- ✅ **Scripts you run, not review** - Execute `./ci/run`, `./ci/bootstrap`, etc.
-
-### When To Interact With ci/:
-
-**ONLY when user explicitly asks:**
-- "How does the CI work?" → Read STATE.md CI documentation (appended at bottom)
-- "Modify CI script X" → User explicitly requesting CI changes
-- "Why did CI fail?" → Read CI logs, diagnose issue
-
-**NEVER during:**
-- General codebase exploration
-- Feature implementation
-- Bug fixes in project code
-- Documentation updates
-
-### Git Operations & Commit Messages:
 
 **CRITICAL: Commit Type Selection (UNDERSTATE, NOT OVERSTATE)**
 
@@ -370,11 +336,5 @@ If within 30 days of cutoff:
 
 **Don't hardcode cutoff dates in your responses.**
 **Determine them from your own system knowledge at session start.**
-
----
-
-## For CI Infrastructure Work
-
-**If you need CI-specific guidance, read [CODE-ASSISTANT-HS-CI.md](CODE-ASSISTANT-HS-CI.md)**
 
 ---

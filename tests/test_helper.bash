@@ -31,17 +31,17 @@ setup_test_env() {
     # Create .git file (simulates submodule)
     echo "gitdir: ../.git/modules/ai" > "$TEST_SUBMODULE/ai/.git" 2>/dev/null || true
     mkdir -p "$TEST_SUBMODULE/ai"
-    cp -r "$AI_SOURCE"/{install.sh,claude-code.sh,standards,templates} "$TEST_SUBMODULE/ai/" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/{install.sh,claude-code.sh,copilot.sh,gemini.sh,cursor.sh,standards,templates} "$TEST_SUBMODULE/ai/" 2>/dev/null || true
 
     # Setup clone test
     mkdir -p "$TEST_CLONE/ai"
-    cp -r "$AI_SOURCE"/{install.sh,claude-code.sh,standards,templates} "$TEST_CLONE/ai/"
+    cp -r "$AI_SOURCE"/{install.sh,claude-code.sh,copilot.sh,gemini.sh,cursor.sh,standards,templates} "$TEST_CLONE/ai/"
     # Create .git directory (simulates clone)
     mkdir -p "$TEST_CLONE/ai/.git"
 
     # Setup standalone test
     mkdir -p "$TEST_STANDALONE/ai"
-    cp -r "$AI_SOURCE"/{install.sh,claude-code.sh,standards,templates} "$TEST_STANDALONE/ai/" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/{install.sh,claude-code.sh,copilot.sh,gemini.sh,cursor.sh,standards,templates} "$TEST_STANDALONE/ai/" 2>/dev/null || true
     # No .git (simulates unzipped)
 }
 

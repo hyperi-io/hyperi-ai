@@ -271,7 +271,7 @@ def calculate_discount(
 - Architecture (microservices, FastAPI, PostgreSQL, Redis)
 - Standards (PEP 8, type hints required, 80% test coverage)
 - Security (never log passwords/tokens, validate all inputs)
-- Common patterns (use hyperlib for logging/config/metrics)
+- Common patterns (use hs-lib for logging/config/metrics)
 
 **Ask for explanations first, not just code:**
 ```
@@ -481,20 +481,3 @@ git reset --hard HEAD~3  # Revert last 3 commits
 7. Write down what went wrong
 
 ---
-
-## Platform-Specific Guides
-
-- [GitHub Copilot Guide](../ai-platforms/GITHUB-COPILOT.md)
-- [Claude Code Guide](../ai-platforms/CLAUDE-CODE.md)
-- [Cursor Guide](../ai-platforms/CURSOR.md)
-
----
-
-**See also:**
-- [AI-PRINCIPLES.md](../ai/AI-PRINCIPLES.md) - Research, background, methodology
-- [CODING-STANDARDS.md](../CODING-STANDARDS.md) - Core coding standards
-- [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md) - SOLID, DRY, KISS, YAGNI
-- [ERROR-HANDLING.md](ERROR-HANDLING.md) - Error handling best practices
-- [TEST-FIRST-DEVELOPMENT.md](TEST-FIRST-DEVELOPMENT.md) - Test-first development
-- [NO-MOCKS-POLICY.md](NO-MOCKS-POLICY.md) - No placeholders in production
-- [../QUICK-REFERENCE.md](../QUICK-REFERENCE.md) - Quick reference cheat sheet

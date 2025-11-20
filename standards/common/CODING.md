@@ -6,7 +6,7 @@
 
 ## Core Principles
 
-**HyperSec standards, AI guides, and HS-CI automation are built around three key principles:**
+**HyperSec standards, AI guides and automation are built around three key principles:**
 
 1. **Reduce cognitive load** - Simple, readable code for both humans and AI workflows
 2. **Reduce context switching overhead** - Consistent patterns, standardized infrastructure, meaningful documentation
@@ -18,7 +18,7 @@
 
 ## Temporary Files and Directories
 
-### Development/CI Work
+### Development Work
 
 **Use `./.tmp/` for ALL project-scoped temporary operations:**
 - Test projects and artifacts
@@ -595,10 +595,6 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 **See [details/AI-GUIDELINES.md](details/AI-GUIDELINES.md) for comprehensive AI code assistant guide with platform-specific best practices.**
 
 ---
-
-**Last Updated:** 2025-11-10
-**Version:** v1.2.0
-**Status:** Active
 
 **This document defines language-agnostic coding standards for all HyperSec projects.**
 

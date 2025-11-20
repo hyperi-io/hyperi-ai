@@ -1,0 +1,61 @@
+---
+category: Always
+description: HyperSec coding standards and AI assistant guidance - always loaded
+---
+
+# HyperSec Coding Standards
+
+This rule is always attached to provide consistent coding standards and AI assistant guidance.
+
+## Standards Location
+
+Standards are located in: `$AI_ROOT/standards/`
+
+Where `$AI_ROOT` is the directory where this repository is attached (e.g., `ai/`, `standards/`, `.ai/`).
+
+## Loading Strategy
+
+Follow the context-adaptive loading strategy documented in `$AI_ROOT/standards/STANDARDS.md`:
+
+- **Context window >= 500K tokens:** Load ALL standards (full CAG)
+- **Context window < 500K tokens:** Load Tier 1 mandatory, Tier 2 on-demand (CAG/RAG hybrid)
+
+## Essential Files (Tier 1 - Always Load)
+
+1. **Project State:**
+   - `STATE.md` - Current project state and session history
+   - `TODO.md` - Current tasks and priorities
+
+2. **Standards Entry Point:**
+   - `$AI_ROOT/standards/STANDARDS.md` - Contains complete loading strategy
+
+3. **AI Guidance (Always Load):**
+   - `$AI_ROOT/standards/code-assistant/COMMON.md` - Session management, bash, commits
+   - `$AI_ROOT/standards/code-assistant/AI-GUIDELINES.md` - Cognitive load research
+   - `$AI_ROOT/standards/code-assistant/PYTHON.md` - Python-specific guidance (for Python projects)
+
+4. **Essential Standards (Always Load):**
+   - `$AI_ROOT/standards/common/QUICK-REFERENCE.md` - One-page cheat sheet
+   - `$AI_ROOT/standards/common/GIT.md` - Git conventions
+   - `$AI_ROOT/standards/common/CHARS-POLICY.md` - File/directory naming rules
+   - `$AI_ROOT/standards/common/CODE-HEADER.md` - Code header requirements
+
+5. **Python Essentials (Always Load for Python projects):**
+   - `$AI_ROOT/standards/python/CODING-PYTHON.md` - Python coding standards
+
+## Key Principles
+
+1. **Reduce Cognitive Load** - Simple, readable code with consistent patterns
+2. **Reduce Context Switching** - Project-specific context files (STATE.md, TODO.md)
+3. **Automated Standards Enforcement** - Make conforming to standards light work
+
+## Important Warnings
+
+- **AI code has 4x higher defect rates** - Always review AI-generated code carefully
+- **Human-first design** - No AI conventions to learn, same cognitive load as human code
+- **No mocks in production** - See `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
+
+## Reference
+
+For complete standards documentation and Tier 2 (on-demand) files, see:
+`$AI_ROOT/standards/STANDARDS.md`

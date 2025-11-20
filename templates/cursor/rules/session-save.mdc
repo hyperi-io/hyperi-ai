@@ -1,8 +1,13 @@
+---
+category: Manual
+description: Session save instructions - invoke manually to checkpoint progress
+---
+
 # Save Session Progress
 
 Save current progress to STATE.md and clean up documentation.
 
-This command can be run multiple times during a session to checkpoint progress, or at the end of a session before context compression.
+This rule can be invoked manually during a session to checkpoint progress, or at the end of a session before context compression.
 
 ## Save Checklist
 
@@ -59,7 +64,7 @@ This command can be run multiple times during a session to checkpoint progress, 
    - Any skipped or failing tests to note?
 
 5. **Check documentation quality**:
-   - **Fix markdown linting issues** in CLAUDE.md, STATE.md, TODO.md
+   - **Fix markdown linting issues** in CURSOR.md, STATE.md, TODO.md
    - Common issues to fix:
      - Blank lines around headings (MD022)
      - Blank lines around lists (MD032)

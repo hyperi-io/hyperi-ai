@@ -462,9 +462,3 @@ class UserService:
         self.cache = cache  # Will need caching for scale
         self.db = db
 ```
-
----
-
-**See also:**
-- `CODING-STANDARDS.md` - Core standards quick reference
-- `ERROR-HANDLING.md` - Error handling best practices
