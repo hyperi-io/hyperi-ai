@@ -1,3 +1,15 @@
+## [1.0.1](https://github.com/hypersec-io/ai/compare/1.0.0...1.0.1) (2025-11-20)
+
+
+### Bug Fixes
+
+* correct branch naming format in CONTRIBUTING.md ([2c2def2](https://github.com/hypersec-io/ai/commit/2c2def2c2d729389f2c0846aae15ed7efcefe9c9))
+
+
+### Documentation
+
+* consolidate and clarify documentation ([8672a22](https://github.com/hypersec-io/ai/commit/8672a22b89782a1007184d2ddbfd7faffc635476))
+
 ## 1.0.0 (2025-11-20)
 
 
