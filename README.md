@@ -8,21 +8,57 @@
 
 ## Overview
 
-This repository provides **standards and templates for developers and AI code assistants** that can be attached to any project.
+This repository provides **coding standards and project templates** for three user types:
 
-**What's included:**
-- **Standards** - AI assistant guidance, coding standards, best practices
-- **Templates** - STATE.md, TODO.md, Claude Code configuration
-- **Setup scripts** - Simple bash scripts for installation (NO Python required)
+### 1. Human Developers (Using Standards Directly)
 
-**Design principle:** Radical simplification - 95% reduction in complexity vs legacy hs-ci/ai
+Reference comprehensive coding standards without AI assistance:
+- Language-agnostic standards (SOLID, DRY, KISS, YAGNI)
+- Python-specific standards (PEP 8, type hints, testing)
+- Git workflow and commit conventions
+- Error handling and security best practices
+- Design principles and containerisation
+
+**Use case:** Code reviews, architecture decisions, onboarding
+
+### 2. Developers with AI Code Assistants
+
+Standards optimised for AI-assisted development:
+- AI-specific guidance (quality warnings, best practices)
+- Session management (STATE.md, TODO.md for context)
+- Commit message guidelines for AI tools
+- Platform-specific guides (Claude Code, GitHub Copilot)
+- Token optimisation and context management
+
+**Use case:** Daily development with Claude Code, Copilot, Cursor
+
+### 3. AI Code Assistants (Reading for Context)
+
+Context-adaptive loading strategy for AI models:
+- Full CAG loading for 500K+ token windows
+- Tiered CAG/RAG hybrid for smaller contexts
+- Standards organised for efficient token usage
+- Project state tracking across sessions
+- Cross-LLM compatibility
+
+**Use case:** Claude Code, GitHub Copilot, Cursor, Gemini loading standards
+
+---
+
+## What's Included
+
+**Standards** - Coding standards, AI guidance, best practices (in `standards/`)
+**Templates** - STATE.md, TODO.md, AI assistant configurations (in `templates/`)
+**Setup scripts** - Pure bash installation, assistant-specific setup (NO Python required)
+
+**Design principle:** Radical simplification - 95% reduction vs deprecated hs-ci/ai code
 
 **Key features:**
 - Works as git submodule, clone, or ZIP download
-- Pure bash scripts (bash 3.2+ compatible - works on macOS, Linux, WSL)
-- No dependencies beyond standard Unix tools
-- Path-agnostic (can be attached anywhere, not just `/ai`)
-- Cross-LLM session state (STATE.md, TODO.md work for all AI assistants)
+- Pure bash 3.2+ (macOS, Linux, WSL compatible)
+- Zero dependencies beyond standard Unix tools
+- Path-agnostic (works anywhere)
+- Cross-LLM session state
 
 ---
 
@@ -54,14 +90,17 @@ unzip ai.zip && mv ai-main ai
 # - TODO.md (task tracking)
 ```
 
-**Setup Claude Code (optional):**
+**Setup your AI assistant (optional):**
 
 ```bash
+# Claude Code
 ./claude-code.sh
 
-# This creates:
-# - .claude/ directory with settings
-# - CLAUDE.md -> STATE.md symlink
+# (Future) Cursor
+# ./cursor.sh
+
+# (Future) GitHub Copilot
+# ./copilot.sh
 ```
 
 ---
@@ -75,24 +114,28 @@ unzip ai.zip && mv ai-main ai
 ```text
 parent-project/              # Your project ($PROJECT_ROOT)
 ├── ai/                      # This repository ($AI_ROOT - can be any name)
-│   ├── install.sh           # Installation script
-│   ├── claude-code.sh       # Claude Code setup
+│   ├── install.sh           # Deploy cross-assistant templates
+│   ├── claude-code.sh       # Claude Code specific setup
+│   ├── cursor.sh            # (Future) Cursor specific setup
+│   ├── copilot.sh           # (Future) GitHub Copilot setup
 │   │
-│   ├── standards/           # AI assistant guidance (main product)
+│   ├── standards/           # Coding standards (main product)
 │   │   ├── STANDARDS.md     # Entry point with loading strategy
-│   │   ├── code-assistant/  # AI-specific guidance
+│   │   ├── code-assistant/  # AI-specific guidance (all assistants)
 │   │   ├── common/          # Language-agnostic standards
 │   │   └── python/          # Python-specific standards
 │   │
-│   └── templates/           # Configuration templates
-│       ├── STATE.md         # Cross-LLM session state template
-│       ├── TODO.md          # Cross-LLM task tracking template
-│       └── claude-code/     # Claude Code specific
+│   └── templates/           # Templates for all AI assistants
+│       ├── STATE.md         # Cross-assistant session state
+│       ├── TODO.md          # Cross-assistant task tracking
+│       ├── claude-code/     # Claude Code specific
+│       ├── cursor/          # (Future) Cursor specific
+│       └── copilot/         # (Future) Copilot specific
 │
-├── STATE.md                 # Created by install.sh
-├── TODO.md                  # Created by install.sh
-├── .claude/                 # Created by claude-code.sh
-└── CLAUDE.md -> STATE.md    # Symlink created by claude-code.sh
+├── STATE.md                 # Created by install.sh (all assistants use this)
+├── TODO.md                  # Created by install.sh (all assistants use this)
+├── .claude/                 # Created by claude-code.sh (Claude Code only)
+└── CLAUDE.md -> STATE.md    # Symlink (Claude Code only)
 ```
 
 ---
@@ -134,23 +177,28 @@ parent-project/              # Your project ($PROJECT_ROOT)
 
 ### Templates (`templates/`)
 
-**Cross-LLM (all AI assistants):**
+**Cross-assistant (all AI tools use these):**
 - `STATE.md` - Project state and session history
 - `TODO.md` - Task tracking with time estimates
 
-**Claude Code specific:**
-- `settings.json` - Permissions, model config
-- `commands/start.md` - Session initialization
-- `commands/save.md` - Progress checkpointing
+**Assistant-specific (in subdirectories):**
+- `claude-code/` - Claude Code configuration and slash commands
+- `cursor/` - (Future) Cursor configuration
+- `copilot/` - (Future) GitHub Copilot configuration
 
 ### Setup Scripts (root)
 
-- `install.sh` - Deploy templates to project root
-- `claude-code.sh` - Configure Claude Code (creates .claude/ and symlinks)
+**Cross-assistant:**
+- `install.sh` - Deploy STATE.md and TODO.md (all assistants use these)
+
+**Assistant-specific:**
+- `claude-code.sh` - Configure Claude Code (creates .claude/ directory)
+- `cursor.sh` - (Future) Configure Cursor
+- `copilot.sh` - (Future) Configure GitHub Copilot
 
 **All scripts:**
 - Pure bash (bash 3.2+ compatible)
-- Self-contained (< 200 lines each)
+- Self-contained (< 300 lines each)
 - Idempotent (safe to run multiple times)
 - No dependencies beyond Unix basics
 
@@ -169,7 +217,7 @@ This repository is **independent** of hs-ci (CI/CD infrastructure).
 - Standalone (no hs-ci dependency required)
 - With any other CI/CD system
 
-**Migration note:** Legacy hs-ci/ai code has been split out and radically simplified.
+**Migration note:** Deprecated hs-ci/ai code (in `deprecated/`) has been split out and radically simplified.
 
 ---
 
