@@ -41,10 +41,6 @@ git config submodule.ai.update none
 git -C ai config core.fileMode false
 git -C ai config advice.detachedHead false
 
-# Optional: Stricter enforcement (makes ai/ truly read-only in IDE)
-# Add to parent project's .gitignore: ai/*
-# This prevents staging changes inside ai/ directory
-
 # Method 2: Git clone (point-in-time copy)
 git clone https://github.com/hypersec-io/ai.git ai
 cd ai && rm -rf .git
