@@ -1,6 +1,6 @@
 # HyperSec AI Code Assistant Standards
 
-**Repository:** https://github.com/hypersec-io/ai
+**Repository:** <<https://github.com/hypersec-io/ai>>
 
 **Purpose:** Standards, guidance, and templates that "tack on" to any project
 
@@ -10,11 +10,15 @@
 
 ## What's Included
 
-**Standards** - Coding standards, AI guidance, best practices (in `standards/`)  
-**Templates** - STATE.md, TODO.md, AI assistant configurations (in `templates/`)  
-**Setup scripts** - Pure bash, assistant-specific setup  
+**Standards** - Coding standards, AI guidance, best practices (in `standards/`)
+
+**Templates** - STATE.md, TODO.md, AI assistant configurations (in `templates/`)
+
+**Setup scripts** - Pure bash, assistant-specific setup
+
 
 **Key features:**
+
 - Works as git submodule, clone, or ZIP download
 - Pure bash 3.2+ (macOS, Linux, WSL compatible)
 - Zero dependencies beyond standard Unix tools
@@ -30,6 +34,16 @@
 ```bash
 # Method 1: Git submodule (recommended - get updates automatically)
 git submodule add https://github.com/hypersec-io/ai.git ai
+git submodule update --init --recursive
+
+# IMPORTANT: Enforce read-only to prevent accidental commits
+git config submodule.ai.update none
+git -C ai config core.fileMode false
+git -C ai config advice.detachedHead false
+
+# Optional: Stricter enforcement (makes ai/ truly read-only in IDE)
+# Add to parent project's .gitignore: ai/*
+# This prevents staging changes inside ai/ directory
 
 # Method 2: Git clone (point-in-time copy)
 git clone https://github.com/hypersec-io/ai.git ai
@@ -300,23 +314,26 @@ parent-project/              # Your project ($PROJECT_ROOT)
 
 ---
 
-## What's Included
+## Standards and Templates Details
 
 ### Standards Documentation (`standards/`)
 
 **AI-specific guidance:**
+
 - Session management, commit messages, CI workflows
 - Assistant-agnostic design (works with any AI code assistant)
 - Quality warnings (4x higher defect rates in AI code)
 - Token optimization and context management
 
 **Coding standards:**
+
 - Language-agnostic (SOLID, DRY, KISS, YAGNI)
 - Python (PEP 8, type hints, testing)
 - Error handling (security-first)
 - Git workflow (Conventional Commits)
 
 **Design principles:**
+
 - No mocks policy
 - Test-first development
 - Containerization (Docker, Kubernetes)
