@@ -343,17 +343,3 @@ Target: 20-35% reduction
 Preserve: Code examples (remove redundant variations)
 Preserve: Security rules (make concise)
 ```
-
-**Profile detection:**
-
-- `ai/` directory → AI profile
-- `code-assistant/` directory → AI profile
-- `common/` directory → Human-AI profile
-- `python/`, `go/`, etc. → Human-AI profile
-- Detailed guides → Human profile
-
-**Use tiktoken for precise counts when available. Fall back to wc -c approximation (÷4) if needed.**
-
----
-
-**Last updated:** 2025-11-12

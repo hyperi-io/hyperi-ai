@@ -385,7 +385,7 @@ parent-project/              # Your project ($PROJECT_ROOT)
 
 To propose standards changes:
 1. Create GitHub issue with proposal
-2. Submit PR with changes to `docs/standards/`
+2. Submit PR with changes to `standards/`
 3. Get approval from 2+ team leads
 4. Update version in STANDARDS.md
 

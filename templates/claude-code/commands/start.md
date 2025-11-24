@@ -8,7 +8,7 @@ You are starting a new work session.
 
 - [STATE.md](../../STATE.md) - Current project state and session history
 - [TODO.md](../../TODO.md) - Current tasks and priorities
-- [ci/docs/standards/STANDARDS.md](../../standards/STANDARDS.md) - Contains loading strategy
+- [$AI_ROOT/standards/STANDARDS.md](../../standards/STANDARDS.md) - Contains loading strategy
 
 ## Step 2: Follow STANDARDS.md loading instructions
 
