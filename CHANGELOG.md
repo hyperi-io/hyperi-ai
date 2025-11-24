@@ -1,3 +1,10 @@
+## [1.2.3](https://github.com/hypersec-io/ai/compare/1.2.2...1.2.3) (2025-11-24)
+
+
+### Bug Fixes
+
+* remove optional gitignore enforcement for submodules ([9090e37](https://github.com/hypersec-io/ai/commit/9090e3708417ad0a791165ce64164a1795fedc3b))
+
 ## [1.2.2](https://github.com/hypersec-io/ai/compare/1.2.1...1.2.2) (2025-11-20)
 
 
