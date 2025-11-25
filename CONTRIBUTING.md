@@ -45,8 +45,7 @@ ai/
 ├── standards/           # Main product - coding standards
 ├── templates/           # Deployment templates
 ├── tests/              # Bats test suite
-├── docs/               # Project documentation
-└── deprecated/         # Reference only (old hs-ci/ai code)
+└── docs/               # Project documentation
 ```
 
 ### Making Changes

@@ -6,8 +6,9 @@
 # Claude Code configuration (created by claude-code.sh)
 .claude/
 
-# Python (deprecated/ reference only - no Python in this project)
+# Python (no Python in this project, but may be in parent project)
 __pycache__/
+.mypy_cache/
 *.py[cod]
 *$py.class
 *.so

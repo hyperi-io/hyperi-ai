@@ -10,14 +10,8 @@ set -euo pipefail
 DRY_RUN=false
 FORCE=false
 VERBOSE=false
-ENABLE_1M=false
 AI_ROOT=""
 PROJECT_ROOT=""
-
-# --- Configuration ---
-# This is the model identifier for the latest Gemini Pro model.
-# As of November 2025: gemini-3-pro-preview (most advanced, still in preview)
-LATEST_GEMINI_MODEL="gemini-3-pro-preview"
 
 # Detect script location and project root
 detect_paths() {
@@ -154,33 +148,6 @@ create_symlink() {
     fi
 }
 
-# Enable 1M context window
-enable_1m_context() {
-    local bashrc="$HOME/.bashrc"
-    local export_line="export GOOGLE_DEFAULT_MODEL=\"$LATEST_GEMINI_MODEL\""
-
-    if [ "$DRY_RUN" = "true" ]; then
-        echo "Would add to ~/.bashrc:"
-        echo "  $export_line"
-        return 0
-    fi
-
-    # Check if already configured
-    if grep -q "export GOOGLE_DEFAULT_MODEL=\"$LATEST_GEMINI_MODEL\"" "$bashrc" 2>/dev/null; then
-        echo "1M context window already enabled in ~/.bashrc"
-        return 0
-    fi
-
-    # Add to bashrc
-    echo "" >> "$bashrc"
-    echo "# Gemini Code 1M context window (added by ai/gemini.sh)" >> "$bashrc"
-    echo "$export_line" >> "$bashrc"
-
-    echo "Added 1M context window configuration to ~/.bashrc"
-    echo ""
-    echo "IMPORTANT: Run 'source ~/.bashrc' or restart your terminal to apply"
-}
-
 # Print summary
 print_summary() {
     echo ""
@@ -202,23 +169,11 @@ print_summary() {
         echo "  .gemini/commands/start.md  - /start command"
         echo "  .gemini/commands/save.md   - /save command"
         echo "  GEMINI.md -> STATE.md      - Project state symlink"
-
-        if [ "$ENABLE_1M" = "true" ]; then
-            echo "  ~/.bashrc                  - 1M context window enabled"
-        fi
-
         echo ""
         echo "Next steps:"
         echo "  1. Open project in your Gemini environment"
-        if [ "$ENABLE_1M" = "true" ]; then
-            echo "  2. Run 'source ~/.bashrc' to enable 1M context"
-            echo "  3. Run /start to initialize session"
-        else
-            echo "  2. Run /start to initialize session"
-            echo "  3. Review GEMINI.md (links to STATE.md)"
-            echo ""
-            echo "Optional: Run with --1m flag to enable 1M context window"
-        fi
+        echo "  2. Run /start to initialize session"
+        echo "  3. Review GEMINI.md (links to STATE.md)"
     fi
     echo "================================"
 }
@@ -236,7 +191,6 @@ Options:
   --force         Overwrite existing settings.json
   --path PATH     Specify custom project root (default: parent of ai/)
   --verbose       Enable verbose output
-  --1m            Enable 1M context window (modifies ~/.bashrc)
   -h              Same as --help
 
 Notes:
@@ -244,17 +198,13 @@ Notes:
   - Preserves existing settings.json by default
   - Always updates slash commands (versioned templates)
   - Creates GEMINI.md -> STATE.md symlink
-  - --1m flag adds export to ~/.bashrc for 1M context window
 
 Examples:
   # Basic usage (setup in parent directory)
   ./gemini.sh
 
-  # Enable 1M context window (will modify ~/.bashrc)
-  ./gemini.sh --1m
-
-  # Preview changes including 1M setup
-  ./gemini.sh --1m --dry-run
+  # Preview changes without modifying files
+  ./gemini.sh --dry-run
 
   # Force overwrite settings
   ./gemini.sh --force
@@ -283,10 +233,6 @@ parse_args() {
                 ;;
             --verbose)
                 VERBOSE=true
-                shift
-                ;;
-            --1m)
-                ENABLE_1M=true
                 shift
                 ;;
             --path)
@@ -331,12 +277,6 @@ main() {
     deploy_settings
     deploy_commands
     create_symlink
-
-    # Enable 1M context window if requested
-    if [ "$ENABLE_1M" = "true" ]; then
-        enable_1m_context
-    fi
-
     print_summary
 }
 

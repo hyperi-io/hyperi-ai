@@ -89,14 +89,3 @@ teardown() {
     [[ "$output" =~ "Usage:" ]]
 }
 
-@test "TC-G08: --1m flag (dry-run) shows bashrc modification" {
-    # Use a temporary HOME to avoid modifying the real .bashrc
-    export HOME="$(mktemp -d)"
-    touch "$HOME/.bashrc"
-
-    run ./ai/gemini.sh --1m --dry-run
-
-    [ "$status" -eq 0 ]
-    [[ "$output" =~ "Would add to ~/.bashrc:" ]]
-    [[ "$output" =~ "export GOOGLE_DEFAULT_MODEL" ]]
-}
