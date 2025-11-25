@@ -1,3 +1,10 @@
+## [1.2.4](https://github.com/hypersec-io/ai/compare/1.2.3...1.2.4) (2025-11-25)
+
+
+### Bug Fixes
+
+* remove deprecated code and 1M context window options ([5cc3a4d](https://github.com/hypersec-io/ai/commit/5cc3a4dead08d26ae83530420d7b8f9ff42bd946))
+
 ## [1.2.3](https://github.com/hypersec-io/ai/compare/1.2.2...1.2.3) (2025-11-24)
 
 
