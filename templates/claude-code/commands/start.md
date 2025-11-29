@@ -11,12 +11,12 @@ You are starting a new work session.
 
 ### Step 2: Load standards based on your context window size
 
-| Your Context Window | Action |
-|---------------------|--------|
-| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-CONTEXT-SMALL.md` (~8K tokens, self-contained) |
-| **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` then load ALL `standards/**/*.md` files |
+**Your context window determines which standards to load:**
 
-**This is the ONLY place context window selection happens.** STANDARDS.md assumes you have 500K+ context if you're reading it.
+| Context Size | Action |
+|--------------|--------|
+| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-CONTEXT-SMALL.md` (~8K tokens, self-contained) |
+| **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` then load ALL `$AI_ROOT/standards/**/*.md` files |
 
 ---
 

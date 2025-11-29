@@ -1,7 +1,6 @@
 # LLM-ONLY: HyperSec AI Code Assistant Standards (Self-Contained)
 
 Target: Under 50K tokens. Self-contained for LLMs with under 500K context.
-Full standards: For 500K+ context, use STANDARDS.md and standards/ subtree.
 
 ---
 
@@ -9,12 +8,12 @@ Full standards: For 500K+ context, use STANDARDS.md and standards/ subtree.
 
 **Your context window determines which standards to load:**
 
-| Context Size | Load |
-|--------------|------|
-| Under 500K tokens | STANDARDS-CONTEXT-SMALL.md (this file only) |
-| 500K+ tokens | STANDARDS.md + standards/ subtree |
+| Context Size | Action |
+|--------------|--------|
+| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-CONTEXT-SMALL.md` (~8K tokens, self-contained) |
+| **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` then load ALL `$AI_ROOT/standards/**/*.md` files |
 
-This file is self-contained for smaller context windows.
+**If you're reading this file:** You should have <500K context. This file is self-contained - no additional files needed.
 
 ---
 
