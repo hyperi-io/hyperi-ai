@@ -1,6 +1,6 @@
 # Code Assistant Standards - Common Guidance
 
-**Read directly from `ci/docs/standards/` by `/start` command**
+**Loaded by `/start` command from `$AI_ROOT/standards/`**
 
 This document provides critical guidance for AI code assistants working on any project.
 
@@ -146,7 +146,7 @@ AI assistants frequently overstate importance. **Always err on understatement.**
 - ❌ `feat:` ONLY for NEW VERY SIGNIFICANT and BROAD user-facing features
 - ❌ NEVER use `BREAKING CHANGE:` unless it breaks backward compatibility
 
-**Valid commit types (from ci/modules/common/defaults.yaml):**
+**Valid commit types (from [HyperSec CI](https://github.com/hypersec-io/ci) defaults.yaml):**
 
 **Semantic versioning (trigger version bumps):**
 

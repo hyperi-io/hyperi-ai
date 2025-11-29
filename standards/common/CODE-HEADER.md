@@ -157,13 +157,9 @@ pub mod config;
 
 ## Language-Specific Templates
 
-**Headers are language-specific** - see language modules:
+**Headers are language-specific** - examples above demonstrate correct syntax for each language.
 
-- Python: `ci/modules/python/ai/CODE_HEADER.md`
-- Bash: `ci/modules/bash/ai/CODE_HEADER.md` (future)
-- Go: `ci/modules/go/ai/CODE_HEADER.md` (future)
-
-Each language module provides:
+Header requirements:
 
 - Comment syntax (# vs // vs /**/)
 - Header template
