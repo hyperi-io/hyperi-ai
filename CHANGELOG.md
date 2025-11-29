@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/hypersec-io/ai/compare/1.3.0...1.3.1) (2025-11-29)
+
+
+### Bug Fixes
+
+* remove outdated ci/ references from standards ([09cbdfd](https://github.com/hypersec-io/ai/commit/09cbdfd1a60f52d92863d8d1e566ca942c490048))
+
 ## [1.3.0](https://github.com/hypersec-io/ai/compare/1.2.7...1.3.0) (2025-11-29)
 
 
