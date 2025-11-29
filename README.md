@@ -121,16 +121,6 @@ unzip ai.zip && mv ai-main ai
 - Run `/save` before breaks to preserve context
 - STATE.md and TODO.md persist across sessions
 
-**Recommended VSCode extension:**
-
-Install the **Claude Usage Monitor** extension to track your Claude Code API usage in real-time. Until Derek's changes are merged to the original repo, install via VSIX from our fork:
-
-1. Download the latest `.vsix` from [hypersec-io/claude-usage-monitor releases](https://github.com/hypersec-io/claude-usage-monitor/releases)
-2. In VSCode: `Ctrl+Shift+P` → "Extensions: Install from VSIX..."
-3. Select the downloaded `.vsix` file
-
-This extension displays token usage, costs, and session statistics in the status bar.
-
 ---
 
 ### GitHub Copilot/Codex (OpenAI)
