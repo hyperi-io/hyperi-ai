@@ -3,6 +3,7 @@
 ## Type Hints
 
 **Python 3.12+ syntax (PEP 585, 604):**
+
 ```python
 # ✅ Modern
 def process(items: list[str]) -> dict[str, int]: ...
@@ -54,12 +55,12 @@ uv add --dev <pkg>             # Add dev
 ./ci/run dependency-update     # Update lock
 ```
 
-
 ---
 
 ## Commit Types
 
 **Standard conventional commits** (no Python-specific):
+
 - `fix:` - Fixes, improvements, refactors (PATCH)
 - `feat:` - New features (MINOR)
 - `perf:` - Performance (PATCH)
@@ -76,6 +77,7 @@ uv add --dev <pkg>             # Add dev
 **Release:** `./ci/run release [--dry-run|--no-push]`
 
 **Issues:**
+
 - Wrong venv: CI enforces `ci-local/.venv`
 - Version: Pre-commit hook prevents corruption
 - Coverage: 80% min (ci.yaml)

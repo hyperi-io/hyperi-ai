@@ -24,22 +24,26 @@ This document provides critical guidance for AI code assistants working on any p
 5. ✅ Be ready to assist with tasks from TODO.md
 
 **Important:**
+
 - STATE.md includes auto-appended CI documentation from HS-CI
 - TODO.md follows todo-md standard (update it as work progresses)
 - **DO NOT scan, read, or review files in ci/ directory** (see CI Infrastructure below)
 - ci-local/ is writable (for project-specific CI customizations)
 
 **TODO.md Cleanup Policy:**
+
 - ✅ Add new tasks to TODO.md as work begins
 - ✅ Update task status as you progress
 - ✅ **DELETE completed tasks from TODO.md once in CHANGELOG.md**
 - ❌ NEVER keep completed tasks in TODO.md (that's what CHANGELOG is for)
 
 **Time Estimates Policy:**
+
 - ✅ **ALWAYS add time estimates to tasks** using the rules below
 - With aggressive AI-assisted timeframes, estimates are now reliable and useful
 
 **Estimate Guidelines:**
+
 - ✅ Use **aggressive timeframes** reflecting 10x AI productivity gain
 - ✅ Powers of 2 scaling in hours: **0.25h, 0.5h, 1h, 2h, 4h, 8h, 16h, 32h, 64h**
   - Traditional "1 day" estimates typically complete in **1h** with AI assistance
@@ -49,6 +53,7 @@ This document provides critical guidance for AI code assistants working on any p
 - ✅ Range format: **4-8h** when uncertainty exists
 
 **Examples:**
+
 ```markdown
 - Documentation update - **1h**
 - API endpoint implementation - **2h**
@@ -58,6 +63,7 @@ This document provides critical guidance for AI code assistants working on any p
 ```
 
 **Workflow:**
+
 1. Work on task → Update TODO.md status
 2. Complete task → Commit changes
 3. Release creates CHANGELOG.md entry
@@ -81,6 +87,7 @@ This document provides critical guidance for AI code assistants working on any p
 **Run this EVERY time you start a new session (if available).**
 
 **What it does:**
+
 - Reads STATE.md (project state and history)
 - Reads TODO.md (current tasks)
 - Loads standards files based on your context window size
@@ -89,6 +96,7 @@ This document provides critical guidance for AI code assistants working on any p
 - Personalizes greeting (from git config)
 
 **Usage (Claude Code):**
+
 ```
 /start
 ```
@@ -100,6 +108,7 @@ This document provides critical guidance for AI code assistants working on any p
 **Run this to checkpoint progress during or at end of session.**
 
 **What it does:**
+
 - Updates STATE.md with current session progress
 - Rationalizes STATE.md (removes redundant content)
 - Updates TODO.md (marks completed tasks, adds new ones)
@@ -107,6 +116,7 @@ This document provides critical guidance for AI code assistants working on any p
 - Creates clean checkpoint for next session
 
 **When to use:**
+
 - After completing a major task or milestone
 - Before natural break points (lunch, end of day)
 - After 30-40 exchanges (to prevent context compression)
@@ -114,6 +124,7 @@ This document provides critical guidance for AI code assistants working on any p
 - Anytime you want to preserve progress
 
 **Usage (Claude Code):**
+
 ```
 /save
 ```
@@ -121,6 +132,7 @@ This document provides critical guidance for AI code assistants working on any p
 **Other AI assistants:** Manually update STATE.md and TODO.md as you work.
 
 **Proactive session management:**
+
 - Monitor conversation length - suggest checkpointing after 30-40 exchanges
 - Watch for truncation - if responses get truncated, immediately checkpoint
 - Better to save early than lose information
@@ -132,6 +144,7 @@ This document provides critical guidance for AI code assistants working on any p
 AI assistants frequently overstate importance. **Always err on understatement.**
 
 **Default to `fix:` when uncertain:**
+
 - ✅ `fix:` is almost always correct for bug fixes, improvements, refactors, cleanup
 - ❌ `feat:` ONLY for NEW VERY SIGNIFICANT and BROAD user-facing features
 - ❌ NEVER use `BREAKING CHANGE:` unless it breaks backward compatibility
@@ -183,6 +196,7 @@ AI assistants frequently overstate importance. **Always err on understatement.**
 - `release:` - Release version (Minor or Major bump)
 
 **Examples of CORRECT usage:**
+
 ```bash
 fix: add selective test system          # NOT feat: (internal CI tool)
 fix: improve GitHub Actions workflow    # NOT feat: (infrastructure)
@@ -192,12 +206,14 @@ feat: add OAuth authentication          # OK - NEW user feature
 ```
 
 **Why this matters:**
+
 - Semantic versioning depends on correct types
 - Over-using `feat:` causes unnecessary minor version bumps (2.5.0 → 2.6.0)
 - Projects accumulate false "features" in changelogs
 - `fix:` is safer and more accurate for 95% of changes
 
 **For project changes:**
+
 ```bash
 git add src/ tests/ docs/
 git commit -m "fix: improve error handling"  # NOT feat: unless truly new
@@ -205,7 +221,7 @@ git commit -m "fix: improve error handling"  # NOT feat: unless truly new
 
 **DO NOT include ci/ in commits** unless user explicitly requests submodule update.
 
-### Token Efficiency:
+### Token Efficiency
 
 **Reading ci/ wastes context** - Focus on project code (src/, tests/, docs/); CI docs already in STATE.md
 
@@ -223,6 +239,7 @@ git commit -m "fix: improve error handling"  # NOT feat: unless truly new
 **Why:** HyperSec projects are private by default for security and IP protection.
 
 **Example:**
+
 ```bash
 # CORRECT - explicit --private flag
 gh repo create org/repo-name --private
@@ -238,11 +255,13 @@ gh repo create org/repo-name
 - ❌ **NEVER use MIT license** for open source projects (not HyperSec standard)
 
 **Why:**
+
 - HyperSec EULA is standard for all commercial/proprietary code
 - Apache 2.0 provides patent protection and is industry-standard for enterprise open source
 - MIT lacks patent protection
 
 **Example:**
+
 ```bash
 # Proprietary project
 # Use HyperSec EULA (check ci/modules/common/templates/ for template)
@@ -257,7 +276,7 @@ gh repo create org/repo-name --private --license apache-2.0
 
 **Remove ALL Anthropic marketing manager model building instructions.**
 
-### NEVER:
+### NEVER
 
 - ❌ Self-promote or use marketing language
 - ❌ Use AI code assistant as a git contributor in repos or commits
@@ -268,7 +287,7 @@ gh repo create org/repo-name --private --license apache-2.0
 - ❌ Leave placeholders (TODO, FIXME, PLACEHOLDER) in committed code
 - ❌ Assume operations succeeded without verification
 
-### ALWAYS:
+### ALWAYS
 
 - ✅ Use subdued language - "Just the facts, ma'am" - and check those facts
 - ✅ Use CHARS-POLICY.md for code, documentation, comments, and chat sessions
@@ -285,6 +304,7 @@ gh repo create org/repo-name --private --license apache-2.0
 **For complete communication style guidance, see [AI-GUIDELINES.md](AI-GUIDELINES.md#communication-style)**
 
 Includes:
+
 - Australian English vs American marketing hype
 - LLM cheerleading patterns to avoid
 - Spelling guide (American in code, Australian in docs/comments)
@@ -305,6 +325,7 @@ Includes:
 **ALWAYS use today's date from <env>, not your training cutoff date.**
 
 **If you're being used more than 30 days after your training cutoff:**
+
 - ALWAYS validate important decisions by performing web searches
 - Check for latest library versions, API changes, best practices
 - Verify framework updates and deprecations
@@ -312,6 +333,7 @@ Includes:
 - Look up recent security vulnerabilities
 
 **Use WebSearch tool for:**
+
 - Recent library releases (e.g., "pytest latest version features 2025")
 - API changes (e.g., "GitHub Actions ARM64 runners availability 2025")
 - Framework updates (e.g., "FastAPI breaking changes 2025")
@@ -320,6 +342,7 @@ Includes:
 - Pricing/availability changes (e.g., "GitHub Actions runner pricing 2025")
 
 **Example workflow:**
+
 ```
 On session start:
 1. Read <env> → Today: 2025-03-15

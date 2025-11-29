@@ -16,7 +16,6 @@
 
 **Setup scripts** - Pure bash, assistant-specific setup
 
-
 **Key features:**
 
 - Works as git submodule, clone, or ZIP download
@@ -216,6 +215,7 @@ This repository provides **coding standards and project templates** for three us
 ### 1. Human Developers (Using Standards Directly)
 
 Reference comprehensive coding standards without AI assistance:
+
 - Language-agnostic standards (SOLID, DRY, KISS, YAGNI)
 - Python-specific standards (PEP 8, type hints, testing)
 - Git workflow and commit conventions
@@ -227,6 +227,7 @@ Reference comprehensive coding standards without AI assistance:
 ### 2. Developers with AI Code Assistants
 
 Standards optimised for AI-assisted development:
+
 - AI-specific guidance (quality warnings, best practices)
 - Session management (STATE.md, TODO.md for context)
 - Commit message guidelines for AI tools
@@ -238,6 +239,7 @@ Standards optimised for AI-assisted development:
 ### 3. AI Code Assistants (Reading for Context)
 
 Context-adaptive loading strategy for AI models:
+
 - Full CAG loading for 500K+ token windows
 - Tiered CAG/RAG hybrid for smaller contexts
 - Standards organised for efficient token usage
@@ -251,6 +253,7 @@ Context-adaptive loading strategy for AI models:
 ## Repository Structure
 
 **Path variables used in documentation:**
+
 - `$AI_ROOT` = Where this repo is attached (e.g., `ai/`, `standards/`, `.ai/`)
 - `$PROJECT_ROOT` = Parent project root (where STATE.md, TODO.md are deployed)
 
@@ -384,12 +387,14 @@ parent-project/              # Your project ($PROJECT_ROOT)
 **This repository is read-only for most projects.**
 
 To propose standards changes:
+
 1. Create GitHub issue with proposal
 2. Submit PR with changes to `standards/`
 3. Get approval from 2+ team leads
 4. Update version in STANDARDS.md
 
 ---
+
 ## License
 
 HyperSec EULA (Proprietary) - See [LICENSE](LICENSE)

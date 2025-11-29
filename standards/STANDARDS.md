@@ -13,6 +13,7 @@
 ### 1. Reduce Cognitive Load
 
 **For developers AND AI-assisted workflows:**
+
 - Simple, readable code (minimize extraneous cognitive load)
 - Self-documenting patterns (clear names, early returns, explicit logic)
 - Consistent patterns across all projects (mental model transfers)
@@ -23,6 +24,7 @@
 ### 2. Reduce Context Switching Overhead
 
 **For developers AND AI-assisted workflows:**
+
 - Project-specific context files (STATE.md, TODO.md, ARCHITECTURE.md)
 - Standardized infrastructure (hs-lib, HS-CI, same tools everywhere)
 - Meaningful commits and documentation (faster "resume" time)
@@ -33,6 +35,7 @@
 ### 3. Automated Standards Enforcement
 
 **Make conforming to standards light work:**
+
 - Automated checks (ruff, black, isort, mypy, bandit)
 - Pre-commit hooks (validation before commit, not after)
 - CI pipeline enforcement (tests, lint, security scans)
@@ -41,6 +44,7 @@
 **Result:** Standards are enforced automatically, not manually remembered
 
 **These three principles work together:**
+
 - Standards reduce cognitive load → easier to follow
 - Automation enforces standards → no manual effort
 - Reduced context switching → standards become muscle memory
@@ -50,6 +54,7 @@
 ## Quick Start
 
 **New to HyperSec?** Start here:
+
 1. Read `$AI_ROOT/standards/common/QUICK-REFERENCE.md` - One-page cheat sheet
 2. Read `$AI_ROOT/standards/common/CODING.md` - Core language-agnostic standards
 3. **Python projects:** Read `$AI_ROOT/standards/python/CODING-PYTHON.md`
@@ -99,11 +104,13 @@ standards/
 ### Code Quality
 
 **Core principles:**
+
 - SOLID, DRY, KISS, YAGNI → `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md`
 - Clarity over cleverness → `$AI_ROOT/standards/common/CODING.md`
 - No mocks in production → `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
 
 **Language-specific:**
+
 - Python PEP 8 → `$AI_ROOT/standards/python/PEP8.md`
 - Python coding standards → `$AI_ROOT/standards/python/CODING-PYTHON.md`
 
@@ -113,6 +120,7 @@ standards/
 **Comprehensive guide:** `$AI_ROOT/standards/common/ERROR-HANDLING.md`
 
 **Key rules:**
+
 - Never expose stack traces to users
 - Always log with context (user_id, request_id, timestamp)
 - Use specific exception types
@@ -124,6 +132,7 @@ standards/
 **Test-first development:** `$AI_ROOT/standards/common/TEST-FIRST.md`
 
 **Key rules:**
+
 - 80% minimum coverage
 - Tests run before build/release
 - Unit + integration + e2e tests
@@ -135,6 +144,7 @@ standards/
 **Full guide:** `$AI_ROOT/standards/common/CONTAINERIZATION.md`
 
 **Quick tips:**
+
 - Kubernetes + HELM + ArgoCD deployment
 - Multi-stage Dockerfile (build vs runtime)
 - Include debug utilities (curl, nc, ping)
@@ -146,6 +156,7 @@ standards/
 **Full guide:** `$AI_ROOT/standards/common/GIT.md`
 
 **Quick tips:**
+
 - Commit format: `<type>: <description>`
 - Use `fix:` by default (not `feat:`)
 - Branch format: `<type>/<description>`
@@ -158,6 +169,7 @@ standards/
 **Token optimization:** `$AI_ROOT/docs/TOKEN-ENGINEERING.md` (workflow doc, not loaded on start)
 
 **Key warnings:**
+
 - AI code has 4x higher defect rates - always review
 - Human-first design principle (no AI conventions)
 - Cognitive load must be same or less than human-written code
@@ -169,6 +181,7 @@ standards/
 ### For Developers (Daily Use)
 
 **Read once:**
+
 1. `$AI_ROOT/standards/common/QUICK-REFERENCE.md` - Keep this handy!
 2. `$AI_ROOT/standards/common/CODING.md` - Core standards
 3. `$AI_ROOT/standards/common/GIT.md` - Commit conventions
@@ -177,6 +190,7 @@ standards/
 4. `$AI_ROOT/standards/python/CODING-PYTHON.md`
 
 **Bookmark for reference:**
+
 - `$AI_ROOT/standards/common/ERROR-HANDLING.md` - When writing error handling
 - `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` - When designing architecture
 - `$AI_ROOT/standards/python/PEP8.md` - When Python linter complains
@@ -184,6 +198,7 @@ standards/
 ### For Code Reviewers
 
 **Check against:**
+
 1. `$AI_ROOT/standards/common/CODING.md` - Core standards compliance
 2. `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md` - No placeholder code
 3. `$AI_ROOT/standards/common/ERROR-HANDLING.md` - Security-first errors
@@ -195,10 +210,12 @@ standards/
 ### For Project Leads
 
 **Architecture decisions:**
+
 - `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` - SOLID, DRY, KISS, YAGNI
 - `$AI_ROOT/standards/common/CONTAINERIZATION.md` - Deployment architecture
 
 **Process enforcement:**
+
 - `$AI_ROOT/standards/common/GIT.md` - Git conventions
 
 ---
@@ -217,6 +234,7 @@ standards/
 - [ ] Files/dirs follow naming rules (`$AI_ROOT/standards/common/CHARS-POLICY.md`)
 
 **Python projects also verify:**
+
 - [ ] PEP 8 compliant (ruff, black, isort)
 - [ ] Type hints present (pyright)
 - [ ] Security scan passes (bandit)
@@ -266,22 +284,27 @@ Read: ALL matches (if any)
 Load essential files:
 
 **1. All code-assistant/ files (AI guidance - ALWAYS load):**
+
 ```
 Glob: ci/docs/standards/code-assistant/*.md
 Read: ALL matches
 ```
+
 Includes: COMMON.md, AI-GUIDELINES.md, PYTHON.md, HS-CI.md
 
 **2. Essential common/ files (ALWAYS load):**
+
 - Read: `ci/docs/standards/common/QUICK-REFERENCE.md`
 - Read: `ci/docs/standards/common/GIT.md`
 - Read: `ci/docs/standards/common/CHARS-POLICY.md`
 - Read: `ci/docs/standards/common/CODE-HEADER.md`
 
 **3. Python essentials (ALWAYS load for Python projects):**
+
 - Read: `ci/docs/standards/python/CODING-PYTHON.md`
 
 **4. Project overrides (if exist - ALWAYS load):**
+
 ```
 Glob: ci-local/code-assistant/*.md
 Read: ALL matches (if any)
@@ -296,43 +319,52 @@ Load these files when specific topics arise:
 ### RAG Index: When to Load Which File
 
 **Architecture & Design:**
+
 - Discussing SOLID, DRY, KISS, YAGNI? → Load `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md`
 - Designing container deployment? → Load `$AI_ROOT/standards/common/CONTAINERIZATION.md`
 
 **Error Handling:**
+
 - Implementing error handling? → Load `$AI_ROOT/standards/common/ERROR-HANDLING.md`
 - Security concerns about errors? → Load `$AI_ROOT/standards/common/ERROR-HANDLING.md`
 
 **Code Quality:**
+
 - Reviewing code for mocks/TODOs/placeholders? → Load `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
 - General code review? → Load `$AI_ROOT/standards/common/CODING.md`
 
 **Testing:**
+
 - Writing tests for existing code? → Load `$AI_ROOT/standards/common/TEST-FIRST.md`
 - Test-first methodology questions? → Load `$AI_ROOT/standards/common/TEST-FIRST.md`
 
 **Python Deep Dives:**
+
 - PEP 8 compliance questions? → Load `$AI_ROOT/standards/python/PEP8.md`
 - Core Python standards? → Already loaded (`$AI_ROOT/standards/python/CODING-PYTHON.md`)
 
 **CI/CD Infrastructure:**
+
 - Git questions? → Already loaded (`$AI_ROOT/standards/common/GIT.md`)
 
 ### Why Context-Adaptive Loading?
 
 **500K+ context (Full CAG):**
+
 - ✅ **Most reliable** - No guessing when to load files
 - ✅ **Zero hallucination risk** - All standards always available
 - ✅ **Simpler for AI** - No RAG index maintenance
 - ✅ **Plenty of room for work** - Ample context remaining
 
 **<500K context (CAG/RAG Hybrid):**
+
 - ✅ **Loads less upfront** - Essential standards only
 - ✅ **More context available** for actual work
 - ✅ **Essential standards always loaded** (git, naming, Python basics)
 - ✅ **Faster session start**
 
 **Trade-off for <500K:**
+
 - Manual maintenance of RAG index (concept → file mapping)
 - AI must recognize when to load on-demand files
 

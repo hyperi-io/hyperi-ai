@@ -16,12 +16,15 @@
 ### Progress
 
 **Completed:**
+
 - [Task completed]
 
 **In Progress:**
+
 - [Current task]
 
 **Blocked:**
+
 - [Blocked items if any]
 
 ---
@@ -51,9 +54,11 @@
 ### [Date] - [Summary]
 
 **Changes:**
+
 - [Change description]
 
 **Rationale:**
+
 - [Why this change was made]
 
 ---
@@ -72,14 +77,17 @@
 ## Next Steps
 
 **Immediate (this session):**
+
 1. [Next task]
 2. [Following task]
 
 **Short-term (next few sessions):**
+
 1. [Upcoming work]
 2. [Future tasks]
 
 **Long-term (backlog):**
+
 1. [Future enhancements]
 2. [Nice-to-have features]
 
@@ -88,10 +96,12 @@
 ## Resources
 
 **Documentation:**
+
 - [docs/README.md](docs/README.md) - Project documentation
 - [Link to relevant docs]
 
 **External Resources:**
+
 - [External documentation links]
 - [API references]
 
@@ -106,6 +116,7 @@
 ## Notes for AI Assistants
 
 This file maintains session state across conversations. Update this file when:
+
 - Completing significant milestones
 - Making architectural decisions
 - Identifying blockers or issues

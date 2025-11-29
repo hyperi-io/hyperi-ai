@@ -9,7 +9,7 @@ Headers are language-specific, but rules are universal.
 
 **CRITICAL:** All source code files MUST have a standard header.
 
-### Minimum Required Fields:
+### Minimum Required Fields
 
 ```
 Project:      <PROJECT_NAME>
@@ -21,7 +21,7 @@ License:      <SPDX-Identifier>
 Copyright:    (c) <YEAR> <ORGANISATION>
 ```
 
-### Optional Fields:
+### Optional Fields
 
 ```
 Description:
@@ -38,22 +38,24 @@ Notes:
 
 **Project has ONE license type** (configured in ci.yaml):
 
-### Supported Licenses:
+### Supported Licenses
 
 **1. HyperSec EULA (Proprietary)**
+
 - SPDX: `LicenseRef-HyperSec-EULA`
 - Use for: Commercial HyperSec products
 - Copyright: `(c) YYYY HyperSec Pty Ltd`
 - File: `LICENSE` (HyperSec EULA text)
-- Reference: https://hypersec.io/eula/
+- Reference: <https://hypersec.io/eula/>
 
 **2. Apache 2.0 (Open Source)**
+
 - SPDX: `Apache-2.0`
 - Use for: Open source projects
 - Copyright: `(c) YYYY HyperSec` or `(c) YYYY <Author>`
 - File: `LICENSE` (Apache 2.0 text)
 
-### Configuration (ci.yaml):
+### Configuration (ci.yaml)
 
 ```yaml
 project:
@@ -64,7 +66,7 @@ project:
 
 ## Rules for AI Assistants
 
-### ALWAYS:
+### ALWAYS
 
 ✅ **Use project's license** - From ci.yaml configuration
 ✅ **Use current year** - From system date (not model training date)
@@ -73,7 +75,7 @@ project:
 ✅ **One-sentence purpose** - Clear and concise
 ✅ **Language-appropriate comments** - # for Python, // for Go, etc.
 
-### NEVER:
+### NEVER
 
 ❌ **Include version numbers** - Managed by CHANGELOG.md and git
 ❌ **Include change dates** - Managed by git history
@@ -118,7 +120,8 @@ import os
 - Go: `ci/modules/go/ai/CODE_HEADER.md` (future)
 
 Each language module provides:
-- Comment syntax (# vs // vs /* */)
+
+- Comment syntax (# vs // vs /**/)
 - Header template
 - Examples
 
@@ -127,13 +130,14 @@ Each language module provides:
 ## REUSE Compliance
 
 Follows REUSE Software Specification 3.3:
+
 - ✅ SPDX license identifier
 - ✅ Copyright notice
 - ✅ No version/changelog in headers (managed separately)
 - ✅ Machine-readable format
 - ✅ Language-appropriate syntax
 
-**For full spec:** https://reuse.software/spec-3.3/
+**For full spec:** <https://reuse.software/spec-3.3/>
 
 ---
 

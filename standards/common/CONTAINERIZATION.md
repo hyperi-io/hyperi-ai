@@ -92,11 +92,13 @@ RUN apk add --no-cache \
 ```
 
 **What to include:**
+
 - `curl` - HTTP debugging, health check testing
 - `netcat` (`nc`) - Network connectivity testing
 - `ping` - Basic network diagnostics
 
 **What NOT to include:**
+
 - Build tools (gcc, make) - use multi-stage builds
 - Package managers (pip, npm) - install at build time
 - Shells (bash) - alpine sh sufficient
@@ -113,6 +115,7 @@ RUN apk add --no-cache \
 **Use for:** Local development, testing, CI/CD builds, simple deployments
 
 **When to use:**
+
 - Independent components (no orchestration)
 - Local development
 - CI/CD integration tests
@@ -187,6 +190,7 @@ HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
 **Use for:** Production deployments, multi-environment, auto-scaling, high availability
 
 **When to use:**
+
 - Production workloads
 - Multi-environment (dev, staging, prod)
 - Auto-scaling

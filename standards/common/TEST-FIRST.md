@@ -16,9 +16,10 @@
 
 ## When to Use Test-First
 
-### Perfect For:
+### Perfect For
 
 **Refactoring existing code:**
+
 ```python
 # Before refactoring, write tests that verify current behavior
 def test_calculate_discount_current_behavior():
@@ -31,6 +32,7 @@ def test_calculate_discount_current_behavior():
 ```
 
 **Bug fixes:**
+
 ```python
 # 1. Write test that reproduces the bug
 def test_bug_negative_discount_crashes():
@@ -48,6 +50,7 @@ def calculate_discount(price: float, percent: float) -> float:
 ```
 
 **Adding features to existing code:**
+
 ```python
 # 1. Write tests for new feature
 def test_bulk_discount_tier():
@@ -65,7 +68,7 @@ def calculate_discount(price: float, percent: float, bulk: bool = False) -> floa
 # 3. Tests pass - feature complete
 ```
 
-### Not Suitable For:
+### Not Suitable For
 
 ❌ **New greenfield code** - Use pure TDD
 ❌ **Exploratory prototypes** - Tests add overhead when requirements unclear
@@ -365,6 +368,7 @@ def calculate_seasonal_discount(items):
 ### Pitfall 1: Writing Tests After Code
 
 ❌ **Wrong order:**
+
 ```
 1. Modify code
 2. Code breaks
@@ -374,6 +378,7 @@ def calculate_seasonal_discount(items):
 ```
 
 ✅ **Correct order:**
+
 ```
 1. Write tests defining success
 2. Tests fail (feature not implemented)
@@ -385,6 +390,7 @@ def calculate_seasonal_discount(items):
 ### Pitfall 2: Testing Implementation Instead of Behavior
 
 ❌ **Bad test (tests HOW not WHAT):**
+
 ```python
 def test_calculate_total_uses_loop():
     """Test that calculate_total uses a for loop."""
@@ -393,6 +399,7 @@ def test_calculate_total_uses_loop():
 ```
 
 ✅ **Good test (tests WHAT not HOW):**
+
 ```python
 def test_calculate_total_sums_items():
     """Test that calculate_total returns correct sum."""
@@ -403,6 +410,7 @@ def test_calculate_total_sums_items():
 ### Pitfall 3: Too Many Tests
 
 ❌ **Over-testing:**
+
 ```python
 # 50 tests for one simple function
 def test_add_1_plus_1(): assert add(1, 1) == 2
@@ -412,6 +420,7 @@ def test_add_1_plus_3(): assert add(1, 3) == 4
 ```
 
 ✅ **Right amount of testing:**
+
 ```python
 # Test edge cases and representative examples
 def test_add_positive_numbers(): assert add(5, 3) == 8
@@ -424,12 +433,14 @@ def test_add_negative_numbers(): assert add(-5, -3) == -8
 ### Pitfall 4: Not Running Tests Frequently
 
 ❌ **Write 10 tests, implement, run once:**
+
 ```
 Write test1, test2, ... test10 → Implement → Run all tests
 (Many failures, hard to debug)
 ```
 
 ✅ **Write one test, implement, run, repeat:**
+
 ```
 Write test1 → Implement → Run → Pass → Commit
 Write test2 → Implement → Run → Pass → Commit

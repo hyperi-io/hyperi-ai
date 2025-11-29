@@ -2,7 +2,7 @@
 
 **Complete Python style guide for HyperSec projects**
 
-**Official:** https://peps.python.org/pep-0008/ (latest version)
+**Official:** <https://peps.python.org/pep-0008/> (latest version)
 **Enforcement:** Automated via HS-CI (Ruff, Black, isort)
 
 ---
@@ -107,7 +107,7 @@ def my_function():
 # ❌ Bad - 2 spaces or tabs
 def my_function():
   if condition:  # 2 spaces
-	do_something()  # Tab
+ do_something()  # Tab
 ```
 
 **Editor config:** 4-space tabs, show whitespace, auto-remove trailing
@@ -436,6 +436,7 @@ def process(value: Union[int, str]) -> List[User]:
 **Settings:** 88 chars, double quotes, trailing commas, consistent spacing
 
 **Usage:**
+
 ```bash
 black src/            # Format
 black --check src/    # Check only
@@ -454,6 +455,7 @@ black --check src/    # Check only
 **Replaces:** Flake8, isort, pydocstyle, pyupgrade, and 50+ other tools
 
 **Common rule series:**
+
 - **E/W:** PEP 8 errors (E101 mixed spaces/tabs, E501 line length, W291 trailing whitespace)
 - **F:** Logic errors (F401 unused import, F841 unused variable, F821 undefined name)
 - **I:** Import sorting (I001 unsorted imports, I002 missing import) - **replaces isort**
@@ -461,6 +463,7 @@ black --check src/    # Check only
 - **UP:** Modern syntax (UP006 use `list[X]`, UP007 use `X | Y`)
 
 **Usage:**
+
 ```bash
 ruff check src/           # Check
 ruff check --fix src/     # Auto-fix
@@ -470,6 +473,7 @@ ruff check --explain F401 # Explain rule
 **HS-CI:** Runs in `./ci/run test` (blocking)
 
 **Configure in `pyproject.toml`:**
+
 ```toml
 [tool.ruff]
 line-length = 88
@@ -513,6 +517,7 @@ ignore = ["E501"]  # Black handles line length
 ## Best Practices Summary
 
 **DO:**
+
 - ✅ 4 spaces indentation, 88 char lines
 - ✅ `snake_case` vars/functions, `PascalCase` classes, `UPPER_SNAKE_CASE` constants
 - ✅ Type hints on public functions
@@ -522,6 +527,7 @@ ignore = ["E501"]  # Black handles line length
 - ✅ Run `./ci/run test` before commit
 
 **DON'T:**
+
 - ❌ Tabs or mixed spaces/tabs
 - ❌ Wildcard imports (`from x import *`)
 - ❌ Numbered code comments
@@ -533,11 +539,13 @@ ignore = ["E501"]  # Black handles line length
 ## Resources
 
 **Official PEPs:**
-- PEP 8 - Style Guide: https://peps.python.org/pep-0008/
-- PEP 257 - Docstrings: https://peps.python.org/pep-0257/
-- PEP 484 - Type Hints: https://peps.python.org/pep-0484/
+
+- PEP 8 - Style Guide: <https://peps.python.org/pep-0008/>
+- PEP 257 - Docstrings: <https://peps.python.org/pep-0257/>
+- PEP 484 - Type Hints: <https://peps.python.org/pep-0484/>
 
 **Tools:**
-- Black: https://black.readthedocs.io/
-- Ruff: https://docs.astral.sh/ruff/ (includes I rules for import sorting)
-- pyright: https://microsoft.github.io/pyright/
+
+- Black: <https://black.readthedocs.io/>
+- Ruff: <https://docs.astral.sh/ruff/> (includes I rules for import sorting)
+- pyright: <https://microsoft.github.io/pyright/>

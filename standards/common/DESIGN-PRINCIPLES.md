@@ -13,6 +13,7 @@
 Split complex classes into focused, single-purpose components.
 
 **Example: Separate concerns**
+
 ```python
 # Bad - multiple responsibilities
 class UserManager:
@@ -53,6 +54,7 @@ class UserReportGenerator:
 Add new features without changing existing, stable code.
 
 **Example: Extension via inheritance**
+
 ```python
 # Bad - must modify class for new payment types
 class PaymentProcessor:
@@ -88,6 +90,7 @@ class BitcoinProcessor(PaymentProcessor):
 ```
 
 **Why OCP matters:**
+
 - Stable code stays stable (no regression risk)
 - New features via composition/inheritance
 - Easier to scale (add features without breaking existing)
@@ -101,6 +104,7 @@ class BitcoinProcessor(PaymentProcessor):
 Don't break contracts in subclasses.
 
 **Example: Honoring base class contracts**
+
 ```python
 # Bad - breaks base class contract
 class Bird:
@@ -126,6 +130,7 @@ class Penguin(Bird):
 ```
 
 **Why LSP matters:**
+
 - Polymorphism works correctly
 - No unexpected exceptions
 - Subclasses truly extend base behavior
@@ -139,6 +144,7 @@ class Penguin(Bird):
 Split large interfaces into smaller, specific ones.
 
 **Example: Focused interfaces**
+
 ```python
 # Bad - fat interface
 class Worker:
@@ -190,6 +196,7 @@ class Robot(Workable):
 ```
 
 **Why ISP matters:**
+
 - Clients only depend on what they need
 - Smaller, focused interfaces
 - Easier to implement and test
@@ -203,6 +210,7 @@ class Robot(Workable):
 High-level modules shouldn't depend on low-level modules.
 
 **Example: Abstract dependencies**
+
 ```python
 # Bad - depends on concrete implementation
 class UserService:
@@ -239,6 +247,7 @@ service = UserService(MySQLDatabase())  # or PostgreSQLDatabase()
 ```
 
 **Why DIP matters:**
+
 - Easy to swap implementations
 - Easier to test (mock abstractions)
 - Loose coupling
@@ -254,6 +263,7 @@ Extract repeated logic to functions, classes, or utilities.
 ### When to Apply DRY
 
 **Duplicate logic (apply DRY):**
+
 ```python
 # Bad - duplication
 def process_user_csv(file):
@@ -274,6 +284,7 @@ def process_csv(file, entity_type):
 ```
 
 **Similar but not identical (DON'T force DRY):**
+
 ```python
 # Don't force DRY if logic diverges
 def process_user(user):
@@ -295,11 +306,13 @@ def process_product(product):
 ### DRY Anti-Patterns
 
 **Don't DRY prematurely:**
+
 - Wait until you have 3+ duplicates (Rule of Three)
 - Don't extract if logic might diverge
 - Duplication is better than wrong abstraction
 
 **Example of wrong abstraction:**
+
 ```python
 # Bad - forced DRY creates coupling
 def process_entity(entity, type):
@@ -330,6 +343,7 @@ def process_product(product):
 ### Simplicity Guidelines
 
 **Use straightforward solutions:**
+
 - Avoid over-engineering
 - Choose readable code over clever tricks
 - Simpler code = fewer bugs
@@ -338,6 +352,7 @@ def process_product(product):
 ### Examples
 
 **❌ Bad (over-engineered):**
+
 ```python
 # Abstract factory pattern for simple config
 class ConfigFactoryFactory:
@@ -360,18 +375,21 @@ config = factory.create_config()
 ```
 
 **✅ Good (simple):**
+
 ```python
 # Just load the config
 config = load_config("config.yaml")
 ```
 
 **❌ Bad (clever trick):**
+
 ```python
 # Clever one-liner
 result = [x for x in [y**2 for y in range(n) if y % 2] for _ in range(3) if x > 10]
 ```
 
 **✅ Good (clear):**
+
 ```python
 # Clear and readable
 odd_numbers = [y for y in range(n) if y % 2]
@@ -382,6 +400,7 @@ result = [x for x in squared if x > 10]
 ### When Complexity is Justified
 
 **Complex is OK when:**
+
 - Performance-critical (profiled and proven)
 - Security-critical (well-tested)
 - Domain complexity (unavoidable)
@@ -398,6 +417,7 @@ Only implement what's needed NOW.
 ### YAGNI Guidelines
 
 **Don't build features "just in case":**
+
 - Wait for actual requirements
 - Refactor when needed
 - Avoid speculative generality
@@ -407,6 +427,7 @@ Only implement what's needed NOW.
 **❌ Bad examples:**
 
 1. **Database abstraction (when you only use one DB):**
+
 ```python
 # Don't build this if you only use PostgreSQL
 class DatabaseAbstraction:
@@ -423,7 +444,8 @@ class MongoDBAdapter(DatabaseAbstraction):
     pass
 ```
 
-2. **Plugin system (with only one plugin):**
+1. **Plugin system (with only one plugin):**
+
 ```python
 # Don't build plugin infrastructure for one plugin
 class PluginManager:
@@ -436,7 +458,8 @@ class PluginManager:
 # Just call the one plugin directly!
 ```
 
-3. **Unnecessary configuration:**
+1. **Unnecessary configuration:**
+
 ```python
 # Don't make everything configurable
 config = {
@@ -449,12 +472,14 @@ config = {
 ### When to Build for the Future
 
 **Build ahead when:**
+
 - Requirements are certain (not speculative)
 - Cost of later refactor is very high
 - Architecture decision (hard to change later)
 - Security/compliance requirement
 
 **Example: Build ahead for known scale:**
+
 ```python
 # OK to build for scale if growth is certain
 class UserService:

@@ -8,9 +8,10 @@ This document describes how to work with and contribute to this repository.
 
 **Purpose:** Standards and templates for developers and AI code assistants
 
-**Repository:** https://github.com/hypersec-io/ai (private)
+**Repository:** <https://github.com/hypersec-io/ai> (private)
 
 **Key components:**
+
 - `standards/` - Coding standards, AI guidance, best practices
 - `templates/` - STATE.md, TODO.md, assistant-specific configurations
 - `install.sh` - Deploy cross-assistant templates (STATE.md, TODO.md)
@@ -32,9 +33,9 @@ ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
 ```
 
 These hooks will:
+
 - Validate branch names match HyperSec standards
 - Remove AI attribution from commit messages automatically
-
 
 ### Repository Structure
 
@@ -139,6 +140,7 @@ bats tests/claude-code.bats
 ```
 
 **Test coverage:**
+
 - 11 tests for install.sh
 - 8 tests for claude-code.sh
 - Tests all three usage modes (submodule, clone, standalone)
@@ -155,6 +157,7 @@ All branches must follow HyperSec standards:
 **Format:** `<type>/<issue-ref>/<short-description>`
 
 **Examples:**
+
 ```bash
 fix/no-ref/missing-template      # No issue ticket
 feat/AI-123/add-cursor-support   # With issue ticket
@@ -162,6 +165,7 @@ docs/no-ref/update-readme        # Documentation change
 ```
 
 **Issue reference:**
+
 - Use actual ticket ID if exists (e.g., `AI-123`)
 - Use `no-ref` if no ticket
 
@@ -182,6 +186,7 @@ All commits must follow conventional commit format:
 ### Commit Types
 
 **Types that trigger releases:**
+
 - `feat:` - New feature (minor bump: 1.0.0 → 1.1.0)
 - `fix:` - Bug fix (patch bump: 1.0.0 → 1.0.1)
 - `perf:` - Performance improvement (patch bump)
@@ -189,6 +194,7 @@ All commits must follow conventional commit format:
 - `hotfix:` - Critical fix (patch bump)
 
 **Types that don't trigger releases:**
+
 - `docs:` - Documentation only
 - `test:` - Tests only
 - `chore:` - Maintenance, dependencies
@@ -196,6 +202,7 @@ All commits must follow conventional commit format:
 - `refactor:` - Code restructure (no functional change)
 
 **Breaking changes:**
+
 - Add `BREAKING CHANGE:` footer to trigger major bump (1.0.0 → 2.0.0)
 
 ### Examples
@@ -233,12 +240,14 @@ Releases are fully automated via semantic-release:
 ### Version Sources
 
 Version information exists in **exactly 4 places:**
+
 1. `VERSION` file - Single source of truth (managed by semantic-release)
 2. `CHANGELOG.md` - Release history (managed by semantic-release)
 3. Git tags - e.g., `1.2.3` (created by semantic-release)
-4. GitHub releases - https://github.com/hypersec-io/ai/releases
+4. GitHub releases - <https://github.com/hypersec-io/ai/releases>
 
 **Do NOT add version info to:**
+
 - Scripts (install.sh, claude-code.sh)
 - Documentation files (README.md, docs/*.md)
 - Standards files (standards/*.md)
@@ -295,11 +304,13 @@ templates/
 **All scripts must work with bash 3.2+ (macOS default):**
 
 **Avoid:**
+
 - Associative arrays (bash 4+)
 - `&>` redirection (use `2>&1`)
 - `${var^^}` transformations (bash 4+)
 
 **Use:**
+
 - `[ ]` test operators
 - `$(command)` substitution
 - Indexed arrays
@@ -319,10 +330,12 @@ templates/
 **Only add scripts when necessary** (YAGNI principle).
 
 Current scripts cover core use cases:
+
 - `install.sh` - Generic template deployment
 - `claude-code.sh` - Claude Code specific setup
 
 If adding new scripts (e.g., `cursor.sh`, `copilot.sh`):
+
 1. Follow same structure as existing scripts
 2. Add bats tests
 3. Update README.md
@@ -342,12 +355,14 @@ If adding new scripts (e.g., `cursor.sh`, `copilot.sh`):
 ### Documentation Standards
 
 **Keep documentation:**
+
 - Concise and scannable
 - Up-to-date with code
 - Free of version numbers (use VERSION file instead)
 - Australian English spelling
 
 **Don't include:**
+
 - Hardcoded versions (use VERSION file)
 - Dates in filenames
 - Marketing language
@@ -370,6 +385,7 @@ docs: update installation guide
 ### PR Description
 
 Include:
+
 - Summary of changes
 - Why the change is needed
 - Testing performed
@@ -378,6 +394,7 @@ Include:
 ### Review Process
 
 **Internal (HyperSec):**
+
 1. Create PR
 2. Automated checks run (GitHub Actions)
 3. Request review from team lead
@@ -386,6 +403,7 @@ Include:
 6. Semantic-release auto-publishes
 
 **External (if public):**
+
 1. Fork and create PR
 2. Maintainer review required
 3. May request changes
@@ -398,12 +416,14 @@ Include:
 ### Regular Tasks
 
 **Monthly:**
+
 - Review standards for accuracy
 - Check for outdated information
 - Update dependencies in workflows
 - Test with latest Claude Code version
 
 **As needed:**
+
 - Respond to issues
 - Review PRs
 - Update templates based on feedback
@@ -412,6 +432,7 @@ Include:
 ### Deprecation Policy
 
 If deprecating features:
+
 1. Add deprecation notice in relevant files
 2. Keep deprecated feature for one major version
 3. Document migration path
@@ -422,11 +443,13 @@ If deprecating features:
 ## Getting Help
 
 **For HyperSec developers:**
+
 - Slack: #standards channel
-- GitHub Issues: https://github.com/hypersec-io/ai/issues
-- Email: dev@hypersec.io
+- GitHub Issues: <https://github.com/hypersec-io/ai/issues>
+- Email: <dev@hypersec.io>
 
 **For external users (if repository becomes public):**
+
 - GitHub Issues only
 - No direct support guaranteed
 

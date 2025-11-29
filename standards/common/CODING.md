@@ -21,6 +21,7 @@
 ### Development Work
 
 **Use `./.tmp/` for ALL project-scoped temporary operations:**
+
 - Test projects and artifacts
 - Build intermediates
 - Code assistant scratch files
@@ -31,6 +32,7 @@
 ### Production/Runtime Code
 
 **Language-specific guidance:**
+
 - **Python:** Use `tempfile` module (see CODING-STANDARDS-PYTHON.md)
 - **Go:** Use `os.MkdirTemp()` and `os.CreateTemp()`
 - **Node.js:** Use `tmp` or `temp` packages
@@ -59,6 +61,7 @@
 ### Clarity Over Cleverness
 
 **Core Principles:**
+
 - Break down compound operations into clear steps
 - Use intermediate variables with descriptive names
 - Prioritize readability over clever one-liners
@@ -72,11 +75,13 @@
 ### Language-Agnostic Examples
 
 **❌ Bad (dense, hard to follow):**
+
 ```javascript
 const result = data.filter(n => n > 0).map(n => n * 2).reduce((a, b) => a + b, 0);
 ```
 
 **✅ Good (clear, maintainable):**
+
 ```javascript
 // Sum of doubled positive numbers
 const positiveNumbers = data.filter(n => n > 0);
@@ -85,6 +90,7 @@ const sum = doubledNumbers.reduce((a, b) => a + b, 0);
 ```
 
 **❌ Bad (unexplained complex condition):**
+
 ```go
 if (hasPermission && isActive) || (isAdmin && !isLocked) {
     process()
@@ -92,6 +98,7 @@ if (hasPermission && isActive) || (isAdmin && !isLocked) {
 ```
 
 **✅ Good (explained logic):**
+
 ```go
 // Allow if: (user has permission AND is active) OR (admin without lock)
 normalUserAccess := hasPermission && isActive
@@ -105,11 +112,13 @@ if normalUserAccess || adminOverride {
 ### When Concise Code is OK
 
 **Simple, single operations are fine (language-dependent idioms are acceptable):**
+
 - List comprehensions (Python), array methods (JavaScript), iterator chains (Rust)
 - Simple transformations that are idiomatic to the language
 - Well-understood patterns that improve readability
 
 **Avoid:**
+
 - Nested operations requiring mental parsing
 - Multiple transformations in single expression
 - Dense lambda/anonymous function chains
@@ -122,18 +131,21 @@ if normalUserAccess || adminOverride {
 **Production code must be complete and functional before committing.**
 
 ❌ **NEVER commit:**
+
 - Mock implementations or placeholder values
 - TODO/FIXME/HACK comments in production code
 - Example/demonstration code as real features
 - Simplified "proof of concept" code
 
 ✅ **ALWAYS do:**
+
 - Complete functionality before committing
 - Handle all error cases and edge conditions
 - Validate inputs and outputs
 - Add tests verifying complete behavior
 
 **Example:**
+
 ```javascript
 // ❌ Bad (mock data)
 function getUser(userId) {
@@ -151,11 +163,13 @@ async function getUser(userId) {
 ```
 
 **Mocks ONLY allowed in:**
+
 - `tests/` directory (unit/integration tests)
 - `examples/` directory (explicitly marked)
 - Documentation code blocks
 
 **AI warning signs (reject these):**
+
 - "Here's a simple example..."
 - "TODO: Add error handling"
 - Hardcoded example data
@@ -171,6 +185,7 @@ async function getUser(userId) {
 ### Test Organization
 
 **Standard directory structure:**
+
 ```
 tests/
 ├── unit/          # Fast, isolated unit tests
@@ -181,12 +196,14 @@ tests/
 ### Test Requirements
 
 **All projects MUST have:**
+
 - Unit tests for core business logic
 - Integration tests for external dependencies
 - Minimum 80% code coverage
 - Tests run before every build/release
 
 **Test Naming:**
+
 - Clear, descriptive test names
 - Follow language conventions
 - Explain WHAT is being tested
@@ -208,6 +225,7 @@ tests/
 ### Input Validation
 
 **ALWAYS validate ALL external input:**
+
 - User input (forms, CLI args, API requests)
 - File uploads
 - Environment variables
@@ -215,6 +233,7 @@ tests/
 - External API responses
 
 **Validation checklist:**
+
 - [ ] Type checking
 - [ ] Range/length limits
 - [ ] Format validation (regex, parsing)
@@ -235,12 +254,14 @@ tests/
 ### Dependency Security
 
 **Requirements:**
+
 - Security scanners for dependencies (language-specific)
 - Automated vulnerability alerts
 - Regular dependency updates
 - Lock files for reproducible builds
 
 **Language-specific tools:**
+
 - **Python:** `bandit`, `pip-audit`
 - **Go:** `govulncheck`
 - **Node.js:** `npm audit`, `snyk`
@@ -263,6 +284,7 @@ tests/
 ```
 
 **Types:**
+
 - `feat:` New feature (minor version bump)
 - `fix:` Bug fix (patch version bump)
 - `docs:` Documentation only
@@ -272,6 +294,7 @@ tests/
 - `perf:` Performance improvements
 
 **Examples:**
+
 ```
 feat(auth): add OAuth2 login support
 fix(api): handle null response from database
@@ -286,6 +309,7 @@ chore: update dependencies to latest versions
 **Format:** `<type>/<short-description>`
 
 **Examples:**
+
 ```
 feat/oauth-login
 fix/null-pointer-exception
@@ -299,6 +323,7 @@ test/add-payment-tests
 **PR Title:** Same format as commit message
 
 **PR Description MUST include:**
+
 - Summary of changes
 - Related issue numbers
 - Testing performed
@@ -394,6 +419,7 @@ function processData(data) {
 **Core principles for software design:**
 
 **SOLID Principles:**
+
 - **S**ingle Responsibility - one class, one reason to change
 - **O**pen/Closed - open for extension, closed for modification
 - **L**iskov Substitution - subtypes must substitute base types
@@ -401,16 +427,19 @@ function processData(data) {
 - **D**ependency Inversion - depend on abstractions
 
 **DRY (Don't Repeat Yourself):**
+
 - Extract repeated logic to functions/classes
 - Avoid code duplication
 - Don't force abstraction (wait for 3+ duplicates)
 
 **KISS (Keep It Simple, Stupid):**
+
 - Favor simplicity over cleverness
 - Avoid over-engineering
 - Choose readable code over clever tricks
 
 **YAGNI (You Aren't Gonna Need It):**
+
 - Only implement what's needed NOW
 - Don't add features "just in case"
 - Refactor when requirements actually change
@@ -424,22 +453,26 @@ function processData(data) {
 **Security-first error handling:**
 
 **Never expose to users:**
+
 - ❌ Stack traces
 - ❌ Database schemas or SQL
 - ❌ File paths or system info
 - ❌ Raw exception messages
 
 **Always do:**
+
 - ✅ Log full errors server-side (with context: user_id, request_id, timestamp, exc_info=True)
 - ✅ Show generic messages to users ("Unable to process request")
 - ✅ Use specific exception types (not bare `except Exception`)
 
 **Never log sensitive data:**
+
 - ❌ Passwords, tokens, API keys
 - ❌ Credit cards, SSNs, PII
 - ❌ Private keys, certificates
 
 **Example (language-agnostic pattern):**
+
 ```
 try {
     result = processPayment(amount, card);
@@ -458,11 +491,13 @@ try {
 **See `$AI_ROOT/standards/common/ERROR-HANDLING.md` for comprehensive error handling guide.**
 
 ---
+
 ## Spelling and Language Guide
 
 ### Code: American English
 
 **All source code uses American spelling** (programming language convention):
+
 - ✅ `color`, `initialize`, `optimize`, `analyze`
 - ✅ Variable names: `color_code`, `initializer`, `optimizer`
 - ✅ Class names: `ColorPicker`, `DataAnalyzer`
@@ -474,6 +509,7 @@ try {
 ### Documentation/Comments/Chat: Australian English
 
 **Everything else uses Australian spelling:**
+
 - ✅ Documentation: "colour", "realise", "organise", "favour"
 - ✅ Comments: "Initialise the database connection"
 - ✅ Chat responses: "This should help you organise the data"
@@ -503,6 +539,7 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 ### Code Documentation
 
 **ALWAYS document:**
+
 - Public APIs (functions, classes, modules)
 - Complex algorithms
 - Non-obvious business logic
@@ -510,11 +547,13 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 - Performance considerations
 
 **DON'T document:**
+
 - Obvious code (`i++` doesn't need a comment)
 - Implementation details that change frequently
 - What the code does (code should be self-documenting)
 
 **DO document:**
+
 - WHY the code does what it does
 - Edge cases and gotchas
 - Assumptions and constraints
@@ -523,6 +562,7 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 ### README Requirements
 
 **Every project MUST have:**
+
 - Project description
 - Installation instructions
 - Quick start guide
@@ -559,6 +599,7 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 ### Quality Warning
 
 ⚠️ **Research shows AI code completion has significant issues:**
+
 - **4x higher defect rates** vs human-written code
 - **19% longer completion time** (despite autocomplete)
 - **More security vulnerabilities** (doesn't understand security context)
@@ -573,6 +614,7 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 ### Best Practices
 
 **Always:**
+
 - ✅ Review all AI suggestions (don't blindly accept)
 - ✅ Test thoroughly (90%+ coverage for AI code)
 - ✅ Security scan all AI-generated code
@@ -580,12 +622,14 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 - ✅ Iterate and refine (don't use first suggestion)
 
 **Don't use AI for:**
+
 - ❌ Security-critical code (auth, encryption)
 - ❌ Complex algorithms
 - ❌ Performance-critical code
 - ❌ Regulatory/compliance code
 
 **AI is good for:**
+
 - ✅ Boilerplate generation
 - ✅ Test case generation
 - ✅ Documentation writing
@@ -599,5 +643,6 @@ def initialise_colour_picker():  # Australian in code (WRONG)
 **This document defines language-agnostic coding standards for all HyperSec projects.**
 
 **See also:**
+
 - Language-specific coding standards in `python/`, `go/`, `rust/`, etc.
 - `details/AI-GUIDELINES.md` - AI code assistant best practices

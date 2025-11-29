@@ -11,6 +11,7 @@
 ## Core Requirements
 
 **Every AI assistant MUST:**
+
 1. ✅ Write code indistinguishable from human developers
 2. ✅ Minimize cognitive load (simple > clever, explicit > implicit)
 3. ✅ Follow HyperSec/HS-CI standards exactly
@@ -26,6 +27,7 @@
 ### Code: American English
 
 **All source code uses American spelling** (programming language convention):
+
 - ✅ `color`, `initialize`, `optimize`, `analyze`, `serializer`
 - ✅ Variable names: `color_code`, `initializer`, `optimizer`
 - ✅ Class names: `ColorPicker`, `DataAnalyzer`, `Serializer`
@@ -37,6 +39,7 @@
 ### Documentation/Comments/Chat: Australian English
 
 **Everything else uses Australian spelling:**
+
 - ✅ Markdown documentation: "colour", "realise", "organise", "favour"
 - ✅ Code comments/docstrings: "Initialise the database connection"
 - ✅ Chat responses: "This should help you organise the data"
@@ -44,6 +47,7 @@
 - ✅ README/docs: "Colour-coded output", "Realise the benefits"
 
 **Common Australian vs American pairs:**
+
 - organise/organize, realise/realize, optimise/optimize, analyse/analyze
 - colour/color, favour/favor, behaviour/behavior
 - serialise/serialize, initialise/initialize, finalise/finalize
@@ -51,6 +55,7 @@
 ### Examples
 
 **✅ Correct - American in code, Australian in comments:**
+
 ```python
 def initialize_color_picker():
     """Initialise the colour picker component."""  # Australian
@@ -66,6 +71,7 @@ class DataSerializer:  # American class name
 ```
 
 **❌ Wrong - Australian in code:**
+
 ```python
 def initialise_colour_picker():  # WRONG - Australian in code
     colour = "#FF0000"  # WRONG - Australian in code
@@ -73,6 +79,7 @@ def initialise_colour_picker():  # WRONG - Australian in code
 ```
 
 **❌ Wrong - American in documentation:**
+
 ```python
 def initialize_color_picker():
     """Initialize the color picker component."""  # WRONG - American in docs
@@ -94,6 +101,7 @@ def initialize_color_picker():
 ### What to Avoid (LLM Cheerleading)
 
 ❌ **Don't say:**
+
 - "Great question! I'd be happy to help you with that!"
 - "Absolutely! Let me walk you through this step by step..."
 - "I hope this helps! Let me know if you have any other questions!"
@@ -103,6 +111,7 @@ def initialize_color_picker():
 ### What to Avoid (American Marketing Hype)
 
 ❌ **Don't say:**
+
 - "This is an AMAZING feature that will revolutionize your workflow!"
 - "Incredible performance boost!", "Game-changing architecture!"
 - "World-class implementation!", "Fantastic opportunity!"
@@ -110,6 +119,7 @@ def initialize_color_picker():
 - "Best-in-class implementation!", "Transformative results!"
 
 ✅ **Say instead (Australian understated):**
+
 - "This feature should help with your workflow"
 - "Performance is improved", "Architecture is reorganised"
 - "Implementation is working", "Current solution"
@@ -163,11 +173,13 @@ def initialize_color_picker():
 ## Review AI Suggestions
 
 **NEVER blindly accept Tab completions:**
+
 - Read every line before accepting
 - Check for edge cases
 - Verify error handling
 
 **Red flags:**
+
 - Missing error handling
 - Hardcoded values
 - TODO comments
@@ -180,6 +192,7 @@ def initialize_color_picker():
 ## Test Thoroughly
 
 **AI code needs MORE testing:**
+
 - 90%+ code coverage required
 - Test edge cases explicitly
 - Test error paths
@@ -215,6 +228,7 @@ ruff check src/
 ❌ **Bad:** "Create a function that fetches user data from the database, validates it, transforms it to match the API schema, caches it in Redis, and returns it with proper error handling for all failure modes"
 
 ✅ **Good (3 iterations):**
+
 ```
 1. "Create function that fetches user data from database by user_id"
 2. "Add validation for user data (email, name required)"
@@ -237,6 +251,7 @@ ruff check src/
 ### GitHub Copilot
 
 **Good context for Copilot:**
+
 ```python
 def calculate_discount(
     price: float,
@@ -268,12 +283,14 @@ def calculate_discount(
 ### Claude Code
 
 **Provide comprehensive context:**
+
 - Architecture (microservices, FastAPI, PostgreSQL, Redis)
 - Standards (PEP 8, type hints required, 80% test coverage)
 - Security (never log passwords/tokens, validate all inputs)
 - Common patterns (use hs-lib for logging/config/metrics)
 
 **Ask for explanations first, not just code:**
+
 ```
 1. "Explain the architecture of the payment processing system"
 2. "What security considerations should I have for payment processing?"
@@ -289,6 +306,7 @@ def calculate_discount(
 **Don't use AI for:**
 
 **Security-critical code:**
+
 - Authentication systems
 - Authorization/permissions
 - Encryption/decryption
@@ -296,6 +314,7 @@ def calculate_discount(
 - Password handling
 
 **Complex algorithms:**
+
 - Custom sorting/search
 - Graph algorithms
 - Dynamic programming
@@ -303,6 +322,7 @@ def calculate_discount(
 - State machines
 
 **Performance-critical code:**
+
 - Database query optimization
 - Caching strategies
 - Concurrent/parallel processing
@@ -310,6 +330,7 @@ def calculate_discount(
 - Hot path optimizations
 
 **Regulatory/compliance code:**
+
 - HIPAA compliance
 - GDPR compliance
 - PCI-DSS compliance
@@ -360,6 +381,7 @@ def calculate_discount(
 **Rabbit-holing:** Endless iteration cycles, never reaching "done"
 
 **Warning signs:**
+
 - AI refactoring code from 2 iterations ago
 - 5+ changes to same function
 - AI suggests "improvements" that don't solve original problem
@@ -442,12 +464,14 @@ You: ❌ REJECT - Simple function is fine (KISS)
 ### When to Stop and Commit
 
 **Commit when:**
+
 - ✅ Tests pass
 - ✅ Meets definition of "done"
 - ✅ No obvious bugs
 - ✅ Reasonably simple
 
 **You do NOT need:**
+
 - ❌ Perfect abstraction
 - ❌ Every edge case handled
 - ❌ Future-proofing
@@ -457,6 +481,7 @@ You: ❌ REJECT - Simple function is fine (KISS)
 ### When to Revert
 
 **Revert if:**
+
 - 3+ iterations with no progress
 - Code more complex than when you started
 - Lost track of what you're solving

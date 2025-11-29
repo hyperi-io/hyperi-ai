@@ -75,6 +75,6 @@ This command should be invoked at the end of a session or during a session to ch
    - Highlight any issues or blockers
    - Confirm all documentation is updated
 
-## Save complete!
+## Save complete
 
 After completing the checklist above, provide a concise summary of what was saved and confirm all documentation is updated.

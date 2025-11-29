@@ -3,6 +3,7 @@
 This document defines the **only permitted non-ASCII characters and emojis** for all code, documentation, console output, and LLM usage.
 
 ## Log Levels
+
 - **FATAL** 💥 – Irrecoverable error, application crash, or system shutdown  
 - **ERROR** ❌ – Blocking issue, operation failed  
 - **WARN** ⚠️ – Non-blocking issue, awareness needed  
@@ -11,6 +12,7 @@ This document defines the **only permitted non-ASCII characters and emojis** for
 - **TRACE** *(no emoji)* – Fine-grained tracing, plain text only  
 
 ## Core Status Indicators
+
 - **ERROR** ❌ – Blocking issues that fail the build  
 - **WARNING** ⚠️ – Non-blocking issues for awareness  
 - **SUCCESS** ✅ – Everything working correctly  
@@ -20,12 +22,14 @@ This document defines the **only permitted non-ASCII characters and emojis** for
 - **CANCELLED** 🚫 – Task or operation stopped  
 
 ## Quality & Validation
+
 - **TEST PASS** 🟢 – Test successful  
 - **TEST FAIL** 🔴 – Test failed  
 - **SECURITY** 🔒 – Security-related checks  
 - **PERFORMANCE** ⚡ – Speed or performance messages  
 
 ## Workflow & Process
+
 - **STEP** ➤ – Generic step indicator  
 - **NEXT** ➔ – Move to next step  
 - **DONE** ✔ – Completed step  
@@ -33,6 +37,7 @@ This document defines the **only permitted non-ASCII characters and emojis** for
 - **RETRY** 🔁 – Retrying action  
 
 ## ASCII Line Drawing (Safe for all terminals)
+
 - `─`, `│`, `┌`, `┐`, `└`, `┘`, `├`, `┤`, `┬`, `┴`, `┼` – Box drawing for tables and flow  
 - `➤`, `➔`, `→` – Step / arrow indicators  
 - `✔`, `✖`, `▲`, `▼` – Alternative check/cross/triangles for CLI-friendly status  

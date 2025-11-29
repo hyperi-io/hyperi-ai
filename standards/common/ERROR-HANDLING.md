@@ -26,6 +26,7 @@ Exposing errors creates vulnerabilities: reveals database schemas, file paths, s
 ### Examples
 
 **❌ Bad (security risk):**
+
 ```python
 try:
     user = db.query("SELECT * FROM users WHERE id = ?", user_id)
@@ -36,6 +37,7 @@ except Exception as e:
 ```
 
 **✅ Good (secure):**
+
 ```python
 try:
     user = db.query("SELECT * FROM users WHERE id = ?", user_id)
@@ -53,6 +55,7 @@ except DatabaseError as e:
 ```
 
 **❌ Bad (exposes file paths):**
+
 ```python
 try:
     config = load_config("/etc/myapp/config.yaml")
@@ -62,6 +65,7 @@ except FileNotFoundError as e:
 ```
 
 **✅ Good (generic message):**
+
 ```python
 try:
     config = load_config("/etc/myapp/config.yaml")
@@ -93,6 +97,7 @@ logger.error(
 ### Context Checklist
 
 **Required fields:**
+
 - [ ] User/session identifier (NOT passwords!)
 - [ ] Operation being performed
 - [ ] Timestamp (RFC3339 with timezone format)
@@ -100,6 +105,7 @@ logger.error(
 - [ ] Full stack trace (exc_info=True)
 
 **Optional but recommended:**
+
 - [ ] Client IP address (hashed for privacy)
 - [ ] User agent / client version
 - [ ] Input parameters (sanitized!)
@@ -222,6 +228,7 @@ except Exception:               # Catch-all (last resort)
 ### Never Swallow Exceptions
 
 **❌ Bad (silent failure):**
+
 ```python
 try:
     critical_operation()
@@ -230,6 +237,7 @@ except Exception:
 ```
 
 **✅ Good (log and handle):**
+
 ```python
 try:
     critical_operation()
@@ -278,6 +286,7 @@ except PaymentGatewayError as e:
 ### Never Log Sensitive Data
 
 **❌ NEVER log:**
+
 - Passwords, tokens, API keys
 - Credit card numbers, CVV codes
 - Social Security Numbers, passport numbers
@@ -286,6 +295,7 @@ except PaymentGatewayError as e:
 - PII (personally identifiable information)
 
 **✅ ALWAYS:**
+
 - Log hashed/masked versions if needed
 - Use sanitization filters (hs_lib.logger)
 - Audit logs for accidental leaks
@@ -293,24 +303,28 @@ except PaymentGatewayError as e:
 ### Examples
 
 **❌ Bad (leaks credentials):**
+
 ```python
 logger.info(f"User login: username={username}, password={password}")
 # DANGER: Password in logs!
 ```
 
 **✅ Good (safe logging):**
+
 ```python
 logger.info(f"User login attempt: username={username}")
 # Password not logged
 ```
 
 **❌ Bad (leaks credit card):**
+
 ```python
 logger.info(f"Payment: card={card_number}, cvv={cvv}")
 # DANGER: PCI-DSS violation!
 ```
 
 **✅ Good (masked data):**
+
 ```python
 masked_card = f"****-****-****-{card_number[-4:]}"
 logger.info(f"Payment: card={masked_card}")
@@ -330,6 +344,7 @@ logger.info("User login", username="alice", password="secret123")
 ```
 
 **Supported patterns:**
+
 - Passwords (password=, pwd=, pass=)
 - API keys (api_key=, apikey=, token=)
 - Bearer tokens (Authorization: Bearer ...)
@@ -436,8 +451,8 @@ def process_request():
 ### Alert Thresholds
 
 **Set up alerts for:**
+
 - Error rate > 1% (warning)
 - Error rate > 5% (critical)
 - Specific error types spike
 - Error rate change > 50% (anomaly detection)
-

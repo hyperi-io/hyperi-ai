@@ -43,6 +43,7 @@ AI code assistants routinely mistake placeholder/mock code as production-ready, 
 ### Example 1: Mock Data
 
 **❌ Bad (mock data):**
+
 ```javascript
 function getUser(userId) {
     // TODO: Implement database lookup
@@ -57,6 +58,7 @@ function getUser(userId) {
 **Why bad:** Always returns same user (ignores userId), no database, no error handling, hardcoded test data
 
 **✅ Good (real implementation):**
+
 ```javascript
 async function getUser(userId) {
     // Validate input
@@ -87,6 +89,7 @@ async function getUser(userId) {
 ### Example 2: Placeholder Logic
 
 **❌ Bad (placeholder logic):**
+
 ```go
 func ProcessPayment(amount float64, card string) bool {
     // TODO: Integrate with payment gateway
@@ -96,6 +99,7 @@ func ProcessPayment(amount float64, card string) bool {
 ```
 
 **Why it's bad:**
+
 - Prints instead of processing payment
 - Always returns true (no actual payment processing)
 - No error handling
@@ -103,6 +107,7 @@ func ProcessPayment(amount float64, card string) bool {
 - TODO comment in production code
 
 **✅ Good (real implementation):**
+
 ```go
 func ProcessPayment(amount float64, card string) (*PaymentResult, error) {
     // Validate amount
@@ -148,6 +153,7 @@ func ProcessPayment(amount float64, card string) (*PaymentResult, error) {
 ### Example 3: Example Code as Production
 
 **❌ Bad (example code):**
+
 ```python
 def analyze_data(data: list) -> dict:
     """Analyze data and return insights."""
@@ -159,12 +165,14 @@ def analyze_data(data: list) -> dict:
 ```
 
 **Why it's bad:**
+
 - Labeled as "simple example" (not production code)
 - Minimal analysis (just count and first element)
 - No real insights generated
 - Comment admits it's for demo only
 
 **✅ Good (complete analysis):**
+
 ```python
 def analyze_data(data: list[dict]) -> DataAnalysis:
     """
@@ -220,6 +228,7 @@ def analyze_data(data: list[dict]) -> DataAnalysis:
 ### Example 4: Simplified Validation
 
 **❌ Bad (no validation):**
+
 ```python
 def create_user(email, password):
     """Create user account."""
@@ -229,12 +238,14 @@ def create_user(email, password):
 ```
 
 **Why it's bad:**
+
 - No email validation
 - No password strength check
 - Stores plain text password (security vulnerability!)
 - TODO comment admits missing validation
 
 **✅ Good (complete validation):**
+
 ```python
 def create_user(email: str, password: str) -> int:
     """
@@ -293,11 +304,13 @@ def create_user(email: str, password: str) -> int:
 ### Test Code Only
 
 **Mock code is ONLY acceptable in:**
+
 - `tests/` directory (unit tests, integration tests)
 - `examples/` directory (explicitly marked as examples)
 - Documentation code blocks (clearly marked as examples)
 
 **Example (acceptable mock in tests):**
+
 ```python
 # tests/unit/test_payment.py
 from unittest.mock import Mock, patch
@@ -314,6 +327,7 @@ def test_process_payment_success():
 ```
 
 **Why this is OK:**
+
 - File is in `tests/` directory (clearly test code)
 - Mocking external service (Stripe) we don't control
 - Testing our logic, not Stripe's
@@ -347,6 +361,7 @@ def test_process_payment_success():
 **Watch for these patterns:**
 
 🚨 **Phrases indicating incomplete code:**
+
 - "Here's a simple example..."
 - "This is a basic implementation..."
 - "For demonstration purposes..."
@@ -354,12 +369,14 @@ def test_process_payment_success():
 - "Quick and dirty solution..."
 
 🚨 **TODO comments:**
+
 - "TODO: Add error handling"
 - "TODO: Implement X"
 - "TODO: Connect to database"
 - "FIXME: This is temporary"
 
 🚨 **Code patterns:**
+
 - Hardcoded example data
 - Always-successful operations (`return true`)
 - Missing input validation
@@ -372,12 +389,14 @@ def test_process_payment_success():
 ### How to Respond
 
 **Don't accept:**
+
 ```
 AI: "Here's a simple example of user authentication..."
 You: [Accept and commit]  ❌
 ```
 
 **Do this instead:**
+
 ```
 AI: "Here's a simple example of user authentication..."
 You: "This is a simplified example. Please provide complete implementation with:
@@ -396,12 +415,14 @@ You: "This is a simplified example. Please provide complete implementation with:
 ### Pre-commit Checks
 
 **Automated checks (enforced by git hooks):**
+
 - Grep for TODO comments in src/ directories (fails commit)
 - Grep for "TODO:", "FIXME:", "HACK:", "XXX:" in src/ (fails commit)
 - Security scanners catch some placeholder patterns (bandit for Python)
 - Code review requires human verification
 
 **Example pre-commit hook:**
+
 ```bash
 #!/bin/bash
 # Check for TODO comments in src/
@@ -415,6 +436,7 @@ fi
 ### CI Enforcement
 
 **Continuous integration checks:**
+
 - Full test coverage required (80%+ line coverage)
 - Integration tests must verify real behavior (not mocked)
 - Static analysis scans for security issues
@@ -424,6 +446,7 @@ fi
 ### Code Review Process
 
 **Reviewers must verify:**
+
 1. No placeholder code
 2. All error paths handled
 3. Edge cases tested
@@ -441,6 +464,7 @@ fi
 Follow this process:
 
 1. **Identify:** Find all instances in src/ directories
+
    ```bash
    # Find TODO comments
    grep -r "TODO:" src/
@@ -487,6 +511,7 @@ Follow this process:
 ### Authentication
 
 **❌ Incomplete:**
+
 ```python
 def login(username, password):
     # TODO: Check database
@@ -494,6 +519,7 @@ def login(username, password):
 ```
 
 **✅ Complete:**
+
 ```python
 def login(username: str, password: str) -> LoginResult:
     """Authenticate user credentials."""
@@ -535,6 +561,7 @@ def login(username: str, password: str) -> LoginResult:
 ### Data Validation
 
 **❌ Incomplete:**
+
 ```python
 def save_user(data):
     # TODO: Validate
@@ -542,6 +569,7 @@ def save_user(data):
 ```
 
 **✅ Complete:**
+
 ```python
 def save_user(data: dict) -> int:
     """Save user with validation."""

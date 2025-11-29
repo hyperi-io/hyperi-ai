@@ -1,12 +1,10 @@
 ## [1.2.4](https://github.com/hypersec-io/ai/compare/1.2.3...1.2.4) (2025-11-25)
 
-
 ### Bug Fixes
 
 * remove deprecated code and 1M context window options ([5cc3a4d](https://github.com/hypersec-io/ai/commit/5cc3a4dead08d26ae83530420d7b8f9ff42bd946))
 
 ## [1.2.3](https://github.com/hypersec-io/ai/compare/1.2.2...1.2.3) (2025-11-24)
-
 
 ### Bug Fixes
 
@@ -14,13 +12,11 @@
 
 ## [1.2.2](https://github.com/hypersec-io/ai/compare/1.2.1...1.2.2) (2025-11-20)
 
-
 ### Bug Fixes
 
 * update all standards paths to use $AI_ROOT variable ([65ef30d](https://github.com/hypersec-io/ai/commit/65ef30db0de864a353764f368108cf9ddbd9a6c3))
 
 ## [1.2.1](https://github.com/hypersec-io/ai/compare/1.2.0...1.2.1) (2025-11-20)
-
 
 ### Bug Fixes
 
@@ -28,13 +24,11 @@
 
 ## [1.2.0](https://github.com/hypersec-io/ai/compare/1.1.1...1.2.0) (2025-11-20)
 
-
 ### Features
 
 * add copilot, cursor, and gemini support ([96b9d11](https://github.com/hypersec-io/ai/commit/96b9d1196dd66f516b59a9b28c1fe952fb29b474))
 
 ## [1.1.1](https://github.com/hypersec-io/ai/compare/1.1.0...1.1.1) (2025-11-20)
-
 
 ### Refactoring
 
@@ -42,13 +36,11 @@
 
 ## [1.1.0](https://github.com/hypersec-io/ai/compare/1.0.2...1.1.0) (2025-11-20)
 
-
 ### Features
 
 * add git hooks for standards enforcement ([ab92dac](https://github.com/hypersec-io/ai/commit/ab92dac513f2d796d4ccb4a4db8f55ac32083ac7))
 
 ## [1.0.2](https://github.com/hypersec-io/ai/compare/1.0.1...1.0.2) (2025-11-20)
-
 
 ### Bug Fixes
 
@@ -56,18 +48,15 @@
 
 ## [1.0.1](https://github.com/hypersec-io/ai/compare/1.0.0...1.0.1) (2025-11-20)
 
-
 ### Bug Fixes
 
 * correct branch naming format in CONTRIBUTING.md ([2c2def2](https://github.com/hypersec-io/ai/commit/2c2def2c2d729389f2c0846aae15ed7efcefe9c9))
-
 
 ### Documentation
 
 * consolidate and clarify documentation ([8672a22](https://github.com/hypersec-io/ai/commit/8672a22b89782a1007184d2ddbfd7faffc635476))
 
 ## 1.0.0 (2025-11-20)
-
 
 ### Features
 
@@ -76,13 +65,11 @@
 * complete MVP implementation ([448240c](https://github.com/hypersec-io/ai/commit/448240c87345f5262ffac452d57e3ed2b28b02cd))
 * initial ai repository with standards and templates ([57ae6df](https://github.com/hypersec-io/ai/commit/57ae6df4a2ba9d8870ba278afe210104e84eb920))
 
-
 ### Bug Fixes
 
 * add missing npm dependency and update description ([c8bdae5](https://github.com/hypersec-io/ai/commit/c8bdae5e6529717f174e8e0306b939c50aa54afb))
 * add TODO.md template and fix gitignore ([1bb2b62](https://github.com/hypersec-io/ai/commit/1bb2b623a6c79a02685c7a1e4b7d2454086b070c))
 * remove hardcoded versions from scripts and docs ([9be2308](https://github.com/hypersec-io/ai/commit/9be2308cf9acba8fe5a4ebd0bf2ae7a52cd0b6c5))
-
 
 ### Documentation
 

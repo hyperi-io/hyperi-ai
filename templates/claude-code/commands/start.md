@@ -8,18 +8,15 @@ You are starting a new work session.
 
 - [STATE.md](../../STATE.md) - Current project state and session history
 - [TODO.md](../../TODO.md) - Current tasks and priorities
-- [$AI_ROOT/standards/STANDARDS.md](../../standards/STANDARDS.md) - Contains loading strategy
 
-## Step 2: Follow STANDARDS.md loading instructions
+### Step 2: Load standards based on your context window size
 
-STANDARDS.md contains the complete "For Code Assistants" section with:
+| Your Context Window | Action |
+|---------------------|--------|
+| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-CONTEXT-SMALL.md` |
+| **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` and follow its loading strategy |
 
-- CAG/RAG Hybrid Strategy explanation
-- Tier 1 files (mandatory load)
-- Tier 2 files (on-demand RAG index)
-- Loading instructions for your context window size
-
-Simply follow the loading strategy documented there.
+**Why:** STANDARDS-CONTEXT-SMALL.md is a self-contained compact version (~8K tokens) designed for smaller context windows. Larger contexts can load the full standards subtree.
 
 ---
 
@@ -29,19 +26,25 @@ After loading documentation:
 
 1. **Report session configuration:**
    - Context window size: [your total token budget]
-   - Loading strategy used: [CAG/RAG Hybrid - Tier 1 loaded, Tier 2 on-demand]
-   - Standards files loaded: [count] files (~[estimated tokens]k tokens)
+   - Standards loaded: [STANDARDS-CONTEXT-SMALL.md or full subtree]
+   - Estimated tokens used: [count]
 
-2. Confirm you're ready with a greeting
+2. Confirm you're ready (no greetings or pleasantries)
 
-3. Ask what they want to work on
+3. Wait for the user's first task
 
 **Example session configuration report:**
 
 ```text
 📊 Session Configuration:
 - Context window: 200,000 tokens
-- Strategy: CAG/RAG Hybrid (Tier 1 mandatory, Tier 2 on-demand)
-- Standards loaded: 8 files (~17k tokens)
-- Reasoning: Essential standards loaded upfront, detailed guides available on-demand via RAG index
+- Standards: STANDARDS-CONTEXT-SMALL.md (~8K tokens)
+- Ready for work
+```
+
+```text
+📊 Session Configuration:
+- Context window: 1,000,000 tokens
+- Standards: Full subtree via STANDARDS.md (~40K tokens)
+- Ready for work
 ```

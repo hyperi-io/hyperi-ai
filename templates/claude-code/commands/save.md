@@ -75,6 +75,6 @@ This command can be run multiple times during a session to checkpoint progress, 
    - Highlight any issues or blockers
    - Confirm all documentation is updated
 
-## Save complete!
+## Save complete
 
 After completing the checklist above, provide a concise summary of what was saved and confirm all documentation is updated.

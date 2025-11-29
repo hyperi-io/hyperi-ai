@@ -7,15 +7,19 @@
 ## Temporary Files and Directories
 
 ### Development/CI Work
+
 **Use `./.tmp/` for ALL project-scoped temp operations:**
+
 - Test projects, build artifacts, scratch files, CI work
 
 **Why:** Project-scoped, easy cleanup, gitignored, no system pollution
 
 ### Production/Runtime Code
+
 **Use Python tempfile module (NEVER hardcode /tmp):**
 
 **Temporary files (auto-cleanup):**
+
 ```python
 import tempfile
 
@@ -26,6 +30,7 @@ with tempfile.NamedTemporaryFile(delete=True, suffix=".dat") as tmp:
 ```
 
 **Temporary directories (auto-cleanup):**
+
 ```python
 import tempfile
 
@@ -35,6 +40,7 @@ with tempfile.TemporaryDirectory(prefix="myapp-") as tmpdir:
 ```
 
 **Application temp directories (persistent):**
+
 ```python
 import tempfile
 from pathlib import Path
@@ -45,6 +51,7 @@ app_temp.mkdir(exist_ok=True, mode=0o700)  # User-only
 ```
 
 ### Security Rules
+
 ❌ **NEVER** hardcode "/tmp", use `mktemp()`, create predictable names
 ✅ **ALWAYS** use context managers, `TemporaryFile()`/`TemporaryDirectory()`, random names, 0o700 permissions
 
@@ -102,11 +109,13 @@ tests/
 ### Examples
 
 **❌ Bad (dense, hard to follow):**
+
 ```python
 result = [x for sublist in [[y**2 for y in range(n) if y % 2] for n in data] for x in sublist if x > 10]
 ```
 
 **✅ Good (clear, maintainable):**
+
 ```python
 # Filter data and square odd numbers above threshold
 result = []
@@ -117,12 +126,14 @@ for n in data:
 ```
 
 **❌ Bad (unexplained logic):**
+
 ```python
 if (a and b) or (c and not d):
     process()
 ```
 
 **✅ Good (explained logic):**
+
 ```python
 # Process if: (both conditions met) OR (special case without override)
 both_conditions_met = a and b
@@ -132,11 +143,13 @@ if both_conditions_met or special_case_without_override:
 ```
 
 **❌ Bad (dense lambda chain):**
+
 ```python
 result = list(map(lambda x: x[1], filter(lambda x: x[0] > 10, data)))
 ```
 
 **✅ Good (clear steps):**
+
 ```python
 # Extract values where threshold exceeded
 filtered = [item for item in data if item[0] > 10]
@@ -144,11 +157,13 @@ result = [value for _, value in filtered]
 ```
 
 **❌ Bad (nested comprehension):**
+
 ```python
 matrix = [[cell.strip().upper() for cell in row.split(',')] for row in data if row]
 ```
 
 **✅ Good (clear transformation):**
+
 ```python
 # Parse CSV rows into normalized matrix
 matrix = []
