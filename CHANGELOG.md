@@ -1,3 +1,10 @@
+## [1.2.6](https://github.com/hypersec-io/ai/compare/1.2.5...1.2.6) (2025-11-29)
+
+
+### Bug Fixes
+
+* add identical context window decision to all three files ([8602a9e](https://github.com/hypersec-io/ai/commit/8602a9e3adb7376a0f8021fa528e6faa5193a5e4))
+
 ## [1.2.5](https://github.com/hypersec-io/ai/compare/1.2.4...1.2.5) (2025-11-29)
 
 
