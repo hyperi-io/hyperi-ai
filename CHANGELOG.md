@@ -1,3 +1,10 @@
+## [1.2.7](https://github.com/hypersec-io/ai/compare/1.2.6...1.2.7) (2025-11-29)
+
+
+### Bug Fixes
+
+* rename STANDARDS-CONTEXT-SMALL.md to STANDARDS-QUICKSTART.md ([ffab725](https://github.com/hypersec-io/ai/commit/ffab725c91a119fa1cac3f3bd94919d86dbf1c94))
+
 ## [1.2.6](https://github.com/hypersec-io/ai/compare/1.2.5...1.2.6) (2025-11-29)
 
 
