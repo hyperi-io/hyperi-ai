@@ -242,130 +242,37 @@ standards/
 
 ---
 
-## For Code Assistants (Context-Adaptive Loading)
+## For Code Assistants (500K+ Context)
 
-### Loading Strategy: Context-Adaptive
+**Note:** You're reading this file because you have 500K+ tokens context. Context window selection is handled by `/start` command - see `$AI_ROOT/templates/claude-code/commands/start.md`.
 
-**If your context window >= 500K tokens: FULL CAG (Load All)**
+### Load All Standards (Full CAG)
 
-Load ALL standards files using glob patterns:
+With 500K+ context, load ALL standards files:
 
 ```bash
-# 1. All code-assistant files (AI guidance - ALWAYS load)
-Glob: ci/docs/standards/code-assistant/*.md
+# 1. All code-assistant files (AI guidance)
+Glob: $AI_ROOT/standards/code-assistant/*.md
 Read: ALL matches
 
 # 2. All common files (language-agnostic standards)
-Glob: ci/docs/standards/common/*.md
+Glob: $AI_ROOT/standards/common/*.md
 Read: ALL matches
 
-# 3. All language-specific files (Python example)
-Glob: ci/docs/standards/python/*.md
-Read: ALL matches (for Python projects)
+# 3. All language-specific files (Python)
+Glob: $AI_ROOT/standards/python/*.md
+Read: ALL matches
 
 # 4. Project overrides (if exist)
-Glob: ci-local/code-assistant/*.md
+Glob: $PROJECT_ROOT/ci-local/code-assistant/*.md
 Read: ALL matches (if any)
 ```
 
-### Benefits
+### Benefits of Full Load
 
 - ✅ **Maintenance-free** - New files automatically loaded via glob
 - ✅ **Most reliable** - All standards always available, zero guessing
 - ✅ **Zero hallucination risk** - Complete context loaded upfront
 - ✅ **Plenty of room for work** - 500K+ context has ample space
-
----
-
-**If your context window < 500K tokens: CAG/RAG Hybrid (Two-Tier)**
-
-### Tier 1 - MANDATORY LOAD (Session Start)
-
-Load essential files:
-
-**1. All code-assistant/ files (AI guidance - ALWAYS load):**
-
-```
-Glob: ci/docs/standards/code-assistant/*.md
-Read: ALL matches
-```
-
-Includes: COMMON.md, AI-GUIDELINES.md, PYTHON.md, HS-CI.md
-
-**2. Essential common/ files (ALWAYS load):**
-
-- Read: `ci/docs/standards/common/QUICK-REFERENCE.md`
-- Read: `ci/docs/standards/common/GIT.md`
-- Read: `ci/docs/standards/common/CHARS-POLICY.md`
-- Read: `ci/docs/standards/common/CODE-HEADER.md`
-
-**3. Python essentials (ALWAYS load for Python projects):**
-
-- Read: `ci/docs/standards/python/CODING-PYTHON.md`
-
-**4. Project overrides (if exist - ALWAYS load):**
-
-```
-Glob: ci-local/code-assistant/*.md
-Read: ALL matches (if any)
-```
-
----
-
-**Tier 2 - ON-DEMAND (Load When Topic Discussed):**
-
-Load these files when specific topics arise:
-
-### RAG Index: When to Load Which File
-
-**Architecture & Design:**
-
-- Discussing SOLID, DRY, KISS, YAGNI? → Load `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md`
-- Designing container deployment? → Load `$AI_ROOT/standards/common/CONTAINERIZATION.md`
-
-**Error Handling:**
-
-- Implementing error handling? → Load `$AI_ROOT/standards/common/ERROR-HANDLING.md`
-- Security concerns about errors? → Load `$AI_ROOT/standards/common/ERROR-HANDLING.md`
-
-**Code Quality:**
-
-- Reviewing code for mocks/TODOs/placeholders? → Load `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
-- General code review? → Load `$AI_ROOT/standards/common/CODING.md`
-
-**Testing:**
-
-- Writing tests for existing code? → Load `$AI_ROOT/standards/common/TEST-FIRST.md`
-- Test-first methodology questions? → Load `$AI_ROOT/standards/common/TEST-FIRST.md`
-
-**Python Deep Dives:**
-
-- PEP 8 compliance questions? → Load `$AI_ROOT/standards/python/PEP8.md`
-- Core Python standards? → Already loaded (`$AI_ROOT/standards/python/CODING-PYTHON.md`)
-
-**CI/CD Infrastructure:**
-
-- Git questions? → Already loaded (`$AI_ROOT/standards/common/GIT.md`)
-
-### Why Context-Adaptive Loading?
-
-**500K+ context (Full CAG):**
-
-- ✅ **Most reliable** - No guessing when to load files
-- ✅ **Zero hallucination risk** - All standards always available
-- ✅ **Simpler for AI** - No RAG index maintenance
-- ✅ **Plenty of room for work** - Ample context remaining
-
-**<500K context (CAG/RAG Hybrid):**
-
-- ✅ **Loads less upfront** - Essential standards only
-- ✅ **More context available** for actual work
-- ✅ **Essential standards always loaded** (git, naming, Python basics)
-- ✅ **Faster session start**
-
-**Trade-off for <500K:**
-
-- Manual maintenance of RAG index (concept → file mapping)
-- AI must recognize when to load on-demand files
 
 ---

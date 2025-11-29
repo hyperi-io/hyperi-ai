@@ -13,10 +13,10 @@ You are starting a new work session.
 
 | Your Context Window | Action |
 |---------------------|--------|
-| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-CONTEXT-SMALL.md` |
-| **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` and follow its loading strategy |
+| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-CONTEXT-SMALL.md` (~8K tokens, self-contained) |
+| **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` then load ALL `standards/**/*.md` files |
 
-**Why:** STANDARDS-CONTEXT-SMALL.md is a self-contained compact version (~8K tokens) designed for smaller context windows. Larger contexts can load the full standards subtree.
+**This is the ONLY place context window selection happens.** STANDARDS.md assumes you have 500K+ context if you're reading it.
 
 ---
 
