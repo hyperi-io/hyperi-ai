@@ -1,3 +1,16 @@
+## [1.3.0](https://github.com/hypersec-io/ai/compare/1.2.7...1.3.0) (2025-11-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* Standards directory structure completely reorganised.
+Projects using this module must update any direct file references.
+Old paths like standards/python/PEP8.md are now standards/languages/PYTHON.md.
+
+### Features
+
+* reorganise standards into languages/ and infrastructure/ directories ([084ae29](https://github.com/hypersec-io/ai/commit/084ae29799153e1b0167ae4bcd0c4d1ce9b0184f))
+
 ## [1.2.7](https://github.com/hypersec-io/ai/compare/1.2.6...1.2.7) (2025-11-29)
 
 
