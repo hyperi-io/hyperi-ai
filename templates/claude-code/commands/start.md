@@ -15,7 +15,7 @@ You are starting a new work session.
 
 | Context Size | Action |
 |--------------|--------|
-| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-CONTEXT-SMALL.md` (~8K tokens, self-contained) |
+| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-QUICKSTART.md` (~8K tokens, self-contained) |
 | **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` then load ALL `$AI_ROOT/standards/**/*.md` files |
 
 ---
@@ -26,7 +26,7 @@ After loading documentation:
 
 1. **Report session configuration:**
    - Context window size: [your total token budget]
-   - Standards loaded: [STANDARDS-CONTEXT-SMALL.md or full subtree]
+   - Standards loaded: [STANDARDS-QUICKSTART.md or full subtree]
    - Estimated tokens used: [count]
 
 2. Confirm you're ready (no greetings or pleasantries)
@@ -38,7 +38,7 @@ After loading documentation:
 ```text
 📊 Session Configuration:
 - Context window: 200,000 tokens
-- Standards: STANDARDS-CONTEXT-SMALL.md (~8K tokens)
+- Standards: STANDARDS-QUICKSTART.md (~8K tokens)
 - Ready for work
 ```
 

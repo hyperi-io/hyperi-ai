@@ -10,7 +10,7 @@ Target: Under 50K tokens. Self-contained for LLMs with under 500K context.
 
 | Context Size | Action |
 |--------------|--------|
-| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-CONTEXT-SMALL.md` (~8K tokens, self-contained) |
+| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-QUICKSTART.md` (~8K tokens, self-contained) |
 | **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` then load ALL `$AI_ROOT/standards/**/*.md` files |
 
 **If you're reading this file:** You should have <500K context. This file is self-contained - no additional files needed.
@@ -1186,7 +1186,7 @@ git reset --hard HEAD~3  # Revert last 3 commits
 
 1. Read STATE.md (project state, history)
 2. Read TODO.md (current tasks)
-3. If under 500K context: Read STANDARDS-CONTEXT-SMALL.md (this file)
+3. If under 500K context: Read STANDARDS-QUICKSTART.md (this file)
 4. If 500K+ context: Read STANDARDS.md + standards/ subtree
 5. Check git status and recent commits
 6. Be ready - no greetings, wait for first task

@@ -250,7 +250,7 @@ standards/
 
 | Context Size | Action |
 |--------------|--------|
-| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-CONTEXT-SMALL.md` (~8K tokens, self-contained) |
+| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-QUICKSTART.md` (~8K tokens, self-contained) |
 | **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` then load ALL `$AI_ROOT/standards/**/*.md` files |
 
 **If you're reading this file:** You should have 500K+ context. Load ALL standards files below.
