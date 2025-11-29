@@ -1,3 +1,15 @@
+## [1.2.5](https://github.com/hypersec-io/ai/compare/1.2.4...1.2.5) (2025-11-29)
+
+
+### Bug Fixes
+
+* move context window selection to start.md only ([a4f0a4f](https://github.com/hypersec-io/ai/commit/a4f0a4f402113584801f9abed220abe247151eaa))
+
+
+### Documentation
+
+* add STANDARDS-CONTEXT-SMALL.md and context window branching ([b1f7d33](https://github.com/hypersec-io/ai/commit/b1f7d3341fa28d8ed87a2c2e5dc5634d5e067c78))
+
 ## [1.2.4](https://github.com/hypersec-io/ai/compare/1.2.3...1.2.4) (2025-11-25)
 
 ### Bug Fixes
