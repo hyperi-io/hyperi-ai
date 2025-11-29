@@ -456,3 +456,381 @@ def process_request():
 - Error rate > 5% (critical)
 - Specific error types spike
 - Error rate change > 50% (anomaly detection)
+
+---
+
+## Multi-Language Error Handling
+
+### Go
+
+**Error handling is explicit in Go - errors are values, not exceptions:**
+
+```go
+package payment
+
+import (
+    "errors"
+    "fmt"
+    "log/slog"
+)
+
+// Custom error types
+var (
+    ErrInsufficientFunds = errors.New("insufficient funds")
+    ErrInvalidCard       = errors.New("invalid card")
+    ErrGatewayUnavailable = errors.New("payment gateway unavailable")
+)
+
+type PaymentError struct {
+    Code    string
+    Message string
+    Err     error
+}
+
+func (e *PaymentError) Error() string {
+    return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+func (e *PaymentError) Unwrap() error {
+    return e.Err
+}
+
+// Secure error handling
+func ProcessPayment(userID string, amount float64, cardToken string) (*PaymentResult, error) {
+    logger := slog.Default()
+
+    charge, err := stripe.CreateCharge(amount, cardToken)
+    if err != nil {
+        // Log full details server-side
+        logger.Error("Payment failed",
+            slog.String("user_id", userID),
+            slog.Float64("amount", amount),
+            slog.String("error", err.Error()),
+        )
+
+        // Return generic error to caller (don't expose internal details)
+        if errors.Is(err, stripe.ErrCardDeclined) {
+            return nil, &PaymentError{
+                Code:    "CARD_DECLINED",
+                Message: "Card was declined",
+                Err:     ErrInvalidCard,
+            }
+        }
+        if errors.Is(err, stripe.ErrRateLimit) {
+            return nil, &PaymentError{
+                Code:    "SERVICE_UNAVAILABLE",
+                Message: "Service temporarily unavailable",
+                Err:     ErrGatewayUnavailable,
+            }
+        }
+        // Generic error for unexpected cases
+        return nil, &PaymentError{
+            Code:    "PAYMENT_FAILED",
+            Message: "Payment could not be processed",
+            Err:     err,
+        }
+    }
+
+    return &PaymentResult{Success: true, TransactionID: charge.ID}, nil
+}
+
+// Caller checks errors with errors.Is/errors.As
+func HandlePayment(userID string, amount float64, card string) {
+    result, err := ProcessPayment(userID, amount, card)
+    if err != nil {
+        var payErr *PaymentError
+        if errors.As(err, &payErr) {
+            // Handle known payment errors
+            fmt.Printf("Payment error: %s\n", payErr.Message)
+        }
+        if errors.Is(err, ErrInsufficientFunds) {
+            // Specific handling
+        }
+        return
+    }
+    fmt.Printf("Success: %s\n", result.TransactionID)
+}
+```
+
+### TypeScript
+
+**Use Result types or try/catch with custom errors:**
+
+```typescript
+// Custom error classes
+class AppError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+    public statusCode: number = 500
+  ) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+class ValidationError extends AppError {
+  constructor(message: string) {
+    super('VALIDATION_ERROR', message, 400);
+    this.name = 'ValidationError';
+  }
+}
+
+class PaymentError extends AppError {
+  constructor(message: string, public details?: unknown) {
+    super('PAYMENT_ERROR', message, 402);
+    this.name = 'PaymentError';
+  }
+}
+
+// Secure error handling
+async function processPayment(
+  userId: string,
+  amount: number,
+  cardToken: string
+): Promise<PaymentResult> {
+  try {
+    const charge = await stripe.charges.create({
+      amount: Math.round(amount * 100),
+      currency: 'usd',
+      source: cardToken,
+    });
+
+    return { success: true, transactionId: charge.id };
+  } catch (error) {
+    // Log full details server-side
+    logger.error('Payment failed', {
+      userId,
+      amount,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // Return generic error (don't expose Stripe internals)
+    if (error instanceof Stripe.errors.StripeCardError) {
+      throw new PaymentError('Card was declined');
+    }
+    if (error instanceof Stripe.errors.StripeRateLimitError) {
+      throw new AppError('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503);
+    }
+
+    throw new AppError('PAYMENT_FAILED', 'Payment could not be processed');
+  }
+}
+
+// Express error handler middleware
+function errorHandler(
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  // Log full error server-side
+  logger.error('Request failed', {
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    requestId: req.headers['x-request-id'],
+  });
+
+  // Generic response to user
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json({
+      error: {
+        code: err.code,
+        message: err.message,
+        requestId: req.headers['x-request-id'],
+      },
+    });
+  } else {
+    // Unknown error - don't expose details
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'An unexpected error occurred',
+        requestId: req.headers['x-request-id'],
+      },
+    });
+  }
+}
+```
+
+### Rust
+
+**Use Result<T, E> for recoverable errors:**
+
+```rust
+use thiserror::Error;
+use tracing::{error, warn};
+
+// Custom error types
+#[derive(Error, Debug)]
+pub enum PaymentError {
+    #[error("Card was declined")]
+    CardDeclined,
+
+    #[error("Insufficient funds")]
+    InsufficientFunds,
+
+    #[error("Service temporarily unavailable")]
+    ServiceUnavailable,
+
+    #[error("Payment could not be processed")]
+    ProcessingFailed(#[source] Box<dyn std::error::Error + Send + Sync>),
+}
+
+// API response error (doesn't expose internals)
+#[derive(serde::Serialize)]
+pub struct ApiError {
+    pub code: String,
+    pub message: String,
+    pub request_id: Option<String>,
+}
+
+impl From<PaymentError> for ApiError {
+    fn from(err: PaymentError) -> Self {
+        match err {
+            PaymentError::CardDeclined => ApiError {
+                code: "CARD_DECLINED".to_string(),
+                message: "Card was declined".to_string(),
+                request_id: None,
+            },
+            PaymentError::InsufficientFunds => ApiError {
+                code: "INSUFFICIENT_FUNDS".to_string(),
+                message: "Insufficient funds".to_string(),
+                request_id: None,
+            },
+            _ => ApiError {
+                code: "PAYMENT_FAILED".to_string(),
+                message: "Payment could not be processed".to_string(),
+                request_id: None,
+            },
+        }
+    }
+}
+
+// Secure error handling
+pub async fn process_payment(
+    user_id: &str,
+    amount: f64,
+    card_token: &str,
+) -> Result<PaymentResult, PaymentError> {
+    match stripe::create_charge(amount, card_token).await {
+        Ok(charge) => Ok(PaymentResult {
+            success: true,
+            transaction_id: charge.id,
+        }),
+        Err(e) => {
+            // Log full details server-side
+            error!(
+                user_id = %user_id,
+                amount = %amount,
+                error = %e,
+                "Payment failed"
+            );
+
+            // Return generic error (don't expose Stripe internals)
+            match e {
+                StripeError::CardDeclined(_) => Err(PaymentError::CardDeclined),
+                StripeError::RateLimit(_) => Err(PaymentError::ServiceUnavailable),
+                other => Err(PaymentError::ProcessingFailed(Box::new(other))),
+            }
+        }
+    }
+}
+
+// Using ? operator with proper error conversion
+pub async fn checkout(order: Order) -> Result<Receipt, ApiError> {
+    let payment = process_payment(&order.user_id, order.total, &order.card_token)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(Receipt { transaction_id: payment.transaction_id })
+}
+```
+
+### Bash
+
+**Exit codes and error messages:**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Error codes
+readonly E_SUCCESS=0
+readonly E_INVALID_INPUT=1
+readonly E_FILE_NOT_FOUND=2
+readonly E_PERMISSION_DENIED=3
+readonly E_NETWORK_ERROR=4
+readonly E_UNKNOWN=99
+
+# Error handler
+error_handler() {
+    local exit_code=$?
+    local line_number=$1
+
+    # Log full error details
+    log_error "Script failed at line ${line_number} with exit code ${exit_code}"
+
+    # Clean up
+    cleanup
+
+    exit "${exit_code}"
+}
+
+trap 'error_handler ${LINENO}' ERR
+
+# Secure error function (logs full details, shows generic message)
+die() {
+    local code="${1}"
+    local internal_message="${2}"
+    local user_message="${3:-An error occurred}"
+
+    # Log full details server-side
+    log_error "${internal_message}"
+
+    # Show generic message to user
+    echo "Error: ${user_message}" >&2
+
+    exit "${code}"
+}
+
+# Usage example
+process_file() {
+    local file="${1:-}"
+
+    # Validate input
+    if [[ -z "${file}" ]]; then
+        die "${E_INVALID_INPUT}" "Empty file argument provided" "Invalid input"
+    fi
+
+    # Check file exists
+    if [[ ! -f "${file}" ]]; then
+        die "${E_FILE_NOT_FOUND}" "File not found: ${file}" "File not found"
+    fi
+
+    # Check permissions
+    if [[ ! -r "${file}" ]]; then
+        die "${E_PERMISSION_DENIED}" "Cannot read file: ${file}" "Permission denied"
+    fi
+
+    # Process file
+    cat "${file}" || die "${E_UNKNOWN}" "Failed to read ${file}" "Processing failed"
+}
+
+# Main with error handling
+main() {
+    local input="${1:-}"
+
+    if ! process_file "${input}"; then
+        log_error "process_file failed for: ${input}"
+        exit "${E_UNKNOWN}"
+    fi
+
+    log_info "Successfully processed: ${input}"
+}
+
+main "$@"
+```

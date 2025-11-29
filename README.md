@@ -1,397 +1,207 @@
 # HyperSec AI Code Assistant Standards
 
-**Repository:** <<https://github.com/hypersec-io/ai>>
-
-**Purpose:** Standards, guidance, and templates that "tack on" to any project
+Standards, templates, and setup scripts for AI-assisted development.
 
 **License:** HyperSec EULA (proprietary)
 
 ---
 
-## What's Included
+## What This Is
 
-**Standards** - Coding standards, AI guidance, best practices (in `standards/`)
+A standards library that attaches to any project to provide:
 
-**Templates** - STATE.md, TODO.md, AI assistant configurations (in `templates/`)
+- **Coding standards** - Language-agnostic + language-specific (Python, Go, TypeScript, Rust, Bash) + infrastructure (Docker, K8s, Terraform, Ansible)
+- **Session state** - Cross-LLM session persistence (STATE.md, TODO.md)
+- **AI assistant configs** - Setup scripts for Claude Code, GitHub Copilot, Cursor IDE, Gemini
 
-**Setup scripts** - Pure bash, assistant-specific setup
+**Design:**
 
-**Key features:**
-
-- Works as git submodule, clone, or ZIP download
-- Pure bash 3.2+ (macOS, Linux, WSL compatible)
+- Pure bash 3.2+ (macOS, Linux, WSL)
 - Zero dependencies beyond standard Unix tools
-- Path-agnostic (works anywhere)
-- Cross-LLM session state
+- Path-agnostic (works anywhere, any directory name)
+- Idempotent (safe to run repeatedly)
 
 ---
 
 ## Quick Start
 
-**Attach to your project (choose ONE method):**
+### 1. Attach to Your Project
 
 ```bash
-# Method 1: Git submodule (recommended - get updates automatically)
+# Option A: Git submodule (recommended - get updates)
 git submodule add https://github.com/hypersec-io/ai.git ai
-git submodule update --init --recursive
+git config submodule.ai.update none  # Prevent accidental commits
 
-# IMPORTANT: Enforce read-only to prevent accidental commits
-git config submodule.ai.update none
-git -C ai config core.fileMode false
-git -C ai config advice.detachedHead false
+# Option B: Clone (point-in-time copy)
+git clone https://github.com/hypersec-io/ai.git ai && rm -rf ai/.git
 
-# Method 2: Git clone (point-in-time copy)
-git clone https://github.com/hypersec-io/ai.git ai
-cd ai && rm -rf .git
-
-# Method 3: Download ZIP (standalone)
-curl -L https://github.com/hypersec-io/ai/archive/refs/heads/main.zip -o ai.zip
+# Option C: Download ZIP
+curl -L https://github.com/hypersec-io/ai/archive/main.zip -o ai.zip
 unzip ai.zip && mv ai-main ai
 ```
 
-**Run installation:**
+### 2. Deploy Session State Files
 
 ```bash
-# From inside the attached directory (e.g., ai/)
-./install.sh
-
-# This creates in your project root:
-# - STATE.md (session state)
-# - TODO.md (task tracking)
+./ai/install.sh
+# Creates: STATE.md, TODO.md in project root
 ```
 
-**Setup your AI assistant (optional):**
+### 3. Setup Your AI Assistant
 
 ```bash
-# Claude Code (Anthropic)
-./claude-code.sh
-
-# GitHub Copilot/Codex (OpenAI)
-./copilot.sh
-
-# Cursor IDE
-./cursor.sh
-
-# Gemini Code (Google)
-./gemini.sh
+./ai/claude-code.sh   # Claude Code (Anthropic)
+./ai/copilot.sh       # GitHub Copilot / OpenAI Codex
+./ai/cursor.sh        # Cursor IDE
+./ai/gemini.sh        # Gemini Code (Google)
 ```
 
 ---
 
-## AI Assistant Setup
+## What Gets Created
 
-### Claude Code (Anthropic)
+### By `install.sh` (all assistants)
 
-**Setup:**
+| File | Purpose |
+|------|---------|
+| `STATE.md` | Project state, session history, context for AI |
+| `TODO.md` | Task tracking, priorities |
 
-```bash
-./claude-code.sh
-```
+### By assistant scripts
 
-**What it creates:**
-
-- `.claude/settings.json` - Permissions, model configuration, context settings
-- `.claude/commands/start.md` - Session initialization slash command
-- `.claude/commands/save.md` - Progress checkpoint slash command
-- `CLAUDE.md` → `STATE.md` symlink
-
-**Slash commands:**
-
-**`/start`** - Initialize your session
-
-- Reads STATE.md (project state and history)
-- Reads TODO.md (current tasks)
-- Loads standards based on context window
-- Checks git status and recent commits
-- Verifies environment setup
-
-**`/save`** - Checkpoint your progress
-
-- Updates STATE.md with current session progress
-- Rationalizes STATE.md (removes stale info)
-- Updates TODO.md (marks completed, adds new tasks)
-- Fixes markdown linting errors
-- Creates clean checkpoint for next session
-
-**Best practices:**
-
-- Run `/start` at the beginning of every session
-- Run `/save` after major milestones or every 30-40 exchanges
-- Run `/save` before breaks to preserve context
-- STATE.md and TODO.md persist across sessions
-
----
-
-### GitHub Copilot/Codex (OpenAI)
-
-**Setup:**
-
-```bash
-./copilot.sh
-```
-
-**What it creates:**
-
-- `.github/copilot-instructions.md` - Custom instructions for Copilot/Codex
-- `COPILOT.md` → `STATE.md` symlink
-
-**How it works:**
-
-- Copilot reads `.github/copilot-instructions.md` automatically
-- Instructions reference `$AI_ROOT/standards/` for coding standards
-- STATE.md provides project context
-- TODO.md guides task prioritization
-
-**Best practices:**
-
-- Keep STATE.md and TODO.md updated manually (no slash commands)
-- Copilot uses these files for better code suggestions
-- Works with both GitHub Copilot and OpenAI Codex
-
----
-
-### Cursor IDE
-
-**Setup:**
-
-```bash
-./cursor.sh
-```
-
-**What it creates:**
-
-- `.cursor/cli.json` - Cursor permissions and settings
-- `.cursor/rules/` - AI instruction rules (.mdc files)
-- `CURSOR.md` → `STATE.md` symlink
-
-**Cursor AI Rules:**
-
-- Rules files (`.mdc`) loaded automatically by Cursor
-- Reference `$AI_ROOT/standards/` for coding standards
-- STATE.md provides project context
-- TODO.md guides current tasks
-
-**Best practices:**
-
-- Update STATE.md and TODO.md as you work
-- Cursor automatically applies rules from `.cursor/rules/`
-- Use Cursor's built-in chat to reference STATE.md context
-
----
-
-### Gemini Code (Google)
-
-**Setup:**
-
-```bash
-./gemini.sh
-```
-
-**What it creates:**
-
-- `.gemini/settings.json` - Gemini configuration
-- `.gemini/commands/` - Custom commands (if supported)
-- `GEMINI.md` → `STATE.md` symlink
-
-**How it works:**
-
-- Gemini reads configuration from `.gemini/`
-- References `$AI_ROOT/standards/` for coding standards
-- STATE.md provides project context
-- TODO.md guides task prioritization
-
-**Best practices:**
-
-- Keep STATE.md and TODO.md current
-- Gemini has large context window (1M+ tokens) - can load full standards
-- Reference GEMINI.md in chat for project context
-
----
-
-## Overview
-
-This repository provides **coding standards and project templates** for three user types:
-
-### 1. Human Developers (Using Standards Directly)
-
-Reference comprehensive coding standards without AI assistance:
-
-- Language-agnostic standards (SOLID, DRY, KISS, YAGNI)
-- Python-specific standards (PEP 8, type hints, testing)
-- Git workflow and commit conventions
-- Error handling and security best practices
-- Design principles and containerisation
-
-**Use case:** Code reviews, architecture decisions, onboarding
-
-### 2. Developers with AI Code Assistants
-
-Standards optimised for AI-assisted development:
-
-- AI-specific guidance (quality warnings, best practices)
-- Session management (STATE.md, TODO.md for context)
-- Commit message guidelines for AI tools
-- Multi-platform support (Claude Code, GitHub Copilot/Codex, Cursor IDE, Gemini Code)
-- Token optimisation and context management
-
-**Use case:** Daily development with any AI code assistant
-
-### 3. AI Code Assistants (Reading for Context)
-
-Context-adaptive loading strategy for AI models:
-
-- Full CAG loading for 500K+ token windows
-- Tiered CAG/RAG hybrid for smaller contexts
-- Standards organised for efficient token usage
-- Project state tracking across sessions
-- Cross-assistant compatibility (assistant-agnostic design)
-
-**Use case:** Any AI assistant loading standards (Claude, Copilot/Codex, Cursor, Gemini, etc.)
+| Script | Creates |
+|--------|---------|
+| `claude-code.sh` | `.claude/settings.json`, `.claude/commands/`, `CLAUDE.md` → `STATE.md` |
+| `copilot.sh` | `.github/copilot-instructions.md`, `COPILOT.md` → `STATE.md` |
+| `cursor.sh` | `.cursor/cli.json`, `.cursor/rules/`, `CURSOR.md` → `STATE.md` |
+| `gemini.sh` | `.gemini/settings.json`, `.gemini/commands/`, `GEMINI.md` → `STATE.md` |
 
 ---
 
 ## Repository Structure
 
-**Path variables used in documentation:**
-
-- `$AI_ROOT` = Where this repo is attached (e.g., `ai/`, `standards/`, `.ai/`)
-- `$PROJECT_ROOT` = Parent project root (where STATE.md, TODO.md are deployed)
-
 ```text
-parent-project/              # Your project ($PROJECT_ROOT)
-├── ai/                      # This repository ($AI_ROOT - can be any name)
-│   ├── install.sh           # Deploy cross-assistant templates
-│   ├── claude-code.sh       # Claude Code (Anthropic) setup
-│   ├── copilot.sh           # GitHub Copilot/Codex (OpenAI) setup
-│   ├── cursor.sh            # Cursor IDE setup
-│   ├── gemini.sh            # Gemini Code (Google) setup
-│   │
-│   ├── standards/           # Coding standards (assistant-agnostic)
-│   │   ├── STANDARDS.md     # Entry point with loading strategy
-│   │   ├── code-assistant/  # AI-specific guidance (all assistants)
-│   │   ├── common/          # Language-agnostic standards
-│   │   └── python/          # Python-specific standards
-│   │
-│   └── templates/           # Templates for all AI assistants
-│       ├── STATE.md         # Cross-assistant session state
-│       ├── TODO.md          # Cross-assistant task tracking
-│       ├── claude-code/     # Claude Code specific
-│       ├── copilot/         # GitHub Copilot specific
-│       ├── cursor/          # Cursor IDE specific
-│       └── gemini/          # Gemini Code specific
+ai/                              # This repository ($AI_ROOT)
+├── install.sh                   # Deploy STATE.md, TODO.md
+├── claude-code.sh               # Claude Code setup
+├── copilot.sh                   # GitHub Copilot setup
+├── cursor.sh                    # Cursor IDE setup
+├── gemini.sh                    # Gemini Code setup
 │
-├── STATE.md                 # Created by install.sh (all assistants use this)
-├── TODO.md                  # Created by install.sh (all assistants use this)
+├── standards/                   # Coding standards (main product)
+│   ├── STANDARDS.md             # Full reference
+│   ├── STANDARDS-QUICKSTART.md  # Core standards (~7.5K tokens)
+│   ├── code-assistant/          # AI-specific guidance
+│   ├── common/                  # Language-agnostic standards
+│   ├── languages/               # Python, Go, TypeScript, Rust, Bash
+│   └── infrastructure/          # Docker, K8s, Terraform, Ansible
 │
-├── .claude/                 # Created by claude-code.sh
-├── CLAUDE.md -> STATE.md    # Symlink for Claude Code
+├── templates/                   # Deployment templates
+│   ├── STATE.md                 # Session state template
+│   ├── TODO.md                  # Task tracking template
+│   ├── claude-code/             # Claude Code configs
+│   ├── copilot/                 # Copilot configs
+│   ├── cursor/                  # Cursor configs
+│   └── gemini/                  # Gemini configs
 │
-├── .github/copilot-instructions.md  # Created by copilot.sh
-├── COPILOT.md -> STATE.md   # Symlink for GitHub Copilot/Codex
-│
-├── .cursor/                 # Created by cursor.sh
-│   ├── cli.json             # Cursor permissions & settings
-│   └── rules/               # Cursor AI instruction rules (.mdc)
-├── CURSOR.md -> STATE.md    # Symlink for Cursor IDE
-│
-├── .gemini/                 # Created by gemini.sh
-└── GEMINI.md -> STATE.md    # Symlink for Gemini Code
+├── tests/                       # BATS test suite
+└── docs/                        # Project documentation
 ```
 
 ---
 
-## For AI Code Assistants
+## Standards Loading
 
-**Standards are path-agnostic - reference using `$AI_ROOT` variable.**
+AI assistants load standards based on project files detected:
 
-**Loading strategy:**
+**Always loaded:**
 
-- **Context window >= 500K tokens:** Load ALL standards (full CAG)
-- **Context window < 500K tokens:** Load Tier 1 mandatory, Tier 2 on-demand (CAG/RAG hybrid)
+- `STANDARDS-QUICKSTART.md` (~7.5K tokens)
 
-**See [standards/STANDARDS.md](standards/STANDARDS.md) for complete loading instructions.**
+**Auto-detected by project files:**
+
+| Project Files | Standards Loaded |
+|---------------|------------------|
+| `pyproject.toml`, `*.py` | `languages/PYTHON.md` |
+| `go.mod` | `languages/GOLANG.md` |
+| `package.json`, `tsconfig.json` | `languages/TYPESCRIPT.md` |
+| `Cargo.toml` | `languages/RUST.md` |
+| `*.sh` | `languages/BASH.md` |
+| `Dockerfile` | `infrastructure/DOCKER.md` |
+| `Chart.yaml` | `infrastructure/K8S.md` |
+| `*.tf` | `infrastructure/TERRAFORM.md` |
+| `ansible.cfg` | `infrastructure/ANSIBLE.md` |
+
+**Token budget:** ~15-20K tokens typical session (vs ~50K+ if all loaded)
 
 ---
 
-## Standards and Templates Details
+## Script Options
 
-### Standards Documentation (`standards/`)
+All scripts support:
 
-**AI-specific guidance:**
+```bash
+--help      # Show usage
+--dry-run   # Preview changes without modifying
+--force     # Overwrite existing files
+--path DIR  # Custom project root (default: parent directory)
+--verbose   # Detailed output
+```
 
-- Session management, commit messages, CI workflows
-- Assistant-agnostic design (works with any AI code assistant)
-- Quality warnings (4x higher defect rates in AI code)
-- Token optimization and context management
+---
 
-**Coding standards:**
+## Claude Code Usage
 
-- Language-agnostic (SOLID, DRY, KISS, YAGNI)
-- Python (PEP 8, type hints, testing)
-- Error handling (security-first)
-- Git workflow (Conventional Commits)
+After running `./ai/claude-code.sh`:
 
-**Design principles:**
+**`/start`** - Begin session
 
-- No mocks policy
-- Test-first development
-- Containerization (Docker, Kubernetes)
-- Cross-platform compatibility
+- Loads STATE.md, TODO.md
+- Loads standards based on project type
+- Checks git status
 
-### Templates (`templates/`)
+**`/save`** - Checkpoint progress
 
-**Cross-assistant (all AI tools use these):**
+- Updates STATE.md with session progress
+- Cleans TODO.md (removes completed)
+- Fixes markdown linting
 
-- `STATE.md` - Project state and session history
-- `TODO.md` - Task tracking with time estimates
+**Best practice:** Run `/save` every 30-40 exchanges or before breaks.
 
-**Assistant-specific (in subdirectories):**
+---
 
-- `claude-code/` - Claude Code (Anthropic) - settings.json, slash commands
-- `copilot/` - GitHub Copilot/Codex (OpenAI) - copilot-instructions.md
-- `cursor/` - Cursor IDE - cli.json, rules (.mdc files)
-- `gemini/` - Gemini Code (Google) - settings.json, commands
+## Testing
 
-### Setup Scripts (root)
+```bash
+# Run all tests
+bats tests/
 
-**Cross-assistant:**
+# Run specific test
+bats tests/install.bats
+bats tests/claude-code.bats
+```
 
-- `install.sh` - Deploy STATE.md and TODO.md (all assistants use these)
-
-**Assistant-specific:**
-
-- `claude-code.sh` - Configure Claude Code (creates .claude/ directory + CLAUDE.md symlink)
-- `copilot.sh` - Configure GitHub Copilot/Codex (creates .github/copilot-instructions.md + COPILOT.md symlink)
-- `cursor.sh` - Configure Cursor IDE (creates .cursor/ directory + CURSOR.md symlink)
-- `gemini.sh` - Configure Gemini Code (creates .gemini/ directory + GEMINI.md symlink)
-
-**All scripts:**
-
-- Pure bash (bash 3.2+ compatible)
-- Self-contained (< 300 lines each)
-- Idempotent (safe to run multiple times)
-- No dependencies beyond Unix basics
+Tests cover all scripts across submodule, clone, and standalone modes.
 
 ---
 
 ## Testing Status
 
-**Note:** Only Claude Code has been tested end-to-end with a human in the middle using VS Code and the official Claude Code extension. All other assistants (Copilot/Codex, Cursor, Gemini) have comprehensive automated test coverage but have not been manually verified in their respective IDEs.
-
-**GitHub Copilot/Codex:** The `copilot.sh` script configures both GitHub Copilot and OpenAI Codex using the standard `.github/copilot-instructions.md` file format supported by both tools.
+| Assistant | Automated Tests | Manual Testing |
+|-----------|-----------------|----------------|
+| Claude Code | ✅ | ✅ Verified in VS Code |
+| GitHub Copilot | ✅ | ⚠️ Not manually verified |
+| Cursor IDE | ✅ | ⚠️ Not manually verified |
+| Gemini Code | ✅ | ⚠️ Not manually verified |
 
 ---
 
-## Contributing
+## Path Variables
 
-**This repository is read-only for most projects.**
+Documentation uses these variables:
 
-To propose standards changes:
-
-1. Create GitHub issue with proposal
-2. Submit PR with changes to `standards/`
-3. Get approval from 2+ team leads
-4. Update version in STANDARDS.md
+- `$AI_ROOT` - Where this repo is attached (e.g., `ai/`, `standards/`, `.ai/`)
+- `$PROJECT_ROOT` - Parent project root (where STATE.md lives)
 
 ---
 
@@ -399,10 +209,4 @@ To propose standards changes:
 
 HyperSec EULA (Proprietary) - See [LICENSE](LICENSE)
 
-**Copyright:** (c) 2025 HyperSec Pty Ltd
-
----
-
-## Links
-
-- **Standards documentation:** [standards/STANDARDS.md](standards/STANDARDS.md)
+Copyright (c) 2025 HyperSec

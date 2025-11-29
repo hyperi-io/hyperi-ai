@@ -4,19 +4,33 @@ You are starting a new work session.
 
 ## Session Initialization
 
-**Step 1: Read critical documentation** (in this order):
+**Step 1: Read project state** (in this order):
 
 - [STATE.md](../../STATE.md) - Current project state and session history
 - [TODO.md](../../TODO.md) - Current tasks and priorities
 
-### Step 2: Load standards based on your context window size
+**Step 2: Load standards:**
 
-**Your context window determines which standards to load:**
+- [STANDARDS-QUICKSTART.md](../../standards/STANDARDS-QUICKSTART.md) - Core coding standards (includes language/infra file mapping)
 
-| Context Size | Action |
-|--------------|--------|
-| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-QUICKSTART.md` (~8K tokens, self-contained) |
-| **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` then load ALL `$AI_ROOT/standards/**/*.md` files |
+**Step 3: Load language and infrastructure standards:**
+
+Scan project root for config files and load matching standards (self-documenting naming):
+
+| If you find... | Load from `standards/languages/` |
+|----------------|----------------------------------|
+| `pyproject.toml`, `setup.py`, `*.py` | `PYTHON.md` |
+| `go.mod` | `GOLANG.md` |
+| `package.json`, `tsconfig.json` | `TYPESCRIPT.md` |
+| `Cargo.toml` | `RUST.md` |
+| `*.sh`, `ci/` directory | `BASH.md` |
+
+| If you find... | Load from `standards/infrastructure/` |
+|----------------|---------------------------------------|
+| `Dockerfile`, `docker-compose.yaml` | `DOCKER.md` |
+| `Chart.yaml`, `helmfile.yaml` | `K8S.md` |
+| `*.tf` | `TERRAFORM.md` |
+| `ansible.cfg`, `playbooks/` | `ANSIBLE.md` |
 
 ---
 
@@ -24,27 +38,5 @@ You are starting a new work session.
 
 After loading documentation:
 
-1. **Report session configuration:**
-   - Context window size: [your total token budget]
-   - Standards loaded: [STANDARDS-QUICKSTART.md or full subtree]
-   - Estimated tokens used: [count]
-
-2. Confirm you're ready (no greetings or pleasantries)
-
-3. Wait for the user's first task
-
-**Example session configuration report:**
-
-```text
-📊 Session Configuration:
-- Context window: 200,000 tokens
-- Standards: STANDARDS-QUICKSTART.md (~8K tokens)
-- Ready for work
-```
-
-```text
-📊 Session Configuration:
-- Context window: 1,000,000 tokens
-- Standards: Full subtree via STANDARDS.md (~40K tokens)
-- Ready for work
-```
+1. Check git status and recent commits
+2. Be ready - no greetings, wait for the user's first task

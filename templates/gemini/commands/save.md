@@ -1,80 +1,67 @@
 # Save Session Progress
 
-Save current progress to STATE.md and clean up documentation.
-
-This command should be invoked at the end of a session or during a session to checkpoint progress.
+Checkpoint progress to STATE.md and clean up documentation. Run multiple times during a session or at end.
 
 ## Save Checklist
 
-1. **Update and Clean STATE.md**:
+### 1. Update STATE.md
 
-   **First, add current session:**
-   - Document what was accomplished this session
-   - Add any important decisions or changes
-   - Update completion status for tasks
-   - Note any blockers or issues for next session
+**Add current session:**
 
-   **Then, rationalize STATE.md (remove stale info, update changed info):**
+- What was accomplished
+- Important decisions/changes
+- Task completion status
+- Blockers for next session
 
-   **ALWAYS PRESERVE (never remove):**
-   - **CRITICAL section** at top (HyperCI release automation rules, core policies)
-   - **Architecture decisions** (why we chose X over Y, design patterns)
-   - **Current session** (just added above)
-   - **Previous 1-2 sessions** (recent context for continuity)
-   - **Long-term strategic goals** (multi-session objectives)
-   - **Known blockers/issues** (unresolved problems)
-   - **Migration paths** (e.g., "Strategic Goal: Replace ci_lib with hs-lib")
+**Rationalise (remove stale, update changed):**
 
-   **SAFE TO REMOVE:**
-   - Completed sessions older than 2-3 sessions (move to ARCHIVE.md if significant)
-   - Deprecated implementation details (replaced by refactoring)
-   - Duplicate information (if same info appears in multiple places)
-   - Temporary notes that are no longer relevant
-   - Steps/checklists that are now automated
+| Preserve | Safe to Remove |
+|----------|----------------|
+| Architecture decisions (why X over Y) | Sessions older than 2-3 |
+| Current + previous 1-2 sessions | Deprecated implementation details |
+| Long-term strategic goals | Duplicate information |
+| Known blockers/issues | Temporary notes no longer relevant |
+| Migration paths | Automated checklists |
 
-   **UPDATE (don't remove, just fix):**
-   - File paths that changed due to refactoring
-   - API examples that changed
-   - Status markers that are outdated (e.g., "In Progress" → "Complete")
-   - Version numbers or dependency info
+**Update (don't remove):** Changed file paths, API examples, status markers, versions.
 
-   **WHEN IN DOUBT:**
-   - **Ask the developer before removing** anything that might be important
-   - Err on the side of keeping information (better verbose than missing context)
-   - If unsure whether something is "architecture decision" or "implementation detail", keep it
+**When in doubt:** Ask before removing. Err on keeping information.
 
-2. **Clean up TODO.md**:
-   - **REMOVE all completed tasks** (they belong in STATE.md, not TODO.md)
-   - Add new tasks discovered during work
-   - Reprioritize remaining tasks if necessary
-   - TODO.md should only contain active/pending work
+### 2. Clean TODO.md
 
-3. **Check git status**:
-   - Any uncommitted changes?
-   - Should changes be committed before stopping?
-   - Are there any .tmp/ files to clean up?
+- **REMOVE completed tasks** (they belong in STATE.md/CHANGELOG, not TODO)
+- Add new tasks discovered during work
+- Reprioritise remaining tasks
+- TODO.md = active/pending work only
 
-4. **Review test status**:
-   - Did all tests pass?
-   - Any skipped or failing tests to note?
+### 3. Check Git Status
 
-5. **Check documentation quality**:
-   - **Fix markdown linting issues** in GEMINI.md, STATE.md, TODO.md
-   - Common issues to fix:
-     - Blank lines around headings (MD022)
-     - Blank lines around lists (MD032)
-     - Blank lines around fenced code blocks (MD031)
-     - Specify language for code blocks (MD040)
-     - Multiple consecutive blank lines (MD012)
-   - Use IDE linter feedback or ignore if minor
-   - Keep fixes minimal (don't rewrite entire files)
+- Uncommitted changes to commit?
+- Any `.tmp/` files to clean up?
 
-6. **Summary for Developer**:
-   - Briefly summarize what was accomplished
-   - List any TODO items for next session
-   - Highlight any issues or blockers
-   - Confirm all documentation is updated
+### 4. Review Test Status
 
-## Save complete
+- All tests pass?
+- Skipped or failing tests to note?
 
-After completing the checklist above, provide a concise summary of what was saved and confirm all documentation is updated.
+### 5. Fix Markdown Linting
+
+Fix issues in STATE.md, TODO.md:
+
+- MD022: Blank lines around headings
+- MD031: Blank lines around code blocks
+- MD032: Blank lines around lists
+- MD040: Language for code blocks
+
+Keep fixes minimal.
+
+### 6. Summary for Developer
+
+- What was accomplished
+- TODO items for next session
+- Issues or blockers
+- Confirm documentation updated
+
+## Save Complete
+
+Provide concise summary of what was saved.

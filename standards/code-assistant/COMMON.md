@@ -12,10 +12,7 @@ This document provides critical guidance for AI code assistants working on any p
 
 1. ✅ Read STATE.md (project context and CI documentation)
 2. ✅ Read TODO.md (current tasks and priorities)
-3. ✅ Read language-specific standards:
-   - Python projects: Read $AI_ROOT/standards/python/CODING-PYTHON.md
-   - TypeScript projects: Read $AI_ROOT/standards/typescript/CODING-TYPESCRIPT.md (if exists)
-   - All projects: Read docs/standards/GIT.md, CHARS-POLICY.md
+3. ✅ Read relevant standards from `$AI_ROOT/standards/languages/` and `$AI_ROOT/standards/infrastructure/` based on project files detected
 4. ✅ Review project structure for context:
    - Check `pyproject.toml` or equivalent for project metadata
    - Scan `src/` or equivalent for main code structure
@@ -25,7 +22,7 @@ This document provides critical guidance for AI code assistants working on any p
 
 **Important:**
 
-- STATE.md includes auto-appended CI documentation from HS-CI
+- STATE.md includes project context and session history
 - TODO.md follows todo-md standard (update it as work progresses)
 - **DO NOT scan, read, or review files in ci/ directory** (see CI Infrastructure below)
 - ci-local/ is writable (for project-specific CI customizations)
@@ -90,7 +87,7 @@ This document provides critical guidance for AI code assistants working on any p
 
 - Reads STATE.md (project state and history)
 - Reads TODO.md (current tasks)
-- Loads standards files based on your context window size
+- Loads STANDARDS-QUICKSTART.md + relevant language files
 - Checks git status and recent commits
 - Verifies environment (Python version, virtual environments)
 - Personalizes greeting (from git config)
@@ -101,7 +98,7 @@ This document provides critical guidance for AI code assistants working on any p
 /start
 ```
 
-**Other AI assistants:** Manually read STATE.md, TODO.md, and standards files per context window guidance in STANDARDS.md.
+**Other AI assistants:** Manually read STATE.md, TODO.md, STANDARDS-QUICKSTART.md, and relevant language files.
 
 ### `/save` - Session Progress Checkpoint
 
@@ -250,25 +247,11 @@ gh repo create org/repo-name
 
 ### Licensing
 
-- ✅ **ALWAYS use HyperSec EULA for proprietary projects** unless user explicitly requests different license
-- ✅ **For open source projects, use Apache 2.0** (HS-CI standard)
-- ❌ **NEVER use MIT license** for open source projects (not HyperSec standard)
+- ✅ **Default:** HyperSec EULA (no approval needed)
+- ✅ **Open source:** Apache 2.0 (requires management approval)
+- ❌ **NEVER use MIT** - lacks patent protection
 
-**Why:**
-
-- HyperSec EULA is standard for all commercial/proprietary code
-- Apache 2.0 provides patent protection and is industry-standard for enterprise open source
-- MIT lacks patent protection
-
-**Example:**
-
-```bash
-# Proprietary project
-# Use HyperSec EULA (check ci/modules/common/templates/ for template)
-
-# Open source project
-gh repo create org/repo-name --private --license apache-2.0
-```
+**Full guide:** See `$AI_ROOT/standards/common/LICENSING.md`
 
 ---
 
@@ -286,6 +269,7 @@ gh repo create org/repo-name --private --license apache-2.0
 - ❌ Overclaim or assume your performance (e.g., "Production Ready", "Fully optimized")
 - ❌ Leave placeholders (TODO, FIXME, PLACEHOLDER) in committed code
 - ❌ Assume operations succeeded without verification
+- ❌ Use `sleep` commands for debugging (blocks user interaction - use polling loops instead)
 
 ### ALWAYS
 

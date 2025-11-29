@@ -487,3 +487,9 @@ class UserService:
         self.cache = cache  # Will need caching for scale
         self.db = db
 ```
+
+---
+
+## See Also
+
+- **Configuration & Logging:** See [CONFIG-AND-LOGGING.md](CONFIG-AND-LOGGING.md) for the HyperSec 7-layer config cascade and structured logging standards

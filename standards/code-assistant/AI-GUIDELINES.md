@@ -4,7 +4,7 @@
 
 ⚠️ **CRITICAL:** AI-assisted projects must be indistinguishable from human-only projects.
 
-**Background:** `$AI_ROOT/docs/AI-PRINCIPLES.md` (research, cognitive load, defect rates)
+**Background:** AI-generated code has 4x higher defect rates (GitClear 2024). These guidelines ensure AI assistance improves rather than degrades code quality.
 
 ---
 
@@ -14,7 +14,7 @@
 
 1. ✅ Write code indistinguishable from human developers
 2. ✅ Minimize cognitive load (simple > clever, explicit > implicit)
-3. ✅ Follow HyperSec/HS-CI standards exactly
+3. ✅ Follow HyperSec standards exactly
 4. ✅ Support context switching (clear names, meaningful commits)
 5. ✅ Pass automated tests (formatting, types, security, coverage)
 6. ✅ Never use placeholders/TODOs in production code
@@ -166,7 +166,7 @@ def initialize_color_picker():
 **Use Cursor:** Multi-model flexibility
 **Use Gemini:** 100k+ line codebases, multi-modal content
 
-⚠️ **AI-generated code has 4x higher defects** - see `$AI_ROOT/docs/AI-PRINCIPLES.md`
+⚠️ **AI-generated code has 4x higher defects** (GitClear 2024) - always review carefully
 
 ---
 
@@ -285,7 +285,7 @@ def calculate_discount(
 **Provide comprehensive context:**
 
 - Architecture (microservices, FastAPI, PostgreSQL, Redis)
-- Standards (PEP 8, type hints required, 80% test coverage)
+- Standards (PEP 8, type hints required, 90%+ test coverage for AI code)
 - Security (never log passwords/tokens, validate all inputs)
 - Common patterns (use hs-lib for logging/config/metrics)
 
@@ -447,7 +447,7 @@ def test_calculate_discount():
 # AI can't rabbit-hole - tests define exactly what's needed
 ```
 
-**See `$AI_ROOT/standards/common/TEST-FIRST.md` for details.**
+**See `$AI_ROOT/standards/common/TESTING.md` for details.**
 
 ### Strategy 6: YAGNI Enforcement
 

@@ -6,25 +6,43 @@ Branch naming and commit message conventions for all HyperSec projects.
 
 ## Branch Naming
 
-**Format:** `<type>/<issue-ref>/<short-description>`
+**Formats:** (choose based on your workflow)
+
+```text
+<type>/<issue-ref>/<short-description>    # With issue tracking
+<type>/<short-description>                 # Without issue tracking
+```
 
 **Types:** (lowercase, matches commit types)
 
 feat, fix, docs, test, chore, ci, cleanup, data, debt, design, infra, meta, ops, perf, refactor, review, sec, spike, ui, hotfix
 
-**Issue Reference:**
+**Issue Reference (optional):**
 
-- Ticket ID (e.g., `PROJ-123`, `AI-456`)
-- `no-ref` if no ticket
+- Include ticket ID when using issue tracking (e.g., `PROJ-123`, `AI-456`)
+- Omit when no ticket exists or for quick fixes
 
 **Examples:**
 
 ```bash
+# With issue reference (preferred when tracking issues)
 feat/AI-123/add-cursor-support
-fix/no-ref/memory-leak
-docs/no-ref/update-readme
-chore/PROJ-456/update-deps
+fix/PROJ-456/null-pointer-exception
+chore/AI-789/update-deps
+
+# Without issue reference (acceptable for quick fixes)
+fix/memory-leak
+docs/update-readme
+refactor/extract-validation
+test/add-payment-tests
 ```
+
+**Guidelines:**
+
+- Use issue reference when working with issue trackers (Jira, GitHub Issues, etc.)
+- Omit issue reference for quick fixes, documentation updates, or solo work
+- Keep descriptions short and descriptive (2-4 words)
+- Use hyphens to separate words in description
 
 ---
 

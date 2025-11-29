@@ -11,7 +11,7 @@ Headers are language-specific, but rules are universal.
 
 ### Minimum Required Fields
 
-```
+```text
 Project:      <PROJECT_NAME>
 File:         <FILENAME>
 Purpose:      <One-sentence description>
@@ -23,7 +23,7 @@ Copyright:    (c) <YEAR> <ORGANISATION>
 
 ### Optional Fields
 
-```
+```text
 Description:
     <Multi-line purpose, notes, assumptions>
 
@@ -34,33 +34,23 @@ Notes:
 
 ---
 
-## License Selection
+## License in Headers
 
-**Project has ONE license type** (configured in ci.yaml):
+File headers reference the project's license (configured in ci.yaml).
 
-### Supported Licenses
+**Supported licenses:**
 
-**1. HyperSec EULA (Proprietary)**
+| License | SPDX Identifier |
+|---------|-----------------|
+| HyperSec EULA (default) | `LicenseRef-HyperSec-EULA` |
+| Apache 2.0 (requires approval) | `Apache-2.0` |
 
-- SPDX: `LicenseRef-HyperSec-EULA`
-- Use for: Commercial HyperSec products
-- Copyright: `(c) YYYY HyperSec Pty Ltd`
-- File: `LICENSE` (HyperSec EULA text)
-- Reference: <https://hypersec.io/eula/>
+**Full licensing guide:** See [LICENSING.md](LICENSING.md) for:
 
-**2. Apache 2.0 (Open Source)**
-
-- SPDX: `Apache-2.0`
-- Use for: Open source projects
-- Copyright: `(c) YYYY HyperSec` or `(c) YYYY <Author>`
-- File: `LICENSE` (Apache 2.0 text)
-
-### Configuration (ci.yaml)
-
-```yaml
-project:
-  license: hypersec-eula  # or: apache-2.0 (HyperSec policy: hypersec-eula or apache-2.0 only)
-```
+- License selection and approval process
+- LICENSE file templates
+- Project file configuration (pyproject.toml, package.json, etc.)
+- Third-party dependency requirements
 
 ---
 
@@ -96,8 +86,8 @@ project:
 #  Purpose:      Configuration management with Dynaconf
 #  Language:     Python
 #
-#  License:      Apache-2.0
-#  Copyright:    (c) YYYY HyperSec  # Use current year
+#  License:      LicenseRef-HyperSec-EULA
+#  Copyright:    (c) 2025 HyperSec
 #
 #  Description:
 #      Provides configuration cascade: CLI > ENV > .env > yaml > defaults
@@ -107,6 +97,60 @@ project:
 
 import os
 ...
+```
+
+```go
+// Go example
+//  Project:      my-service
+//  File:         main.go
+//  Purpose:      Service entry point
+//  Language:     Go
+//
+//  License:      LicenseRef-HyperSec-EULA
+//  Copyright:    (c) 2025 HyperSec
+
+package main
+```
+
+```bash
+#!/usr/bin/env bash
+#
+#  Project:      my-project
+#  File:         deploy.sh
+#  Purpose:      Deploy application to production
+#  Language:     Bash
+#
+#  License:      LicenseRef-HyperSec-EULA
+#  Copyright:    (c) 2025 HyperSec
+#
+
+set -euo pipefail
+```
+
+```typescript
+/**
+ * Project:      my-app
+ * File:         index.ts
+ * Purpose:      Application entry point
+ * Language:     TypeScript
+ *
+ * License:      LicenseRef-HyperSec-EULA
+ * Copyright:    (c) 2025 HyperSec
+ */
+
+import express from 'express';
+```
+
+```rust
+//! Project:      my-crate
+//! File:         lib.rs
+//! Purpose:      Core library functionality
+//! Language:     Rust
+//!
+//! License:      LicenseRef-HyperSec-EULA
+//! Copyright:    (c) 2025 HyperSec
+
+pub mod config;
 ```
 
 ---
@@ -141,26 +185,20 @@ Follows REUSE Software Specification 3.3:
 
 ---
 
-## Example: License Selection
+## For AI Code Assistants
 
-```python
-# Get license from project config
-from ci_lib import get_config_value
+**When creating new files:**
 
-license_type = get_config_value("project.license", default="apache-2.0")
+1. Check project license from ci.yaml
+2. Get current year from system date
+3. Use appropriate comment syntax for language
+4. Fill all required fields
+5. Add header at top of file, before any code
 
-if license_type == "hypersec-eula":
-    spdx_id = "LicenseRef-HyperSec-EULA"
-    copyright_holder = "HyperSec Pty Ltd"
-elif license_type == "apache-2.0":
-    spdx_id = "Apache-2.0"
-    copyright_holder = "HyperSec"
-```
+**When editing existing files:**
 
----
+1. Preserve existing headers (don't modify)
+2. If header is missing, add one
+3. Update Purpose only if file's purpose changed significantly
 
-## For AI Assistants
-
-**When creating new files:** Check project license (ci.yaml), get current year, load template, fill fields (project, filename, purpose, language), add at top.
-
-**When editing existing files:** Preserve headers (don't modify). If missing, add one. Update Purpose if changed significantly.
+**See also:** [LICENSING.md](LICENSING.md) for full license implementation guide.

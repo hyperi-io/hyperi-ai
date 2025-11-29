@@ -6,9 +6,15 @@
 
 ---
 
+## About These Standards
+
+This standards library represents the collation of years of HyperSec (and Derek's prior) experience building at-scale, high-automation DevOps, DataOps, and DevSecOps projects. It is designed as an AI-friendly knowledge base that can be attached to any project as a git submodule.
+
+---
+
 ## Core Principles
 
-**Everything in HyperSec standards, AI guides, and HS-CI automation is built around three key principles:**
+**Everything in HyperSec standards, AI guides, and CI automation is built around three key principles:**
 
 ### 1. Reduce Cognitive Load
 
@@ -26,7 +32,7 @@
 **For developers AND AI-assisted workflows:**
 
 - Project-specific context files (STATE.md, TODO.md, ARCHITECTURE.md)
-- Standardized infrastructure (hs-lib, HS-CI, same tools everywhere)
+- Standardised infrastructure (hs-lib, HyperSec CI, same tools everywhere)
 - Meaningful commits and documentation (faster "resume" time)
 - Time-boxed work (minimum 2-hour chunks per project)
 
@@ -55,10 +61,10 @@
 
 **New to HyperSec?** Start here:
 
-1. Read `$AI_ROOT/standards/common/QUICK-REFERENCE.md` - One-page cheat sheet
-2. Read `$AI_ROOT/standards/common/CODING.md` - Core language-agnostic standards
-3. **Python projects:** Read `$AI_ROOT/standards/python/CODING-PYTHON.md`
-4. Read `$AI_ROOT/standards/common/GIT.md` - Git conventions
+1. Read `$AI_ROOT/standards/common/CODE-STYLE.md` - Core language-agnostic code style
+2. Read `$AI_ROOT/standards/common/GIT.md` - Git conventions
+3. Read language-specific file from `$AI_ROOT/standards/languages/` based on your project
+4. For infrastructure, also read relevant files from `$AI_ROOT/standards/infrastructure/`
 
 ---
 
@@ -66,92 +72,53 @@
 
 ```
 standards/
-├── STANDARDS.md (this file - entry point)
+├── STANDARDS.md (this file - entry point for 500K+ context)
+├── STANDARDS-QUICKSTART.md (core standards for <500K context)
 │
-├── Core Standards (root level)
-├── CHARS-POLICY.md
-├── CODE-HEADER.md
-├── QUICK-REFERENCE.md
-├── GIT.md
-│
-├── code-assistant/ (AI guidance - loaded on session start)
+├── code-assistant/ (AI guidance - language agnostic)
 │   ├── COMMON.md (session mgmt, bash, commits)
-│   ├── HS-CI.md (CI infrastructure guidance)
-│   ├── PYTHON.md (Python-specific guidance)
 │   └── AI-GUIDELINES.md (cognitive load research)
 │
-├── ai/ (AI workflow docs - NOT loaded on session start)
-│   └── TOKEN-ENGINEERING.md (token optimization workflow)
-│
 ├── common/ (language-agnostic standards)
-│   ├── CODING.md (core coding standards)
-│   ├── CONTAINERIZATION.md (k8s + HELM + ArgoCD)
-│   ├── DESIGN-PRINCIPLES.md (SOLID, DRY, KISS)
+│   ├── CHARS-POLICY.md (character/emoji policy)
+│   ├── CODE-HEADER.md (file header standards)
+│   ├── CODE-STYLE.md (clarity, naming, organisation)
+│   ├── CONFIG-AND-LOGGING.md (7-layer cascade, RFC 3339)
+│   ├── DESIGN-PRINCIPLES.md (SOLID, DRY, KISS, YAGNI)
 │   ├── ERROR-HANDLING.md (security-first errors)
+│   ├── GIT.md (git conventions)
+│   ├── LICENSING.md (HyperSec EULA, Apache 2.0)
 │   ├── NO-MOCKS-POLICY.md (production code policy)
-│   └── TEST-FIRST.md (test-first development)
+│   ├── SECURITY.md (input validation, secrets)
+│   └── TESTING.md (test-first development)
 │
-└── python/ (Python-specific standards)
-    ├── CODING.md (Python coding standards)
-    ├── PEP8.md (comprehensive PEP 8 guide)
-    └── HS-CI.md (HS-CI Python integration)
+├── languages/ (language-specific standards)
+│   ├── PYTHON.md
+│   ├── GOLANG.md
+│   ├── TYPESCRIPT.md
+│   ├── RUST.md
+│   └── BASH.md
+│
+└── infrastructure/ (infrastructure standards)
+    ├── DOCKER.md (Dockerfile, multi-stage, health checks)
+    ├── K8S.md (HELM, pods, ArgoCD, KEDA)
+    ├── TERRAFORM.md (HCL, EKS, state mgmt)
+    └── ANSIBLE.md (playbooks, roles)
 ```
 
 ---
 
 ## Standards by Topic
 
-### Code Quality
+### Code Style & Quality (Daily Use)
 
-**Core principles:**
+**Code style:** `$AI_ROOT/standards/common/CODE-STYLE.md` (clarity, naming, organisation)
+**Design principles:** `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` (SOLID, DRY, KISS, YAGNI)
+**Configuration & logging:** `$AI_ROOT/standards/common/CONFIG-AND-LOGGING.md` (7-layer cascade, RFC 3339)
 
-- SOLID, DRY, KISS, YAGNI → `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md`
-- Clarity over cleverness → `$AI_ROOT/standards/common/CODING.md`
-- No mocks in production → `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
+**Language-specific:** See `$AI_ROOT/standards/languages/` directory for your language.
 
-**Language-specific:**
-
-- Python PEP 8 → `$AI_ROOT/standards/python/PEP8.md`
-- Python coding standards → `$AI_ROOT/standards/python/CODING-PYTHON.md`
-
-### Error Handling
-
-**Quick reference:** `$AI_ROOT/standards/common/QUICK-REFERENCE.md` (error handling section)
-**Comprehensive guide:** `$AI_ROOT/standards/common/ERROR-HANDLING.md`
-
-**Key rules:**
-
-- Never expose stack traces to users
-- Always log with context (user_id, request_id, timestamp)
-- Use specific exception types
-- Never log sensitive data (passwords, tokens, PII)
-
-### Testing
-
-**Quick reference:** `$AI_ROOT/standards/common/QUICK-REFERENCE.md` (testing section)
-**Test-first development:** `$AI_ROOT/standards/common/TEST-FIRST.md`
-
-**Key rules:**
-
-- 80% minimum coverage
-- Tests run before build/release
-- Unit + integration + e2e tests
-- No mocks in production code
-- Write tests before modifying existing code
-
-### Containerization & Deployment
-
-**Full guide:** `$AI_ROOT/standards/common/CONTAINERIZATION.md`
-
-**Quick tips:**
-
-- Kubernetes + HELM + ArgoCD deployment
-- Multi-stage Dockerfile (build vs runtime)
-- Include debug utilities (curl, nc, ping)
-- Health checks required (/health/live, /health/ready, /health/startup)
-- Non-root user always
-
-### Git Workflow
+### Git Workflow (Every Commit)
 
 **Full guide:** `$AI_ROOT/standards/common/GIT.md`
 
@@ -162,11 +129,53 @@ standards/
 - Branch format: `<type>/<description>`
 - Conventional Commits standard
 
+### Error Handling & Security
+
+**Error handling:** `$AI_ROOT/standards/common/ERROR-HANDLING.md`
+**Security:** `$AI_ROOT/standards/common/SECURITY.md`
+
+**Key rules:**
+
+- Never expose stack traces to users
+- Always log with context (user_id, request_id, timestamp)
+- Use specific exception types
+- Never log sensitive data (passwords, tokens, PII)
+- Validate ALL external input
+- Use parameterised queries (prevent SQL injection)
+
+### Testing
+
+**Testing standards:** `$AI_ROOT/standards/common/TESTING.md`
+
+**Key rules:**
+
+- 80% minimum coverage
+- Tests run before build/release
+- Unit + integration + e2e tests
+- Write tests before modifying existing code
+
+### Containerization & Deployment (When Needed)
+
+**Full guide:** `$AI_ROOT/standards/infrastructure/DOCKER.md`
+
+**Infrastructure:** See `$AI_ROOT/standards/infrastructure/` directory for K8s, Terraform, Ansible.
+
+**Quick tips:**
+
+- Kubernetes + HELM + ArgoCD deployment
+- Multi-stage Dockerfile (build vs runtime)
+- Include debug utilities (curl, nc, ping)
+- Health checks required (/health/live, /health/ready, /health/startup)
+- Non-root user always
+
+### Code Completeness (Review/AI Code)
+
+**No mocks in production:** `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
+
 ### AI Code Assistants
 
 **Mandatory guidance:** `$AI_ROOT/standards/code-assistant/COMMON.md`
 **Detailed research:** `$AI_ROOT/standards/code-assistant/AI-GUIDELINES.md`
-**Token optimization:** `$AI_ROOT/docs/TOKEN-ENGINEERING.md` (workflow doc, not loaded on start)
 
 **Key warnings:**
 
@@ -182,37 +191,34 @@ standards/
 
 **Read once:**
 
-1. `$AI_ROOT/standards/common/QUICK-REFERENCE.md` - Keep this handy!
-2. `$AI_ROOT/standards/common/CODING.md` - Core standards
-3. `$AI_ROOT/standards/common/GIT.md` - Commit conventions
-
-**Python developers also read:**
-4. `$AI_ROOT/standards/python/CODING-PYTHON.md`
+1. `$AI_ROOT/standards/common/CODE-STYLE.md` - Core code style
+2. `$AI_ROOT/standards/common/GIT.md` - Commit conventions
+3. Your language file from `$AI_ROOT/standards/languages/`
 
 **Bookmark for reference:**
 
 - `$AI_ROOT/standards/common/ERROR-HANDLING.md` - When writing error handling
+- `$AI_ROOT/standards/common/CONFIG-AND-LOGGING.md` - When setting up config/logging
 - `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` - When designing architecture
-- `$AI_ROOT/standards/python/PEP8.md` - When Python linter complains
+- `$AI_ROOT/standards/infrastructure/` - When working with K8s or Terraform
 
 ### For Code Reviewers
 
 **Check against:**
 
-1. `$AI_ROOT/standards/common/CODING.md` - Core standards compliance
+1. `$AI_ROOT/standards/common/CODE-STYLE.md` - Core standards compliance
 2. `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md` - No placeholder code
 3. `$AI_ROOT/standards/common/ERROR-HANDLING.md` - Security-first errors
-4. `$AI_ROOT/standards/code-assistant/AI-GUIDELINES.md` - Extra scrutiny for AI code
-
-**Python projects:**
-5. `$AI_ROOT/standards/python/CODING-PYTHON.md` - PEP 8, type hints
+4. `$AI_ROOT/standards/common/SECURITY.md` - Input validation, secrets
+5. `$AI_ROOT/standards/code-assistant/AI-GUIDELINES.md` - Extra scrutiny for AI code
+6. Language-specific file from `$AI_ROOT/standards/languages/`
 
 ### For Project Leads
 
 **Architecture decisions:**
 
 - `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` - SOLID, DRY, KISS, YAGNI
-- `$AI_ROOT/standards/common/CONTAINERIZATION.md` - Deployment architecture
+- `$AI_ROOT/standards/infrastructure/DOCKER.md` - Container architecture
 
 **Process enforcement:**
 
@@ -224,64 +230,29 @@ standards/
 
 **Before committing code, verify:**
 
-- [ ] Follows language-agnostic standards (`$AI_ROOT/standards/common/CODING.md`)
-- [ ] Follows language-specific standards (Python: `$AI_ROOT/standards/python/CODING-PYTHON.md`)
+- [ ] Follows code style standards (`$AI_ROOT/standards/common/CODE-STYLE.md`)
+- [ ] Follows language-specific standards (`$AI_ROOT/standards/languages/`)
 - [ ] No TODO/FIXME comments in src/ (`$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`)
 - [ ] Error handling is security-first (`$AI_ROOT/standards/common/ERROR-HANDLING.md`)
-- [ ] Tests pass (80%+ coverage)
+- [ ] Input validation present (`$AI_ROOT/standards/common/SECURITY.md`)
+- [ ] Tests pass (80%+ coverage) (`$AI_ROOT/standards/common/TESTING.md`)
 - [ ] Commit message follows format (`$AI_ROOT/standards/common/GIT.md`)
 - [ ] No sensitive data logged
-- [ ] Files/dirs follow naming rules (`$AI_ROOT/standards/common/CHARS-POLICY.md`)
 
-**Python projects also verify:**
-
-- [ ] PEP 8 compliant (ruff, black, isort)
-- [ ] Type hints present (pyright)
-- [ ] Security scan passes (bandit)
-- [ ] Uses hs-lib infrastructure (not custom)
+**Language-specific checks:** See your language file in `$AI_ROOT/standards/languages/`
 
 ---
 
 ## For Code Assistants
 
-### Context Window Decision
+### Loading Standards
 
-**Your context window determines which standards to load:**
+**All AI code assistants load:**
 
-| Context Size | Action |
-|--------------|--------|
-| **Under 500K tokens** | Read ONLY `$AI_ROOT/standards/STANDARDS-QUICKSTART.md` (~8K tokens, self-contained) |
-| **500K+ tokens** | Read `$AI_ROOT/standards/STANDARDS.md` then load ALL `$AI_ROOT/standards/**/*.md` files |
+1. `$AI_ROOT/standards/STANDARDS-QUICKSTART.md` (core standards)
+2. Language files from `$AI_ROOT/standards/languages/` - detect by project config files
+3. Infrastructure files from `$AI_ROOT/standards/infrastructure/` - detect by IaC files present
 
-**If you're reading this file:** You should have 500K+ context. Load ALL standards files below.
-
-### Load All Standards (Full CAG)
-
-With 500K+ context, load ALL standards files:
-
-```bash
-# 1. All code-assistant files (AI guidance)
-Glob: $AI_ROOT/standards/code-assistant/*.md
-Read: ALL matches
-
-# 2. All common files (language-agnostic standards)
-Glob: $AI_ROOT/standards/common/*.md
-Read: ALL matches
-
-# 3. All language-specific files (Python)
-Glob: $AI_ROOT/standards/python/*.md
-Read: ALL matches
-
-# 4. Project overrides (if exist)
-Glob: $PROJECT_ROOT/ci-local/code-assistant/*.md
-Read: ALL matches (if any)
-```
-
-### Benefits of Full Load
-
-- ✅ **Maintenance-free** - New files automatically loaded via glob
-- ✅ **Most reliable** - All standards always available, zero guessing
-- ✅ **Zero hallucination risk** - Complete context loaded upfront
-- ✅ **Plenty of room for work** - 500K+ context has ample space
+**Auto-detection:** Match project files (e.g., `pyproject.toml`, `go.mod`, `Chart.yaml`, `*.tf`) to the corresponding standards file in the appropriate directory. File names are self-documenting (e.g., `PYTHON.md`, `GOLANG.md`, `K8S.md`, `TERRAFORM.md`).
 
 ---
