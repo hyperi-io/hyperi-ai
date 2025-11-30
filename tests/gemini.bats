@@ -22,7 +22,7 @@ teardown() {
     [ "$status" -eq 0 ]
     [ -d ".gemini" ]
     [ -f ".gemini/settings.json" ]
-    [ -f ".gemini/commands/local.md" ]
+    [ -f ".gemini/commands/load.md" ]
     [ -f ".gemini/commands/save.md" ]
     [ -L "GEMINI.md" ]
     [[ "$(readlink GEMINI.md)" == "STATE.md" ]]

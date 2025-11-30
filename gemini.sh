@@ -104,16 +104,23 @@ deploy_commands() {
     fi
 
     if [ "$DRY_RUN" = "true" ]; then
-        echo "Would deploy: $dst_dir/local.md"
+        echo "Would deploy: $dst_dir/load.md"
         echo "Would deploy: $dst_dir/save.md"
+        [ -f "$dst_dir/start.md" ] && echo "Would remove: $dst_dir/start.md (deprecated)"
         return 0
     fi
 
     # Always overwrite commands (they're versioned templates)
-    cp "$src_dir/local.md" "$dst_dir/"
+    cp "$src_dir/load.md" "$dst_dir/"
     cp "$src_dir/save.md" "$dst_dir/"
 
-    echo "Deployed: $dst_dir/local.md"
+    # Remove deprecated start.md if it exists
+    if [ -f "$dst_dir/start.md" ]; then
+        rm "$dst_dir/start.md"
+        echo "Removed: $dst_dir/start.md (deprecated, replaced by load.md)"
+    fi
+
+    echo "Deployed: $dst_dir/load.md"
     echo "Deployed: $dst_dir/save.md"
 
     if [ "$VERBOSE" = "true" ]; then
@@ -166,7 +173,7 @@ print_summary() {
         echo ""
         echo "Configuration:"
         echo "  .gemini/settings.json      - Gemini Code settings"
-        echo "  .gemini/commands/local.md  - /load command"
+        echo "  .gemini/commands/load.md  - /load command"
         echo "  .gemini/commands/save.md   - /save command"
         echo "  GEMINI.md -> STATE.md      - Project state symlink"
         echo ""

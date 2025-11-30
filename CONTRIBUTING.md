@@ -214,10 +214,10 @@ Changes here affect all users - document clearly in commits.
 
 | Directory | Contents |
 |-----------|----------|
-| `templates/claude-code/` | settings.json, commands/local.md, commands/save.md |
+| `templates/claude-code/` | settings.json, commands/load.md, commands/save.md |
 | `templates/copilot/` | copilot-instructions.md |
 | `templates/cursor/` | cli.json, rules/*.mdc |
-| `templates/gemini/` | settings.json, commands/local.md, commands/save.md |
+| `templates/gemini/` | settings.json, commands/load.md, commands/save.md |
 
 ### Template Behaviour
 
