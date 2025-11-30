@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/hypersec-io/ai/compare/1.3.1...1.3.2) (2025-11-30)
+
+
+### Bug Fixes
+
+* rename /start command to /load ([e883b9c](https://github.com/hypersec-io/ai/commit/e883b9c79c218bb7b0a50d7ea818dd4440314547))
+
 ## [1.3.1](https://github.com/hypersec-io/ai/compare/1.3.0...1.3.1) (2025-11-29)
 
 
