@@ -154,7 +154,7 @@ All scripts support:
 
 After running `./ai/claude-code.sh`:
 
-**`/start`** - Begin session
+**`/load`** - Begin session
 
 - Loads STATE.md, TODO.md
 - Loads standards based on project type

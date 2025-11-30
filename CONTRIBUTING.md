@@ -156,7 +156,7 @@ git commit -m "docs: update standards loading section"
 1. Create file in appropriate directory
 2. Follow existing format
 3. Update `STANDARDS-QUICKSTART.md` if it references new content
-4. Update `/start` commands if auto-detection needed
+4. Update `/load` commands if auto-detection needed
 5. Test token count: `wc -c FILE.md | awk '{print int($1/4)}'`
 
 ---
@@ -214,10 +214,10 @@ Changes here affect all users - document clearly in commits.
 
 | Directory | Contents |
 |-----------|----------|
-| `templates/claude-code/` | settings.json, commands/start.md, commands/save.md |
+| `templates/claude-code/` | settings.json, commands/local.md, commands/save.md |
 | `templates/copilot/` | copilot-instructions.md |
 | `templates/cursor/` | cli.json, rules/*.mdc |
-| `templates/gemini/` | settings.json, commands/start.md, commands/save.md |
+| `templates/gemini/` | settings.json, commands/local.md, commands/save.md |
 
 ### Template Behaviour
 

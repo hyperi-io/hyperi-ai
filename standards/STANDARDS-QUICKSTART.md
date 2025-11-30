@@ -1187,7 +1187,7 @@ done
 
 ## Session Management
 
-### /start (Every Session)
+### /load (Every Session)
 
 1. Read STATE.md (project state, history)
 2. Read TODO.md (current tasks)

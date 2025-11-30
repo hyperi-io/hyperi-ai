@@ -104,16 +104,16 @@ deploy_commands() {
     fi
 
     if [ "$DRY_RUN" = "true" ]; then
-        echo "Would deploy: $dst_dir/start.md"
+        echo "Would deploy: $dst_dir/local.md"
         echo "Would deploy: $dst_dir/save.md"
         return 0
     fi
 
     # Always overwrite commands (they're versioned templates)
-    cp "$src_dir/start.md" "$dst_dir/"
+    cp "$src_dir/local.md" "$dst_dir/"
     cp "$src_dir/save.md" "$dst_dir/"
 
-    echo "Deployed: $dst_dir/start.md"
+    echo "Deployed: $dst_dir/local.md"
     echo "Deployed: $dst_dir/save.md"
 
     if [ "$VERBOSE" = "true" ]; then
@@ -166,13 +166,13 @@ print_summary() {
         echo ""
         echo "Configuration:"
         echo "  .claude/settings.json      - Claude Code settings"
-        echo "  .claude/commands/start.md  - /start command"
+        echo "  .claude/commands/local.md  - /load command"
         echo "  .claude/commands/save.md   - /save command"
         echo "  CLAUDE.md -> STATE.md      - Project state symlink"
         echo ""
         echo "Next steps:"
         echo "  1. Open project in Claude Code"
-        echo "  2. Run /start to initialize session"
+        echo "  2. Run /load to initialize session"
         echo "  3. Review CLAUDE.md (links to STATE.md)"
     fi
     echo "================================"

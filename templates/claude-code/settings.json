@@ -14,7 +14,7 @@
       "LS",
       "Search",
       "Find",
-      "SlashCommand(/start)",
+      "SlashCommand(/load)",
       "SlashCommand(/save)",
       "Read(~/.gitconfig)",
       "Bash(.tmp/*)",

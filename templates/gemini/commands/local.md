@@ -1,6 +1,6 @@
-# Start Session
+# Load Session
 
-You are starting a new work session.
+You are loading project context for a new work session or refreshing my memory.
 
 ## Session Initialization
 

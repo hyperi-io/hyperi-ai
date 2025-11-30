@@ -28,7 +28,7 @@ teardown() {
     [ "$status" -eq 0 ]
     [ -d ".claude" ]
     [ -f ".claude/settings.json" ]
-    [ -f ".claude/commands/start.md" ]
+    [ -f ".claude/commands/local.md" ]
     [ -f ".claude/commands/save.md" ]
     [ -L "CLAUDE.md" ]
     [ "$(readlink CLAUDE.md)" = "STATE.md" ]
@@ -67,13 +67,13 @@ teardown() {
     ./ai/claude-code.sh
 
     # Modify command
-    echo "OLD VERSION" > .claude/commands/start.md
+    echo "OLD VERSION" > .claude/commands/local.md
 
     run ./ai/claude-code.sh
 
     [ "$status" -eq 0 ]
-    ! grep -q "OLD VERSION" .claude/commands/start.md
-    grep -q "Read critical documentation" .claude/commands/start.md
+    ! grep -q "OLD VERSION" .claude/commands/local.md
+    grep -q "Load Session" .claude/commands/local.md
 }
 
 @test "TC-106: Dry run preview" {

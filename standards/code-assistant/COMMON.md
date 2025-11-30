@@ -1,6 +1,6 @@
 # Code Assistant Standards - Common Guidance
 
-**Loaded by `/start` command from `$AI_ROOT/standards/`**
+**Loaded by `/load` command from `$AI_ROOT/standards/`**
 
 This document provides critical guidance for AI code assistants working on any project.
 
@@ -77,9 +77,9 @@ This document provides critical guidance for AI code assistants working on any p
 
 ## Session Management (Claude Code Optimized)
 
-**For Claude Code users:** Use `/start` and `/save` slash commands for session management.
+**For Claude Code users:** Use `/load` and `/save` slash commands for session management.
 
-### `/start` - Session Initialization
+### `/load` - Session Initialization
 
 **Run this EVERY time you start a new session (if available).**
 
@@ -95,7 +95,7 @@ This document provides critical guidance for AI code assistants working on any p
 **Usage (Claude Code):**
 
 ```
-/start
+/load
 ```
 
 **Other AI assistants:** Manually read STATE.md, TODO.md, STANDARDS-QUICKSTART.md, and relevant language files.
