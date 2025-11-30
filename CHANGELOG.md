@@ -1,3 +1,10 @@
+## [1.3.3](https://github.com/hypersec-io/ai/compare/1.3.2...1.3.3) (2025-11-30)
+
+
+### Bug Fixes
+
+* correct command filename to load.md and add start.md cleanup ([a2692a2](https://github.com/hypersec-io/ai/commit/a2692a2987111aa6f58e8a912b0be8e5474104a4))
+
 ## [1.3.2](https://github.com/hypersec-io/ai/compare/1.3.1...1.3.2) (2025-11-30)
 
 
