@@ -1,3 +1,10 @@
+## [1.3.4](https://github.com/hypersec-io/ai/compare/1.3.3...1.3.4) (2025-12-01)
+
+
+### Bug Fixes
+
+* require main as default branch, never master ([5d55ee9](https://github.com/hypersec-io/ai/commit/5d55ee9408e48aeb29d327ce95bdc27ea42b778c))
+
 ## [1.3.3](https://github.com/hypersec-io/ai/compare/1.3.2...1.3.3) (2025-11-30)
 
 
