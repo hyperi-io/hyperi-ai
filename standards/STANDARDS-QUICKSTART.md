@@ -120,6 +120,10 @@ def process_data(data):
 
 ## 2. Git Standards
 
+### Default Branch
+
+**Always `main`, never `master`.**
+
 ### Commit Format
 
 ```text

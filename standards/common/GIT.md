@@ -4,6 +4,16 @@ Branch naming and commit message conventions for all HyperSec projects.
 
 ---
 
+## Default Branch
+
+**Always use `main` as the default branch.** Never use `master`.
+
+- All new repositories MUST use `main`
+- Existing repos using `master` should be migrated
+- CI/CD, semantic-release, and branch protection rules assume `main`
+
+---
+
 ## Branch Naming
 
 **Formats:** (choose based on your workflow)
