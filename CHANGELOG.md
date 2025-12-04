@@ -1,3 +1,10 @@
+## [1.3.5](https://github.com/hypersec-io/ai/compare/1.3.4...1.3.5) (2025-12-04)
+
+
+### Bug Fixes
+
+* clarify no mocks policy - internal vs external dependencies ([931750e](https://github.com/hypersec-io/ai/commit/931750e346c1e8ce55786e4efecc4a76e51034e8))
+
 ## [1.3.4](https://github.com/hypersec-io/ai/compare/1.3.3...1.3.4) (2025-12-01)
 
 
