@@ -923,30 +923,24 @@ Use `./.tmp/` for ALL project-scoped temporary operations:
 
 ## 14. No Mocks Policy
 
-**Production code MUST be complete and functional before committing.**
+**"No mocks" = no mocking internal code. External dependencies are legitimate mock targets.**
 
-### Never Commit to src/
+| Mock Target | Allowed? |
+|-------------|----------|
+| Internal functions/classes | ❌ NO |
+| External APIs, DBs, K8s, network | ✅ YES |
 
-- Mock implementations or placeholder values
-- TODO/FIXME/HACK/XXX comments
-- Example/demo code as real features
-- Simplified "proof of concept" code
-- Always-true returns (`return true`, `return True`)
-- Generic exception swallowing (`except Exception: pass`)
+```python
+# ❌ BAD - mocking internal code
+with patch('myapp.utils.calculate') as m: ...
 
-### Always Implement
+# ✅ GOOD - mocking external boundary
+with patch('myapp.clients.stripe.charge') as m: ...
+```
 
-- Complete functionality before committing
-- All error cases and edge conditions
-- Input/output validation
-- Real data structures (not simplified examples)
-- Tests verifying complete behavior (90%+ coverage for AI code)
+**Production code:** No TODOs, no placeholders, no `return True`, no `except: pass`.
 
-### Where Mocks ARE Allowed
-
-- `tests/` directory (unit/integration tests)
-- `examples/` directory (explicitly marked)
-- Documentation code blocks
+**Full policy:** See `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
 
 ---
 

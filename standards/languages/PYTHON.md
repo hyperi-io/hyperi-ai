@@ -739,26 +739,24 @@ The following sections are specific guidance for AI code assistants working with
 
 ---
 
-## No Mocks Policy (Production Code)
+## No Mocks Policy
 
-**Production code must be complete before committing**
+**"No mocks" = no mocking internal code. External dependencies are legitimate mock targets.**
 
-❌ **NEVER in src/:**
+| Mock Target | Allowed? |
+|-------------|----------|
+| Internal functions/classes | ❌ NO |
+| External APIs, DBs, K8s, network | ✅ YES |
 
-- Mock implementations or placeholder values
-- TODO/FIXME/HACK comments
-- Example code as real features
-- Always-true returns (`return True`)
-- Generic exception swallowing (`except Exception: pass`)
+```python
+# ❌ BAD - mocking internal code
+with patch('myapp.utils.calculate') as m: ...
 
-✅ **ALWAYS:**
+# ✅ GOOD - mocking external boundary
+with patch('myapp.clients.stripe.charge') as m: ...
+```
 
-- Complete functionality
-- Handle errors and edge cases
-- Validate I/O
-- Add tests (80% coverage minimum)
-
-**Mocks allowed ONLY in:** `tests/`, `examples/`, documentation
+**Production code must be complete:** No TODOs, no `return True` placeholders, no `except: pass`.
 
 ---
 

@@ -1038,24 +1038,18 @@ result=$(echo "$(date)")
 
 ---
 
-## No Mocks Policy (Production Scripts)
+## No Mocks Policy
 
-Production scripts must be complete before committing.
+**"No mocks" = no mocking internal code. External boundaries are legitimate mock targets.**
 
-❌ **NEVER:**
+For bash scripts, this means:
 
-- Placeholder commands (`# TODO: implement`)
-- Always-success returns (`exit 0` without logic)
-- Hardcoded example paths (`/home/user/...`)
-- Missing error handling
+- ❌ Don't stub internal functions with fake implementations
+- ✅ Mock external commands (curl, kubectl, aws CLI) in BATS tests
 
-✅ **ALWAYS:**
+**Production scripts must be complete:** No `# TODO`, no `exit 0` without logic, no hardcoded example paths.
 
-- Complete error handling with meaningful messages
-- Proper cleanup with traps
-- Idempotent operations
-- ShellCheck compliance
-- BATS tests for scripts > 50 lines
+**Required:** Error handling, cleanup traps, idempotence, ShellCheck, BATS tests for scripts >50 lines.
 
 ---
 

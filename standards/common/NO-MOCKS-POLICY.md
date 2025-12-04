@@ -1,10 +1,45 @@
-# No Mocks or Mock Code Policy
+# No Mocks Policy
 
-**Critical policy for AI code assistants and human developers**
+**"No mocks" means no mocking internal code—external dependencies are legitimate mock targets.**
 
 ---
 
-## The Problem
+## The Distinction
+
+| Mock Target | Allowed? | Reason |
+|-------------|----------|--------|
+| Internal functions/classes | ❌ NO | Test real behaviour, not imaginary contracts |
+| External APIs (AWS, GCP, Stripe) | ✅ YES | Can't control external systems in tests |
+| Databases (PostgreSQL, Redis) | ✅ YES | Use testcontainers or in-memory alternatives |
+| Kubernetes API | ✅ YES | Mock the API boundary, not your K8s code |
+| File systems, network calls | ✅ YES | External boundaries are fair game |
+
+---
+
+## Why No Internal Mocks?
+
+Mocking internal code creates tests that pass but don't verify real behaviour:
+
+```python
+# ❌ BAD - mocking internal code
+def test_process_order():
+    with patch('myapp.services.calculate_total') as mock_calc:
+        mock_calc.return_value = 100.0  # Imaginary contract!
+        result = process_order(order)
+        assert result.total == 100.0  # Tests nothing real
+
+# ✅ GOOD - test real internal code, mock external boundary
+def test_process_order():
+    with patch('myapp.clients.stripe.charge') as mock_stripe:
+        mock_stripe.return_value = ChargeResult(success=True)
+        result = process_order(order)
+        assert result.total == 85.0  # Real calculation
+        mock_stripe.assert_called_with(amount=8500)  # Real integration
+```
+
+---
+
+## The Problem with Mock Code in Production
 
 AI code assistants routinely mistake placeholder/mock code as production-ready, causing: half-implemented features, missing error handling, incomplete logic with TODOs, example code treated as real, security vulnerabilities from simplified POC code.
 
@@ -16,7 +51,7 @@ AI code assistants routinely mistake placeholder/mock code as production-ready, 
 
 ---
 
-## Policy: No Mocks, No Placeholders
+## Production Code Requirements
 
 **Production code MUST be complete and functional**
 
@@ -299,39 +334,58 @@ def create_user(email: str, password: str) -> int:
 
 ---
 
-## When Mocks ARE Allowed
+## Where Mocks ARE Allowed
 
-### Test Code Only
+### In Tests: External Dependencies Only
 
-**Mock code is ONLY acceptable in:**
+**Mock external boundaries in `tests/` directory:**
 
-- `tests/` directory (unit tests, integration tests)
-- `examples/` directory (explicitly marked as examples)
-- Documentation code blocks (clearly marked as examples)
+- External APIs (Stripe, AWS, GCP, third-party services)
+- Databases (use testcontainers, SQLite, or mocks)
+- Kubernetes API
+- File systems, network calls
+- Time/clock (for deterministic tests)
 
-**Example (acceptable mock in tests):**
+**Never mock internal code in tests:**
 
 ```python
-# tests/unit/test_payment.py
-from unittest.mock import Mock, patch
+# ❌ BAD - mocking internal function
+with patch('myapp.utils.calculate_tax') as mock:
+    mock.return_value = 10.0  # Tests imaginary contract
 
-def test_process_payment_success():
-    """Test payment processing with mocked Stripe."""
-    with patch('stripe.Charge.create') as mock_charge:
-        mock_charge.return_value = Mock(id="ch_123")
-
-        result = process_payment(100.0, "tok_visa")
-
-        assert result.success is True
-        assert result.transaction_id == "ch_123"
+# ✅ GOOD - mocking external API boundary
+with patch('myapp.clients.stripe.create_charge') as mock:
+    mock.return_value = ChargeResult(id="ch_123")
 ```
 
-**Why this is OK:**
+### Preferred Testing Patterns
 
-- File is in `tests/` directory (clearly test code)
-- Mocking external service (Stripe) we don't control
-- Testing our logic, not Stripe's
-- Production code is still complete
+```python
+# External API - mock at the client boundary
+@patch('myapp.clients.stripe_client')
+def test_payment(mock_stripe):
+    mock_stripe.create_charge.return_value = Charge(id="ch_123")
+    result = process_payment(100.0, "tok_visa")
+    assert result.transaction_id == "ch_123"
+
+# Database - use testcontainers or in-memory
+@pytest.fixture
+def db():
+    with PostgresContainer() as postgres:
+        yield create_connection(postgres.get_connection_url())
+
+# Kubernetes - mock the API, not your code
+@patch('kubernetes.client.CoreV1Api')
+def test_create_secret(mock_api):
+    mock_api.return_value.create_namespaced_secret.return_value = V1Secret()
+    result = create_app_secret("my-secret", {"key": "value"})
+    assert result.metadata.name == "my-secret"
+```
+
+### Also Allowed
+
+- `examples/` directory (explicitly marked)
+- Documentation code blocks
 
 ---
 
