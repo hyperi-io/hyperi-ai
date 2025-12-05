@@ -1,3 +1,10 @@
+## [1.3.7](https://github.com/hypersec-io/ai/compare/1.3.6...1.3.7) (2025-12-05)
+
+
+### Bug Fixes
+
+* require uv for all Python work ([4497318](https://github.com/hypersec-io/ai/commit/4497318ca8a7ab2a1e8abbdd51389fd565070739))
+
 ## [1.3.6](https://github.com/hypersec-io/ai/compare/1.3.5...1.3.6) (2025-12-05)
 
 
