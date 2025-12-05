@@ -965,6 +965,20 @@ with patch('myapp.clients.stripe.charge') as m: ...
 
 ---
 
+## 16. Python: uv Required
+
+**Use uv, not pip/python directly.** Exception: external non-uv projects.
+
+| Use | Not |
+|-----|-----|
+| `uv venv` | `python -m venv` |
+| `uv sync` | `pip install -r` |
+| `uv add <pkg>` | `pip install` |
+| `uv run python` | `python` |
+| `uv run -m pytest` | `python -m pytest` |
+
+---
+
 ## Quick Reference Checklist
 
 ### Before Committing

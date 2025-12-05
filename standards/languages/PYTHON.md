@@ -124,14 +124,45 @@ myproject/
 
 ## Dependencies (uv)
 
-**uv** replaces pip, pip-tools, virtualenv:
+**uv is REQUIRED for all Python work.** Both humans and AI assistants must use uv instead of native Python commands.
+
+### uv-First Policy
+
+| Task | Use | NOT |
+|------|-----|-----|
+| Create venv | `uv venv` | `python -m venv` |
+| Install deps | `uv sync` | `pip install -r` |
+| Add package | `uv add <pkg>` | `pip install <pkg>` |
+| Add dev dep | `uv add --dev <pkg>` | `pip install <pkg>` |
+| Run script | `uv run python script.py` | `python script.py` |
+| Run module | `uv run -m pytest` | `python -m pytest` |
+| Update lock | `uv lock` | `pip-compile` |
+| Show deps | `uv tree` | `pip list` |
+
+### Common Commands
 
 ```bash
-uv sync --locked               # Install from lock
-uv add <pkg>                   # Add dependency
+uv venv                        # Create virtual environment
+uv sync --locked               # Install from lock file
+uv add <pkg>                   # Add runtime dependency
 uv add --dev <pkg>             # Add dev dependency
-./ci/run dependency-update     # Update lock file
+uv remove <pkg>                # Remove dependency
+uv lock                        # Update lock file
+uv run python script.py        # Run with project deps
+uv run -m pytest               # Run module with deps
+./ci/run dependency-update     # CI wrapper for lock update
 ```
+
+### When Native Python is Acceptable
+
+Only use native `python` or `pip` when:
+
+- Working on external projects that don't use uv
+- Modifying/extending third-party codebases
+- System-level scripts outside project context
+- No alternative exists (rare)
+
+For HyperSec projects, **always use uv**.
 
 ---
 
