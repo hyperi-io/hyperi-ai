@@ -1,3 +1,10 @@
+## [1.3.6](https://github.com/hypersec-io/ai/compare/1.3.5...1.3.6) (2025-12-05)
+
+
+### Bug Fixes
+
+* add CLI utility preferences for modern tools ([88a4cc4](https://github.com/hypersec-io/ai/commit/88a4cc4ccc4fbe6948849310a52b39bffc8bf98c))
+
 ## [1.3.5](https://github.com/hypersec-io/ai/compare/1.3.4...1.3.5) (2025-12-04)
 
 
