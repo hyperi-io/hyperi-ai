@@ -944,6 +944,27 @@ with patch('myapp.clients.stripe.charge') as m: ...
 
 ---
 
+## 15. CLI Utility Preferences
+
+**Use modern tools when available:**
+
+| Task | Use | Not |
+|------|-----|-----|
+| Search | `rg` (ripgrep) | `grep -R` |
+| Find files | `fd` / `fdfind` | `find` |
+| File loops | `fd`, `parallel`, `xargs -0` | bash for loops |
+| Replace | `sd` | `sed -i` |
+| JSON | `jq` | grep/awk |
+| YAML/JSON/XML/CSV/TOML | `yq` | grep/awk |
+| CSV/TSV | `mlr` (Miller) | awk/cut |
+| Dir trees | `rsync` | cp/mv |
+| Preview | `bat` / `batcat` | `cat` |
+| Pickers | `fzf` | shell menus |
+
+**Full guide:** See `$AI_ROOT/standards/code-assistant/COMMON.md`
+
+---
+
 ## Quick Reference Checklist
 
 ### Before Committing

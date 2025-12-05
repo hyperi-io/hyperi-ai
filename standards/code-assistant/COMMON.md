@@ -224,6 +224,27 @@ git commit -m "fix: improve error handling"  # NOT feat: unless truly new
 
 ---
 
+## CLI Utility Preferences
+
+**Use modern CLI tools when available:**
+
+| Task | Use | Instead of |
+|------|-----|------------|
+| Recursive text search | `rg` (ripgrep) | `grep -R` |
+| Find files | `fd` / `fdfind` | `find` |
+| File loops | `fd`, `parallel`, `xargs -0` | bash for loops |
+| Search/replace | `sd` | `sed -i` |
+| JSON | `jq` | grep/awk |
+| YAML/JSON/XML/CSV/TOML | `yq` | grep/awk |
+| CSV/TSV | `mlr` (Miller) | awk/cut |
+| Directory trees | `rsync` | complex cp/mv |
+| File preview | `bat` / `batcat` | `cat` |
+| Interactive pickers | `fzf` | custom shell menus |
+
+**Check availability:** `command -v tool_name`. Fall back to standard tools if not installed.
+
+---
+
 ## GitHub and Licensing Defaults
 
 **When creating new repositories or projects:**

@@ -601,16 +601,28 @@ some_command ${args}  # Word splitting issues
 
 ## Loops and Iteration
 
+**Prefer modern CLI tools over bash loops** - Use `fd`, `parallel`, `xargs -0` instead of hand-written loops. See `$AI_ROOT/standards/code-assistant/COMMON.md` for full CLI utility preferences.
+
 ### Loop Over Files
 
 ```bash
-# ✅ Good - handles spaces in filenames
+# ✅ Best - use fd with -x/-X for batch operations
+fd -e txt -x process {}              # One process per file
+fd -e txt -X process                 # All files as arguments
+
+# ✅ Best - GNU parallel for complex processing
+fd -e txt | parallel process {}
+
+# ✅ Best - use xargs -0 with find for complex filters
+find "${dir}" -name "*.txt" -print0 | xargs -0 process
+
+# ✅ OK - bash loop handles spaces in filenames (when tools unavailable)
 for file in "${dir}"/*.txt; do
     [[ -f "${file}" ]] || continue  # Handle no matches
     process "${file}"
 done
 
-# ✅ Good - read lines from file
+# ✅ OK - read lines from file
 while IFS= read -r line; do
     echo "${line}"
 done < "${input_file}"
