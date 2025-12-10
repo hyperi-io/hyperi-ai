@@ -11,22 +11,22 @@ You are loading project context for a new work session or refreshing my memory.
 
 **Step 2: Load standards:**
 
-- [STANDARDS-QUICKSTART.md](../../standards/STANDARDS-QUICKSTART.md) - Core coding standards (includes language/infra file mapping)
+- [STANDARDS-QUICKSTART.md](../../ai/standards/STANDARDS-QUICKSTART.md) - Core coding standards (includes language/infra file mapping)
 
 **Step 3: Load language and infrastructure standards:**
 
 Scan project root for config files and load matching standards (self-documenting naming):
 
-| If you find... | Load from `standards/languages/` |
-|----------------|----------------------------------|
+| If you find... | Load from `ai/standards/languages/` |
+|----------------|-------------------------------------|
 | `pyproject.toml`, `setup.py`, `*.py` | `PYTHON.md` |
 | `go.mod` | `GOLANG.md` |
 | `package.json`, `tsconfig.json` | `TYPESCRIPT.md` |
 | `Cargo.toml` | `RUST.md` |
 | `*.sh`, `ci/` directory | `BASH.md` |
 
-| If you find... | Load from `standards/infrastructure/` |
-|----------------|---------------------------------------|
+| If you find... | Load from `ai/standards/infrastructure/` |
+|----------------|------------------------------------------|
 | `Dockerfile`, `docker-compose.yaml` | `DOCKER.md` |
 | `Chart.yaml`, `helmfile.yaml` | `K8S.md` |
 | `*.tf` | `TERRAFORM.md` |

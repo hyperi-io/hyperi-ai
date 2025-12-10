@@ -11,12 +11,12 @@ You are loading project context for a new work session or refreshing my memory.
 
 **Step 2: Load standards:**
 
-- [STANDARDS-QUICKSTART.md](../../standards/STANDARDS-QUICKSTART.md) - Core coding standards (includes language/infra file mapping)
+- [STANDARDS-QUICKSTART.md](../../ai/standards/STANDARDS-QUICKSTART.md) - Core coding standards (includes language/infra file mapping)
 
 **Step 3: Load language and infrastructure standards:**
 
 - Check project files to determine which languages/infra are in use
-- Load relevant files from [standards/languages/](../../standards/languages/) and [standards/infrastructure/](../../standards/infrastructure/)
+- Load relevant files from [ai/standards/languages/](../../ai/standards/languages/) and [ai/standards/infrastructure/](../../ai/standards/infrastructure/)
 - See "Loading Standards" section in STANDARDS-QUICKSTART.md for file mapping
 
 ---
