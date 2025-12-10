@@ -1,3 +1,10 @@
+## [1.3.8](https://github.com/hypersec-io/ai/compare/1.3.7...1.3.8) (2025-12-10)
+
+
+### Bug Fixes
+
+* correct standards paths for attached submodule usage ([29bfcd7](https://github.com/hypersec-io/ai/commit/29bfcd707f886227f977a18fc175a6f27c67b42c))
+
 ## [1.3.7](https://github.com/hypersec-io/ai/compare/1.3.6...1.3.7) (2025-12-05)
 
 
