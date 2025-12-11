@@ -965,20 +965,6 @@ with patch('myapp.clients.stripe.charge') as m: ...
 
 ---
 
-## 16. Python: uv Required
-
-**Use uv, not pip/python directly.** Exception: external non-uv projects.
-
-| Use | Not |
-|-----|-----|
-| `uv venv` | `python -m venv` |
-| `uv sync` | `pip install -r` |
-| `uv add <pkg>` | `pip install` |
-| `uv run python` | `python` |
-| `uv run -m pytest` | `python -m pytest` |
-
----
-
 ## Quick Reference Checklist
 
 ### Before Committing
@@ -988,7 +974,7 @@ with patch('myapp.clients.stripe.charge') as m: ...
 - [ ] Tests pass (80%+ coverage)
 - [ ] Commit message: `<type>: <description>` format
 - [ ] No sensitive data logged
-- [ ] Type hints on public functions (Python)
+- [ ] Type hints/annotations on public functions
 - [ ] American spelling in code, Australian in docs/comments
 - [ ] Complete implementation (no placeholders)
 
@@ -1005,10 +991,79 @@ The following sections are specific guidance for AI code assistants (Claude Code
 **All AI code assistants load:**
 
 1. `$AI_ROOT/standards/STANDARDS-QUICKSTART.md` (this file)
-2. Language files from `$AI_ROOT/standards/languages/` - detect by project config files
-3. Infrastructure files from `$AI_ROOT/standards/infrastructure/` - detect by IaC files present
+2. **REQUIRED:** Language standards from `$AI_ROOT/standards/languages/`
+3. Infrastructure standards from `$AI_ROOT/standards/infrastructure/` (if IaC present)
 
-**Auto-detection:** Match project files (e.g., `pyproject.toml`, `go.mod`, `Chart.yaml`, `*.tf`) to the corresponding standards file in the appropriate directory. File names are self-documenting (e.g., `PYTHON.md`, `GOLANG.md`, `K8S.md`, `TERRAFORM.md`).
+---
+
+## MANDATORY: Detect Project Language
+
+⚠️ **After loading this file, you MUST detect the project's primary language and load the corresponding standards file.**
+
+### Step 1: Check for Language Indicators
+
+Use the **Glob tool** (not Bash) to check for config files in the **project root only** (not subdirectories):
+
+```text
+Glob pattern: {pyproject.toml,setup.py,go.mod,package.json,tsconfig.json,Cargo.toml}
+Path: $PROJECT_ROOT (not $AI_ROOT)
+```
+
+**Ignore matches from:** `.venv/`, `node_modules/`, `vendor/`, `target/`, `.git/`, git submodules (e.g., `ai/`, `ci/`)
+
+| File Found (root only) | Language | Standards File |
+|------------------------|----------|----------------|
+| `pyproject.toml`, `setup.py`, `requirements.txt`, `uv.lock` | Python | `PYTHON.md` |
+| `go.mod`, `go.sum` | Go | `GOLANG.md` |
+| `package.json`, `tsconfig.json` | TypeScript | `TYPESCRIPT.md` |
+| `Cargo.toml`, `Cargo.lock` | Rust | `RUST.md` |
+| `*.sh` scripts only (no other lang files) | Bash | `BASH.md` |
+
+### Step 2: Verify by Reading Config File
+
+**Do NOT guess.** Use the **Read tool** on the config file to confirm:
+
+- Python → Read `pyproject.toml` or `setup.py`
+- Go → Read `go.mod` (module name confirms Go)
+- TypeScript → Read `tsconfig.json` or `package.json`
+- Rust → Read `Cargo.toml`
+
+### Step 3: Load the ENTIRE Language Standards File
+
+Use the **Read tool** to load the complete language standards file (do not truncate):
+
+```text
+$AI_ROOT/standards/languages/PYTHON.md
+$AI_ROOT/standards/languages/GOLANG.md
+$AI_ROOT/standards/languages/TYPESCRIPT.md
+$AI_ROOT/standards/languages/RUST.md
+$AI_ROOT/standards/languages/BASH.md
+```
+
+### Step 4: Check for Infrastructure
+
+Also check for IaC files and load corresponding standards:
+
+| Files | Standards |
+|-------|-----------|
+| `Chart.yaml`, `values.yaml`, `templates/` | `K8S.md` |
+| `*.tf`, `terraform.tfstate` | `TERRAFORM.md` |
+| `playbook.yml`, `ansible.cfg`, `inventory/` | `ANSIBLE.md` |
+
+### Multiple Languages
+
+If project has multiple languages (e.g., Python backend + TypeScript frontend):
+
+1. Load ALL relevant language standards
+2. Apply each to its respective code sections
+3. Note the primary language in your response
+
+### No Code Project
+
+If the project has no source code (docs-only, config-only):
+
+- Skip language detection
+- Proceed with general standards only
 
 ---
 
@@ -1189,32 +1244,48 @@ git reset --hard HEAD~3  # Revert last 3 commits
 
 ---
 
-## Avoid Sleep Commands for Debugging
+## NEVER Use Long Sleep Commands
 
-**AI assistants should avoid using `sleep` commands for debugging purposes.**
-
-❌ **DON'T:** Use sleep to wait for processes or debug timing issues
+⛔ **DENIED:** `sleep 10+` is blocked in settings.json. Use polling loops instead.
 
 ```bash
-# BAD - blocks all interaction
-sleep 30  # Wait for service to start
-curl http://localhost:8080/health
-```
-
-✅ **DO:** Use polling loops, health checks, or timeouts
-
-```bash
-# GOOD - allows interruption, provides feedback
+# REQUIRED pattern - short sleeps with feedback
 for i in {1..30}; do
-    curl -s http://localhost:8080/health && break
-    echo "Waiting for service... ($i/30)"
-    sleep 1
+  [ -f /tmp/ready ] && break
+  echo "Waiting... ($i/30)"
+  sleep 1
 done
 ```
 
-**Why:** Sleep commands block all interaction with the AI assistant during execution. The user cannot cancel, provide input, or see progress. Use short polling intervals with feedback instead.
+**Why:** Long sleeps block ALL user interaction - cannot cancel, provide input, or see progress.
 
-**Applies to:** AI assistant debugging/testing workflows only (NOT coding advice for user projects).
+## External Directory Search - MANDATORY
+
+NEVER use Glob/Grep on directories outside the current project. Use fd or find instead.
+
+### With fd (preferred)
+
+Use `-H` to include hidden directories (like `.claude/`):
+
+```bash
+fd -H -t f -e EXT --max-results 100 -d 4 -E .git -E .venv -E node_modules -E __pycache__ -E vendor -E target -E dist -E build -E .terraform . /path/
+```
+
+For hidden directory patterns: `fd -H -t f "settings.json" -d 4 /path/ | grep '\.claude/'`
+
+### With find (fallback)
+
+```bash
+find /path/ -maxdepth 4 -type f -name "*.EXT" -not -path "*/.git/*" -not -path "*/.venv/*" -not -path "*/node_modules/*" | head -100
+```
+
+For path patterns: `find /path/ -maxdepth 4 -path '*/.claude/settings.json' -type f`
+
+### Check tool
+
+`which fd || which fdfind || echo "use find"` (Debian/Ubuntu: fd is `fdfind`)
+
+After listing files, use Read tool on specific paths.
 
 ---
 

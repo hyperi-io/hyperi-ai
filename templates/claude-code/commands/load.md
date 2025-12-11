@@ -9,34 +9,63 @@ You are loading project context for a new work session or refreshing my memory.
 - [STATE.md](../../STATE.md) - Current project state and session history
 - [TODO.md](../../TODO.md) - Current tasks and priorities
 
-**Step 2: Load standards:**
+**Step 2: Load standards (COMPLETE FILE - do not truncate):**
 
-- [STANDARDS-QUICKSTART.md](../../ai/standards/STANDARDS-QUICKSTART.md) - Core coding standards (includes language/infra file mapping)
+- [STANDARDS-QUICKSTART.md](../../ai/standards/STANDARDS-QUICKSTART.md) - Core coding standards
 
-**Step 3: Load language and infrastructure standards:**
+⚠️ **Read the ENTIRE file** - do not use `limit` parameter or truncate. Critical instructions are throughout.
 
-Scan project root for config files and load matching standards (self-documenting naming):
+**Step 3: Detect project language and load standards:**
 
-| If you find... | Load from `ai/standards/languages/` |
-|----------------|-------------------------------------|
-| `pyproject.toml`, `setup.py`, `*.py` | `PYTHON.md` |
-| `go.mod` | `GOLANG.md` |
-| `package.json`, `tsconfig.json` | `TYPESCRIPT.md` |
-| `Cargo.toml` | `RUST.md` |
-| `*.sh`, `ci/` directory | `BASH.md` |
+Follow the "MANDATORY: Detect Project Language" section in STANDARDS-QUICKSTART.md:
 
-| If you find... | Load from `ai/standards/infrastructure/` |
-|----------------|------------------------------------------|
-| `Dockerfile`, `docker-compose.yaml` | `DOCKER.md` |
-| `Chart.yaml`, `helmfile.yaml` | `K8S.md` |
-| `*.tf` | `TERRAFORM.md` |
-| `ansible.cfg`, `playbooks/` | `ANSIBLE.md` |
+1. **Glob** for config files in project root (not subdirs, not `.venv/`, not `node_modules/`, not git submodules)
+2. **Read** the config file to confirm language
+3. **Read the ENTIRE language standards file** (do not truncate):
+
+| Config File Found | Load (COMPLETE FILE) |
+|-------------------|----------------------|
+| `pyproject.toml`, `setup.py` | `ai/standards/languages/PYTHON.md` |
+| `go.mod` | `ai/standards/languages/GOLANG.md` |
+| `package.json`, `tsconfig.json` | `ai/standards/languages/TYPESCRIPT.md` |
+| `Cargo.toml` | `ai/standards/languages/RUST.md` |
+| `*.sh` only (no other lang) | `ai/standards/languages/BASH.md` |
+
+**Step 4: Check for infrastructure:**
+
+| IaC Files Found | Load (COMPLETE FILE) |
+|-----------------|----------------------|
+| `Dockerfile`, `docker-compose.yaml` | `ai/standards/infrastructure/DOCKER.md` |
+| `Chart.yaml`, `values.yaml` | `ai/standards/infrastructure/K8S.md` |
+| `*.tf` | `ai/standards/infrastructure/TERRAFORM.md` |
+| `ansible.cfg`, `playbook.yml` | `ai/standards/infrastructure/ANSIBLE.md` |
 
 ---
 
 ## Ready to Work
 
-After loading documentation:
+After loading all documentation:
 
 1. Check git status and recent commits
 2. Be ready - no greetings, wait for the user's first task
+
+---
+
+## IMPORTANT: Proactive Saving
+
+⚠️ **Run `/save` proactively throughout the session** - context can compact without warning.
+
+**Save when:**
+
+- After completing any significant task
+- Every 30-40 exchanges
+- Before the user takes breaks
+- When your responses get shorter (sign of context pressure)
+- After making important decisions
+
+**Signs you need to save NOW:**
+
+- Responses getting truncated
+- Forgetting earlier context
+- Repeating questions already answered
+- Uncertainty about what was discussed earlier
