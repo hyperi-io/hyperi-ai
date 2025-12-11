@@ -1,3 +1,10 @@
+## [1.4.0](https://github.com/hypersec-io/ai/compare/1.3.8...1.4.0) (2025-12-11)
+
+
+### Features
+
+* enhance session state management and Claude Code permissions ([fdd6c4f](https://github.com/hypersec-io/ai/commit/fdd6c4f3c512b327dbb4656ad80f04d2b6d50303))
+
 ## [1.3.8](https://github.com/hypersec-io/ai/compare/1.3.7...1.3.8) (2025-12-10)
 
 
