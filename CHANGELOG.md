@@ -1,3 +1,10 @@
+## [1.4.2](https://github.com/hypersec-io/ai/compare/1.4.1...1.4.2) (2025-12-15)
+
+
+### Bug Fixes
+
+* add .env file quoting standard - always quote values ([7365b52](https://github.com/hypersec-io/ai/commit/7365b52de023335ee9d9d1c9d80c7a2eba97d391))
+
 ## [1.4.1](https://github.com/hypersec-io/ai/compare/1.4.0...1.4.1) (2025-12-15)
 
 
