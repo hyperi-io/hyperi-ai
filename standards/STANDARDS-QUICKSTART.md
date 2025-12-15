@@ -264,6 +264,23 @@ All configuration follows this priority (highest to lowest):
 **Python:** Use `hs-lib` (zero-config cascade via Dynaconf)
 **Other languages:** See `$AI_ROOT/standards/common/CONFIG-AND-LOGGING.md`
 
+### .env Files - Always Quote Values
+
+```bash
+# ✅ CORRECT - Always quote
+DATABASE_HOST="localhost"
+API_KEY="sk-1234567890"
+DEBUG="true"
+
+# ❌ WRONG - Unquoted
+DATABASE_HOST=localhost
+VALUE_WITH_HASH=secret#123  # Breaks at #
+```
+
+Applies to: `.env`, `.env.example`, `env.example`, `.env.sample`, `.env.{environment}`
+
+**Full guide:** `$AI_ROOT/standards/common/CONFIG-AND-LOGGING.md`
+
 ### Logging Format
 
 | Context | Format | Colours |

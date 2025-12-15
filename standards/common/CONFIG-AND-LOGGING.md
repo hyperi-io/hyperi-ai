@@ -44,6 +44,104 @@ cache.redis.enabled   → MYAPP_CACHE_REDIS_ENABLED
 
 ---
 
+## .env File Format
+
+### Always Quote Values - No Exceptions
+
+**All values in `.env` files MUST be quoted.** This applies to:
+
+- `.env` - Local secrets (gitignored)
+- `.env.example` / `env.example` - Template for developers
+- `.env.sample` - Sample configuration
+- `.env.{environment}` - Environment-specific (`.env.production`, `.env.staging`)
+
+### Why Always Quote?
+
+1. **Consistency** - One rule, no exceptions, no thinking required
+2. **Safety** - Values with spaces, `#`, `$`, quotes won't break
+3. **Portability** - Works across all parsers (dotenv, docker, shell)
+4. **Prevents bugs** - Unquoted `#` starts a comment, breaking your config
+
+### Correct Format
+
+```bash
+# ✅ CORRECT - Always quote values
+DATABASE_HOST="localhost"
+DATABASE_PORT="5432"
+API_KEY="sk-1234567890abcdef"
+APP_NAME="My Application"
+DEBUG="true"
+EMPTY_VALUE=""
+PATH_WITH_SPACES="/path/to/my app/config"
+VALUE_WITH_HASH="secret#123"
+```
+
+### Incorrect Format
+
+```bash
+# ❌ WRONG - Unquoted values
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DEBUG=true
+
+# ❌ WRONG - These will BREAK
+APP_NAME=My Application          # Stops at space
+VALUE_WITH_HASH=secret#123       # Stops at hash (comment)
+JSON_CONFIG={"key":"value"}      # Brace parsing issues
+```
+
+### Quote Style
+
+**Use double quotes (`"`)** - they're the most portable:
+
+```bash
+# ✅ Preferred - Double quotes
+DATABASE_URL="postgresql://user:pass@host/db"
+
+# ⚠️ Acceptable - Single quotes (no variable expansion)
+DATABASE_URL='postgresql://user:pass@host/db'
+
+# ❌ Never - Backticks or no quotes
+DATABASE_URL=`postgresql://user:pass@host/db`
+```
+
+### Escaping Within Quoted Values
+
+```bash
+# Double quotes inside double quotes - escape with backslash
+MESSAGE="He said \"Hello\""
+
+# Or use single quotes to contain double quotes
+MESSAGE='He said "Hello"'
+
+# Dollar signs in double quotes - escape to prevent expansion
+PRICE="Cost is \$100"
+
+# Or use single quotes (no expansion in single quotes)
+PRICE='Cost is $100'
+```
+
+### .env.example Template
+
+```bash
+# Database Configuration
+DATABASE_HOST="localhost"
+DATABASE_PORT="5432"
+DATABASE_NAME="myapp_dev"
+DATABASE_USER="postgres"
+DATABASE_PASSWORD=""
+
+# API Keys (get from team password manager)
+API_KEY=""
+SECRET_KEY=""
+
+# Feature Flags
+DEBUG="false"
+LOG_LEVEL="INFO"
+```
+
+---
+
 ## Multi-Language Implementation
 
 ### Python (hs-lib / Dynaconf)
