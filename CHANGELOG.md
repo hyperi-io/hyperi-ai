@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/hypersec-io/ai/compare/1.4.0...1.4.1) (2025-12-15)
+
+
+### Bug Fixes
+
+* use relative symlinks instead of copying in claude-code.sh ([3a99cb1](https://github.com/hypersec-io/ai/commit/3a99cb19ca2061ca5975279fd765df30283d3e71))
+
 ## [1.4.0](https://github.com/hypersec-io/ai/compare/1.3.8...1.4.0) (2025-12-11)
 
 
