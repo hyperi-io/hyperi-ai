@@ -1,3 +1,10 @@
+## [1.6.2](https://github.com/hypersec-io/ai/compare/1.6.1...1.6.2) (2025-12-16)
+
+
+### Bug Fixes
+
+* improve submodule remediation in attach.sh ([a7c21b9](https://github.com/hypersec-io/ai/commit/a7c21b99b84982d40e75ddb3444c9f0a4b5c475d))
+
 ## [1.6.1](https://github.com/hypersec-io/ai/compare/1.6.0...1.6.1) (2025-12-16)
 
 
