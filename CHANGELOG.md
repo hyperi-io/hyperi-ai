@@ -1,3 +1,10 @@
+## [1.6.4](https://github.com/hypersec-io/ai/compare/1.6.3...1.6.4) (2025-12-16)
+
+
+### Bug Fixes
+
+* auto-fix deprecated CI repo URLs (hyperci, hs-ci) ([d0e0f99](https://github.com/hypersec-io/ai/commit/d0e0f9974cbd9828ceaa3265e68d170fe4a8e1a0))
+
 ## [1.6.3](https://github.com/hypersec-io/ai/compare/1.6.2...1.6.3) (2025-12-16)
 
 
