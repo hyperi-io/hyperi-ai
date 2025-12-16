@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
+# Project:      HyperSec AI
+# File:         claude.sh
+# Purpose:      Setup Claude Code configuration for a project
+# License:      LicenseRef-HyperSec-EULA
+# Copyright:    (c) 2025 HyperSec Pty Ltd
 #
-# claude-code.sh - Setup Claude Code configuration
-#
-# Usage: ./claude-code.sh [--help] [--dry-run] [--force] [--path PATH] [--verbose]
+# Usage: ./claude.sh [--help] [--dry-run] [--force] [--no-managed] [--path PATH] [--verbose]
 #
 set -euo pipefail
 
@@ -10,6 +13,7 @@ set -euo pipefail
 DRY_RUN=false
 FORCE=false
 VERBOSE=false
+NO_MANAGED=false
 AI_ROOT=""
 PROJECT_ROOT=""
 
@@ -34,8 +38,8 @@ detect_paths() {
 check_prerequisites() {
     if [ ! -f "$PROJECT_ROOT/STATE.md" ]; then
         echo "ERROR: STATE.md not found in project root"
-        echo "Please run install.sh first:"
-        echo "  ./ai/install.sh"
+        echo "Please run attach.sh first:"
+        echo "  ./ai/attach.sh"
         exit 1
     fi
 
@@ -172,6 +176,75 @@ deploy_commands() {
     fi
 }
 
+# Install managed-settings.json to /etc/claude-code/ (requires sudo)
+# This provides system-wide corporate defaults for Claude Code
+install_managed_settings() {
+    if [ "$NO_MANAGED" = "true" ]; then
+        if [ "$VERBOSE" = "true" ]; then
+            echo "Skipped: managed-settings.json (--no-managed)"
+        fi
+        return 0
+    fi
+
+    local src="$AI_ROOT/templates/claude-code/managed-settings.json"
+    local dst_dir="/etc/claude-code"
+    local dst="$dst_dir/managed-settings.json"
+
+    if [ ! -f "$src" ]; then
+        if [ "$VERBOSE" = "true" ]; then
+            echo "Skipped: managed-settings.json template not found"
+        fi
+        return 0
+    fi
+
+    # Check if already installed and matches
+    if [ -f "$dst" ]; then
+        if cmp -s "$src" "$dst" 2>/dev/null; then
+            echo "Managed settings already installed: $dst"
+            return 0
+        elif [ "$FORCE" != "true" ]; then
+            echo "Skipped: $dst exists (use --force to update)"
+            return 0
+        fi
+    fi
+
+    if [ "$DRY_RUN" = "true" ]; then
+        echo "Would install: $dst (requires sudo)"
+        return 0
+    fi
+
+    # Check if we can use sudo
+    if ! command -v sudo >/dev/null 2>&1; then
+        echo "Skipped: managed-settings.json (sudo not available)"
+        if [ "$VERBOSE" = "true" ]; then
+            echo "  To install manually: sudo mkdir -p $dst_dir && sudo cp $src $dst"
+        fi
+        return 0
+    fi
+
+    # Prompt user about what we're doing
+    echo ""
+    echo "Installing organisation-wide Claude Code settings..."
+    echo "  Source: $src"
+    echo "  Destination: $dst"
+    echo ""
+    echo "This configures Claude Code defaults for all projects on this machine:"
+    echo "  - Disables telemetry and error reporting"
+    echo "  - Removes co-authored-by attribution from commits"
+    echo "  - Requires confirmation for reading sensitive files"
+    echo ""
+    echo "You may be prompted for your password (sudo required)."
+    echo ""
+
+    # Try to install with sudo
+    if sudo mkdir -p "$dst_dir" && sudo cp "$src" "$dst" && sudo chmod 644 "$dst"; then
+        echo "Installed: $dst"
+    else
+        echo "WARNING: Failed to install managed-settings.json"
+        echo "  To install manually: sudo mkdir -p $dst_dir && sudo cp $src $dst"
+    fi
+}
+
 # Create CLAUDE.md symlink to STATE.md
 create_symlink() {
     local link="$PROJECT_ROOT/CLAUDE.md"
@@ -232,7 +305,7 @@ print_summary() {
 # Show usage information
 show_usage() {
     cat << EOF
-claude-code.sh - Setup Claude Code configuration
+claude.sh - Setup Claude Code configuration
 
 Usage: $0 [OPTIONS]
 
@@ -240,28 +313,31 @@ Options:
   --help          Show this help message
   --dry-run       Show what would be done without making changes
   --force         Remove existing files and replace with symlinks
+  --no-managed    Skip system-wide managed-settings.json installation
   --path PATH     Specify custom project root (default: parent of ai/)
   --verbose       Enable verbose output
   -h              Same as --help
 
 Notes:
-  - Requires STATE.md (run install.sh first)
+  - Requires STATE.md (run attach.sh first)
   - Creates symlinks to templates (not copies)
   - Preserves ALL existing files by default (use --force to replace)
   - Creates CLAUDE.md -> STATE.md symlink
+  - Installs managed-settings.json to /etc/claude-code/ (requires sudo)
+    Use --no-managed to skip this step
 
 Examples:
   # Basic usage (setup in parent directory)
-  ./claude-code.sh
+  ./claude.sh
 
   # Preview changes without modifying files
-  ./claude-code.sh --dry-run
+  ./claude.sh --dry-run
 
   # Force overwrite settings
-  ./claude-code.sh --force
+  ./claude.sh --force
 
   # Setup for custom project
-  ./claude-code.sh --path /path/to/project
+  ./claude.sh --path /path/to/project
 
 EOF
 }
@@ -280,6 +356,10 @@ parse_args() {
                 ;;
             --force)
                 FORCE=true
+                shift
+                ;;
+            --no-managed)
+                NO_MANAGED=true
                 shift
                 ;;
             --verbose)
@@ -328,6 +408,7 @@ main() {
     deploy_settings
     deploy_commands
     create_symlink
+    install_managed_settings
     print_summary
 }
 
