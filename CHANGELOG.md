@@ -1,3 +1,10 @@
+## [1.7.0](https://github.com/hypersec-io/ai/compare/1.6.4...1.7.0) (2025-12-16)
+
+
+### Features
+
+* source org config from CI for URL configuration ([c99924a](https://github.com/hypersec-io/ai/commit/c99924ae139e5ebbf57e8e65dc592ef64ab0c906))
+
 ## [1.6.4](https://github.com/hypersec-io/ai/compare/1.6.3...1.6.4) (2025-12-16)
 
 
