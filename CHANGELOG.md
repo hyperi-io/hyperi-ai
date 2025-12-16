@@ -1,3 +1,10 @@
+## [1.6.3](https://github.com/hypersec-io/ai/compare/1.6.2...1.6.3) (2025-12-16)
+
+
+### Bug Fixes
+
+* enhanced submodule remediation based on real project configs ([844d5d7](https://github.com/hypersec-io/ai/commit/844d5d78402ced96685e3eaf31ab9f0d33db1c45))
+
 ## [1.6.2](https://github.com/hypersec-io/ai/compare/1.6.1...1.6.2) (2025-12-16)
 
 
