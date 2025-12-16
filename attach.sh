@@ -426,32 +426,42 @@ migrate_single_submodule() {
     return 1
 }
 
-# Check submodule URL and warn about deprecated/wrong repos (warn only, don't auto-fix)
+# Check and fix submodule URL for deprecated repos
+# Auto-fixes: hyperci → ci, hs-ci → ci (same repo, renamed)
+# Warns only: missing .git suffix
 check_submodule_url() {
     local submodule_name="$1"
     local url="$2"
+    local new_url=""
 
-    # Check for old/deprecated repo names
+    # Check for old/deprecated repo names and auto-fix
     case "$url" in
-        *hyperci.git|*hyperci)
-            log_warn "${submodule_name}: URL points to deprecated 'hyperci' repo"
-            log_warn "  Current: ${url}"
-            log_warn "  Expected: https://github.com/hypersec-io/ci.git"
-            log_warn "  To fix: git submodule set-url ${submodule_name} https://github.com/hypersec-io/ci.git"
+        *hypersec-io/hyperci.git|*hypersec-io/hyperci)
+            new_url="https://github.com/hypersec-io/ci.git"
+            log_info "${submodule_name}: Updating deprecated 'hyperci' URL → ci.git"
             ;;
-        *hs-ci.git|*hs-ci)
-            log_warn "${submodule_name}: URL points to deprecated 'hs-ci' repo"
-            log_warn "  Current: ${url}"
-            log_warn "  Expected: https://github.com/hypersec-io/ci.git"
-            log_warn "  To fix: git submodule set-url ${submodule_name} https://github.com/hypersec-io/ci.git"
+        *hypersec-io/hs-ci.git|*hypersec-io/hs-ci)
+            new_url="https://github.com/hypersec-io/ci.git"
+            log_info "${submodule_name}: Updating deprecated 'hs-ci' URL → ci.git"
             ;;
     esac
 
-    # Check for missing .git suffix (can cause issues)
+    # Auto-fix deprecated URL if detected
+    if [ -n "$new_url" ]; then
+        git -C "$PROJECT_ROOT" config -f .gitmodules "submodule.${submodule_name}.url" "$new_url"
+        # Also update the remote in the submodule itself if it exists
+        local full_path="${PROJECT_ROOT}/${submodule_name}"
+        if [ -d "$full_path" ]; then
+            git -C "$full_path" remote set-url origin "$new_url" 2>/dev/null || true
+        fi
+        log_success "${submodule_name}: URL updated to ${new_url}"
+    fi
+
+    # Warn about missing .git suffix (don't auto-fix, might be intentional)
     if [[ "$url" =~ github\.com && ! "$url" =~ \.git$ ]]; then
         log_warn "${submodule_name}: URL missing .git suffix (may cause issues)"
         log_warn "  Current: ${url}"
-        log_warn "  Recommended: ${url}.git"
+        log_warn "  To fix: git submodule set-url ${submodule_name} ${url}.git"
     fi
 }
 
