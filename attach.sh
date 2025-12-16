@@ -341,6 +341,12 @@ migrate_single_submodule() {
     current_update=$(git -C "$PROJECT_ROOT" config -f .gitmodules --get "submodule.${submodule_name}.update" 2>/dev/null || echo "")
     local current_fetch_recurse
     current_fetch_recurse=$(git -C "$PROJECT_ROOT" config -f .gitmodules --get "submodule.${submodule_name}.fetchRecurseSubmodules" 2>/dev/null || echo "")
+    local current_ignore
+    current_ignore=$(git -C "$PROJECT_ROOT" config -f .gitmodules --get "submodule.${submodule_name}.ignore" 2>/dev/null || echo "")
+    local current_branch
+    current_branch=$(git -C "$PROJECT_ROOT" config -f .gitmodules --get "submodule.${submodule_name}.branch" 2>/dev/null || echo "")
+    local current_url
+    current_url=$(git -C "$PROJECT_ROOT" config -f .gitmodules --get "submodule.${submodule_name}.url" 2>/dev/null || echo "")
     local current_push_url=""
     local full_path="${PROJECT_ROOT}/${submodule_path}"
     if [ -d "$full_path" ]; then
@@ -350,13 +356,16 @@ migrate_single_submodule() {
     local needs_migration=false
     local migration_reasons=""
 
+    # Check for deprecated/wrong repo URLs (warn only, don't auto-fix)
+    check_submodule_url "$submodule_name" "$current_url"
+
     # Determine expected update mode
     local expected_update="rebase"
     if [ "$PIN_SUBMODULE" = true ]; then
         expected_update="none"
     fi
 
-    # Check if update mode matches expected
+    # Check if update mode matches expected (also fix 'checkout' which is problematic)
     if [ "$current_update" != "$expected_update" ]; then
         needs_migration=true
         if [ -n "$current_update" ]; then
@@ -376,6 +385,28 @@ migrate_single_submodule() {
         fi
     fi
 
+    # Remove 'ignore = all' (hides submodule status changes)
+    if [ -n "$current_ignore" ]; then
+        needs_migration=true
+        if [ -n "$migration_reasons" ]; then
+            migration_reasons="${migration_reasons}, -ignore"
+        else
+            migration_reasons="-ignore"
+        fi
+        git -C "$PROJECT_ROOT" config -f .gitmodules --unset "submodule.${submodule_name}.ignore" 2>/dev/null || true
+    fi
+
+    # Remove 'branch = main' (unnecessary, can cause sync issues)
+    if [ -n "$current_branch" ]; then
+        needs_migration=true
+        if [ -n "$migration_reasons" ]; then
+            migration_reasons="${migration_reasons}, -branch"
+        else
+            migration_reasons="-branch"
+        fi
+        git -C "$PROJECT_ROOT" config -f .gitmodules --unset "submodule.${submodule_name}.branch" 2>/dev/null || true
+    fi
+
     # Check push protection
     if [ -d "$full_path" ] && [ "$current_push_url" != "no-push" ]; then
         needs_migration=true
@@ -393,6 +424,35 @@ migrate_single_submodule() {
     fi
 
     return 1
+}
+
+# Check submodule URL and warn about deprecated/wrong repos (warn only, don't auto-fix)
+check_submodule_url() {
+    local submodule_name="$1"
+    local url="$2"
+
+    # Check for old/deprecated repo names
+    case "$url" in
+        *hyperci.git|*hyperci)
+            log_warn "${submodule_name}: URL points to deprecated 'hyperci' repo"
+            log_warn "  Current: ${url}"
+            log_warn "  Expected: https://github.com/hypersec-io/ci.git"
+            log_warn "  To fix: git submodule set-url ${submodule_name} https://github.com/hypersec-io/ci.git"
+            ;;
+        *hs-ci.git|*hs-ci)
+            log_warn "${submodule_name}: URL points to deprecated 'hs-ci' repo"
+            log_warn "  Current: ${url}"
+            log_warn "  Expected: https://github.com/hypersec-io/ci.git"
+            log_warn "  To fix: git submodule set-url ${submodule_name} https://github.com/hypersec-io/ci.git"
+            ;;
+    esac
+
+    # Check for missing .git suffix (can cause issues)
+    if [[ "$url" =~ github\.com && ! "$url" =~ \.git$ ]]; then
+        log_warn "${submodule_name}: URL missing .git suffix (may cause issues)"
+        log_warn "  Current: ${url}"
+        log_warn "  Recommended: ${url}.git"
+    fi
 }
 
 # Copy file if it doesn't exist (or if --force)
