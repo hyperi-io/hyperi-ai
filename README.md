@@ -8,19 +8,18 @@ Standards, templates, and setup scripts for AI-assisted development.
 
 ## TL;DR - Just Run This
 
-**AI + CI (recommended):** Set up everything in one command:
+**AI + CI (recommended):**
 
 ```bash
-git clone https://github.com/hypersec-io/ci.git .hypersec-attach && ./.hypersec-attach/hypersec-attach.sh
+git submodule add https://github.com/hypersec-io/ci.git ci && ./ci/attach.sh --python-package
+git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
 ```
 
-**AI only:** Set up AI standards and Claude Code:
+**AI only:**
 
 ```bash
-git clone https://github.com/hypersec-io/ai.git .ai-attach && ./.ai-attach/attach.sh --claude
+git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
 ```
-
-Both commands auto-cleanup after setup. See below for options.
 
 ---
 
@@ -46,48 +45,29 @@ A standards library that attaches to any project to provide:
 
 ### Full HyperSec Setup (Recommended)
 
-For new projects, use `hypersec-attach.sh` from the CI repo to set up both CI and AI:
+Two commands to set up both CI and AI:
 
 ```bash
-# One-liner: clone, run, auto-cleanup
-git clone https://github.com/hypersec-io/ci.git .hypersec-attach && ./.hypersec-attach/hypersec-attach.sh
+# Add CI submodule and configure workflows
+git submodule add https://github.com/hypersec-io/ci.git ci && ./ci/attach.sh --python-package
 
-# With language specified
-git clone https://github.com/hypersec-io/ci.git .hypersec-attach && ./.hypersec-attach/hypersec-attach.sh --python-package
-
-# Specify project directory
-git clone https://github.com/hypersec-io/ci.git .hypersec-attach && ./.hypersec-attach/hypersec-attach.sh /projects/new-tool --python-app
+# Add AI submodule and configure Claude Code
+git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
 ```
 
-The bootstrap directory (`.hypersec-attach/`) is automatically cleaned up after setup.
+**For greenfield projects** (no git repo yet), use `hypersec-attach.sh` after adding the CI submodule:
+
+```bash
+git submodule add https://github.com/hypersec-io/ci.git ci
+./ci/hypersec-attach.sh --python-package
+```
+
+This additionally handles git init and GitHub repository creation prompts.
 
 ### AI Only Setup
 
-**One-liner (recommended):**
-
 ```bash
-# Clone, attach with Claude Code, auto-cleanup
-git clone https://github.com/hypersec-io/ai.git .ai-attach && ./.ai-attach/attach.sh --claude
-```
-
-**Two commands (if you prefer):**
-
-```bash
-git clone https://github.com/hypersec-io/ai.git .ai-attach
-./.ai-attach/attach.sh --claude
-```
-
-**Already have AI submodule:**
-
-```bash
-./ai/attach.sh --claude
-```
-
-#### Alternative: Manual submodule
-
-```bash
-git submodule add https://github.com/hypersec-io/ai.git ai
-./ai/attach.sh --claude
+git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
 ```
 
 #### Alternative: Clone (point-in-time copy)

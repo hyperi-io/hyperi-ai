@@ -552,23 +552,7 @@ main() {
     print_summary
 }
 
-# Cleanup bootstrap directory if running from .ai-attach
-cleanup_bootstrap() {
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local dir_name
-    dir_name="$(basename "$script_dir")"
-
-    # Only cleanup if running from .ai-attach bootstrap directory
-    if [ "$dir_name" = ".ai-attach" ]; then
-        log_info "Cleaning up bootstrap directory..."
-        rm -rf "$script_dir"
-        log_success "Bootstrap cleanup complete"
-    fi
-}
-
 # Run main if executed directly (not sourced)
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     main "$@"
-    cleanup_bootstrap
 fi
