@@ -1,3 +1,10 @@
+## [1.5.0](https://github.com/hypersec-io/ai/compare/1.4.3...1.5.0) (2025-12-16)
+
+
+### Features
+
+* rename scripts for consistency with CI repo ([e8a1488](https://github.com/hypersec-io/ai/commit/e8a1488334131e3c3e184072b622cf13e7247159))
+
 ## [1.4.3](https://github.com/hypersec-io/ai/compare/1.4.2...1.4.3) (2025-12-16)
 
 
