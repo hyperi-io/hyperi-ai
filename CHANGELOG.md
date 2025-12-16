@@ -1,3 +1,10 @@
+## [1.4.3](https://github.com/hypersec-io/ai/compare/1.4.2...1.4.3) (2025-12-16)
+
+
+### Bug Fixes
+
+* sync settings.json template with current permissions ([4371a0f](https://github.com/hypersec-io/ai/commit/4371a0fb99fc9ae2c1b2da3d882a344b2718245b))
+
 ## [1.4.2](https://github.com/hypersec-io/ai/compare/1.4.1...1.4.2) (2025-12-15)
 
 
