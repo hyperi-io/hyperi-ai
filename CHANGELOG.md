@@ -1,3 +1,10 @@
+## [1.6.0](https://github.com/hypersec-io/ai/compare/1.5.0...1.6.0) (2025-12-16)
+
+
+### Features
+
+* add system-wide managed-settings.json installation ([ef8e45e](https://github.com/hypersec-io/ai/commit/ef8e45ec73a554fc9ca54155b586851369e2af84))
+
 ## [1.5.0](https://github.com/hypersec-io/ai/compare/1.4.3...1.5.0) (2025-12-16)
 
 
