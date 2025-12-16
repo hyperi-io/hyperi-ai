@@ -9,6 +9,21 @@
 
 set -euo pipefail
 
+# Get script directory for loading config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Try to load org config from CI submodule (if available)
+# This provides GITHUB_ORG, CI_REPO_URL, AI_REPO_URL, etc.
+if [ -f "${SCRIPT_DIR}/../ci/config/org.sh" ]; then
+    # shellcheck source=/dev/null
+    source "${SCRIPT_DIR}/../ci/config/org.sh"
+fi
+
+# Fallback defaults if org.sh not available
+GITHUB_ORG="${GITHUB_ORG:-hypersec-io}"
+CI_REPO_URL="${CI_REPO_URL:-https://github.com/${GITHUB_ORG}/ci.git}"
+AI_REPO_URL="${AI_REPO_URL:-https://github.com/${GITHUB_ORG}/ai.git}"
+
 # Global variables
 AI_ROOT=""
 PROJECT_ROOT=""
@@ -433,15 +448,16 @@ check_submodule_url() {
     local submodule_name="$1"
     local url="$2"
     local new_url=""
+    local org="${GITHUB_ORG:-hypersec-io}"
 
     # Check for old/deprecated repo names and auto-fix
     case "$url" in
-        *hypersec-io/hyperci.git|*hypersec-io/hyperci)
-            new_url="https://github.com/hypersec-io/ci.git"
+        *"${org}/hyperci.git"|*"${org}/hyperci")
+            new_url="${CI_REPO_URL}"
             log_info "${submodule_name}: Updating deprecated 'hyperci' URL → ci.git"
             ;;
-        *hypersec-io/hs-ci.git|*hypersec-io/hs-ci)
-            new_url="https://github.com/hypersec-io/ci.git"
+        *"${org}/hs-ci.git"|*"${org}/hs-ci")
+            new_url="${CI_REPO_URL}"
             log_info "${submodule_name}: Updating deprecated 'hs-ci' URL → ci.git"
             ;;
     esac
