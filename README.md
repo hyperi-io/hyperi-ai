@@ -6,6 +6,24 @@ Standards, templates, and setup scripts for AI-assisted development.
 
 ---
 
+## TL;DR - Just Run This
+
+**AI + CI (recommended):** Set up everything in one command:
+
+```bash
+git clone https://github.com/hypersec-io/ci.git .hypersec-attach && ./.hypersec-attach/hypersec-attach.sh
+```
+
+**AI only:** Set up AI standards and Claude Code:
+
+```bash
+git clone https://github.com/hypersec-io/ai.git .ai-attach && ./.ai-attach/attach.sh --claude
+```
+
+Both commands auto-cleanup after setup. See below for options.
+
+---
+
 ## What This Is
 
 A standards library that attaches to any project to provide:
@@ -31,43 +49,54 @@ A standards library that attaches to any project to provide:
 For new projects, use `hypersec-attach.sh` from the CI repo to set up both CI and AI:
 
 ```bash
-# Clone to bootstrap directory and run
-git clone https://github.com/hypersec-io/ci.git .hypersec-attach
-./.hypersec-attach/hypersec-attach.sh
+# One-liner: clone, run, auto-cleanup
+git clone https://github.com/hypersec-io/ci.git .hypersec-attach && ./.hypersec-attach/hypersec-attach.sh
 
 # With language specified
-./.hypersec-attach/hypersec-attach.sh --python-package
+git clone https://github.com/hypersec-io/ci.git .hypersec-attach && ./.hypersec-attach/hypersec-attach.sh --python-package
+
+# Specify project directory
+git clone https://github.com/hypersec-io/ci.git .hypersec-attach && ./.hypersec-attach/hypersec-attach.sh /projects/new-tool --python-app
 ```
 
 The bootstrap directory (`.hypersec-attach/`) is automatically cleaned up after setup.
 
 ### AI Only Setup
 
-#### Option A: Git submodule (recommended)
+**One-liner (recommended):**
 
 ```bash
-git submodule add https://github.com/hypersec-io/ai.git ai
-./ai/attach.sh
-
-# With Claude Code setup in one command
-./ai/attach.sh --claude
+# Clone, attach with Claude Code, auto-cleanup
+git clone https://github.com/hypersec-io/ai.git .ai-attach && ./.ai-attach/attach.sh --claude
 ```
 
-Or standalone (without manually adding the submodule first):
+**Two commands (if you prefer):**
 
 ```bash
 git clone https://github.com/hypersec-io/ai.git .ai-attach
 ./.ai-attach/attach.sh --claude
-# Bootstrap directory is automatically cleaned up
 ```
 
-#### Option B: Clone (point-in-time copy)
+**Already have AI submodule:**
+
+```bash
+./ai/attach.sh --claude
+```
+
+#### Alternative: Manual submodule
+
+```bash
+git submodule add https://github.com/hypersec-io/ai.git ai
+./ai/attach.sh --claude
+```
+
+#### Alternative: Clone (point-in-time copy)
 
 ```bash
 git clone https://github.com/hypersec-io/ai.git ai && rm -rf ai/.git
 ```
 
-#### Option C: Download ZIP
+#### Alternative: Download ZIP
 
 ```bash
 curl -L https://github.com/hypersec-io/ai/archive/main.zip -o ai.zip
