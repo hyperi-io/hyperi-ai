@@ -1,3 +1,15 @@
+## [1.6.1](https://github.com/hypersec-io/ai/compare/1.6.0...1.6.1) (2025-12-16)
+
+
+### Refactoring
+
+* simplify attach workflow to submodule-first approach ([cb93785](https://github.com/hypersec-io/ai/commit/cb93785a2d8c0c21bcffd784c09cd7d7697f3e94))
+
+
+### Documentation
+
+* add TL;DR one-liner commands at top of README ([1cf6812](https://github.com/hypersec-io/ai/commit/1cf68121ceecdc7ec7d0c8a27022f0fac2530c34))
+
 ## [1.6.0](https://github.com/hypersec-io/ai/compare/1.5.0...1.6.0) (2025-12-16)
 
 
