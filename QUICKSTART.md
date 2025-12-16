@@ -40,6 +40,14 @@ git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --c
 
 **Assistant options:** `--claude`, `--copilot`, `--cursor`, `--gemini`
 
+**Greenfield projects** (no git repo yet):
+
+```bash
+git init && git branch -m main
+git submodule add https://github.com/hypersec-io/ai.git ai
+./ai/attach.sh --claude
+```
+
 ## Step 2: Start Using
 
 **Claude Code:**
