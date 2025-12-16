@@ -255,27 +255,72 @@ configure_single_submodule() {
     fi
 }
 
-# Migrate existing submodule from old settings to new
+# Remediate and migrate submodule settings
+# Handles:
+#   - Old settings migration (local config → .gitmodules)
+#   - Uninitialized submodules (init + update)
+#   - Missing push protection
+#   - Incorrect update policy
 migrate_submodule_settings() {
     local any_migrated=false
+    local any_initialized=false
 
-    # Migrate AI submodule
-    if git -C "$PROJECT_ROOT" config --file .gitmodules --get "submodule.${AI_DIR}.url" > /dev/null 2>&1; then
-        if migrate_single_submodule "ai" "$AI_DIR"; then
-            any_migrated=true
+    # Check for uninitialized submodules first
+    if [ -f "${PROJECT_ROOT}/.gitmodules" ]; then
+        # AI submodule
+        if git -C "$PROJECT_ROOT" config --file .gitmodules --get "submodule.${AI_DIR}.url" > /dev/null 2>&1; then
+            if ! is_submodule_initialized "$AI_DIR"; then
+                log_info "Initializing AI submodule..."
+                git -C "$PROJECT_ROOT" submodule update --init "$AI_DIR"
+                any_initialized=true
+            fi
+            if migrate_single_submodule "ai" "$AI_DIR"; then
+                any_migrated=true
+            fi
+        fi
+
+        # CI submodule if present
+        if git -C "$PROJECT_ROOT" config --file .gitmodules --get "submodule.ci.url" > /dev/null 2>&1; then
+            if ! is_submodule_initialized "ci"; then
+                log_info "Initializing CI submodule..."
+                git -C "$PROJECT_ROOT" submodule update --init "ci"
+                any_initialized=true
+            fi
+            if migrate_single_submodule "ci" "ci"; then
+                any_migrated=true
+            fi
         fi
     fi
 
-    # Migrate CI submodule if present
-    if git -C "$PROJECT_ROOT" config --file .gitmodules --get "submodule.ci.url" > /dev/null 2>&1; then
-        if migrate_single_submodule "ci" "ci"; then
-            any_migrated=true
-        fi
+    if [ "$any_initialized" = true ]; then
+        log_success "Submodule(s) initialized"
     fi
-
     if [ "$any_migrated" = true ]; then
-        log_success "Submodule settings migrated to new configuration"
+        log_success "Submodule settings remediated"
     fi
+}
+
+# Check if a submodule is properly initialized
+is_submodule_initialized() {
+    local submodule_path="$1"
+    local full_path="${PROJECT_ROOT}/${submodule_path}"
+
+    # Submodule directory must exist and contain files
+    if [ ! -d "$full_path" ]; then
+        return 1
+    fi
+
+    # Check if directory has content (not just empty from clone)
+    if [ -z "$(ls -A "$full_path" 2>/dev/null)" ]; then
+        return 1
+    fi
+
+    # Check if it's a valid git repo
+    if ! git -C "$full_path" rev-parse --git-dir > /dev/null 2>&1; then
+        return 1
+    fi
+
+    return 0
 }
 
 # Migrate a single submodule's settings, returns 0 if migration was needed
