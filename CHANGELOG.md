@@ -1,3 +1,15 @@
+## [1.7.1](https://github.com/hypersec-io/ai/compare/1.7.0...1.7.1) (2025-12-16)
+
+
+### Bug Fixes
+
+* add AI repo URL remediation to attach.sh ([c1d4b96](https://github.com/hypersec-io/ai/commit/c1d4b9685f73320d6c0bf9d5d09523e16eda4168))
+
+
+### Documentation
+
+* add QUICKSTART.md to root, simplify README ([dfbcedb](https://github.com/hypersec-io/ai/commit/dfbcedb16a346c15b09e52df397d2077c3e090f2))
+
 ## [1.7.0](https://github.com/hypersec-io/ai/compare/1.6.4...1.7.0) (2025-12-16)
 
 
