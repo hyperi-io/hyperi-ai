@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
+# Project:      HyperSec AI
+# File:         hooks/pre-commit
+# Purpose:      Validates branch name and detects AI changes
+# License:      LicenseRef-HyperSec-EULA
+# Copyright:    (c) 2025 HyperSec Pty Ltd
+#
+# Installed by: ./ai/attach.sh
+
 set -euo pipefail
 
-# Git pre-commit hook - Validate branch name
-# Install: ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
+PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+# Extract branch name, handling both "main" and "heads/main" formats
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null | sed 's|^heads/||' || echo "")
 
 # Skip validation for trunk branches and detached HEAD
-if [[ "$CURRENT_BRANCH" =~ ^(main|master|develop|HEAD)$ ]]; then
+if [[ -z "$CURRENT_BRANCH" ]] || [[ "$CURRENT_BRANCH" =~ ^(main|master|develop|HEAD)$ ]]; then
     exit 0
 fi
 
@@ -19,7 +27,7 @@ BRANCH_PATTERN="^(${VALID_TYPES})/([A-Z]+-[0-9]+|no-ref)/[a-z0-9-]+$"
 
 if [[ ! "$CURRENT_BRANCH" =~ $BRANCH_PATTERN ]]; then
     echo ""
-    echo "❌ Invalid branch name: $CURRENT_BRANCH"
+    echo "Invalid branch name: $CURRENT_BRANCH"
     echo ""
     echo "Branch must follow format: <type>/<issue-ref>/<description>"
     echo ""
@@ -32,9 +40,16 @@ if [[ ! "$CURRENT_BRANCH" =~ $BRANCH_PATTERN ]]; then
     echo "Issue ref: Use ticket ID (e.g., AI-123) or 'no-ref'"
     echo "Description: Lowercase with hyphens (e.g., add-new-feature)"
     echo ""
-    echo "See: standards/common/GIT-WORKFLOW.md"
+    echo "See: ai/standards/common/GIT-WORKFLOW.md"
     echo ""
     exit 1
+fi
+
+# Detect AI directory modifications (informational only)
+if git diff --cached --name-only | grep -q "^ai/"; then
+    echo "AI directory changes detected:"
+    git diff --cached --name-only | grep "^ai/" | sed 's/^/    /'
+    echo ""
 fi
 
 exit 0

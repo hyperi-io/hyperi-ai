@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Project:      HyperSec AI
+# File:         hooks/post-checkout
+# Purpose:      Auto-update submodules and ensure push protection after checkout
+# License:      LicenseRef-HyperSec-EULA
+# Copyright:    (c) 2025 HyperSec Pty Ltd
+#
+# Installed by: ./ai/attach.sh
+# Runs after: git checkout, git pull, git switch
+
+set -euo pipefail
+
+# Parameters passed to post-checkout:
+# $1 - ref of previous HEAD
+# $2 - ref of new HEAD
+# $3 - flag: 1 if branch checkout, 0 if file checkout
+PREV_HEAD="${1:-}"
+NEW_HEAD="${2:-}"
+IS_BRANCH_CHECKOUT="${3:-1}"
+
+# Only run on branch checkouts, not file checkouts
+[[ "$IS_BRANCH_CHECKOUT" != "1" ]] && exit 0
+
+PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+
+# Update submodules if any exist
+if [[ -f "${PROJECT_ROOT}/.gitmodules" ]]; then
+    # Check if submodule commit changed
+    if [[ -n "$PREV_HEAD" ]] && [[ -n "$NEW_HEAD" ]] && [[ "$PREV_HEAD" != "$NEW_HEAD" ]]; then
+        # Check if any submodule refs changed (ai or ci)
+        if git diff --quiet "$PREV_HEAD" "$NEW_HEAD" -- .gitmodules 2>/dev/null || \
+           ! git diff --quiet "$PREV_HEAD" "$NEW_HEAD" -- ai ci 2>/dev/null; then
+            echo "Updating submodules..."
+            git submodule update --init --recursive
+        fi
+    fi
+fi
+
+# Ensure submodules have push protection (one-time setup for new clones)
+# Applies to both ai and ci submodules
+for submodule in ai ci; do
+    submodule_path="${PROJECT_ROOT}/${submodule}"
+    if [[ -d "${submodule_path}/.git" ]] || [[ -f "${submodule_path}/.git" ]]; then
+        current_push_url=$(git -C "${submodule_path}" remote get-url --push origin 2>/dev/null || echo "")
+        if [[ "$current_push_url" != "no-push" ]]; then
+            git -C "${submodule_path}" remote set-url --push origin no-push 2>/dev/null || true
+        fi
+    fi
+done
+
+exit 0
