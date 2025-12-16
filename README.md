@@ -2,24 +2,9 @@
 
 Standards, templates, and setup scripts for AI-assisted development.
 
+**[QUICKSTART.md](QUICKSTART.md)** - Get started in 5 minutes
+
 **License:** HyperSec EULA (proprietary)
-
----
-
-## TL;DR - Just Run This
-
-**AI + CI (recommended):**
-
-```bash
-git submodule add https://github.com/hypersec-io/ci.git ci && ./ci/attach.sh --python-package
-git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
-```
-
-**AI only:**
-
-```bash
-git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
-```
 
 ---
 
@@ -38,59 +23,6 @@ A standards library that attaches to any project to provide:
 - Path-agnostic (works anywhere, any directory name)
 - Idempotent (safe to run repeatedly)
 - Works standalone or alongside HyperSec CI (`ci/` submodule)
-
----
-
-## Quick Start
-
-### Full HyperSec Setup (Recommended)
-
-Two commands to set up both CI and AI:
-
-```bash
-# Add CI submodule and configure workflows
-git submodule add https://github.com/hypersec-io/ci.git ci && ./ci/attach.sh --python-package
-
-# Add AI submodule and configure Claude Code
-git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
-```
-
-**For greenfield projects** (no git repo yet), use `hypersec-attach.sh` after adding the CI submodule:
-
-```bash
-git submodule add https://github.com/hypersec-io/ci.git ci
-./ci/hypersec-attach.sh --python-package
-```
-
-This additionally handles git init and GitHub repository creation prompts.
-
-### AI Only Setup
-
-```bash
-git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
-```
-
-#### Alternative: Clone (point-in-time copy)
-
-```bash
-git clone https://github.com/hypersec-io/ai.git ai && rm -rf ai/.git
-```
-
-#### Alternative: Download ZIP
-
-```bash
-curl -L https://github.com/hypersec-io/ai/archive/main.zip -o ai.zip
-unzip ai.zip && mv ai-main ai
-```
-
-### Setup Your AI Assistant (if not done via --flag)
-
-```bash
-./ai/claude.sh    # Claude Code (Anthropic)
-./ai/copilot.sh   # GitHub Copilot
-./ai/cursor.sh    # Cursor IDE
-./ai/gemini.sh    # Gemini Code (Google)
-```
 
 ---
 
