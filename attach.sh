@@ -442,7 +442,7 @@ migrate_single_submodule() {
 }
 
 # Check and fix submodule URL for deprecated repos
-# Auto-fixes: hyperci → ci, hs-ci → ci (same repo, renamed)
+# Auto-fixes: hyperci/hs-ci → ci, hs-ai/standards → ai (same repos, renamed)
 # Warns only: missing .git suffix
 check_submodule_url() {
     local submodule_name="$1"
@@ -452,6 +452,7 @@ check_submodule_url() {
 
     # Check for old/deprecated repo names and auto-fix
     case "$url" in
+        # CI repo deprecated names
         *"${org}/hyperci.git"|*"${org}/hyperci")
             new_url="${CI_REPO_URL}"
             log_info "${submodule_name}: Updating deprecated 'hyperci' URL → ci.git"
@@ -459,6 +460,19 @@ check_submodule_url() {
         *"${org}/hs-ci.git"|*"${org}/hs-ci")
             new_url="${CI_REPO_URL}"
             log_info "${submodule_name}: Updating deprecated 'hs-ci' URL → ci.git"
+            ;;
+        # AI repo deprecated names
+        *"${org}/hs-ai.git"|*"${org}/hs-ai")
+            new_url="${AI_REPO_URL}"
+            log_info "${submodule_name}: Updating deprecated 'hs-ai' URL → ai.git"
+            ;;
+        *"${org}/standards.git"|*"${org}/standards")
+            new_url="${AI_REPO_URL}"
+            log_info "${submodule_name}: Updating deprecated 'standards' URL → ai.git"
+            ;;
+        *"${org}/hypersec-ai.git"|*"${org}/hypersec-ai")
+            new_url="${AI_REPO_URL}"
+            log_info "${submodule_name}: Updating deprecated 'hypersec-ai' URL → ai.git"
             ;;
     esac
 
