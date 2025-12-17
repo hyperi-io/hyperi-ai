@@ -1,3 +1,15 @@
+## [1.7.2](https://github.com/hypersec-io/ai/compare/1.7.1...1.7.2) (2025-12-17)
+
+
+### Bug Fixes
+
+* replace ISSUE-STANDARD.md with LINEAR-TICKETS.md ([65f7d43](https://github.com/hypersec-io/ai/commit/65f7d434867dfdc99b752baee985f6b2abbb6935))
+
+
+### Documentation
+
+* add greenfield instructions to QUICKSTART ([c05f773](https://github.com/hypersec-io/ai/commit/c05f773f3f62895c882886574bff684410b9e464))
+
 ## [1.7.1](https://github.com/hypersec-io/ai/compare/1.7.0...1.7.1) (2025-12-16)
 
 
