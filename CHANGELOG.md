@@ -1,3 +1,10 @@
+## [1.7.3](https://github.com/hypersec-io/ai/compare/1.7.2...1.7.3) (2025-12-24)
+
+
+### Bug Fixes
+
+* add skills support and date check to /load command ([86fef8a](https://github.com/hypersec-io/ai/commit/86fef8a558ec920ec234ed77ea47c668840808bd))
+
 ## [1.7.2](https://github.com/hypersec-io/ai/compare/1.7.1...1.7.2) (2025-12-17)
 
 
