@@ -1,3 +1,8 @@
+---
+name: python-standards
+description: Python coding standards using uv, ruff, mypy, and pytest. Use when writing Python code, reviewing Python, or setting up Python projects. Covers project structure, typing, testing, and tooling.
+---
+
 # Python Standards for HyperSec Projects
 
 **Comprehensive Python coding standards for DevOps, DataOps, and DevSecOps projects**

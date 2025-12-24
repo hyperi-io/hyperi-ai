@@ -1,3 +1,8 @@
+---
+name: bash-standards
+description: Bash scripting standards using shellcheck, strict mode, and portable patterns. Use when writing shell scripts, reviewing bash, or automating with shell.
+---
+
 # Bash Standards for HyperSec Projects
 
 **Shell scripting standards for CI/CD, automation, and infrastructure scripts**

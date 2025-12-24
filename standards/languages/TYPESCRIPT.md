@@ -1,3 +1,8 @@
+---
+name: typescript-standards
+description: TypeScript coding standards using strict mode, ESLint, and modern patterns. Use when writing TypeScript or JavaScript code, reviewing TS/JS, or setting up Node.js projects.
+---
+
 # TypeScript Standards for HyperSec Projects
 
 **Comprehensive TypeScript coding standards for monorepos, backend services, and React applications**

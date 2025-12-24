@@ -4,18 +4,22 @@ You are loading project context for a new work session or refreshing my memory.
 
 ## Session Initialization
 
-**Step 1: Read project state** (in this order):
+**Step 1: Check current date:**
+
+Run `date '+%Y-%m-%d %A'` to get today's date. Remember this date for the session - do not rely on your training data for the current date or year.
+
+**Step 2: Read project state** (in this order):
 
 - [STATE.md](../../STATE.md) - Current project state and session history
 - [TODO.md](../../TODO.md) - Current tasks and priorities
 
-**Step 2: Load standards (COMPLETE FILE - do not truncate):**
+**Step 3: Load standards (COMPLETE FILE - do not truncate):**
 
 - [STANDARDS-QUICKSTART.md](../../ai/standards/STANDARDS-QUICKSTART.md) - Core coding standards
 
 ⚠️ **Read the ENTIRE file** - do not use `limit` parameter or truncate. Critical instructions are throughout.
 
-**Step 3: Detect project language and load standards:**
+**Step 4: Detect project language and load standards:**
 
 Follow the "MANDATORY: Detect Project Language" section in STANDARDS-QUICKSTART.md:
 
@@ -31,7 +35,7 @@ Follow the "MANDATORY: Detect Project Language" section in STANDARDS-QUICKSTART.
 | `Cargo.toml` | `ai/standards/languages/RUST.md` |
 | `*.sh` only (no other lang) | `ai/standards/languages/BASH.md` |
 
-**Step 4: Check for infrastructure:**
+**Step 5: Check for infrastructure:**
 
 | IaC Files Found | Load (COMPLETE FILE) |
 |-----------------|----------------------|

@@ -1,3 +1,8 @@
+---
+name: ai-common
+description: Common AI assistant patterns and CLI preferences. Use when working with shell commands, file operations, or debugging. Covers modern CLI tools (rg, fd, jq), session management, and debugging techniques.
+---
+
 # Code Assistant Standards - Common Guidance
 
 **Loaded by `/load` command from `$AI_ROOT/standards/`**

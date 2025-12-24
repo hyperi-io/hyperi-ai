@@ -1,3 +1,8 @@
+---
+name: rust-standards
+description: Rust coding standards using Cargo, clippy, and idiomatic patterns. Use when writing Rust code, reviewing Rust, or setting up Rust projects.
+---
+
 # Rust Standards for HyperSec Projects
 
 **Rust coding standards for systems programming, CLI tools, and high-performance data processing**

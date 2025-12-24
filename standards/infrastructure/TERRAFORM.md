@@ -1,3 +1,8 @@
+---
+name: terraform-standards
+description: Terraform standards for infrastructure as code, state management, and module patterns. Use when writing Terraform, reviewing IaC, or provisioning cloud infrastructure.
+---
+
 # Terraform Standards for HyperSec Projects
 
 **Infrastructure provisioning: HCL, EKS, on-prem (Rancher), state management**

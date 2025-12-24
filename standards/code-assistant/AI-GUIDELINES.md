@@ -1,3 +1,8 @@
+---
+name: ai-guidelines
+description: AI code assistant operational guidelines. Use when configuring AI assistants, reviewing AI-generated code, or ensuring AI output matches human quality standards. Covers spelling, communication style, and tool-specific settings.
+---
+
 # AI Code Assistant Guidelines
 
 **Operational instructions for AI assistants - generate human-quality code**

@@ -1,3 +1,8 @@
+---
+name: kubernetes-standards
+description: Kubernetes and Helm standards for deployments, services, and health probes. Use when writing K8s manifests, Helm charts, or deploying to Kubernetes.
+---
+
 # Kubernetes Standards for HyperSec Projects
 
 **Runtime standards: HELM charts, deployments, services, ArgoCD, KEDA**

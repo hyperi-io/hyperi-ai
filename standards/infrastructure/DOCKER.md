@@ -1,3 +1,8 @@
+---
+name: docker-standards
+description: Docker and container standards using multi-stage builds, security hardening, and health checks. Use when writing Dockerfiles, docker-compose, or containerising applications.
+---
+
 # Docker Standards
 
 **Dockerfile best practices, multi-stage builds, security, and container patterns**

@@ -52,18 +52,22 @@ check_prerequisites() {
 setup_claude_dir() {
     local claude_dir="$PROJECT_ROOT/.claude"
     local commands_dir="$claude_dir/commands"
+    local skills_dir="$claude_dir/skills"
 
     if [ "$DRY_RUN" = "true" ]; then
         echo "Would create: $claude_dir/"
         echo "Would create: $commands_dir/"
+        echo "Would create: $skills_dir/"
         return 0
     fi
 
     mkdir -p "$commands_dir"
+    mkdir -p "$skills_dir"
 
     if [ "$VERBOSE" = "true" ]; then
         echo "Created: $claude_dir/"
         echo "Created: $commands_dir/"
+        echo "Created: $skills_dir/"
     fi
 }
 
@@ -173,6 +177,118 @@ deploy_commands() {
 
     if [ "$VERBOSE" = "true" ]; then
         echo "  Use --force to overwrite with symlinks"
+    fi
+}
+
+# Deploy skills (standards as Claude Code skills)
+# Creates skill directories with SKILL.md that symlinks to the original standards file
+# This is SSOT - the original .md files are the source of truth
+# Core: STANDARDS.md + code-assistant/* (always deployed)
+# Per-language: Detected from project config files
+# Per-infra: Detected from project IaC files
+deploy_skills() {
+    local skills_dir="$PROJECT_ROOT/.claude/skills"
+    local standards_dir="$AI_ROOT/standards"
+
+    # Helper to create a skill with SKILL.md symlinked to source
+    # Usage: create_skill <skill-name> <source-md-path>
+    create_skill() {
+        local name="$1"
+        local src_file="$2"
+        local skill_dir="$skills_dir/$name"
+        local skill_md="$skill_dir/SKILL.md"
+
+        if [ ! -f "$src_file" ]; then
+            [ "$VERBOSE" = "true" ] && echo "Skill source not found: $src_file"
+            return 0
+        fi
+
+        local rel_path
+        rel_path="$(relative_path "$skill_dir" "$src_file")"
+
+        if [ "$DRY_RUN" = "true" ]; then
+            if [ ! -e "$skill_dir" ] || [ "$FORCE" = "true" ]; then
+                echo "Would create skill: $name/ with SKILL.md -> $rel_path"
+            else
+                echo "Would skip skill (exists): $name/"
+            fi
+            return 0
+        fi
+
+        if [ ! -e "$skill_dir" ] || [ "$FORCE" = "true" ]; then
+            [ -e "$skill_dir" ] && rm -rf "$skill_dir"
+            mkdir -p "$skill_dir"
+            ln -s "$rel_path" "$skill_md"
+            [ "$VERBOSE" = "true" ] && echo "Created skill: $name/ with SKILL.md -> $rel_path"
+        fi
+    }
+
+    echo "Deploying skills..."
+
+    # Core skills (always deployed)
+    create_skill "standards" "$standards_dir/STANDARDS.md"
+    create_skill "ai-guidelines" "$standards_dir/code-assistant/AI-GUIDELINES.md"
+    create_skill "ai-common" "$standards_dir/code-assistant/COMMON.md"
+    echo "  Core: standards, ai-guidelines, ai-common"
+
+    # Detect languages from project root config files
+    # Python
+    if [ -f "$PROJECT_ROOT/pyproject.toml" ] || [ -f "$PROJECT_ROOT/setup.py" ] || \
+       [ -f "$PROJECT_ROOT/requirements.txt" ] || [ -f "$PROJECT_ROOT/uv.lock" ]; then
+        create_skill "python" "$standards_dir/languages/PYTHON.md"
+        echo "  Detected: Python"
+    fi
+
+    # Go
+    if [ -f "$PROJECT_ROOT/go.mod" ]; then
+        create_skill "golang" "$standards_dir/languages/GOLANG.md"
+        echo "  Detected: Go"
+    fi
+
+    # TypeScript/JavaScript
+    if [ -f "$PROJECT_ROOT/tsconfig.json" ] || [ -f "$PROJECT_ROOT/package.json" ]; then
+        create_skill "typescript" "$standards_dir/languages/TYPESCRIPT.md"
+        echo "  Detected: TypeScript"
+    fi
+
+    # Rust
+    if [ -f "$PROJECT_ROOT/Cargo.toml" ]; then
+        create_skill "rust" "$standards_dir/languages/RUST.md"
+        echo "  Detected: Rust"
+    fi
+
+    # Bash (check for .sh files in root, excluding submodules)
+    if find "$PROJECT_ROOT" -maxdepth 1 -name "*.sh" -type f 2>/dev/null | grep -q .; then
+        create_skill "bash" "$standards_dir/languages/BASH.md"
+        echo "  Detected: Bash"
+    fi
+
+    # Detect infrastructure
+    # Docker
+    if [ -f "$PROJECT_ROOT/Dockerfile" ] || [ -f "$PROJECT_ROOT/docker-compose.yaml" ] || \
+       [ -f "$PROJECT_ROOT/docker-compose.yml" ]; then
+        create_skill "docker" "$standards_dir/infrastructure/DOCKER.md"
+        echo "  Detected: Docker"
+    fi
+
+    # Kubernetes/Helm
+    if [ -f "$PROJECT_ROOT/Chart.yaml" ] || [ -d "$PROJECT_ROOT/charts" ] || \
+       [ -f "$PROJECT_ROOT/values.yaml" ]; then
+        create_skill "k8s" "$standards_dir/infrastructure/K8S.md"
+        echo "  Detected: Kubernetes"
+    fi
+
+    # Terraform
+    if find "$PROJECT_ROOT" -maxdepth 1 -name "*.tf" -type f 2>/dev/null | grep -q .; then
+        create_skill "terraform" "$standards_dir/infrastructure/TERRAFORM.md"
+        echo "  Detected: Terraform"
+    fi
+
+    # Ansible
+    if [ -f "$PROJECT_ROOT/ansible.cfg" ] || [ -f "$PROJECT_ROOT/playbook.yml" ] || \
+       [ -d "$PROJECT_ROOT/playbooks" ]; then
+        create_skill "ansible" "$standards_dir/infrastructure/ANSIBLE.md"
+        echo "  Detected: Ansible"
     fi
 }
 
@@ -292,12 +408,13 @@ print_summary() {
         echo "  .claude/settings.json     -> settings.json"
         echo "  .claude/commands/load.md  -> commands/load.md"
         echo "  .claude/commands/save.md  -> commands/save.md"
+        echo "  .claude/skills/           -> skills/ (auto-detected)"
         echo "  CLAUDE.md -> STATE.md"
         echo ""
         echo "Next steps:"
         echo "  1. Open project in Claude Code"
         echo "  2. Run /load to initialize session"
-        echo "  3. Review CLAUDE.md (links to STATE.md)"
+        echo "  3. Skills are auto-invoked by Claude based on context"
     fi
     echo "================================"
 }
@@ -323,6 +440,7 @@ Notes:
   - Creates symlinks to templates (not copies)
   - Preserves ALL existing files by default (use --force to replace)
   - Creates CLAUDE.md -> STATE.md symlink
+  - Deploys skills based on detected languages/infrastructure
   - Installs managed-settings.json to /etc/claude-code/ (requires sudo)
     Use --no-managed to skip this step
 
@@ -407,6 +525,7 @@ main() {
     setup_claude_dir
     deploy_settings
     deploy_commands
+    deploy_skills
     create_symlink
     install_managed_settings
     print_summary

@@ -1,3 +1,8 @@
+---
+name: hypersec-standards
+description: HyperSec coding standards and best practices. Use when writing code, reviewing code, making commits, or when quality and consistency matter. Covers git conventions, error handling, security, testing, and design principles.
+---
+
 # HyperSec Coding Standards
 
 **Comprehensive coding standards for all HyperSec projects**

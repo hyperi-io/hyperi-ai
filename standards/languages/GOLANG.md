@@ -1,3 +1,8 @@
+---
+name: golang-standards
+description: Go coding standards using standard library patterns, error handling, and testing conventions. Use when writing Go code, reviewing Go, or setting up Go projects.
+---
+
 # Go Standards for HyperSec Projects
 
 **Comprehensive Go coding standards for backend services, agents, and data processing**

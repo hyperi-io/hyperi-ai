@@ -1,3 +1,8 @@
+---
+name: ansible-standards
+description: Ansible standards for playbooks, roles, and configuration management. Use when writing Ansible playbooks, reviewing automation, or managing server configurations.
+---
+
 # Ansible Standards for HyperSec Projects
 
 **Configuration management and automation standards for infrastructure-as-code**
