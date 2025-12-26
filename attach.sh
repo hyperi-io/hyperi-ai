@@ -34,7 +34,6 @@ DRY_RUN=false
 FORCE=false
 VERBOSE=false
 PIN_SUBMODULE=false
-INSTALL_HOOKS=true
 
 # Assistant setup flags
 SETUP_CLAUDE=false
@@ -78,9 +77,6 @@ OPTIONS:
 
   --pin            Pin submodule version (disable auto-update from upstream)
                    Use this for projects requiring fixed AI versions
-
-  --hooks          Install git hooks (default)
-  --no-hooks       Skip git hook installation
 
 ASSISTANT SETUP (runs assistant script after attach):
   --claude         Also configure Claude Code
@@ -140,14 +136,6 @@ parse_args() {
                 ;;
             --pin)
                 PIN_SUBMODULE=true
-                shift
-                ;;
-            --hooks)
-                INSTALL_HOOKS=true
-                shift
-                ;;
-            --no-hooks)
-                INSTALL_HOOKS=false
                 shift
                 ;;
             --claude)
@@ -545,49 +533,6 @@ deploy_templates() {
     copy_if_missing "$templates_dir/TODO.md" "$PROJECT_ROOT/TODO.md"
 }
 
-# Install git hooks (symlinks to ai/hooks/)
-# AI only provides commit-msg hook (removes AI attribution)
-# CI provides pre-commit, post-checkout, and enhanced commit-msg
-install_git_hooks() {
-    local hooks_dir="${PROJECT_ROOT}/.git/hooks"
-
-    # Check .git/hooks exists
-    if [ ! -d "$hooks_dir" ]; then
-        log_warn "Not a git repository (.git/hooks/ not found)"
-        return
-    fi
-
-    # Check if CI commit-msg hook is already installed - CI has enhanced version
-    if [ -L "${hooks_dir}/commit-msg" ]; then
-        local target
-        target=$(readlink "${hooks_dir}/commit-msg" 2>/dev/null || echo "")
-        case "$target" in
-            *"ci/hooks"*)
-                log_info "CI commit-msg hook already installed - skipping"
-                log_info "  (CI hook includes AI attribution removal)"
-                return
-                ;;
-        esac
-    fi
-
-    # Check if hook template exists
-    if [ ! -f "${AI_ROOT}/hooks/commit-msg" ]; then
-        log_warn "Hook template not found: ${AI_ROOT}/hooks/commit-msg"
-        return
-    fi
-
-    if [ "$DRY_RUN" = true ]; then
-        log_info "Would install commit-msg hook from ${AI_DIR}/hooks/"
-        return
-    fi
-
-    # Symlink commit-msg hook only (relative path so it works after clone)
-    ln -sf "../../${AI_DIR}/hooks/commit-msg" "${hooks_dir}/commit-msg"
-
-    log_success "Git hook installed (symlinked from ${AI_DIR}/hooks/)"
-    log_info "  commit-msg: removes AI attribution from commits"
-}
-
 # Run assistant setup scripts if requested
 run_assistant_setup() {
     local force_flag=""
@@ -681,13 +626,6 @@ main() {
 
     # Deploy templates (STATE.md, TODO.md)
     deploy_templates
-
-    # Install hooks (unless CI hooks present or --no-hooks)
-    if [ "$INSTALL_HOOKS" = true ]; then
-        install_git_hooks
-    else
-        log_info "Skipping git hooks (--no-hooks)"
-    fi
 
     # Run assistant setup scripts if requested
     run_assistant_setup
