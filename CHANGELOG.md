@@ -1,3 +1,10 @@
+## [1.7.4](https://github.com/hypersec-io/ai/compare/1.7.3...1.7.4) (2025-12-26)
+
+
+### Bug Fixes
+
+* remove duplicate hooks, keep only commit-msg for AI attribution ([6ec3674](https://github.com/hypersec-io/ai/commit/6ec3674a5e1142d5481735bf720f77e6f86c6251))
+
 ## [1.7.3](https://github.com/hypersec-io/ai/compare/1.7.2...1.7.3) (2025-12-24)
 
 
