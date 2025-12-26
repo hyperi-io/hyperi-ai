@@ -1,3 +1,10 @@
+## [1.7.5](https://github.com/hypersec-io/ai/compare/1.7.4...1.7.5) (2025-12-26)
+
+
+### Bug Fixes
+
+* remove all git hooks from AI project (owned by CI) ([59e8222](https://github.com/hypersec-io/ai/commit/59e82221158de4c4d4de4f3f5dd9725674d19df4))
+
 ## [1.7.4](https://github.com/hypersec-io/ai/compare/1.7.3...1.7.4) (2025-12-26)
 
 
