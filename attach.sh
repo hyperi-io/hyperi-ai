@@ -546,6 +546,8 @@ deploy_templates() {
 }
 
 # Install git hooks (symlinks to ai/hooks/)
+# AI only provides commit-msg hook (removes AI attribution)
+# CI provides pre-commit, post-checkout, and enhanced commit-msg
 install_git_hooks() {
     local hooks_dir="${PROJECT_ROOT}/.git/hooks"
 
@@ -555,39 +557,35 @@ install_git_hooks() {
         return
     fi
 
-    # Check if CI hooks are already installed - defer to CI if present
-    if [ -L "${hooks_dir}/pre-commit" ]; then
+    # Check if CI commit-msg hook is already installed - CI has enhanced version
+    if [ -L "${hooks_dir}/commit-msg" ]; then
         local target
-        target=$(readlink "${hooks_dir}/pre-commit" 2>/dev/null || echo "")
+        target=$(readlink "${hooks_dir}/commit-msg" 2>/dev/null || echo "")
         case "$target" in
             *"ci/hooks"*)
-                log_info "CI hooks already installed - skipping AI hooks"
-                log_info "  (CI hooks handle both ci and ai submodules)"
+                log_info "CI commit-msg hook already installed - skipping"
+                log_info "  (CI hook includes AI attribution removal)"
                 return
                 ;;
         esac
     fi
 
-    # Check if hook templates exist
-    if [ ! -f "${AI_ROOT}/hooks/pre-commit" ]; then
-        log_warn "Hook templates not found in ${AI_ROOT}/hooks/"
+    # Check if hook template exists
+    if [ ! -f "${AI_ROOT}/hooks/commit-msg" ]; then
+        log_warn "Hook template not found: ${AI_ROOT}/hooks/commit-msg"
         return
     fi
 
     if [ "$DRY_RUN" = true ]; then
-        log_info "Would install git hooks from ${AI_DIR}/hooks/"
+        log_info "Would install commit-msg hook from ${AI_DIR}/hooks/"
         return
     fi
 
-    # Symlink hooks (relative paths so they work after clone)
+    # Symlink commit-msg hook only (relative path so it works after clone)
     ln -sf "../../${AI_DIR}/hooks/commit-msg" "${hooks_dir}/commit-msg"
-    ln -sf "../../${AI_DIR}/hooks/pre-commit" "${hooks_dir}/pre-commit"
-    ln -sf "../../${AI_DIR}/hooks/post-checkout" "${hooks_dir}/post-checkout"
 
-    log_success "Git hooks installed (symlinked from ${AI_DIR}/hooks/)"
-    log_info "  pre-commit: validates branch naming"
-    log_info "  commit-msg: removes AI attribution"
-    log_info "  post-checkout: auto-updates submodules, ensures push protection"
+    log_success "Git hook installed (symlinked from ${AI_DIR}/hooks/)"
+    log_info "  commit-msg: removes AI attribution from commits"
 }
 
 # Run assistant setup scripts if requested
