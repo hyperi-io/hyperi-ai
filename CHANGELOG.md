@@ -1,3 +1,10 @@
+## [1.8.0](https://github.com/hypersec-io/ai/compare/1.7.5...1.8.0) (2025-12-28)
+
+
+### Features
+
+* add C++ standards and expand Rust guide for PB-scale data pipelines ([a63b870](https://github.com/hypersec-io/ai/commit/a63b870955f0067b1bdb297562d56b36ac8f500b))
+
 ## [1.7.5](https://github.com/hypersec-io/ai/compare/1.7.4...1.7.5) (2025-12-26)
 
 
