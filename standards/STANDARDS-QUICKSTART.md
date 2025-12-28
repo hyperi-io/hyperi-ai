@@ -1022,7 +1022,7 @@ The following sections are specific guidance for AI code assistants (Claude Code
 Use the **Glob tool** (not Bash) to check for config files in the **project root only** (not subdirectories):
 
 ```text
-Glob pattern: {pyproject.toml,setup.py,go.mod,package.json,tsconfig.json,Cargo.toml}
+Glob pattern: {pyproject.toml,setup.py,go.mod,package.json,tsconfig.json,Cargo.toml,CMakeLists.txt}
 Path: $PROJECT_ROOT (not $AI_ROOT)
 ```
 
@@ -1034,6 +1034,7 @@ Path: $PROJECT_ROOT (not $AI_ROOT)
 | `go.mod`, `go.sum` | Go | `GOLANG.md` |
 | `package.json`, `tsconfig.json` | TypeScript | `TYPESCRIPT.md` |
 | `Cargo.toml`, `Cargo.lock` | Rust | `RUST.md` |
+| `CMakeLists.txt`, `*.cpp`, `*.hpp`, `*.cc` | C++ | `CPP.md` |
 | `*.sh` scripts only (no other lang files) | Bash | `BASH.md` |
 
 ### Step 2: Verify by Reading Config File
@@ -1044,6 +1045,7 @@ Path: $PROJECT_ROOT (not $AI_ROOT)
 - Go → Read `go.mod` (module name confirms Go)
 - TypeScript → Read `tsconfig.json` or `package.json`
 - Rust → Read `Cargo.toml`
+- C++ → Read `CMakeLists.txt` or check for `.cpp`/`.hpp` files
 
 ### Step 3: Load the ENTIRE Language Standards File
 
@@ -1054,6 +1056,7 @@ $AI_ROOT/standards/languages/PYTHON.md
 $AI_ROOT/standards/languages/GOLANG.md
 $AI_ROOT/standards/languages/TYPESCRIPT.md
 $AI_ROOT/standards/languages/RUST.md
+$AI_ROOT/standards/languages/CPP.md
 $AI_ROOT/standards/languages/BASH.md
 ```
 

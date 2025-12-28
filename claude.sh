@@ -257,6 +257,13 @@ deploy_skills() {
         echo "  Detected: Rust"
     fi
 
+    # C++
+    if [ -f "$PROJECT_ROOT/CMakeLists.txt" ] || \
+       find "$PROJECT_ROOT" -maxdepth 1 \( -name "*.cpp" -o -name "*.hpp" -o -name "*.cc" -o -name "*.h" \) -type f 2>/dev/null | grep -q .; then
+        create_skill "cpp" "$standards_dir/languages/CPP.md"
+        echo "  Detected: C++"
+    fi
+
     # Bash (check for .sh files in root, excluding submodules)
     if find "$PROJECT_ROOT" -maxdepth 1 -name "*.sh" -type f 2>/dev/null | grep -q .; then
         create_skill "bash" "$standards_dir/languages/BASH.md"

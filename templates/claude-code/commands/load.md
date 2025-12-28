@@ -33,6 +33,7 @@ Follow the "MANDATORY: Detect Project Language" section in STANDARDS-QUICKSTART.
 | `go.mod` | `ai/standards/languages/GOLANG.md` |
 | `package.json`, `tsconfig.json` | `ai/standards/languages/TYPESCRIPT.md` |
 | `Cargo.toml` | `ai/standards/languages/RUST.md` |
+| `CMakeLists.txt`, `*.cpp`, `*.hpp` | `ai/standards/languages/CPP.md` |
 | `*.sh` only (no other lang) | `ai/standards/languages/BASH.md` |
 
 **Step 5: Check for infrastructure:**
