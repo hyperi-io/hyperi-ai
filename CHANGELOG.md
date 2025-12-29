@@ -1,3 +1,10 @@
+## [1.8.2](https://github.com/hypersec-io/ai/compare/1.8.1...1.8.2) (2025-12-29)
+
+
+### Bug Fixes
+
+* add Helm repos and install commands for Bitnami replacements ([fe29d4c](https://github.com/hypersec-io/ai/commit/fe29d4c22a423e6608b26b902ea691573e3e3a8f))
+
 ## [1.8.1](https://github.com/hypersec-io/ai/compare/1.8.0...1.8.1) (2025-12-29)
 
 
