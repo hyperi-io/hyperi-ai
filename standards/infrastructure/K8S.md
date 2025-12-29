@@ -82,19 +82,34 @@ dependencies:
 - **Upgrade complexity:** Breaking changes between versions
 - **Operator alternative:** CloudNativePG, Redis Operator, Strimzi are superior
 
-**Preferred alternatives:**
+**Preferred alternatives with install commands:**
 
-| Component | Instead of Bitnami | Use |
-| --------- | -------------------- | --- |
-| PostgreSQL | `bitnami/postgresql` | CloudNativePG Operator |
-| Kafka | `bitnami/kafka` | Strimzi Operator or AutoMQ |
-| ClickHouse | `bitnami/clickhouse` | Altinity Operator / ClickHouse Operator |
-| Redis | `bitnami/redis` | Redis Operator (Spotahome) |
-| MongoDB | `bitnami/mongodb` | MongoDB Community Operator |
-| Elasticsearch | `bitnami/elasticsearch` | ECK (Elastic Cloud on K8s) |
-| ArgoCD | `bitnami/argo-cd` | Official `argoproj/argo-cd` Helm chart |
-| Nginx | `bitnami/nginx` | Official `nginx` image + custom chart |
-| MinIO | `bitnami/minio` | Official MinIO Operator |
+| Component | Instead of Bitnami | Use | Install |
+| --------- | ------------------ | --- | ------- |
+| PostgreSQL | `bitnami/postgresql` | CloudNativePG | `helm install cnpg cloudnative-pg/cloudnative-pg -n cnpg-system` |
+| Kafka | `bitnami/kafka` | Strimzi | `helm install strimzi strimzi/strimzi-kafka-operator -n kafka` |
+| Kafka | `bitnami/kafka` | AutoMQ | See [automq.com/docs](https://docs.automq.com/) |
+| ClickHouse | `bitnami/clickhouse` | Altinity Operator | `helm install clickhouse-operator altinity/clickhouse-operator` |
+| Redis | `bitnami/redis` | Spotahome Operator | `helm install redis-operator spotahome/redis-operator` |
+| MongoDB | `bitnami/mongodb` | Community Operator | `helm install mongodb mongodb/community-operator` |
+| Elasticsearch | `bitnami/elasticsearch` | ECK | `helm install elastic-operator elastic/eck-operator -n elastic-system` |
+| ArgoCD | `bitnami/argo-cd` | Official Chart | `helm install argocd argo/argo-cd -n argocd` |
+| MinIO | `bitnami/minio` | MinIO Operator | `helm install minio-operator minio/operator -n minio-operator` |
+
+**Helm repositories:**
+
+```bash
+# Add required Helm repos
+helm repo add cloudnative-pg https://cloudnative-pg.github.io/charts
+helm repo add strimzi https://strimzi.io/charts/
+helm repo add altinity https://docs.altinity.com/clickhouse-operator/
+helm repo add spotahome https://spotahome.github.io/redis-operator
+helm repo add mongodb https://mongodb.github.io/helm-charts
+helm repo add elastic https://helm.elastic.co
+helm repo add argo https://argoproj.github.io/argo-helm
+helm repo add minio https://operator.min.io/
+helm repo update
+```
 
 **HyperSec standard stack:**
 
