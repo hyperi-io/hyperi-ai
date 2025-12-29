@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/hypersec-io/ai/compare/1.8.0...1.8.1) (2025-12-29)
+
+
+### Bug Fixes
+
+* add Bitnami prohibition and Gateway API policy to container standards ([1bdaed1](https://github.com/hypersec-io/ai/commit/1bdaed16da347e4d88e48d098d8ddb6873ae647c))
+
 ## [1.8.0](https://github.com/hypersec-io/ai/compare/1.7.5...1.8.0) (2025-12-28)
 
 
