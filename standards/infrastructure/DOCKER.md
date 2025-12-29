@@ -33,6 +33,63 @@ docker scout cves myapp              # Scan for vulnerabilities
 | Go | `golang:1.23-alpine` (build) / `scratch` or `alpine` (runtime) | Static binaries |
 | Rust | `rust:1.83-alpine` (build) / `scratch` or `alpine` (runtime) | Static binaries |
 
+### Prohibited Image Sources
+
+**Never use images from these sources** in any environment:
+
+```dockerfile
+# ❌ Prohibited sources
+FROM bitnami/postgresql:16      # Bitnami - non-standard paths
+FROM bitnami/redis:7.0
+FROM tutum/mongodb              # Tutum - abandoned ~2016
+FROM dockercloud/haproxy        # DockerCloud - abandoned 2018
+
+# ✅ Use official images instead
+FROM postgres:16-alpine
+FROM redis:7-alpine
+FROM nginx:1.25-alpine
+```
+
+**Prohibited sources and why:**
+
+| Source | Why Prohibited |
+| ------ | -------------- |
+| `bitnami/*` | Non-standard paths, custom entrypoints, debugging difficulty |
+| `tutum/*` | Abandoned (~2016), no security updates, unpatched CVEs |
+| `dockercloud/*` | Abandoned (2018), no security updates since Docker Cloud shutdown |
+| Random user images | No security guarantees, may contain malware |
+
+**Not recommended for production K8s:**
+
+| Source | Why |
+| ------ | --- |
+| `linuxserver/*` | Well-maintained but targets home lab use cases. Uses `PUID`/`PGID` env vars that conflict with K8s `securityContext`. Often runs multiple processes (supervisor). Not designed for horizontal scaling. |
+
+**Approved image sources:**
+
+- **Docker Official Images** - `postgres`, `redis`, `nginx`, `python`, etc. (no namespace prefix)
+- **Verified Publishers** - `hashicorp/vault`, `grafana/grafana`, `prom/prometheus`
+- **Vendor-maintained** - `gcr.io/distroless/*`, `quay.io/coreos/*`
+- **Your own registry** - `registry.example.com/myorg/*`
+
+**HyperSec standard images:**
+
+| Component | Image |
+| --------- | ----- |
+| PostgreSQL | `postgres:16-alpine` (dev) / CloudNativePG (K8s) |
+| ClickHouse | `clickhouse/clickhouse-server` |
+| Kafka | AutoMQ or `apache/kafka` |
+| Vector | `timberio/vector` |
+| Redis | `redis:7-alpine` |
+| ArgoCD | `quay.io/argoproj/argocd` |
+
+**How to verify an image is official:**
+
+```bash
+# Official images have no namespace prefix and show "Docker Official Image"
+docker search --filter "is-official=true" postgres
+```
+
 **Why slim/alpine:**
 
 - Smaller attack surface

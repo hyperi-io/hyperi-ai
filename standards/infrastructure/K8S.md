@@ -56,11 +56,72 @@ type: application
 version: 0.3.0              # Chart version (semver)
 appVersion: "1.16.0"        # Application version (quoted string)
 
+# Prefer in-cluster operators over Helm chart dependencies
+# See "Prohibited: Bitnami Charts" section below
+```
+
+### Prohibited: Bitnami Charts
+
+**Never use Bitnami Helm charts** for any infrastructure component.
+
+```yaml
+# ❌ Prohibited - Bitnami charts
 dependencies:
   - name: postgresql
-    version: "12.x.x"
     repository: "https://charts.bitnami.com/bitnami"
-    condition: postgresql.enabled
+  - name: redis
+    repository: "https://charts.bitnami.com/bitnami"
+  - name: kafka
+    repository: "https://charts.bitnami.com/bitnami"
+```
+
+**Why Bitnami charts are prohibited:**
+
+- **Non-standard configurations:** Unusual paths, permissions, and entrypoints
+- **Debugging difficulty:** Non-standard tooling and log locations
+- **Upgrade complexity:** Breaking changes between versions
+- **Operator alternative:** CloudNativePG, Redis Operator, Strimzi are superior
+
+**Preferred alternatives:**
+
+| Component | Instead of Bitnami | Use |
+| --------- | -------------------- | --- |
+| PostgreSQL | `bitnami/postgresql` | CloudNativePG Operator |
+| Kafka | `bitnami/kafka` | Strimzi Operator or AutoMQ |
+| ClickHouse | `bitnami/clickhouse` | Altinity Operator / ClickHouse Operator |
+| Redis | `bitnami/redis` | Redis Operator (Spotahome) |
+| MongoDB | `bitnami/mongodb` | MongoDB Community Operator |
+| Elasticsearch | `bitnami/elasticsearch` | ECK (Elastic Cloud on K8s) |
+| ArgoCD | `bitnami/argo-cd` | Official `argoproj/argo-cd` Helm chart |
+| Nginx | `bitnami/nginx` | Official `nginx` image + custom chart |
+| MinIO | `bitnami/minio` | Official MinIO Operator |
+
+**HyperSec standard stack:**
+
+| Component | What We Use |
+| --------- | ----------- |
+| PostgreSQL | CloudNativePG Operator |
+| Kafka/Streaming | AutoMQ (Kafka-compatible, S3-backed) |
+| ClickHouse | Altinity ClickHouse Operator |
+| Log Collection | Vector (vector.dev) |
+| GitOps | ArgoCD (official Helm chart) |
+| Package Management | Helm 3 |
+
+**Example - CloudNativePG instead of Bitnami PostgreSQL:**
+
+```yaml
+# ✅ CloudNativePG Cluster (operator-managed)
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: myapp-db
+spec:
+  instances: 3
+  storage:
+    size: 10Gi
+  postgresql:
+    parameters:
+      max_connections: "200"
 ```
 
 ---
@@ -125,27 +186,146 @@ service:
   port: 80
   targetPort: 8080
 
-# Ingress
-ingress:
+# Gateway API HTTPRoute (preferred over Ingress)
+# See "Ingress Policy: Gateway API over Ingress" section
+httpRoute:
   enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-  hosts:
-    - host: app.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: app-tls
-      hosts:
-        - app.example.com
+  parentRefs:
+    - name: main-gateway
+      namespace: gateway-system
+  hostnames:
+    - app.example.com
+
+# Legacy Ingress (only for existing workloads, migrate to Gateway API)
+ingress:
+  enabled: false  # Disabled by default - use httpRoute
+  className: ""   # Do not default to nginx
+  annotations: {}
+  hosts: []
+  tls: []
 
 # Global values (shared across charts)
 global:
   tenancy_name: dfe
   appSecretName: app-secrets
 ```
+
+---
+
+## Ingress Policy: Gateway API over Ingress
+
+**Default policy for HTTP routing:**
+
+### New Workloads
+
+**Use Gateway API with Envoy-based controllers:**
+
+```yaml
+# ✅ Gateway API - the standard for new workloads
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: myapp-route
+spec:
+  parentRefs:
+    - name: main-gateway
+      namespace: gateway-system
+  hostnames:
+    - "app.example.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: myapp
+          port: 80
+```
+
+```yaml
+# Gateway (typically cluster-wide, managed by platform team)
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: main-gateway
+  namespace: gateway-system
+spec:
+  gatewayClassName: envoy  # or contour
+  listeners:
+    - name: https
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: wildcard-tls
+```
+
+**Recommended Envoy-based controllers:**
+
+| Controller | Use Case |
+| ---------- | -------- |
+| Envoy Gateway | Standard choice, CNCF project |
+| Contour | Mature, Envoy-based, good for multi-team |
+| Istio Gateway | If already using Istio service mesh |
+
+**Do NOT introduce new Ingress resources** unless there's an explicit exception.
+
+### Existing Workloads
+
+| Current State | Action |
+| ------------- | ------ |
+| Ingress (simple) | Migrate to Gateway API on your schedule |
+| Ingress + NGINX annotations/snippets | Keep NGINX short-term, plan explicit refactor |
+
+**NGINX annotations are technical debt.** Snippets like `nginx.ingress.kubernetes.io/configuration-snippet` are:
+
+- Non-portable (NGINX-specific)
+- Security risk (raw config injection)
+- Hard to audit and maintain
+
+```yaml
+# ❌ Technical debt - NGINX-specific annotations
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Custom-Header: value";
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+```
+
+```yaml
+# ✅ Gateway API - portable, type-safe
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: myapp
+spec:
+  rules:
+    - matches:
+        - path:
+            type: RegularExpression
+            value: "/api/v[0-9]+/.*"
+      filters:
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            add:
+              - name: X-Custom-Header
+                value: value
+      backendRefs:
+        - name: myapp
+          port: 80
+```
+
+### Migration Path
+
+1. **Audit current Ingress resources** - identify NGINX-specific annotations
+2. **Deploy Envoy Gateway** alongside NGINX (parallel operation)
+3. **Migrate simple Ingress first** - routes without custom annotations
+4. **Refactor annotated routes** - replace snippets with Gateway API filters
+5. **Decommission NGINX** once all routes migrated
 
 ---
 
