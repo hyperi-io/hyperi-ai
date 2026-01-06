@@ -297,6 +297,14 @@ deploy_skills() {
         create_skill "ansible" "$standards_dir/infrastructure/ANSIBLE.md"
         echo "  Detected: Ansible"
     fi
+
+    # PKI/TLS (detect certs dir, ssl configs, or TLS-related files)
+    if [ -d "$PROJECT_ROOT/certs" ] || [ -d "$PROJECT_ROOT/ssl" ] || \
+       [ -d "$PROJECT_ROOT/pki" ] || [ -d "$PROJECT_ROOT/tls" ] || \
+       find "$PROJECT_ROOT" -maxdepth 2 \( -name "*.crt" -o -name "*.pem" -o -name "*.key" -o -name "ssl*.xml" -o -name "*-tls.yaml" \) -type f 2>/dev/null | grep -q .; then
+        create_skill "pki" "$standards_dir/common/PKI.md"
+        echo "  Detected: PKI/TLS"
+    fi
 }
 
 # Install managed-settings.json to /etc/claude-code/ (requires sudo)

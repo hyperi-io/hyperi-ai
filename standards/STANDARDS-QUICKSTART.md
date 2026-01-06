@@ -377,6 +377,48 @@ def save_user(data: dict) -> int:
 - Node: `npm audit`, `snyk`
 - Lock files for reproducible builds
 
+### PKI/TLS Essentials
+
+**Security profiles:** `prod` (default), `devtest`, `highsec`
+
+| Profile | TLS Certs | Use Case |
+| ------- | --------- | -------- |
+| **prod** | ECDSA P-384 | Production, customer-facing (corporate default) |
+| devtest | ECDSA P-256 | Dev, staging, internal tools |
+| highsec | P-384 + FIPS | Federal/defence contracts |
+
+**Common patterns:**
+
+```bash
+# SSH key (all profiles)
+ssh-keygen -t ed25519 -C "user@hypersec.io"
+
+# Dev TLS cert (P-384)
+openssl req -newkey ec:<(openssl ecparam -name secp384r1) \
+    -nodes -x509 -keyout server.key -out server.crt \
+    -days 365 -subj "/CN=localhost/O=Dev/C=AU"
+
+# File permissions
+chmod 600 ~/.ssh/id_ed25519 *.key    # Private keys
+chmod 700 ~/.ssh                      # SSH directory
+```
+
+**Database SSL (PostgreSQL):**
+
+```bash
+psql "host=db.example.com dbname=app sslmode=verify-full sslrootcert=/path/to/ca.crt"
+```
+
+**Non-negotiables:**
+
+- TLS 1.2 minimum, TLS 1.3 preferred
+- Ed25519 for SSH keys (all profiles)
+- PEM format for certs/keys (not P12 unless required)
+- Private keys: 600 permissions, never in git
+- No SHA-1, MD5, DES, 3DES, RC4, or CBC mode
+
+**Full guide:** `ai/standards/common/PKI.md`
+
 ---
 
 ## 5. Testing

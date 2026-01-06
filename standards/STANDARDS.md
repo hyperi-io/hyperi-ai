@@ -94,6 +94,7 @@ standards/
 │   ├── GIT.md (git conventions)
 │   ├── LICENSING.md (HyperSec EULA, Apache 2.0)
 │   ├── NO-MOCKS-POLICY.md (production code policy)
+│   ├── PKI.md (TLS, SSH, certificates, CNSA 2.0)
 │   ├── SECURITY.md (input validation, secrets)
 │   └── TESTING.md (test-first development)
 │
@@ -138,6 +139,7 @@ standards/
 
 **Error handling:** `$AI_ROOT/standards/common/ERROR-HANDLING.md`
 **Security:** `$AI_ROOT/standards/common/SECURITY.md`
+**PKI/TLS:** `$AI_ROOT/standards/common/PKI.md`
 
 **Key rules:**
 
@@ -147,6 +149,7 @@ standards/
 - Never log sensitive data (passwords, tokens, PII)
 - Validate ALL external input
 - Use parameterised queries (prevent SQL injection)
+- TLS 1.2+ required, Ed25519 for SSH, ECDSA P-384 for prod TLS certs
 
 ### Testing
 

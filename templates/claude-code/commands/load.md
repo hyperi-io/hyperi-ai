@@ -45,6 +45,13 @@ Follow the "MANDATORY: Detect Project Language" section in STANDARDS-QUICKSTART.
 | `*.tf` | `ai/standards/infrastructure/TERRAFORM.md` |
 | `ansible.cfg`, `playbook.yml` | `ai/standards/infrastructure/ANSIBLE.md` |
 
+**Step 6: Check for PKI/TLS:**
+
+| Files/Dirs Found                           | Load (COMPLETE FILE)          |
+|--------------------------------------------|-------------------------------|
+| `certs/`, `ssl/`, `pki/`, `tls/` dirs      | `ai/standards/common/PKI.md`  |
+| `*.crt`, `*.pem`, `ssl*.xml`, `*-tls.yaml` | `ai/standards/common/PKI.md`  |
+
 ---
 
 ## Ready to Work
