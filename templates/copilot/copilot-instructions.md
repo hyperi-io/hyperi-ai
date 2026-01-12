@@ -1,6 +1,18 @@
-# HyperSec Coding Standards - GitHub Copilot Instructions
+# HyperSec Coding Standards - GitHub Copilot / OpenAI Codex Instructions
 
 **Recommended model:** GPT-5.1-Codex (Nov 2025) - optimized for agentic coding with advanced reasoning
+
+## VS Code 1.108+ Agent Skills
+
+If using VS Code 1.108 or later, enable Agent Skills for enhanced context:
+
+```json
+{
+    "chat.useAgentSkills": true
+}
+```
+
+Skills are located in `.github/skills/` and are automatically loaded based on project context.
 
 ## Standards Location
 

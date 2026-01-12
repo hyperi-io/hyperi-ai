@@ -4,26 +4,28 @@ load test_helper
 
 setup() {
     setup_test_env
+    mock_cli "claude"  # Mock claude CLI for all tests
 }
 
 teardown() {
     cleanup_test_env
+    clear_mocks
 }
 
 @test "TC-101: Requires STATE.md (prerequisite check)" {
     cd "$TEST_SUBMODULE"
-    run ./ai/claude-code.sh
+    run ./ai/agents/claude.sh
 
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "install.sh first" ]]
+    [[ "$output" =~ "attach.sh first" ]]
     [ ! -d ".claude" ]
 }
 
 @test "TC-102: Full Claude Code setup" {
     cd "$TEST_SUBMODULE"
-    ./ai/install.sh
+    ./ai/attach.sh --no-agent
 
-    run ./ai/claude-code.sh --verbose
+    run ./ai/agents/claude.sh --verbose
 
     [ "$status" -eq 0 ]
     [ -d ".claude" ]
@@ -36,14 +38,14 @@ teardown() {
 
 @test "TC-103: Idempotent - preserves settings" {
     cd "$TEST_SUBMODULE"
-    ./ai/install.sh
-    ./ai/claude-code.sh
+    ./ai/attach.sh --no-agent
+    ./ai/agents/claude.sh
 
     # Modify settings
     echo '/* custom */' >> .claude/settings.json
 
     # Run again
-    run ./ai/claude-code.sh
+    run ./ai/agents/claude.sh
 
     [ "$status" -eq 0 ]
     grep -q "custom" .claude/settings.json
@@ -51,11 +53,11 @@ teardown() {
 
 @test "TC-104: Force flag overwrites settings" {
     cd "$TEST_SUBMODULE"
-    ./ai/install.sh
-    ./ai/claude-code.sh
+    ./ai/attach.sh --no-agent
+    ./ai/agents/claude.sh
 
     echo '/* custom */' >> .claude/settings.json
-    run ./ai/claude-code.sh --force
+    run ./ai/agents/claude.sh --force
 
     [ "$status" -eq 0 ]
     ! grep -q "custom" .claude/settings.json
@@ -63,13 +65,13 @@ teardown() {
 
 @test "TC-105: Commands always updated (versioned)" {
     cd "$TEST_SUBMODULE"
-    ./ai/install.sh
-    ./ai/claude-code.sh
+    ./ai/attach.sh --no-agent
+    ./ai/agents/claude.sh
 
     # Modify command
     echo "OLD VERSION" > .claude/commands/load.md
 
-    run ./ai/claude-code.sh
+    run ./ai/agents/claude.sh
 
     [ "$status" -eq 0 ]
     ! grep -q "OLD VERSION" .claude/commands/load.md
@@ -78,9 +80,9 @@ teardown() {
 
 @test "TC-106: Dry run preview" {
     cd "$TEST_SUBMODULE"
-    ./ai/install.sh
+    ./ai/attach.sh --no-agent
 
-    run ./ai/claude-code.sh --dry-run
+    run ./ai/agents/claude.sh --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Would" ]]
@@ -88,7 +90,7 @@ teardown() {
 }
 
 @test "TC-107: Help flag" {
-    run "$AI_SOURCE/claude-code.sh" --help
+    run "$AI_SOURCE/agents/claude.sh" --help
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Usage:" ]]
@@ -96,12 +98,23 @@ teardown() {
 
 @test "TC-108: Custom path" {
     TMP_DIR="$(mktemp -d)"
-    "$AI_SOURCE/install.sh" --path "$TMP_DIR"
+    "$AI_SOURCE/attach.sh" --path "$TMP_DIR" --no-agent
 
-    run "$AI_SOURCE/claude-code.sh" --path "$TMP_DIR"
+    run "$AI_SOURCE/agents/claude.sh" --path "$TMP_DIR"
 
     [ "$status" -eq 0 ]
     [ -d "$TMP_DIR/.claude" ]
 
     rm -rf "$TMP_DIR"
+}
+
+@test "TC-109: Exit code 2 when CLI not installed" {
+    cd "$TEST_SUBMODULE"
+    ./ai/attach.sh --no-agent
+    unmock_cli "claude"
+
+    run ./ai/agents/claude.sh
+
+    [ "$status" -eq $EXIT_NOT_INSTALLED ]
+    [[ "$output" =~ "not installed" ]]
 }

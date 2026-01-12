@@ -16,6 +16,11 @@ export TEST_SUBMODULE="$TEST_ROOT/test-submodule"
 export TEST_CLONE="$TEST_ROOT/test-clone"
 export TEST_STANDALONE="$TEST_ROOT/test-standalone"
 
+# Exit codes (must match agents/common.sh)
+export EXIT_SUCCESS=0
+export EXIT_ERROR=1
+export EXIT_NOT_INSTALLED=2
+
 setup_test_env() {
     # Clean up old tests
     rm -rf "$TEST_ROOT"
@@ -28,20 +33,29 @@ setup_test_env() {
     git config user.email "test@example.com"
     git config user.name "Test User"
 
-    # Create .git file (simulates submodule)
-    echo "gitdir: ../.git/modules/ai" > "$TEST_SUBMODULE/ai/.git" 2>/dev/null || true
+    # Create ai/ directory first, then .git file (simulates submodule)
     mkdir -p "$TEST_SUBMODULE/ai"
-    cp -r "$AI_SOURCE"/{install.sh,claude-code.sh,copilot.sh,gemini.sh,cursor.sh,standards,templates} "$TEST_SUBMODULE/ai/" 2>/dev/null || true
+    mkdir -p "$TEST_SUBMODULE/ai/agents"
+    echo "gitdir: ../.git/modules/ai" > "$TEST_SUBMODULE/ai/.git" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates} "$TEST_SUBMODULE/ai/" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/agents/*.sh "$TEST_SUBMODULE/ai/agents/" 2>/dev/null || true
+    chmod +x "$TEST_SUBMODULE/ai/attach.sh" "$TEST_SUBMODULE/ai/agents/"*.sh 2>/dev/null || true
 
     # Setup clone test
     mkdir -p "$TEST_CLONE/ai"
-    cp -r "$AI_SOURCE"/{install.sh,claude-code.sh,copilot.sh,gemini.sh,cursor.sh,standards,templates} "$TEST_CLONE/ai/"
+    mkdir -p "$TEST_CLONE/ai/agents"
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates} "$TEST_CLONE/ai/"
+    cp -r "$AI_SOURCE"/agents/*.sh "$TEST_CLONE/ai/agents/" 2>/dev/null || true
+    chmod +x "$TEST_CLONE/ai/attach.sh" "$TEST_CLONE/ai/agents/"*.sh 2>/dev/null || true
     # Create .git directory (simulates clone)
     mkdir -p "$TEST_CLONE/ai/.git"
 
     # Setup standalone test
     mkdir -p "$TEST_STANDALONE/ai"
-    cp -r "$AI_SOURCE"/{install.sh,claude-code.sh,copilot.sh,gemini.sh,cursor.sh,standards,templates} "$TEST_STANDALONE/ai/" 2>/dev/null || true
+    mkdir -p "$TEST_STANDALONE/ai/agents"
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates} "$TEST_STANDALONE/ai/" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/agents/*.sh "$TEST_STANDALONE/ai/agents/" 2>/dev/null || true
+    chmod +x "$TEST_STANDALONE/ai/attach.sh" "$TEST_STANDALONE/ai/agents/"*.sh 2>/dev/null || true
     # No .git (simulates unzipped)
 }
 
@@ -50,4 +64,28 @@ cleanup_test_env() {
     # Commented out to allow inspection after failures
     # rm -rf "$TEST_ROOT"
     :
+}
+
+# Mock CLI commands for testing agent detection
+# Creates fake CLI binaries in a temp directory and adds to PATH
+mock_cli() {
+    local cli_name="$1"
+    local mock_dir="$TEST_ROOT/mock-bin"
+    mkdir -p "$mock_dir"
+    echo '#!/bin/bash' > "$mock_dir/$cli_name"
+    echo "echo \"mock $cli_name\"" >> "$mock_dir/$cli_name"
+    chmod +x "$mock_dir/$cli_name"
+    export PATH="$mock_dir:$PATH"
+}
+
+# Remove mocked CLI
+unmock_cli() {
+    local cli_name="$1"
+    local mock_dir="$TEST_ROOT/mock-bin"
+    rm -f "$mock_dir/$cli_name"
+}
+
+# Clear all mocked CLIs
+clear_mocks() {
+    rm -rf "$TEST_ROOT/mock-bin"
 }

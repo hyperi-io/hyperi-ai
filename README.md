@@ -12,9 +12,9 @@ Standards, templates, and setup scripts for AI-assisted development.
 
 A standards library that attaches to any project to provide:
 
-- **Coding standards** - Language-agnostic + language-specific (Python, Go, TypeScript, Rust, Bash) + infrastructure (Docker, K8s, Terraform, Ansible)
+- **Coding standards** - Language-agnostic + language-specific (Python, Go, TypeScript, Rust, Bash, C++) + infrastructure (Docker, K8s, Terraform, Ansible)
 - **Session state** - Cross-LLM session persistence (STATE.md, TODO.md)
-- **AI assistant configs** - Setup scripts for Claude Code, GitHub Copilot, Cursor IDE, Gemini
+- **AI assistant configs** - Setup scripts for Claude Code, Cursor IDE, Gemini Code, OpenAI Codex
 
 **Design:**
 
@@ -32,23 +32,29 @@ A standards library that attaches to any project to provide:
 ./ai/attach.sh [OPTIONS]
 
 OPTIONS:
-  --claude         Attach + configure Claude Code
-  --copilot        Attach + configure GitHub Copilot
-  --cursor         Attach + configure Cursor IDE
-  --gemini         Attach + configure Gemini Code
+  --agent NAME       Setup specific agent (claude, cursor, gemini, codex)
+  --all-agents       Setup all installed agents
+  --no-agent         Skip agent detection entirely
 
-  --pin            Pin submodule version (disable auto-update)
-  --force          Overwrite existing files
-  --no-hooks       Skip git hook installation
-  --dry-run        Preview changes without modifying
-  --verbose        Detailed output
+  --pin              Pin submodule version (disable auto-update)
+  --force            Overwrite existing files
+  --no-hooks         Skip git hook installation
+  --dry-run          Preview changes without modifying
+  --verbose          Detailed output
 
 EXAMPLES:
-  ./ai/attach.sh                    # Basic attach
-  ./ai/attach.sh --claude           # Attach + Claude Code
-  ./ai/attach.sh --claude --pin     # Attach + Claude, pinned version
+  ./ai/attach.sh                    # Auto-detect and configure first found agent
+  ./ai/attach.sh --agent claude     # Attach + Claude Code
+  ./ai/attach.sh --all-agents       # Configure all installed agents
+  ./ai/attach.sh --no-agent         # Attach without agent setup
   ./ai/attach.sh --force            # Overwrite existing files
 ```
+
+**Agent auto-detection:** When no agent flag specified, attach.sh detects installed
+CLIs in priority order: `claude` → `agent` (Cursor) → `gemini` → `codex`
+
+**Deprecated flags:** `--claude`, `--cursor`, `--gemini` still work but show warnings.
+Use `--agent NAME` instead.
 
 ---
 
@@ -60,16 +66,15 @@ EXAMPLES:
 |------|---------|
 | `STATE.md` | Project state, session history, context for AI |
 | `TODO.md` | Task tracking, priorities |
-| `.git/hooks/*` | Git hooks (branch validation, submodule auto-update) |
 
-### By assistant scripts
+### By agent scripts
 
-| Script | Creates |
-|--------|---------|
-| `claude.sh` | `.claude/settings.json`, `.claude/commands/`, `CLAUDE.md` → `STATE.md` |
-| `copilot.sh` | `.github/copilot-instructions.md`, `COPILOT.md` → `STATE.md` |
-| `cursor.sh` | `.cursor/cli.json`, `.cursor/rules/`, `CURSOR.md` → `STATE.md` |
-| `gemini.sh` | `.gemini/settings.json`, `.gemini/commands/`, `GEMINI.md` → `STATE.md` |
+| Script | CLI | Creates |
+|--------|-----|---------|
+| `agents/claude.sh` | `claude` | `.claude/settings.json`, `.claude/commands/`, `CLAUDE.md` → `STATE.md` |
+| `agents/cursor.sh` | `agent` | `.cursor/cli.json`, `.cursor/rules/`, `CURSOR.md` → `STATE.md` |
+| `agents/gemini.sh` | `gemini` | `.gemini/settings.json`, `.gemini/commands/`, `GEMINI.md` → `STATE.md` |
+| `agents/codex.sh` | `codex` | `.github/copilot-instructions.md`, `.github/skills/`, `.vscode/settings.json`, `CODEX.md` → `STATE.md` |
 
 ---
 
@@ -77,32 +82,31 @@ EXAMPLES:
 
 ```text
 ai/                              # This repository ($AI_ROOT)
-├── attach.sh                    # Attach AI to project
-├── claude.sh                    # Claude Code setup
-├── copilot.sh                   # GitHub Copilot setup
-├── cursor.sh                    # Cursor IDE setup
-├── gemini.sh                    # Gemini Code setup
+├── attach.sh                    # Attach AI to project (auto-detects agents)
 │
-├── hooks/                       # Git hooks
-│   ├── pre-commit               # Branch name validation
-│   ├── commit-msg               # AI attribution removal
-│   └── post-checkout            # Submodule auto-update
+├── agents/                      # Agent setup scripts
+│   ├── common.sh               # Shared functions (CLI detection, logging)
+│   ├── claude.sh               # Claude Code setup
+│   ├── cursor.sh               # Cursor IDE setup
+│   ├── gemini.sh               # Gemini Code setup
+│   └── codex.sh                # OpenAI Codex / VS Code setup
 │
 ├── standards/                   # Coding standards (main product)
 │   ├── STANDARDS.md             # Full reference
 │   ├── STANDARDS-QUICKSTART.md  # Core standards (~7.5K tokens)
 │   ├── code-assistant/          # AI-specific guidance
 │   ├── common/                  # Language-agnostic standards
-│   ├── languages/               # Python, Go, TypeScript, Rust, Bash
+│   ├── languages/               # Python, Go, TypeScript, Rust, Bash, C++
 │   └── infrastructure/          # Docker, K8s, Terraform, Ansible
 │
 ├── templates/                   # Deployment templates
 │   ├── STATE.md                 # Session state template
 │   ├── TODO.md                  # Task tracking template
 │   ├── claude-code/             # Claude Code configs
-│   ├── copilot/                 # Copilot configs
 │   ├── cursor/                  # Cursor configs
-│   └── gemini/                  # Gemini configs
+│   ├── gemini/                  # Gemini configs
+│   ├── copilot/                 # Copilot/Codex configs
+│   └── github/skills/           # VS Code Agent Skills templates
 │
 ├── tests/                       # BATS test suite
 └── docs/                        # Project documentation
@@ -121,7 +125,7 @@ git submodule add https://github.com/hypersec-io/ai.git ai
 
 # Run either attach script - both configure both submodules
 ./ci/attach.sh --python-package
-./ai/attach.sh --claude
+./ai/attach.sh --agent claude
 ```
 
 **When both are present:**
@@ -195,18 +199,34 @@ AI assistants load standards based on project files detected:
 | `package.json`, `tsconfig.json` | `languages/TYPESCRIPT.md` |
 | `Cargo.toml` | `languages/RUST.md` |
 | `*.sh` | `languages/BASH.md` |
+| `CMakeLists.txt`, `*.cpp` | `languages/CPP.md` |
 | `Dockerfile` | `infrastructure/DOCKER.md` |
 | `Chart.yaml` | `infrastructure/K8S.md` |
 | `*.tf` | `infrastructure/TERRAFORM.md` |
 | `ansible.cfg` | `infrastructure/ANSIBLE.md` |
+| `certs/`, `ssl/`, `pki/` | `common/PKI.md` |
 
 **Token budget:** ~15-20K tokens typical session (vs ~50K+ if all loaded)
 
 ---
 
+## VS Code 1.108+ Agent Skills
+
+The `codex.sh` agent creates VS Code Agent Skills in `.github/skills/`:
+
+```json
+{
+    "chat.useAgentSkills": true
+}
+```
+
+Skills are YAML-frontmatter markdown files automatically loaded based on project context.
+
+---
+
 ## Claude Code Usage
 
-After running `./ai/claude.sh`:
+After running `./ai/attach.sh --agent claude`:
 
 **`/load`** - Begin session
 
@@ -231,8 +251,8 @@ After running `./ai/claude.sh`:
 bats tests/
 
 # Run specific test
-bats tests/attach.bats
-bats tests/claude.bats
+bats tests/install.bats
+bats tests/claude-code.bats
 ```
 
 Tests cover all scripts across submodule, clone, and standalone modes.
@@ -252,4 +272,4 @@ Documentation uses these variables:
 
 HyperSec EULA (Proprietary) - See [LICENSE](LICENSE)
 
-Copyright (c) 2025 HyperSec
+Copyright (c) 2026 HyperSec

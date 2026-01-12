@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
-# Project:      HyperSec AI
-# File:         claude.sh
-# Purpose:      Setup Claude Code configuration for a project
-# License:      LicenseRef-HyperSec-EULA
-# Copyright:    (c) 2025 HyperSec Pty Ltd
+# Project:   HyperSec AI
+# File:      agents/claude.sh
+# Purpose:   Setup Claude Code configuration for a project
 #
-# Usage: ./claude.sh [--help] [--dry-run] [--force] [--no-managed] [--path PATH] [--verbose]
+# License:   LicenseRef-HyperSec-EULA
+# Copyright: (c) 2026 HyperSec Pty Ltd
+#
+# Usage: ./agents/claude.sh [--help] [--dry-run] [--force] [--no-managed] [--path PATH] [--verbose]
 #
 set -euo pipefail
+
+# Source common functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=agents/common.sh
+source "${SCRIPT_DIR}/common.sh"
 
 # Global variables
 DRY_RUN=false
@@ -17,10 +23,14 @@ NO_MANAGED=false
 AI_ROOT=""
 PROJECT_ROOT=""
 
+# CLI command for this agent
+AGENT_CLI="claude"
+AGENT_NAME="Claude Code"
+
 # Detect script location and project root
 detect_paths() {
-    # AI_ROOT = directory containing this script
-    AI_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # AI_ROOT = parent of agents/ directory
+    AI_ROOT="$(dirname "$SCRIPT_DIR")"
 
     # PROJECT_ROOT = parent directory (default)
     # Can be overridden with --path
@@ -29,22 +39,32 @@ detect_paths() {
     fi
 
     if [ "$VERBOSE" = "true" ]; then
-        echo "AI_ROOT: $AI_ROOT"
-        echo "PROJECT_ROOT: $PROJECT_ROOT"
+        agent_log_info "AI_ROOT: $AI_ROOT"
+        agent_log_info "PROJECT_ROOT: $PROJECT_ROOT"
+    fi
+}
+
+# Check if Claude CLI is installed
+check_agent_cli() {
+    if ! agent_installed "$AGENT_CLI"; then
+        agent_log_info "${AGENT_NAME} CLI '${AGENT_CLI}' not installed (skipping)"
+        exit $EXIT_NOT_INSTALLED
+    fi
+    if [ "$VERBOSE" = "true" ]; then
+        agent_log_info "${AGENT_NAME} CLI found: $(command -v "$AGENT_CLI")"
     fi
 }
 
 # Check prerequisites
 check_prerequisites() {
     if [ ! -f "$PROJECT_ROOT/STATE.md" ]; then
-        echo "ERROR: STATE.md not found in project root"
-        echo "Please run attach.sh first:"
-        echo "  ./ai/attach.sh"
-        exit 1
+        agent_log_error "STATE.md not found in project root"
+        agent_log_info "Run attach.sh first: ./ai/attach.sh"
+        exit $EXIT_ERROR
     fi
 
     if [ "$VERBOSE" = "true" ]; then
-        echo "Prerequisites check passed"
+        agent_log_info "Prerequisites check passed"
     fi
 }
 
@@ -65,9 +85,9 @@ setup_claude_dir() {
     mkdir -p "$skills_dir"
 
     if [ "$VERBOSE" = "true" ]; then
-        echo "Created: $claude_dir/"
-        echo "Created: $commands_dir/"
-        echo "Created: $skills_dir/"
+        agent_log_info "Created: $claude_dir/"
+        agent_log_info "Created: $commands_dir/"
+        agent_log_info "Created: $skills_dir/"
     fi
 }
 
@@ -88,8 +108,8 @@ deploy_settings() {
     local dst_dir="$PROJECT_ROOT/.claude"
 
     if [ ! -f "$src" ]; then
-        echo "ERROR: Template not found: $src"
-        exit 1
+        agent_log_error "Template not found: $src"
+        exit $EXIT_ERROR
     fi
 
     # Calculate relative path from .claude/ to template
@@ -109,11 +129,11 @@ deploy_settings() {
         # Remove existing file/symlink if forcing
         [ -e "$dst" ] || [ -L "$dst" ] && rm -f "$dst"
         ln -s "$rel_path" "$dst"
-        echo "Symlinked: $dst -> $rel_path"
+        agent_log_success "Symlinked: $dst -> $rel_path"
     else
-        echo "Skipped (preserving existing): $dst"
+        agent_log_info "Skipped (preserving existing): $dst"
         if [ "$VERBOSE" = "true" ]; then
-            echo "  Use --force to overwrite with symlink"
+            agent_log_info "  Use --force to overwrite with symlink"
         fi
     fi
 }
@@ -124,8 +144,8 @@ deploy_commands() {
     local dst_dir="$PROJECT_ROOT/.claude/commands"
 
     if [ ! -d "$src_dir" ]; then
-        echo "ERROR: Commands directory not found: $src_dir"
-        exit 1
+        agent_log_error "Commands directory not found: $src_dir"
+        exit $EXIT_ERROR
     fi
 
     # Calculate relative paths
@@ -155,28 +175,28 @@ deploy_commands() {
     if [ ! -e "$load_dst" ] || [ "$FORCE" = "true" ]; then
         [ -e "$load_dst" ] || [ -L "$load_dst" ] && rm -f "$load_dst"
         ln -s "$rel_load" "$load_dst"
-        echo "Symlinked: $load_dst -> $rel_load"
+        agent_log_success "Symlinked: $load_dst -> $rel_load"
     else
-        echo "Skipped (preserving existing): $load_dst"
+        agent_log_info "Skipped (preserving existing): $load_dst"
     fi
 
     # Deploy save.md
     if [ ! -e "$save_dst" ] || [ "$FORCE" = "true" ]; then
         [ -e "$save_dst" ] || [ -L "$save_dst" ] && rm -f "$save_dst"
         ln -s "$rel_save" "$save_dst"
-        echo "Symlinked: $save_dst -> $rel_save"
+        agent_log_success "Symlinked: $save_dst -> $rel_save"
     else
-        echo "Skipped (preserving existing): $save_dst"
+        agent_log_info "Skipped (preserving existing): $save_dst"
     fi
 
     # Remove deprecated start.md if it exists
     if [ -e "$dst_dir/start.md" ]; then
         rm -f "$dst_dir/start.md"
-        echo "Removed: $dst_dir/start.md (deprecated, replaced by load.md)"
+        agent_log_info "Removed: $dst_dir/start.md (deprecated, replaced by load.md)"
     fi
 
     if [ "$VERBOSE" = "true" ]; then
-        echo "  Use --force to overwrite with symlinks"
+        agent_log_info "  Use --force to overwrite with symlinks"
     fi
 }
 
@@ -199,7 +219,7 @@ deploy_skills() {
         local skill_md="$skill_dir/SKILL.md"
 
         if [ ! -f "$src_file" ]; then
-            [ "$VERBOSE" = "true" ] && echo "Skill source not found: $src_file"
+            [ "$VERBOSE" = "true" ] && agent_log_info "Skill source not found: $src_file" || true
             return 0
         fi
 
@@ -219,11 +239,11 @@ deploy_skills() {
             [ -e "$skill_dir" ] && rm -rf "$skill_dir"
             mkdir -p "$skill_dir"
             ln -s "$rel_path" "$skill_md"
-            [ "$VERBOSE" = "true" ] && echo "Created skill: $name/ with SKILL.md -> $rel_path"
+            [ "$VERBOSE" = "true" ] && agent_log_info "Created skill: $name/ with SKILL.md -> $rel_path" || true
         fi
     }
 
-    echo "Deploying skills..."
+    agent_log_info "Deploying skills..."
 
     # Core skills (always deployed)
     create_skill "standards" "$standards_dir/STANDARDS.md"
@@ -312,7 +332,7 @@ deploy_skills() {
 install_managed_settings() {
     if [ "$NO_MANAGED" = "true" ]; then
         if [ "$VERBOSE" = "true" ]; then
-            echo "Skipped: managed-settings.json (--no-managed)"
+            agent_log_info "Skipped: managed-settings.json (--no-managed)"
         fi
         return 0
     fi
@@ -323,7 +343,7 @@ install_managed_settings() {
 
     if [ ! -f "$src" ]; then
         if [ "$VERBOSE" = "true" ]; then
-            echo "Skipped: managed-settings.json template not found"
+            agent_log_info "Skipped: managed-settings.json template not found"
         fi
         return 0
     fi
@@ -331,10 +351,10 @@ install_managed_settings() {
     # Check if already installed and matches
     if [ -f "$dst" ]; then
         if cmp -s "$src" "$dst" 2>/dev/null; then
-            echo "Managed settings already installed: $dst"
+            agent_log_info "Managed settings already installed: $dst"
             return 0
         elif [ "$FORCE" != "true" ]; then
-            echo "Skipped: $dst exists (use --force to update)"
+            agent_log_info "Skipped: $dst exists (use --force to update)"
             return 0
         fi
     fi
@@ -346,9 +366,9 @@ install_managed_settings() {
 
     # Check if we can use sudo
     if ! command -v sudo >/dev/null 2>&1; then
-        echo "Skipped: managed-settings.json (sudo not available)"
+        agent_log_info "Skipped: managed-settings.json (sudo not available)"
         if [ "$VERBOSE" = "true" ]; then
-            echo "  To install manually: sudo mkdir -p $dst_dir && sudo cp $src $dst"
+            agent_log_info "  To install manually: sudo mkdir -p $dst_dir && sudo cp $src $dst"
         fi
         return 0
     fi
@@ -369,10 +389,10 @@ install_managed_settings() {
 
     # Try to install with sudo
     if sudo mkdir -p "$dst_dir" && sudo cp "$src" "$dst" && sudo chmod 644 "$dst"; then
-        echo "Installed: $dst"
+        agent_log_success "Installed: $dst"
     else
-        echo "WARNING: Failed to install managed-settings.json"
-        echo "  To install manually: sudo mkdir -p $dst_dir && sudo cp $src $dst"
+        agent_log_warn "Failed to install managed-settings.json"
+        agent_log_info "  To install manually: sudo mkdir -p $dst_dir && sudo cp $src $dst"
     fi
 }
 
@@ -393,13 +413,13 @@ create_symlink() {
     if [ -L "$link" ]; then
         local existing_target
         existing_target="$(readlink "$link")"
-        echo "Skipped (exists): $link -> $existing_target"
+        agent_log_info "Skipped (exists): $link -> $existing_target"
     elif [ -f "$link" ]; then
-        echo "WARNING: $link exists as a regular file"
-        echo "  Delete it manually to create symlink, or use --force"
+        agent_log_warn "$link exists as a regular file"
+        agent_log_info "  Delete it manually to create symlink, or use --force"
     else
         ln -s "$target" "$link"
-        echo "Created: $link -> $target"
+        agent_log_success "Created: $link -> $target"
     fi
 }
 
@@ -417,7 +437,7 @@ print_summary() {
         echo "DRY RUN - No files were modified"
     else
         echo ""
-        echo "Claude Code setup complete!"
+        agent_log_success "Claude Code setup complete!"
         echo ""
         echo "Configuration (symlinked to ai/templates/claude-code/):"
         echo "  .claude/settings.json     -> settings.json"
@@ -428,7 +448,7 @@ print_summary() {
         echo ""
         echo "Next steps:"
         echo "  1. Open project in Claude Code"
-        echo "  2. Run /load to initialize session"
+        echo "  2. Run /load to initialise session"
         echo "  3. Skills are auto-invoked by Claude based on context"
     fi
     echo "================================"
@@ -451,6 +471,7 @@ Options:
   -h              Same as --help
 
 Notes:
+  - Requires Claude Code CLI to be installed
   - Requires STATE.md (run attach.sh first)
   - Creates symlinks to templates (not copies)
   - Preserves ALL existing files by default (use --force to replace)
@@ -461,16 +482,16 @@ Notes:
 
 Examples:
   # Basic usage (setup in parent directory)
-  ./claude.sh
+  ./agents/claude.sh
 
   # Preview changes without modifying files
-  ./claude.sh --dry-run
+  ./agents/claude.sh --dry-run
 
   # Force overwrite settings
-  ./claude.sh --force
+  ./agents/claude.sh --force
 
   # Setup for custom project
-  ./claude.sh --path /path/to/project
+  ./agents/claude.sh --path /path/to/project
 
 EOF
 }
@@ -501,16 +522,16 @@ parse_args() {
                 ;;
             --path)
                 if [ -z "${2:-}" ]; then
-                    echo "ERROR: --path requires an argument"
-                    exit 1
+                    agent_log_error "--path requires an argument"
+                    exit $EXIT_ERROR
                 fi
                 PROJECT_ROOT="$2"
                 shift 2
                 ;;
             *)
-                echo "ERROR: Unknown option: $1"
+                agent_log_error "Unknown option: $1"
                 echo "Try '$0 --help' for more information"
-                exit 1
+                exit $EXIT_ERROR
                 ;;
         esac
     done
@@ -520,14 +541,14 @@ parse_args() {
 validate_environment() {
     # Check if project root exists
     if [ ! -d "$PROJECT_ROOT" ]; then
-        echo "ERROR: Project directory does not exist: $PROJECT_ROOT"
-        exit 1
+        agent_log_error "Project directory does not exist: $PROJECT_ROOT"
+        exit $EXIT_ERROR
     fi
 
     # Check if project root is writable
     if [ ! -w "$PROJECT_ROOT" ]; then
-        echo "ERROR: Project directory is not writable: $PROJECT_ROOT"
-        exit 1
+        agent_log_error "Project directory is not writable: $PROJECT_ROOT"
+        exit $EXIT_ERROR
     fi
 }
 
@@ -535,6 +556,7 @@ validate_environment() {
 main() {
     parse_args "$@"
     detect_paths
+    check_agent_cli
     validate_environment
     check_prerequisites
     setup_claude_dir

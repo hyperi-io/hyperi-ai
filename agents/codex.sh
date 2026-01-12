@@ -1,0 +1,496 @@
+#!/usr/bin/env bash
+# Project:   HyperSec AI
+# File:      agents/codex.sh
+# Purpose:   Setup OpenAI Codex and VS Code AI configuration
+#
+# License:   LicenseRef-HyperSec-EULA
+# Copyright: (c) 2026 HyperSec Pty Ltd
+#
+# This script configures:
+# - OpenAI Codex CLI
+# - VS Code AI features (Agent Skills, settings)
+# - .github/copilot-instructions.md (shared with GitHub Copilot)
+#
+# Usage: ./agents/codex.sh [--help] [--dry-run] [--force] [--path PATH] [--verbose]
+#
+set -euo pipefail
+
+# Source common functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=agents/common.sh
+source "${SCRIPT_DIR}/common.sh"
+
+# Global variables
+DRY_RUN=false
+FORCE=false
+VERBOSE=false
+AI_ROOT=""
+PROJECT_ROOT=""
+
+# CLI command for this agent
+AGENT_CLI="codex"
+AGENT_NAME="OpenAI Codex"
+
+# Detect script location and project root
+detect_paths() {
+    # AI_ROOT = parent of agents/ directory
+    AI_ROOT="$(dirname "$SCRIPT_DIR")"
+
+    # PROJECT_ROOT = parent directory (default)
+    # Can be overridden with --path
+    if [ -z "$PROJECT_ROOT" ]; then
+        PROJECT_ROOT="$(dirname "$AI_ROOT")"
+    fi
+
+    if [ "$VERBOSE" = "true" ]; then
+        agent_log_info "AI_ROOT: $AI_ROOT"
+        agent_log_info "PROJECT_ROOT: $PROJECT_ROOT"
+    fi
+}
+
+# Check if Codex CLI is installed
+check_agent_cli() {
+    if ! agent_installed "$AGENT_CLI"; then
+        agent_log_info "${AGENT_NAME} CLI '${AGENT_CLI}' not installed (skipping)"
+        exit $EXIT_NOT_INSTALLED
+    fi
+    if [ "$VERBOSE" = "true" ]; then
+        agent_log_info "${AGENT_NAME} CLI found: $(command -v "$AGENT_CLI")"
+    fi
+}
+
+# Check prerequisites
+check_prerequisites() {
+    if [ ! -f "$PROJECT_ROOT/STATE.md" ]; then
+        agent_log_error "STATE.md not found in project root"
+        agent_log_info "Run attach.sh first: ./ai/attach.sh"
+        exit $EXIT_ERROR
+    fi
+
+    if [ "$VERBOSE" = "true" ]; then
+        agent_log_info "Prerequisites check passed"
+    fi
+}
+
+# Create .github directory structure
+setup_github_dir() {
+    local github_dir="$PROJECT_ROOT/.github"
+    local skills_dir="$github_dir/skills"
+
+    if [ "$DRY_RUN" = "true" ]; then
+        echo "Would create: $github_dir/"
+        echo "Would create: $skills_dir/"
+        return 0
+    fi
+
+    mkdir -p "$skills_dir"
+
+    if [ "$VERBOSE" = "true" ]; then
+        agent_log_info "Created: $github_dir/"
+        agent_log_info "Created: $skills_dir/"
+    fi
+}
+
+# Create .vscode directory
+setup_vscode_dir() {
+    local vscode_dir="$PROJECT_ROOT/.vscode"
+
+    if [ "$DRY_RUN" = "true" ]; then
+        echo "Would create: $vscode_dir/"
+        return 0
+    fi
+
+    mkdir -p "$vscode_dir"
+
+    if [ "$VERBOSE" = "true" ]; then
+        agent_log_info "Created: $vscode_dir/"
+    fi
+}
+
+# Deploy copilot-instructions.md (preserve existing unless --force)
+deploy_instructions() {
+    local src="$AI_ROOT/templates/copilot/copilot-instructions.md"
+    local dst="$PROJECT_ROOT/.github/copilot-instructions.md"
+
+    if [ ! -f "$src" ]; then
+        agent_log_error "Template not found: $src"
+        exit $EXIT_ERROR
+    fi
+
+    if [ "$DRY_RUN" = "true" ]; then
+        if [ ! -f "$dst" ] || [ "$FORCE" = "true" ]; then
+            echo "Would deploy: $dst"
+        else
+            echo "Would skip (preserving existing): $dst"
+        fi
+        return 0
+    fi
+
+    if [ ! -f "$dst" ] || [ "$FORCE" = "true" ]; then
+        cp "$src" "$dst"
+        agent_log_success "Deployed: $dst"
+    else
+        agent_log_info "Skipped (preserving existing): $dst"
+        if [ "$VERBOSE" = "true" ]; then
+            agent_log_info "  Use --force to overwrite custom instructions"
+        fi
+    fi
+}
+
+# Deploy VS Code Agent Skills (VS Code 1.108+)
+# Creates .github/skills/ with SKILL.md wrapper files
+deploy_skills() {
+    local skills_dir="$PROJECT_ROOT/.github/skills"
+    local standards_dir="$AI_ROOT/standards"
+    local templates_dir="$AI_ROOT/templates/github/skills"
+
+    agent_log_info "Deploying Agent Skills (VS Code 1.108+)..."
+
+    # Helper to create a skill with SKILL.md
+    create_skill() {
+        local name="$1"
+        local description="$2"
+        local src_file="$3"
+        local skill_dir="$skills_dir/$name"
+        local skill_md="$skill_dir/SKILL.md"
+
+        if [ ! -f "$src_file" ]; then
+            [ "$VERBOSE" = "true" ] && agent_log_info "Skill source not found: $src_file" || true
+            return 0
+        fi
+
+        if [ "$DRY_RUN" = "true" ]; then
+            if [ ! -e "$skill_dir" ] || [ "$FORCE" = "true" ]; then
+                echo "Would create skill: $name/"
+            else
+                echo "Would skip skill (exists): $name/"
+            fi
+            return 0
+        fi
+
+        if [ ! -e "$skill_dir" ] || [ "$FORCE" = "true" ]; then
+            [ -e "$skill_dir" ] && rm -rf "$skill_dir"
+            mkdir -p "$skill_dir"
+
+            # Create SKILL.md with YAML frontmatter (VS Code format)
+            cat > "$skill_md" << EOF
+---
+name: ${name}
+description: ${description}
+---
+
+# ${name^} Standards
+
+See the full standards document at: \`ai/standards/${src_file#"$standards_dir/"}\`
+
+EOF
+            [ "$VERBOSE" = "true" ] && agent_log_info "Created skill: $name/" || true
+        fi
+    }
+
+    # Core skills (always deployed)
+    create_skill "standards" "HyperSec coding standards - always use for code quality" "$standards_dir/STANDARDS-QUICKSTART.md"
+    echo "  Core: standards"
+
+    # Detect and deploy language-specific skills
+    # Python
+    if [ -f "$PROJECT_ROOT/pyproject.toml" ] || [ -f "$PROJECT_ROOT/setup.py" ] || \
+       [ -f "$PROJECT_ROOT/requirements.txt" ] || [ -f "$PROJECT_ROOT/uv.lock" ]; then
+        create_skill "python" "Python coding standards for HyperSec projects" "$standards_dir/languages/PYTHON.md"
+        echo "  Detected: Python"
+    fi
+
+    # Go
+    if [ -f "$PROJECT_ROOT/go.mod" ]; then
+        create_skill "golang" "Go coding standards for HyperSec projects" "$standards_dir/languages/GOLANG.md"
+        echo "  Detected: Go"
+    fi
+
+    # TypeScript/JavaScript
+    if [ -f "$PROJECT_ROOT/tsconfig.json" ] || [ -f "$PROJECT_ROOT/package.json" ]; then
+        create_skill "typescript" "TypeScript coding standards for HyperSec projects" "$standards_dir/languages/TYPESCRIPT.md"
+        echo "  Detected: TypeScript"
+    fi
+
+    # Rust
+    if [ -f "$PROJECT_ROOT/Cargo.toml" ]; then
+        create_skill "rust" "Rust coding standards for HyperSec projects" "$standards_dir/languages/RUST.md"
+        echo "  Detected: Rust"
+    fi
+
+    # C++
+    if [ -f "$PROJECT_ROOT/CMakeLists.txt" ] || \
+       find "$PROJECT_ROOT" -maxdepth 1 \( -name "*.cpp" -o -name "*.hpp" -o -name "*.cc" -o -name "*.h" \) -type f 2>/dev/null | grep -q .; then
+        create_skill "cpp" "C++ coding standards for HyperSec projects" "$standards_dir/languages/CPP.md"
+        echo "  Detected: C++"
+    fi
+
+    # Bash
+    if find "$PROJECT_ROOT" -maxdepth 1 -name "*.sh" -type f 2>/dev/null | grep -q .; then
+        create_skill "bash" "Bash scripting standards for HyperSec projects" "$standards_dir/languages/BASH.md"
+        echo "  Detected: Bash"
+    fi
+
+    # Infrastructure skills
+    # Docker
+    if [ -f "$PROJECT_ROOT/Dockerfile" ] || [ -f "$PROJECT_ROOT/docker-compose.yaml" ] || \
+       [ -f "$PROJECT_ROOT/docker-compose.yml" ]; then
+        create_skill "docker" "Docker containerisation standards" "$standards_dir/infrastructure/DOCKER.md"
+        echo "  Detected: Docker"
+    fi
+
+    # Kubernetes/Helm
+    if [ -f "$PROJECT_ROOT/Chart.yaml" ] || [ -d "$PROJECT_ROOT/charts" ] || \
+       [ -f "$PROJECT_ROOT/values.yaml" ]; then
+        create_skill "k8s" "Kubernetes/Helm standards" "$standards_dir/infrastructure/K8S.md"
+        echo "  Detected: Kubernetes"
+    fi
+
+    # Terraform
+    if find "$PROJECT_ROOT" -maxdepth 1 -name "*.tf" -type f 2>/dev/null | grep -q .; then
+        create_skill "terraform" "Terraform IaC standards" "$standards_dir/infrastructure/TERRAFORM.md"
+        echo "  Detected: Terraform"
+    fi
+
+    # Ansible
+    if [ -f "$PROJECT_ROOT/ansible.cfg" ] || [ -f "$PROJECT_ROOT/playbook.yml" ] || \
+       [ -d "$PROJECT_ROOT/playbooks" ]; then
+        create_skill "ansible" "Ansible automation standards" "$standards_dir/infrastructure/ANSIBLE.md"
+        echo "  Detected: Ansible"
+    fi
+
+    # PKI/TLS
+    if [ -d "$PROJECT_ROOT/certs" ] || [ -d "$PROJECT_ROOT/ssl" ] || \
+       [ -d "$PROJECT_ROOT/pki" ] || [ -d "$PROJECT_ROOT/tls" ] || \
+       find "$PROJECT_ROOT" -maxdepth 2 \( -name "*.crt" -o -name "*.pem" -o -name "*.key" \) -type f 2>/dev/null | grep -q .; then
+        create_skill "pki" "PKI/TLS certificate standards" "$standards_dir/common/PKI.md"
+        echo "  Detected: PKI/TLS"
+    fi
+}
+
+# Deploy VS Code settings (MERGE with existing)
+# This is critical - we must not overwrite user's custom settings
+deploy_vscode_settings() {
+    local dst="$PROJECT_ROOT/.vscode/settings.json"
+
+    # Our recommended settings for VS Code 1.108+
+    local our_settings='{
+    "chat.useAgentSkills": true,
+    "chat.tools.terminal.enableAutoApprove": true,
+    "chat.tools.terminal.autoApproveWorkspaceNpmScripts": true,
+    "chat.tools.terminal.preventShellHistory": false,
+    "chat.viewSessions.orientation": "sideBySide"
+}'
+
+    if [ "$DRY_RUN" = "true" ]; then
+        if [ -f "$dst" ]; then
+            echo "Would merge VS Code settings into: $dst"
+        else
+            echo "Would create: $dst"
+        fi
+        return 0
+    fi
+
+    if [ -f "$dst" ]; then
+        # File exists - need to merge
+        if agent_installed "jq"; then
+            # Use jq to merge JSON (existing settings take precedence on conflict)
+            local merged
+            if merged=$(jq -s '.[0] * .[1]' <(echo "$our_settings") "$dst" 2>/dev/null); then
+                echo "$merged" > "$dst"
+                agent_log_success "Merged VS Code settings (existing preserved): $dst"
+            else
+                agent_log_warn "Failed to merge settings (invalid JSON?)"
+                agent_log_info "Manually add these settings to $dst:"
+                echo "$our_settings"
+            fi
+        else
+            agent_log_warn "jq not installed, cannot merge VS Code settings"
+            agent_log_info "Manually add these settings to $dst:"
+            echo "$our_settings"
+        fi
+    else
+        # No existing file - create new
+        echo "$our_settings" > "$dst"
+        agent_log_success "Created: $dst"
+    fi
+}
+
+# Create CODEX.md symlink to STATE.md
+create_symlink() {
+    local link="$PROJECT_ROOT/CODEX.md"
+    local target="STATE.md"
+
+    if [ "$DRY_RUN" = "true" ]; then
+        if [ -L "$link" ]; then
+            echo "Would skip (exists): $link -> $(readlink "$link")"
+        else
+            echo "Would create: $link -> $target"
+        fi
+        return 0
+    fi
+
+    if [ -L "$link" ]; then
+        local existing_target
+        existing_target="$(readlink "$link")"
+        agent_log_info "Skipped (exists): $link -> $existing_target"
+    elif [ -f "$link" ]; then
+        agent_log_warn "$link exists as a regular file"
+        agent_log_info "  Delete it manually to create symlink, or use --force"
+    else
+        ln -s "$target" "$link"
+        agent_log_success "Created: $link -> $target"
+    fi
+}
+
+# Print summary
+print_summary() {
+    echo ""
+    echo "================================"
+    echo "OpenAI Codex / VS Code Setup Summary"
+    echo "================================"
+    echo "AI Root: $AI_ROOT"
+    echo "Project Root: $PROJECT_ROOT"
+
+    if [ "$DRY_RUN" = "true" ]; then
+        echo ""
+        echo "DRY RUN - No files were modified"
+    else
+        echo ""
+        agent_log_success "Codex/VS Code setup complete!"
+        echo ""
+        echo "Configuration:"
+        echo "  .github/copilot-instructions.md - Agent instructions"
+        echo "  .github/skills/                  - Agent Skills (VS Code 1.108+)"
+        echo "  .vscode/settings.json           - VS Code AI settings"
+        echo "  CODEX.md -> STATE.md            - Project state symlink"
+        echo ""
+        echo "Next steps:"
+        echo "  1. Open project in VS Code or run 'codex' CLI"
+        echo "  2. Enable Agent Skills: set chat.useAgentSkills = true"
+        echo "  3. Skills auto-load based on project context"
+        echo ""
+        echo "VS Code 1.108+ features enabled:"
+        echo "  - Agent Skills (.github/skills/)"
+        echo "  - Terminal auto-approve for common commands"
+        echo "  - Side-by-side session view"
+    fi
+    echo "================================"
+}
+
+# Show usage information
+show_usage() {
+    cat << EOF
+codex.sh - Setup OpenAI Codex and VS Code AI configuration
+
+Usage: $0 [OPTIONS]
+
+Options:
+  --help          Show this help message
+  --dry-run       Show what would be done without making changes
+  --force         Overwrite existing files
+  --path PATH     Specify custom project root (default: parent of ai/)
+  --verbose       Enable verbose output
+  -h              Same as --help
+
+This script configures:
+  - OpenAI Codex CLI
+  - VS Code AI features (Agent Skills - VS Code 1.108+)
+  - .github/copilot-instructions.md (shared with GitHub Copilot)
+  - .vscode/settings.json (merged with existing)
+
+Notes:
+  - Requires Codex CLI to be installed
+  - Requires STATE.md (run attach.sh first)
+  - Preserves existing files by default (merges VS Code settings)
+  - Creates CODEX.md -> STATE.md symlink
+  - Deploys Agent Skills based on detected languages
+
+Examples:
+  # Basic usage (setup in parent directory)
+  ./agents/codex.sh
+
+  # Preview changes without modifying files
+  ./agents/codex.sh --dry-run
+
+  # Force overwrite all files
+  ./agents/codex.sh --force
+
+  # Setup for custom project
+  ./agents/codex.sh --path /path/to/project
+
+EOF
+}
+
+# Parse command-line arguments
+parse_args() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --help|-h)
+                show_usage
+                exit 0
+                ;;
+            --dry-run)
+                DRY_RUN=true
+                shift
+                ;;
+            --force)
+                FORCE=true
+                shift
+                ;;
+            --verbose)
+                VERBOSE=true
+                shift
+                ;;
+            --path)
+                if [ -z "${2:-}" ]; then
+                    agent_log_error "--path requires an argument"
+                    exit $EXIT_ERROR
+                fi
+                PROJECT_ROOT="$2"
+                shift 2
+                ;;
+            *)
+                agent_log_error "Unknown option: $1"
+                echo "Try '$0 --help' for more information"
+                exit $EXIT_ERROR
+                ;;
+        esac
+    done
+}
+
+# Validate environment
+validate_environment() {
+    # Check if project root exists
+    if [ ! -d "$PROJECT_ROOT" ]; then
+        agent_log_error "Project directory does not exist: $PROJECT_ROOT"
+        exit $EXIT_ERROR
+    fi
+
+    # Check if project root is writable
+    if [ ! -w "$PROJECT_ROOT" ]; then
+        agent_log_error "Project directory is not writable: $PROJECT_ROOT"
+        exit $EXIT_ERROR
+    fi
+}
+
+# Main execution
+main() {
+    parse_args "$@"
+    detect_paths
+    check_agent_cli
+    validate_environment
+    check_prerequisites
+    setup_github_dir
+    setup_vscode_dir
+    deploy_instructions
+    deploy_skills
+    deploy_vscode_settings
+    create_symlink
+    print_summary
+}
+
+# Run main if executed directly (not sourced)
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    main "$@"
+fi

@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
+# Project:   HyperSec AI
+# File:      agents/gemini.sh
+# Purpose:   Setup Gemini Code configuration for a project
 #
-# gemini.sh - Setup Gemini Code configuration
+# License:   LicenseRef-HyperSec-EULA
+# Copyright: (c) 2026 HyperSec Pty Ltd
 #
-# Usage: ./gemini.sh [--help] [--dry-run] [--force] [--path PATH] [--verbose]
+# Usage: ./agents/gemini.sh [--help] [--dry-run] [--force] [--path PATH] [--verbose]
 #
 set -euo pipefail
+
+# Source common functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=agents/common.sh
+source "${SCRIPT_DIR}/common.sh"
 
 # Global variables
 DRY_RUN=false
@@ -13,10 +22,14 @@ VERBOSE=false
 AI_ROOT=""
 PROJECT_ROOT=""
 
+# CLI command for this agent
+AGENT_CLI="gemini"
+AGENT_NAME="Gemini Code"
+
 # Detect script location and project root
 detect_paths() {
-    # AI_ROOT = directory containing this script
-    AI_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # AI_ROOT = parent of agents/ directory
+    AI_ROOT="$(dirname "$SCRIPT_DIR")"
 
     # PROJECT_ROOT = parent directory (default)
     # Can be overridden with --path
@@ -25,22 +38,32 @@ detect_paths() {
     fi
 
     if [ "$VERBOSE" = "true" ]; then
-        echo "AI_ROOT: $AI_ROOT"
-        echo "PROJECT_ROOT: $PROJECT_ROOT"
+        agent_log_info "AI_ROOT: $AI_ROOT"
+        agent_log_info "PROJECT_ROOT: $PROJECT_ROOT"
+    fi
+}
+
+# Check if Gemini CLI is installed
+check_agent_cli() {
+    if ! agent_installed "$AGENT_CLI"; then
+        agent_log_info "${AGENT_NAME} CLI '${AGENT_CLI}' not installed (skipping)"
+        exit $EXIT_NOT_INSTALLED
+    fi
+    if [ "$VERBOSE" = "true" ]; then
+        agent_log_info "${AGENT_NAME} CLI found: $(command -v "$AGENT_CLI")"
     fi
 }
 
 # Check prerequisites
 check_prerequisites() {
     if [ ! -f "$PROJECT_ROOT/STATE.md" ]; then
-        echo "ERROR: STATE.md not found in project root"
-        echo "Please run install.sh first:"
-        echo "  ./ai/install.sh"
-        exit 1
+        agent_log_error "STATE.md not found in project root"
+        agent_log_info "Run attach.sh first: ./ai/attach.sh"
+        exit $EXIT_ERROR
     fi
 
     if [ "$VERBOSE" = "true" ]; then
-        echo "Prerequisites check passed"
+        agent_log_info "Prerequisites check passed"
     fi
 }
 
@@ -58,8 +81,8 @@ setup_gemini_dir() {
     mkdir -p "$commands_dir"
 
     if [ "$VERBOSE" = "true" ]; then
-        echo "Created: $gemini_dir/"
-        echo "Created: $commands_dir/"
+        agent_log_info "Created: $gemini_dir/"
+        agent_log_info "Created: $commands_dir/"
     fi
 }
 
@@ -69,8 +92,8 @@ deploy_settings() {
     local dst="$PROJECT_ROOT/.gemini/settings.json"
 
     if [ ! -f "$src" ]; then
-        echo "ERROR: Template not found: $src"
-        exit 1
+        agent_log_error "Template not found: $src"
+        exit $EXIT_ERROR
     fi
 
     if [ "$DRY_RUN" = "true" ]; then
@@ -84,11 +107,11 @@ deploy_settings() {
 
     if [ ! -f "$dst" ] || [ "$FORCE" = "true" ]; then
         cp "$src" "$dst"
-        echo "Deployed: $dst"
+        agent_log_success "Deployed: $dst"
     else
-        echo "Skipped (preserving existing): $dst"
+        agent_log_info "Skipped (preserving existing): $dst"
         if [ "$VERBOSE" = "true" ]; then
-            echo "  Use --force to overwrite custom settings"
+            agent_log_info "  Use --force to overwrite custom settings"
         fi
     fi
 }
@@ -99,8 +122,8 @@ deploy_commands() {
     local dst_dir="$PROJECT_ROOT/.gemini/commands"
 
     if [ ! -d "$src_dir" ]; then
-        echo "ERROR: Commands directory not found: $src_dir"
-        exit 1
+        agent_log_error "Commands directory not found: $src_dir"
+        exit $EXIT_ERROR
     fi
 
     if [ "$DRY_RUN" = "true" ]; then
@@ -117,14 +140,14 @@ deploy_commands() {
     # Remove deprecated start.md if it exists
     if [ -f "$dst_dir/start.md" ]; then
         rm "$dst_dir/start.md"
-        echo "Removed: $dst_dir/start.md (deprecated, replaced by load.md)"
+        agent_log_info "Removed: $dst_dir/start.md (deprecated, replaced by load.md)"
     fi
 
-    echo "Deployed: $dst_dir/load.md"
-    echo "Deployed: $dst_dir/save.md"
+    agent_log_success "Deployed: $dst_dir/load.md"
+    agent_log_success "Deployed: $dst_dir/save.md"
 
     if [ "$VERBOSE" = "true" ]; then
-        echo "  Commands are always updated (versioned templates)"
+        agent_log_info "  Commands are always updated (versioned templates)"
     fi
 }
 
@@ -145,13 +168,13 @@ create_symlink() {
     if [ -L "$link" ]; then
         local existing_target
         existing_target="$(readlink "$link")"
-        echo "Skipped (exists): $link -> $existing_target"
+        agent_log_info "Skipped (exists): $link -> $existing_target"
     elif [ -f "$link" ]; then
-        echo "WARNING: $link exists as a regular file"
-        echo "  Delete it manually to create symlink, or use --force"
+        agent_log_warn "$link exists as a regular file"
+        agent_log_info "  Delete it manually to create symlink, or use --force"
     else
         ln -s "$target" "$link"
-        echo "Created: $link -> $target"
+        agent_log_success "Created: $link -> $target"
     fi
 }
 
@@ -169,17 +192,17 @@ print_summary() {
         echo "DRY RUN - No files were modified"
     else
         echo ""
-        echo "Gemini Code setup complete!"
+        agent_log_success "Gemini Code setup complete!"
         echo ""
         echo "Configuration:"
-        echo "  .gemini/settings.json      - Gemini Code settings"
+        echo "  .gemini/settings.json     - Gemini Code settings"
         echo "  .gemini/commands/load.md  - /load command"
-        echo "  .gemini/commands/save.md   - /save command"
-        echo "  GEMINI.md -> STATE.md      - Project state symlink"
+        echo "  .gemini/commands/save.md  - /save command"
+        echo "  GEMINI.md -> STATE.md     - Project state symlink"
         echo ""
         echo "Next steps:"
         echo "  1. Open project in your Gemini environment"
-        echo "  2. Run /load to initialize session"
+        echo "  2. Run /load to initialise session"
         echo "  3. Review GEMINI.md (links to STATE.md)"
     fi
     echo "================================"
@@ -201,23 +224,24 @@ Options:
   -h              Same as --help
 
 Notes:
-  - Requires STATE.md (run install.sh first)
+  - Requires Gemini CLI to be installed
+  - Requires STATE.md (run attach.sh first)
   - Preserves existing settings.json by default
   - Always updates slash commands (versioned templates)
   - Creates GEMINI.md -> STATE.md symlink
 
 Examples:
   # Basic usage (setup in parent directory)
-  ./gemini.sh
+  ./agents/gemini.sh
 
   # Preview changes without modifying files
-  ./gemini.sh --dry-run
+  ./agents/gemini.sh --dry-run
 
   # Force overwrite settings
-  ./gemini.sh --force
+  ./agents/gemini.sh --force
 
   # Setup for custom project
-  ./gemini.sh --path /path/to/project
+  ./agents/gemini.sh --path /path/to/project
 
 EOF
 }
@@ -244,16 +268,16 @@ parse_args() {
                 ;;
             --path)
                 if [ -z "${2:-}" ]; then
-                    echo "ERROR: --path requires an argument"
-                    exit 1
+                    agent_log_error "--path requires an argument"
+                    exit $EXIT_ERROR
                 fi
                 PROJECT_ROOT="$2"
                 shift 2
                 ;;
             *)
-                echo "ERROR: Unknown option: $1"
+                agent_log_error "Unknown option: $1"
                 echo "Try '$0 --help' for more information"
-                exit 1
+                exit $EXIT_ERROR
                 ;;
         esac
     done
@@ -263,14 +287,14 @@ parse_args() {
 validate_environment() {
     # Check if project root exists
     if [ ! -d "$PROJECT_ROOT" ]; then
-        echo "ERROR: Project directory does not exist: $PROJECT_ROOT"
-        exit 1
+        agent_log_error "Project directory does not exist: $PROJECT_ROOT"
+        exit $EXIT_ERROR
     fi
 
     # Check if project root is writable
     if [ ! -w "$PROJECT_ROOT" ]; then
-        echo "ERROR: Project directory is not writable: $PROJECT_ROOT"
-        exit 1
+        agent_log_error "Project directory is not writable: $PROJECT_ROOT"
+        exit $EXIT_ERROR
     fi
 }
 
@@ -278,6 +302,7 @@ validate_environment() {
 main() {
     parse_args "$@"
     detect_paths
+    check_agent_cli
     validate_environment
     check_prerequisites
     setup_gemini_dir

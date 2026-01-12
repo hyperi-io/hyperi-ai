@@ -1,3 +1,29 @@
+## [1.9.0](https://github.com/hypersec-io/ai/compare/1.8.2...1.9.0) (2026-01-12)
+
+
+### Features
+
+* reorganise agent scripts into agents/ directory with CLI detection ([#TBD](https://github.com/hypersec-io/ai/commit/TBD))
+* add auto-detection of installed AI agents in attach.sh ([#TBD](https://github.com/hypersec-io/ai/commit/TBD))
+* add VS Code 1.108 Agent Skills support (.github/skills/) ([#TBD](https://github.com/hypersec-io/ai/commit/TBD))
+* add codex.sh for OpenAI Codex CLI with VS Code settings merge ([#TBD](https://github.com/hypersec-io/ai/commit/TBD))
+
+
+### Breaking Changes
+
+* Agent scripts moved from root to agents/ directory
+* copilot.sh removed (replaced by codex.sh)
+* attach.sh now auto-detects agents (use --no-agent to skip)
+* Deprecated flags: --claude, --cursor, --gemini (use --agent NAME)
+
+
+### New CLI Options
+
+* `--agent NAME` - Setup specific agent (claude, cursor, gemini, codex)
+* `--all-agents` - Setup all installed agents
+* `--no-agent` - Skip agent detection entirely
+
+
 ## [1.8.2](https://github.com/hypersec-io/ai/compare/1.8.1...1.8.2) (2025-12-29)
 
 
@@ -205,7 +231,7 @@
 ## [1.3.0](https://github.com/hypersec-io/ai/compare/1.2.7...1.3.0) (2025-11-29)
 
 
-### ⚠ BREAKING CHANGES
+### BREAKING CHANGES
 
 * Standards directory structure completely reorganised.
 Projects using this module must update any direct file references.
@@ -304,7 +330,7 @@ Old paths like standards/python/PEP8.md are now standards/languages/PYTHON.md.
 ### Features
 
 * add 1M context window support to claude-code.sh ([3916aa0](https://github.com/hypersec-io/ai/commit/3916aa0ddc0529075ce173d19c74784d606e9971))
-* add semantic-release automation ([68c3614](https://github.com/hypersec-io/ai/commit/68c3614deecc59bfa1ae8258b02a4ad1186c8c6e))
+* add semantic-release automation ([68c3614](https://github.com/hypersec-io/ai/commit/68c3614deecc59bfa1ae8258b02a4ad1186c8e6e))
 * complete MVP implementation ([448240c](https://github.com/hypersec-io/ai/commit/448240c87345f5262ffac452d57e3ed2b28b02cd))
 * initial ai repository with standards and templates ([57ae6df](https://github.com/hypersec-io/ai/commit/57ae6df4a2ba9d8870ba278afe210104e84eb920))
 

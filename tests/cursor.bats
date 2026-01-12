@@ -4,26 +4,28 @@ load test_helper
 
 setup() {
     setup_test_env
+    mock_cli "agent"  # Mock Cursor CLI for all tests
 }
 
 teardown() {
     cleanup_test_env
+    clear_mocks
 }
 
 @test "TC-201: Requires STATE.md (prerequisite check)" {
     cd "$TEST_SUBMODULE"
-    run ./ai/cursor.sh
+    run ./ai/agents/cursor.sh
 
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "install.sh first" ]]
+    [[ "$output" =~ "attach.sh first" ]]
     [ ! -d ".cursor" ]
 }
 
 @test "TC-202: Full Cursor IDE setup" {
     cd "$TEST_SUBMODULE"
-    ./ai/install.sh
+    ./ai/attach.sh --no-agent
 
-    run ./ai/cursor.sh --verbose
+    run ./ai/agents/cursor.sh --verbose
 
     [ "$status" -eq 0 ]
     [ -d ".cursor" ]
@@ -37,14 +39,14 @@ teardown() {
 
 @test "TC-203: Idempotent - preserves cli.json" {
     cd "$TEST_SUBMODULE"
-    ./ai/install.sh
-    ./ai/cursor.sh
+    ./ai/attach.sh --no-agent
+    ./ai/agents/cursor.sh
 
     # Modify cli.json
     echo '/* custom */' >> .cursor/cli.json
 
     # Run again
-    run ./ai/cursor.sh
+    run ./ai/agents/cursor.sh
 
     [ "$status" -eq 0 ]
     grep -q "custom" .cursor/cli.json
@@ -52,11 +54,11 @@ teardown() {
 
 @test "TC-204: Force flag overwrites cli.json" {
     cd "$TEST_SUBMODULE"
-    ./ai/install.sh
-    ./ai/cursor.sh
+    ./ai/attach.sh --no-agent
+    ./ai/agents/cursor.sh
 
     echo '/* custom */' >> .cursor/cli.json
-    run ./ai/cursor.sh --force
+    run ./ai/agents/cursor.sh --force
 
     [ "$status" -eq 0 ]
     ! grep -q "custom" .cursor/cli.json
@@ -64,13 +66,13 @@ teardown() {
 
 @test "TC-205: Rules always updated (versioned)" {
     cd "$TEST_SUBMODULE"
-    ./ai/install.sh
-    ./ai/cursor.sh
+    ./ai/attach.sh --no-agent
+    ./ai/agents/cursor.sh
 
     # Modify rule
     echo "OLD VERSION" > .cursor/rules/standards.mdc
 
-    run ./ai/cursor.sh
+    run ./ai/agents/cursor.sh
 
     [ "$status" -eq 0 ]
     ! grep -q "OLD VERSION" .cursor/rules/standards.mdc
@@ -79,9 +81,9 @@ teardown() {
 
 @test "TC-206: Dry run preview" {
     cd "$TEST_SUBMODULE"
-    ./ai/install.sh
+    ./ai/attach.sh --no-agent
 
-    run ./ai/cursor.sh --dry-run
+    run ./ai/agents/cursor.sh --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Would" ]]
@@ -89,7 +91,7 @@ teardown() {
 }
 
 @test "TC-207: Help flag" {
-    run "$AI_SOURCE/cursor.sh" --help
+    run "$AI_SOURCE/agents/cursor.sh" --help
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Usage:" ]]
@@ -97,9 +99,9 @@ teardown() {
 
 @test "TC-208: Custom path" {
     TMP_DIR="$(mktemp -d)"
-    "$AI_SOURCE/install.sh" --path "$TMP_DIR"
+    "$AI_SOURCE/attach.sh" --path "$TMP_DIR" --no-agent
 
-    run "$AI_SOURCE/cursor.sh" --path "$TMP_DIR"
+    run "$AI_SOURCE/agents/cursor.sh" --path "$TMP_DIR"
 
     [ "$status" -eq 0 ]
     [ -d "$TMP_DIR/.cursor" ]
@@ -107,3 +109,13 @@ teardown() {
     rm -rf "$TMP_DIR"
 }
 
+@test "TC-209: Exit code 2 when CLI not installed" {
+    cd "$TEST_SUBMODULE"
+    ./ai/attach.sh --no-agent
+    unmock_cli "agent"
+
+    run ./ai/agents/cursor.sh
+
+    [ "$status" -eq $EXIT_NOT_INSTALLED ]
+    [[ "$output" =~ "not installed" ]]
+}

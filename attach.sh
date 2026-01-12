@@ -3,7 +3,7 @@
 # File:         attach.sh
 # Purpose:      Attach AI standards to a project
 # License:      LicenseRef-HyperSec-EULA
-# Copyright:    (c) 2025 HyperSec Pty Ltd
+# Copyright:    (c) 2026 HyperSec Pty Ltd
 #
 # Bash 3.2 compatible (macOS default)
 
@@ -35,11 +35,18 @@ FORCE=false
 VERBOSE=false
 PIN_SUBMODULE=false
 
-# Assistant setup flags
-SETUP_CLAUDE=false
-SETUP_COPILOT=false
-SETUP_CURSOR=false
-SETUP_GEMINI=false
+# Agent detection mode
+SPECIFIC_AGENT=""           # Set when --agent <name> is used
+SETUP_ALL_AGENTS=false      # Set when --all-agents is used
+NO_AGENT=false              # Set when --no-agent is used
+
+# Agent priority order (first installed wins by default)
+AGENT_PRIORITY=(claude cursor gemini codex)
+
+# Exit codes from agent scripts
+EXIT_SUCCESS=0
+EXIT_ERROR=1
+EXIT_NOT_INSTALLED=2
 
 # Colours (if terminal supports it)
 if [ -t 1 ]; then
@@ -78,18 +85,27 @@ OPTIONS:
   --pin            Pin submodule version (disable auto-update from upstream)
                    Use this for projects requiring fixed AI versions
 
-ASSISTANT SETUP (runs assistant script after attach):
-  --claude         Also configure Claude Code
-  --copilot        Also configure GitHub Copilot
-  --cursor         Also configure Cursor IDE
-  --gemini         Also configure Gemini Code
+AGENT SETUP (default: auto-detect first installed agent):
+  --agent NAME     Setup specific agent (claude, cursor, gemini, codex)
+  --all-agents     Setup all installed agents (don't stop on first)
+  --no-agent       Skip agent detection entirely
+
+  By default, attach.sh runs agent detection in priority order:
+    claude -> cursor -> gemini -> codex
+  and stops when the first installed agent CLI is found.
 
 EXAMPLES:
-  # Basic usage (deploy to parent directory)
+  # Basic usage (deploy + auto-detect agent)
   ./ai/attach.sh
 
-  # Attach and configure Claude Code
-  ./ai/attach.sh --claude
+  # Skip agent detection
+  ./ai/attach.sh --no-agent
+
+  # Setup specific agent
+  ./ai/attach.sh --agent claude
+
+  # Setup all installed agents
+  ./ai/attach.sh --all-agents
 
   # Preview changes without modifying files
   ./ai/attach.sh --dry-run
@@ -99,9 +115,6 @@ EXAMPLES:
 
   # Pin submodule version (no auto-update)
   ./ai/attach.sh --pin
-
-  # Attach + Claude + pinned
-  ./ai/attach.sh --claude --pin
 
 EOF
 }
@@ -138,21 +151,41 @@ parse_args() {
                 PIN_SUBMODULE=true
                 shift
                 ;;
-            --claude)
-                SETUP_CLAUDE=true
+            --agent)
+                if [ -z "${2:-}" ]; then
+                    log_error "--agent requires a name (claude, cursor, gemini, codex)"
+                    exit 1
+                fi
+                SPECIFIC_AGENT="$2"
+                shift 2
+                ;;
+            --all-agents)
+                SETUP_ALL_AGENTS=true
                 shift
                 ;;
-            --copilot)
-                SETUP_COPILOT=true
+            --no-agent)
+                NO_AGENT=true
+                shift
+                ;;
+            # Deprecated flags - show warning and map to new behaviour
+            --claude)
+                log_warn "--claude is deprecated, use --agent claude"
+                SPECIFIC_AGENT="claude"
                 shift
                 ;;
             --cursor)
-                SETUP_CURSOR=true
+                log_warn "--cursor is deprecated, use --agent cursor"
+                SPECIFIC_AGENT="cursor"
                 shift
                 ;;
             --gemini)
-                SETUP_GEMINI=true
+                log_warn "--gemini is deprecated, use --agent gemini"
+                SPECIFIC_AGENT="gemini"
                 shift
+                ;;
+            --copilot)
+                log_error "--copilot has been removed. Use --agent codex instead."
+                exit 1
                 ;;
             *)
                 log_error "Unknown option: $1"
@@ -161,6 +194,17 @@ parse_args() {
                 ;;
         esac
     done
+
+    # Validate agent mode options are mutually exclusive
+    local mode_count=0
+    [ -n "$SPECIFIC_AGENT" ] && mode_count=$((mode_count + 1))
+    [ "$SETUP_ALL_AGENTS" = true ] && mode_count=$((mode_count + 1))
+    [ "$NO_AGENT" = true ] && mode_count=$((mode_count + 1))
+
+    if [ $mode_count -gt 1 ]; then
+        log_error "Options --agent, --all-agents, and --no-agent are mutually exclusive"
+        exit 1
+    fi
 }
 
 # Detect script location and project root
@@ -533,8 +577,11 @@ deploy_templates() {
     copy_if_missing "$templates_dir/TODO.md" "$PROJECT_ROOT/TODO.md"
 }
 
-# Run assistant setup scripts if requested
-run_assistant_setup() {
+# Run a single agent setup script
+# Returns: 0=success, 1=error, 2=not installed
+run_single_agent() {
+    local agent="$1"
+    local script="$AI_ROOT/agents/${agent}.sh"
     local force_flag=""
     local verbose_flag=""
 
@@ -545,25 +592,97 @@ run_assistant_setup() {
         verbose_flag="--verbose"
     fi
 
-    if [ "$SETUP_CLAUDE" = true ]; then
-        log_info "Running Claude Code setup..."
-        "${AI_ROOT}/claude.sh" $force_flag $verbose_flag || true
+    if [ ! -f "$script" ]; then
+        log_error "Unknown agent: $agent"
+        log_info "Available agents: ${AGENT_PRIORITY[*]}"
+        return $EXIT_ERROR
     fi
 
-    if [ "$SETUP_COPILOT" = true ]; then
-        log_info "Running GitHub Copilot setup..."
-        "${AI_ROOT}/copilot.sh" $force_flag $verbose_flag || true
+    if [ "$DRY_RUN" = true ]; then
+        log_info "Would run: $script"
+        return $EXIT_SUCCESS
     fi
 
-    if [ "$SETUP_CURSOR" = true ]; then
-        log_info "Running Cursor IDE setup..."
-        "${AI_ROOT}/cursor.sh" $force_flag $verbose_flag || true
+    log_info "Running ${agent} setup..."
+    # shellcheck disable=SC2086
+    "$script" $force_flag $verbose_flag
+    return $?
+}
+
+# Run agent detection based on mode
+# Default: Try agents in priority order, stop on first success
+# --all-agents: Try all agents, don't stop on first
+# --agent NAME: Try only specified agent
+run_agent_detection() {
+    if [ "$NO_AGENT" = true ]; then
+        if [ "$VERBOSE" = true ]; then
+            log_info "Agent detection skipped (--no-agent)"
+        fi
+        return 0
     fi
 
-    if [ "$SETUP_GEMINI" = true ]; then
-        log_info "Running Gemini Code setup..."
-        "${AI_ROOT}/gemini.sh" $force_flag $verbose_flag || true
+    echo ""
+    log_info "=== Agent Detection ==="
+
+    # Specific agent requested
+    if [ -n "$SPECIFIC_AGENT" ]; then
+        run_single_agent "$SPECIFIC_AGENT"
+        local exit_code=$?
+        case $exit_code in
+            $EXIT_SUCCESS)
+                log_success "Configured: $SPECIFIC_AGENT"
+                return 0
+                ;;
+            $EXIT_NOT_INSTALLED)
+                log_warn "${SPECIFIC_AGENT} CLI not installed"
+                return 0  # Not an error
+                ;;
+            *)
+                return 1  # Propagate error
+                ;;
+        esac
     fi
+
+    # All agents mode
+    if [ "$SETUP_ALL_AGENTS" = true ]; then
+        local any_configured=false
+        for agent in "${AGENT_PRIORITY[@]}"; do
+            run_single_agent "$agent"
+            local exit_code=$?
+            if [ $exit_code -eq $EXIT_SUCCESS ]; then
+                any_configured=true
+            fi
+        done
+        if [ "$any_configured" = false ]; then
+            log_warn "No AI agent CLIs found on system"
+            log_info "Install one of: claude, agent (Cursor), gemini, codex"
+        fi
+        return 0
+    fi
+
+    # Default: first installed agent wins
+    for agent in "${AGENT_PRIORITY[@]}"; do
+        run_single_agent "$agent"
+        local exit_code=$?
+
+        case $exit_code in
+            $EXIT_SUCCESS)
+                log_success "Configured: $agent"
+                return 0
+                ;;
+            $EXIT_ERROR)
+                return 1  # Stop on error
+                ;;
+            $EXIT_NOT_INSTALLED)
+                continue  # Try next agent
+                ;;
+        esac
+    done
+
+    # No agents found
+    log_warn "No AI agent CLIs found on system"
+    log_info "Install one of: claude, agent (Cursor), gemini, codex"
+    return 0  # Warning only, not an error
 }
 
 # Print summary
@@ -576,13 +695,12 @@ print_summary() {
     echo ""
     echo "Next steps:"
     echo "  1. Review STATE.md and TODO.md in your project root"
-    if [ "$SETUP_CLAUDE" != true ] && [ "$SETUP_COPILOT" != true ] && \
-       [ "$SETUP_CURSOR" != true ] && [ "$SETUP_GEMINI" != true ]; then
-        echo "  2. Setup your AI assistant:"
-        echo "       ./ai/claude.sh    # Claude Code"
-        echo "       ./ai/copilot.sh   # GitHub Copilot"
-        echo "       ./ai/cursor.sh    # Cursor IDE"
-        echo "       ./ai/gemini.sh    # Gemini Code"
+    if [ "$NO_AGENT" = true ]; then
+        echo "  2. Setup your AI assistant manually:"
+        echo "       ./ai/agents/claude.sh   # Claude Code"
+        echo "       ./ai/agents/cursor.sh   # Cursor IDE"
+        echo "       ./ai/agents/gemini.sh   # Gemini Code"
+        echo "       ./ai/agents/codex.sh    # OpenAI Codex"
     fi
     echo ""
 
@@ -627,8 +745,8 @@ main() {
     # Deploy templates (STATE.md, TODO.md)
     deploy_templates
 
-    # Run assistant setup scripts if requested
-    run_assistant_setup
+    # Run agent detection
+    run_agent_detection
 
     print_summary
 }
