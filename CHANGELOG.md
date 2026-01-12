@@ -1,6 +1,23 @@
 ## [1.9.0](https://github.com/hypersec-io/ai/compare/1.8.2...1.9.0) (2026-01-12)
 
 
+### ⚠ BREAKING CHANGES
+
+* Agent scripts moved from root to agents/ directory.
+copilot.sh removed (use codex.sh). attach.sh now auto-detects agents.
+
+### Features
+
+* reorganise agent scripts with CLI detection and VS Code 1.108 support ([760db60](https://github.com/hypersec-io/ai/commit/760db603011d6318c8d626b431db359a9564d77e))
+
+
+### Bug Fixes
+
+* add PKI/TLS standards doc ([1dab840](https://github.com/hypersec-io/ai/commit/1dab840728efa38985a2111a910535042ada9149))
+
+## [1.9.0](https://github.com/hypersec-io/ai/compare/1.8.2...1.9.0) (2026-01-12)
+
+
 ### Features
 
 * reorganise agent scripts into agents/ directory with CLI detection ([#TBD](https://github.com/hypersec-io/ai/commit/TBD))
