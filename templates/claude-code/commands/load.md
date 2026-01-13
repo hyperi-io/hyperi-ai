@@ -58,9 +58,18 @@ Follow the "MANDATORY: Detect Project Language" section in STANDARDS-QUICKSTART.
 
 After loading all documentation:
 
-1. Run `git pull --rebase` to sync with remote (semantic-release CI creates version commits)
-2. Check git status and recent commits
-3. Be ready - no greetings, wait for the user's first task
+1. **Update `ai` submodule** (if project has one):
+   - Run: `git -C ai rev-parse HEAD` to get current commit
+   - Run: `git submodule update --remote ai`
+   - Run: `git -C ai rev-parse HEAD` to get new commit
+   - If commits differ, tell user "ai submodule updated" and **re-run /load once**
+   - If commits match, continue (no reload needed)
+
+2. Run `git pull --rebase` to sync with remote (semantic-release CI creates version commits)
+3. Check git status and recent commits
+4. Be ready - no greetings, wait for the user's first task
+
+**Important:** Only reload once. If you just reloaded due to submodule update, skip step 1 on the second pass to prevent loops.
 
 ---
 
