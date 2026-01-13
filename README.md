@@ -163,6 +163,7 @@ Disable auto-update for fixed versions:
 ```
 
 Update to specific version manually:
+
 ```bash
 git -C ai fetch
 git -C ai checkout v1.0.0

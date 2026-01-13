@@ -5,7 +5,7 @@ description: HyperSec coding standards and best practices. Use when writing code
 
 # HyperSec Coding Standards
 
-**Comprehensive coding standards for all HyperSec projects**
+Comprehensive coding standards for all HyperSec projects.
 
 **Path Convention:** All file references use `$AI_ROOT` to indicate the directory where this repository is attached (e.g., `ai/`, `standards/`, `.ai/`). This makes standards path-agnostic and works regardless of where the repository is located.
 
@@ -75,7 +75,7 @@ This standards library represents the collation of years of HyperSec (and Derek'
 
 ## Directory Structure
 
-```
+```text
 standards/
 ├── STANDARDS.md (this file - entry point for 500K+ context)
 ├── STANDARDS-QUICKSTART.md (core standards for <500K context)

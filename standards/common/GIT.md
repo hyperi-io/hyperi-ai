@@ -25,7 +25,8 @@ Branch naming and commit message conventions for all HyperSec projects.
 
 **Types:** (lowercase, matches commit types)
 
-feat, fix, docs, test, chore, ci, cleanup, data, debt, design, infra, meta, ops, perf, refactor, review, sec, spike, ui, hotfix
+feat, fix, docs, test, chore, ci, cleanup, data, debt, design, infra, meta,
+ops, perf, refactor, review, sec, spike, ui, hotfix
 
 **Issue Reference (optional):**
 
@@ -60,7 +61,7 @@ test/add-payment-tests
 
 **Format:** Conventional Commits (<https://www.conventionalcommits.org/>)
 
-```
+```text
 <type>: <description>
 
 [optional body]
@@ -153,9 +154,15 @@ No need to manually remove - hooks handle this automatically.
 
 ### Commit Actions
 
-- **ALWAYS** show the proposed commit message and request approval before committing (mature projects). User can override if annoying. Fast/spike projects don't need this.
-- **ALWAYS** use human-like Australian low-key short concise messages. Prefer one line, 3 lines max for huge commits. Humans NEVER produce huge multi-line commits.
-- **ALWAYS** err on the side of conservatism for type selection. AI assistants exaggerate importance. If you think it's a `feat:`, it's probably a `fix:`.
+- **ALWAYS** show the proposed commit message and request approval before
+  committing (mature projects). User can override if annoying. Fast/spike
+  projects don't need this.
+- **ALWAYS** use human-like Australian low-key short concise messages.
+  Prefer one line, 3 lines max for huge commits. Humans NEVER produce huge
+  multi-line commits.
+- **ALWAYS** err on the side of conservatism for type selection.
+  AI assistants exaggerate importance. If you think it's a `feat:`, it's
+  probably a `fix:`.
 - **NEVER** use emojis in commit messages. EVER.
 
 **Approval flow:** Offer three options:
@@ -166,6 +173,8 @@ No need to manually remove - hooks handle this automatically.
 
 ### Pushing Commits
 
-- **ALWAYS** run `git pull --rebase` before pushing. Semantic-release CI creates version commits that your local won't have.
-- **ALWAYS** seek approval before ANY push. Show: (1) commit list, (2) projected version bump (e.g., 1.8.2 → 1.8.3)
+- **ALWAYS** run `git pull --rebase` before pushing. Semantic-release CI
+  creates version commits that your local won't have.
+- **ALWAYS** seek approval before ANY push. Show: (1) commit list,
+  (2) projected version bump (e.g., 1.8.2 → 1.8.3)
 - **NEVER** push without explicit approval
