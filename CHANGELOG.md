@@ -1,3 +1,10 @@
+## [1.9.5](https://github.com/hypersec-io/ai/compare/1.9.4...1.9.5) (2026-01-13)
+
+
+### Bug Fixes
+
+* auto-update ai submodule on /load with reload detection ([57e60b4](https://github.com/hypersec-io/ai/commit/57e60b46d9d9968d17ff9be48cc618ea4611651a))
+
 ## [1.9.4](https://github.com/hypersec-io/ai/compare/1.9.3...1.9.4) (2026-01-13)
 
 
