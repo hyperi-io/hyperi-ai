@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/hypersec-io/ai/compare/1.9.0...1.9.1) (2026-01-13)
+
+
+### Bug Fixes
+
+* add execute permissions to agent scripts ([5215fc6](https://github.com/hypersec-io/ai/commit/5215fc6e40fa5c7f3af378d07fa57b62297784d5))
+
 ## [1.9.0](https://github.com/hypersec-io/ai/compare/1.8.2...1.9.0) (2026-01-12)
 
 
