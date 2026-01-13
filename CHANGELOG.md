@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/hypersec-io/ai/compare/1.9.1...1.9.2) (2026-01-13)
+
+
+### Bug Fixes
+
+* clarify commit approval flow with Yes/No/Change options ([d852415](https://github.com/hypersec-io/ai/commit/d85241563654c7339debcce328cd17e5d356da3c))
+
 ## [1.9.1](https://github.com/hypersec-io/ai/compare/1.9.0...1.9.1) (2026-01-13)
 
 
