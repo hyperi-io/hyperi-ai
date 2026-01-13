@@ -1,3 +1,10 @@
+## [1.10.0](https://github.com/hypersec-io/ai/compare/1.9.5...1.10.0) (2026-01-13)
+
+
+### Features
+
+* implement SSoT for STATE.md and TODO.md ([a9bc8e0](https://github.com/hypersec-io/ai/commit/a9bc8e02fd294d082715eca54928f8da414dcdb5))
+
 ## [1.9.5](https://github.com/hypersec-io/ai/compare/1.9.4...1.9.5) (2026-01-13)
 
 
