@@ -1,3 +1,10 @@
+## [1.9.3](https://github.com/hypersec-io/ai/compare/1.9.2...1.9.3) (2026-01-13)
+
+
+### Bug Fixes
+
+* add rebase-before-push guidance for semantic-release sync ([f94411b](https://github.com/hypersec-io/ai/commit/f94411b20d48afbb1b6ac890193182b2d4b40140))
+
 ## [1.9.2](https://github.com/hypersec-io/ai/compare/1.9.1...1.9.2) (2026-01-13)
 
 
