@@ -1,3 +1,10 @@
+## [1.9.4](https://github.com/hypersec-io/ai/compare/1.9.3...1.9.4) (2026-01-13)
+
+
+### Bug Fixes
+
+* add markdownlint config and fix lint errors across all docs ([9be3f4f](https://github.com/hypersec-io/ai/commit/9be3f4f4565727bfd7b30e3d1acde3b399cb6829))
+
 ## [1.9.3](https://github.com/hypersec-io/ai/compare/1.9.2...1.9.3) (2026-01-13)
 
 
