@@ -164,6 +164,34 @@ def process_data(data):
   (2) projected version bump (e.g., 1.8.2 → 1.8.3)
 - **NEVER** push without explicit approval
 
+### Planning Mode (AI Assistant)
+
+When entering planning mode or breaking down complex work:
+
+- **ALWAYS** output plans and WBS to `TODO.md` (never STATE.md)
+- **ALWAYS** use numbered steps under a feature heading
+- **ALWAYS** make each step independently completable and testable
+- **NEVER** add tasks, progress, or plans to STATE.md or CLAUDE.md
+
+**WBS Format in TODO.md:**
+
+```markdown
+### [Feature/Epic Name]
+
+**Goal:** [What this achieves]
+
+1. [ ] Step 1: [Description]
+2. [ ] Step 2: [Description]
+3. [ ] Step 3: [Description]
+```
+
+**Source of Truth:**
+
+- Tasks/Progress → `TODO.md` only
+- Version → `git describe --tags` or `VERSION` file
+- History → `git log`
+- Static context → `STATE.md` (architecture, decisions only)
+
 ### Commit Types
 
 **Trigger version bumps:**

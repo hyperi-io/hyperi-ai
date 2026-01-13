@@ -231,17 +231,35 @@ After running `./ai/attach.sh --agent claude`:
 
 **`/load`** - Begin session
 
-- Loads STATE.md, TODO.md
+- Establishes current date (not training data date)
+- Loads TODO.md (tasks), STATE.md (static context)
 - Loads standards based on project type
-- Checks git status
+- Syncs git and updates ai submodule
 
 **`/save`** - Checkpoint progress
 
-- Updates STATE.md with session progress
-- Cleans TODO.md (removes completed)
-- Fixes markdown linting
+- Updates TODO.md with task progress
+- Validates STATE.md has no forbidden content
+- Checks git status
 
 **Best practice:** Run `/save` every 30-40 exchanges or before breaks.
+
+### Recommended VS Code Settings
+
+Add to your VS Code `settings.json` for optimal Claude Code experience:
+
+```json
+{
+  "claudeCode.initialPermissionMode": "acceptEdits"
+}
+```
+
+| Setting | Value | Effect |
+|---------|-------|--------|
+| `initialPermissionMode` | `acceptEdits` | Auto-approve file edits (recommended) |
+| | `default` | Prompt for each edit |
+| | `plan` | Start in planning mode |
+| | `bypassPermissions` | Skip all prompts (use with caution) |
 
 ---
 

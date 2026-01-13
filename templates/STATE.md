@@ -1,31 +1,23 @@
-# Project State
+# Project Context
 
 **Project:** [Project Name]
 **Purpose:** [Brief description of project purpose]
-**Status:** [Current status]
 
 ---
 
-## Current Session ([Date])
+## DO NOT ADD TO THIS FILE
 
-### Session Goals
+**The following belong elsewhere:**
 
-- [ ] [Primary goal for this session]
-- [ ] [Secondary goal]
+| Data | Correct Location |
+|------|------------------|
+| Version numbers | `VERSION` file, `git describe --tags` |
+| Tasks/Progress | `TODO.md` |
+| Session history | Git log (`git log --oneline -10`) |
+| Changelog | `CHANGELOG.md` (semantic-release) |
+| Dates | Git commit timestamps |
 
-### Progress
-
-**Completed:**
-
-- [Task completed]
-
-**In Progress:**
-
-- [Current task]
-
-**Blocked:**
-
-- [Blocked items if any]
+**This file is for static project context only.**
 
 ---
 
@@ -49,47 +41,20 @@
 
 ---
 
-## Recent Changes
+## Key Decisions
 
-### [Date] - [Summary]
+### [Decision Title]
 
-**Changes:**
-
-- [Change description]
-
-**Rationale:**
-
-- [Why this change was made]
+**Decision:** [What was decided]
+**Rationale:** [Why this approach was chosen]
+**Alternatives considered:** [Other options that were rejected]
 
 ---
 
-## Known Issues
+## External Dependencies
 
-### Issue 1: [Title]
-
-**Problem:** [Description]
-**Impact:** [Impact on project]
-**Workaround:** [Temporary solution if any]
-**Status:** [Open/In Progress/Resolved]
-
----
-
-## Next Steps
-
-**Immediate (this session):**
-
-1. [Next task]
-2. [Following task]
-
-**Short-term (next few sessions):**
-
-1. [Upcoming work]
-2. [Future tasks]
-
-**Long-term (backlog):**
-
-1. [Future enhancements]
-2. [Nice-to-have features]
+- **[Service/API]** - [What it's used for]
+- **[Library]** - [Why it's needed]
 
 ---
 
@@ -98,7 +63,6 @@
 **Documentation:**
 
 - [docs/README.md](docs/README.md) - Project documentation
-- [Link to relevant docs]
 
 **External Resources:**
 
@@ -107,19 +71,22 @@
 
 ---
 
-**Last Updated:** [Date]
-**Version:** [Version number if applicable]
-**Status:** [Status]
-
----
-
 ## Notes for AI Assistants
 
-This file maintains session state across conversations. Update this file when:
+This file contains **static project context only**.
 
-- Completing significant milestones
-- Making architectural decisions
-- Identifying blockers or issues
-- Planning next steps
+**DO NOT add:**
 
-Keep this file concise and focused on current project state.
+- Version numbers (use `git describe --tags`)
+- Progress/tasks (use `TODO.md`)
+- Dates or session history (use `git log`)
+- "Current Session" or "Last Session" sections
+
+**DO add:**
+
+- Architecture decisions and rationale
+- Key component descriptions
+- External dependencies
+- How things work (not what's happening)
+
+When in doubt, ask: "Will this be true next week?" If no, it doesn't belong here.

@@ -1,57 +1,84 @@
 # TODO - [Project Name]
 
-**Project Goal:** [Main project goal]
-
-**Target:** [Deliverables and timeline]
+This is the **single source of truth** for all tasks and progress.
 
 ---
 
-## Current Tasks
+## Active Tasks
 
-### High Priority
+Tasks currently being worked on. Only one task should be `[IN PROGRESS]` at a time.
 
-- [ ] [Critical task 1]
-- [ ] [Critical task 2]
-
-### Medium Priority
-
-- [ ] [Important task 1]
-- [ ] [Important task 2]
-
-### Low Priority
-
-- [ ] [Nice-to-have task 1]
-- [ ] [Nice-to-have task 2]
+- [ ] [Task description] `[IN PROGRESS]`
+- [ ] [Next task] `[PENDING]`
 
 ---
 
-## Completed
+## Work Breakdown Structure (WBS)
 
-- [x] [Completed task] - [Date]
-- [x] [Another completed task] - [Date]
+When planning complex features, break them down here before starting.
+
+### [Feature/Epic Name]
+
+**Goal:** [What this achieves]
+
+1. [ ] Step 1: [Description]
+2. [ ] Step 2: [Description]
+3. [ ] Step 3: [Description]
 
 ---
 
-## Blocked
+## Completed (This Session)
 
-- [ ] [Blocked task] - **Blocked by:** [Reason]
+Move tasks here when done. Clear this section at end of session.
+
+- [x] [Completed task]
 
 ---
 
 ## Backlog
 
-- [ ] [Future enhancement]
-- [ ] [Feature idea]
+Future work, ordered by priority.
+
+### High Priority
+
+- [ ] [Critical task]
+
+### Medium Priority
+
+- [ ] [Important task]
+
+### Low Priority
+
+- [ ] [Nice-to-have]
 
 ---
 
-## Notes
+## Blocked
 
-- Keep this file updated as you work
-- Move completed tasks to "Completed" section
-- Archive old completed tasks to CHANGELOG.md during releases
-- Use GitHub issues for detailed tracking if needed
+- [ ] [Blocked task] **Blocked by:** [Reason/dependency]
 
 ---
 
-**Last Updated:** [Date]
+## Notes for AI Assistants
+
+This file is the **single source of truth** for tasks and progress.
+
+**Rules:**
+
+- All tasks go here, nowhere else
+- Planning mode outputs go here (WBS section)
+- Mark tasks `[IN PROGRESS]` when starting
+- Mark tasks `[x]` when complete, move to Completed section
+- Never add tasks to STATE.md or CLAUDE.md
+
+**Status tags:**
+
+- `[PENDING]` - Not started
+- `[IN PROGRESS]` - Currently working on
+- `[BLOCKED]` - Waiting on something
+- `[x]` - Completed (checkbox checked)
+
+**WBS Format:**
+
+When breaking down complex work, use numbered steps under a feature heading.
+Each step should be independently completable and testable.

@@ -557,6 +557,66 @@ copy_if_missing() {
     fi
 }
 
+# Check if STATE.md contains forbidden content (sessions, versions, progress)
+# Returns: 0 if clean, 1 if has forbidden content
+check_state_md_forbidden() {
+    local file="$1"
+    [ ! -f "$file" ] && return 0
+
+    # Check for forbidden patterns
+    if grep -qiE "(Current Session|Last Session|Version:|Status:|Last Updated:|Progress)" "$file" 2>/dev/null; then
+        return 1
+    fi
+    return 0
+}
+
+# Migrate existing STATE.md/CLAUDE.md to new SSoT format
+migrate_state_files() {
+    local state_file="$PROJECT_ROOT/STATE.md"
+    local claude_file="$PROJECT_ROOT/CLAUDE.md"
+    local todo_file="$PROJECT_ROOT/TODO.md"
+    local migrated=false
+
+    # Check STATE.md
+    if [ -f "$state_file" ] && ! check_state_md_forbidden "$state_file"; then
+        log_warn "STATE.md contains forbidden content (sessions, versions, progress)"
+        log_warn "  SSoT rules: Tasks go in TODO.md, versions from git"
+        log_info "  Review and clean manually, or use --force to replace with template"
+        migrated=true
+    fi
+
+    # Check CLAUDE.md (if not a symlink to STATE.md)
+    if [ -f "$claude_file" ] && [ ! -L "$claude_file" ]; then
+        if ! check_state_md_forbidden "$claude_file"; then
+            log_warn "CLAUDE.md contains forbidden content"
+            log_info "  Should be symlink to STATE.md or removed"
+            migrated=true
+        fi
+    fi
+
+    # Check for other AI assistant files
+    for ai_file in "$PROJECT_ROOT/CURSOR.md" "$PROJECT_ROOT/GEMINI.md" "$PROJECT_ROOT/CODEX.md"; do
+        if [ -f "$ai_file" ] && [ ! -L "$ai_file" ]; then
+            if ! check_state_md_forbidden "$ai_file"; then
+                local basename_file=$(basename "$ai_file")
+                log_warn "$basename_file contains forbidden content"
+                log_info "  Should be symlink to STATE.md or removed"
+                migrated=true
+            fi
+        fi
+    done
+
+    if [ "$migrated" = true ]; then
+        log_info ""
+        log_info "Migration guidance:"
+        log_info "  1. Move tasks/progress from STATE.md to TODO.md"
+        log_info "  2. Remove 'Current Session', 'Last Session' sections"
+        log_info "  3. Remove version numbers, dates, status updates"
+        log_info "  4. Keep only: architecture, decisions, static context"
+        log_info ""
+    fi
+}
+
 # Deploy templates to project root
 deploy_templates() {
     local templates_dir="$AI_ROOT/templates"
@@ -569,6 +629,9 @@ deploy_templates() {
     if [ "$VERBOSE" = true ]; then
         log_info "Deploying templates from: $templates_dir"
     fi
+
+    # Check for migration needs before deploying
+    migrate_state_files
 
     # Deploy STATE.md
     copy_if_missing "$templates_dir/STATE.md" "$PROJECT_ROOT/STATE.md"
