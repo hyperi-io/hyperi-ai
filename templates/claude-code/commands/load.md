@@ -58,8 +58,9 @@ Follow the "MANDATORY: Detect Project Language" section in STANDARDS-QUICKSTART.
 
 After loading all documentation:
 
-1. Check git status and recent commits
-2. Be ready - no greetings, wait for the user's first task
+1. Run `git pull --rebase` to sync with remote (semantic-release CI creates version commits)
+2. Check git status and recent commits
+3. Be ready - no greetings, wait for the user's first task
 
 ---
 

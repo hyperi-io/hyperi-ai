@@ -147,6 +147,7 @@ def process_data(data):
 
 ### Pushing Commits (AI Assistant)
 
+- **ALWAYS** run `git pull --rebase` before pushing. Semantic-release CI creates version commits that your local won't have.
 - **ALWAYS** seek approval before ANY push. Show: (1) commit list, (2) projected version bump (e.g., 1.8.2 → 1.8.3)
 - **NEVER** push without explicit approval
 

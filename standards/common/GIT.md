@@ -146,3 +146,26 @@ Git hooks automatically remove AI attribution:
 - Similar patterns from other AI tools
 
 No need to manually remove - hooks handle this automatically.
+
+---
+
+## AI Assistant Guidance
+
+### Commit Actions
+
+- **ALWAYS** show the proposed commit message and request approval before committing (mature projects). User can override if annoying. Fast/spike projects don't need this.
+- **ALWAYS** use human-like Australian low-key short concise messages. Prefer one line, 3 lines max for huge commits. Humans NEVER produce huge multi-line commits.
+- **ALWAYS** err on the side of conservatism for type selection. AI assistants exaggerate importance. If you think it's a `feat:`, it's probably a `fix:`.
+- **NEVER** use emojis in commit messages. EVER.
+
+**Approval flow:** Offer three options:
+
+1. **Yes** - commit as proposed
+2. **No** - cancel the commit
+3. **Change** - provide guidance to revise the message, then re-approve
+
+### Pushing Commits
+
+- **ALWAYS** run `git pull --rebase` before pushing. Semantic-release CI creates version commits that your local won't have.
+- **ALWAYS** seek approval before ANY push. Show: (1) commit list, (2) projected version bump (e.g., 1.8.2 → 1.8.3)
+- **NEVER** push without explicit approval
