@@ -90,7 +90,6 @@ EXAMPLES:
 
   # Or clone ai/ manually, then run
   git clone --depth 1 https://github.com/hypersec-io/ai.git ai
-  rm -rf ai/.git
   ./ai/attach-public.sh
 ```
 
@@ -99,19 +98,19 @@ EXAMPLES:
 | Aspect | attach.sh (internal) | attach-public.sh (public) |
 |--------|---------------------|---------------------------|
 | `ai/` visibility | Git submodule (committed) | Gitignored (local only) |
-| Updates | `git submodule update --remote` | `/load` command auto-syncs |
-| Cloning | Automatic via submodule | Manual or via `/load` |
+| Updates | `git submodule update --remote` | `git -C ai pull` or `/load` auto-syncs |
+| Cloning | Automatic via submodule | Manual clone or via `/load` |
 | `.gitmodules` | Updated | Not touched |
 
 **How it works:**
 
-1. Clones `ai/` locally and removes `.git` (no submodule detection)
-2. Adds `ai/` to `.gitignore` (never committed)
+1. Clones `ai/` locally (keeps `.git/` for manual updates via `git -C ai pull`)
+2. Adds `ai/` to `.gitignore` (never committed to public repo)
 3. Creates `.claude/commands/load.md` that auto-updates `ai/` on each `/load`
 4. Deploys the same templates as `attach.sh`
 
 **For public repo contributors:** Run `attach-public.sh` once, or just use `/load`
-which will clone `ai/` automatically if missing.
+which will clone `ai/` automatically if missing. To manually update: `git -C ai pull`
 
 ---
 

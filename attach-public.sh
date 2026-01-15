@@ -68,8 +68,8 @@ This script sets up AI standards WITHOUT creating a submodule. Use this for
 public/open-source repos where you don't want to expose internal tooling.
 
 WHAT IT DOES:
-  1. Clones ai/ locally (removes .git to prevent submodule detection)
-  2. Adds ai/ to .gitignore (never committed)
+  1. Clones ai/ locally (keeps .git for manual updates via 'git -C ai pull')
+  2. Adds ai/ to .gitignore (never committed to public repo)
   3. Creates .claude/commands/load.md to auto-update ai/ on /load
   4. Deploys STATE.md, TODO.md templates
   5. Sets up agent configuration (Claude, Cursor, etc.)
@@ -201,7 +201,7 @@ validate_environment() {
     fi
 }
 
-# Clone or update ai/ directory (without .git)
+# Clone or update ai/ directory (keeps .git for manual updates)
 setup_ai_directory() {
     local ai_dir="$PROJECT_ROOT/ai"
 
@@ -217,23 +217,20 @@ setup_ai_directory() {
     fi
 
     if [ -d "$ai_dir/.git" ]; then
-        # Has .git - pull updates then remove .git
+        # Has .git - pull updates
         log_info "Updating ai/ from upstream..."
         git -C "$ai_dir" pull --rebase --quiet 2>/dev/null || true
-        rm -rf "$ai_dir/.git"
         log_success "Updated: ai/"
     elif [ -d "$ai_dir" ]; then
         # Directory exists but no .git - remove and re-clone
         log_info "Re-cloning ai/ (was not a git repo)..."
         rm -rf "$ai_dir"
         git clone --depth 1 --quiet "$AI_REPO_URL" "$ai_dir" 2>/dev/null
-        rm -rf "$ai_dir/.git"
         log_success "Re-cloned: ai/"
     else
         # No directory - clone fresh
         log_info "Cloning ai/ from $AI_REPO_URL..."
         git clone --depth 1 --quiet "$AI_REPO_URL" "$ai_dir" 2>/dev/null
-        rm -rf "$ai_dir/.git"
         log_success "Cloned: ai/"
     fi
 }
@@ -340,29 +337,16 @@ deploy_claude_commands() {
 
 You are loading project context for a new work session or refreshing my memory.
 
-## Step 1: Sync AI Standards (Silent)
+## Step 1: Check AI Standards Directory (Silent)
 
 **This project uses a gitignored `ai/` directory for standards.**
 
-Check and update silently:
+Use the Glob tool to check if `ai/standards/STANDARDS-QUICKSTART.md` exists.
 
-```bash
-if [ -d "ai/.git" ]; then
-  # Already a git repo - just pull
-  git -C ai pull --rebase --quiet 2>/dev/null || true
-elif [ -d "ai" ]; then
-  # Directory exists but not a git repo - remove and clone fresh
-  rm -rf ai
-  git clone --depth 1 --quiet https://github.com/hypersec-io/ai.git ai 2>/dev/null
-  rm -rf ai/.git
-else
-  # No directory - clone fresh
-  git clone --depth 1 --quiet https://github.com/hypersec-io/ai.git ai 2>/dev/null
-  rm -rf ai/.git
-fi
-```
+- If it exists: proceed to Step 2 (no action needed)
+- If missing: tell the user to run `git clone --depth 1 https://github.com/hypersec-io/ai.git ai`
 
-**Do NOT mention this step to the user** - it's housekeeping.
+**Do NOT mention this check to the user unless ai/ is missing.**
 
 ---
 
@@ -580,6 +564,8 @@ print_summary() {
     echo ""
     echo "The ai/ directory is LOCAL ONLY - it will not appear in the public repo."
     echo "Each developer runs this script once, or /load auto-clones it."
+    echo ""
+    echo "To manually update ai/: git -C ai pull"
     echo ""
 
     if [ "$DRY_RUN" = true ]; then
