@@ -1,3 +1,15 @@
+## [1.10.3](https://github.com/hypersec-io/ai/compare/1.10.2...1.10.3) (2026-01-15)
+
+
+### Bug Fixes
+
+* improve attach-public.sh automation ([98eec67](https://github.com/hypersec-io/ai/commit/98eec67f1cd2d3133a0fcca842de89ea0fe1cf87))
+
+
+### Documentation
+
+* rename hs-lib to hs-pylib across standards ([00412ae](https://github.com/hypersec-io/ai/commit/00412ae68d82ca8a6c07eccfdd5f6d676856e39d))
+
 ## [1.10.2](https://github.com/hypersec-io/ai/compare/1.10.1...1.10.2) (2026-01-15)
 
 
