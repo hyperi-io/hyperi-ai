@@ -84,21 +84,23 @@ Glob for config files in project root (not subdirs, not `.venv/`, not `node_modu
 
 ## Step 8: Sync and Ready
 
-1. **Update `ai` submodule** (if project has one):
-   - Run: `git -C ai rev-parse HEAD` to get current commit
-   - Run: `git submodule update --remote ai`
-   - Run: `git -C ai rev-parse HEAD` to get new commit
-   - If commits differ, tell user "ai submodule updated" and **re-run /load once**
-   - If commits match, continue (no reload needed)
+1. **Update `ai` submodule** (only if `ai/.git` exists):
 
-2. Run `git pull --rebase` to sync with remote
+   ```bash
+   git submodule update --remote ai 2>/dev/null || true
+   ```
 
-3. Check git status and recent commits
+   Skip silently if no submodule or not a git repo.
+
+2. Sync with remote:
+
+   ```bash
+   git pull --rebase 2>/dev/null || true
+   ```
+
+3. Check git status: `git status --short` and `git log --oneline -5`
 
 4. Be ready - no greetings, wait for the user's first task
-
-**Important:** Only reload once. If you just reloaded due to submodule update,
-skip the submodule check on the second pass to prevent loops.
 
 ---
 
