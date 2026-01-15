@@ -1,3 +1,10 @@
+## [1.10.1](https://github.com/hypersec-io/ai/compare/1.10.0...1.10.1) (2026-01-15)
+
+
+### Bug Fixes
+
+* add attach-public.sh for public repo submodule setup ([cf6cbc4](https://github.com/hypersec-io/ai/commit/cf6cbc48d6fd546489c74577ea888c5cf05c0e8c))
+
 ## [1.10.0](https://github.com/hypersec-io/ai/compare/1.9.5...1.10.0) (2026-01-13)
 
 
