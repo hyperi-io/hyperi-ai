@@ -1,3 +1,10 @@
+## [1.10.2](https://github.com/hypersec-io/ai/compare/1.10.1...1.10.2) (2026-01-15)
+
+
+### Bug Fixes
+
+* simplify /load submodule update to avoid permission prompts ([0004b57](https://github.com/hypersec-io/ai/commit/0004b57fd04b9f183662048c2b0089937a9c8991))
+
 ## [1.10.1](https://github.com/hypersec-io/ai/compare/1.10.0...1.10.1) (2026-01-15)
 
 
