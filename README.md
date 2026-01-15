@@ -28,6 +28,17 @@ A standards library that attaches to any project to provide:
 
 ## Attach Options
 
+There are **two attach modes** depending on whether your repository is internal or public:
+
+| Repository Type | Script | Approach |
+|-----------------|--------|----------|
+| Internal/private | `attach.sh` | Git submodule (versioned, auto-updates) |
+| Public/open-source | `attach-public.sh` | Gitignored directory (local only, never committed) |
+
+### Internal Repos (attach.sh)
+
+Use for internal/private repositories where `ai/` can be a visible submodule:
+
 ```bash
 ./ai/attach.sh [OPTIONS]
 
@@ -56,6 +67,52 @@ CLIs in priority order: `claude` → `agent` (Cursor) → `gemini` → `codex`
 **Deprecated flags:** `--claude`, `--cursor`, `--gemini` still work but show warnings.
 Use `--agent NAME` instead.
 
+### Public Repos (attach-public.sh)
+
+Use for public/open-source repositories where you don't want internal tooling exposed:
+
+```bash
+./ai/attach-public.sh [OPTIONS]
+
+OPTIONS:
+  --agent NAME       Setup specific agent (claude, cursor, gemini, codex)
+  --all-agents       Setup all installed agents
+  --no-agent         Skip agent detection entirely
+
+  --path PATH        Specify project root (default: current directory)
+  --force            Overwrite existing files
+  --dry-run          Preview changes without modifying
+  --verbose          Detailed output
+
+EXAMPLES:
+  # First time - run from ai/ repo or with --path
+  /projects/ai/attach-public.sh --path /path/to/public-repo
+
+  # Or clone ai/ manually, then run
+  git clone --depth 1 https://github.com/hypersec-io/ai.git ai
+  rm -rf ai/.git
+  ./ai/attach-public.sh
+```
+
+**What's different:**
+
+| Aspect | attach.sh (internal) | attach-public.sh (public) |
+|--------|---------------------|---------------------------|
+| `ai/` visibility | Git submodule (committed) | Gitignored (local only) |
+| Updates | `git submodule update --remote` | `/load` command auto-syncs |
+| Cloning | Automatic via submodule | Manual or via `/load` |
+| `.gitmodules` | Updated | Not touched |
+
+**How it works:**
+
+1. Clones `ai/` locally and removes `.git` (no submodule detection)
+2. Adds `ai/` to `.gitignore` (never committed)
+3. Creates `.claude/commands/load.md` that auto-updates `ai/` on each `/load`
+4. Deploys the same templates as `attach.sh`
+
+**For public repo contributors:** Run `attach-public.sh` once, or just use `/load`
+which will clone `ai/` automatically if missing.
+
 ---
 
 ## What Gets Created
@@ -82,7 +139,8 @@ Use `--agent NAME` instead.
 
 ```text
 ai/                              # This repository ($AI_ROOT)
-├── attach.sh                    # Attach AI to project (auto-detects agents)
+├── attach.sh                    # Attach AI to project (submodule mode)
+├── attach-public.sh             # Attach AI to public repo (gitignored mode)
 │
 ├── agents/                      # Agent setup scripts
 │   ├── common.sh               # Shared functions (CLI detection, logging)
