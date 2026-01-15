@@ -144,11 +144,11 @@ LOG_LEVEL="INFO"
 
 ## Multi-Language Implementation
 
-### Python (hs-lib / Dynaconf)
+### Python (hs-pylib / Dynaconf)
 
 ```python
 # Zero-config - cascade is AUTOMATIC via Dynaconf
-from hs_lib.config import settings
+from hs_pylib.config import settings
 
 # Direct attribute access (Pythonic)
 host = settings.database.host         # Cascade automatic!
@@ -410,11 +410,11 @@ impl Settings {
 
 ## Multi-Language Logging
 
-### Python (hs-lib / Loguru)
+### Python (hs-pylib / Loguru)
 
 ```python
 # Zero-config logging with RFC 3339, sensitive masking, auto-detect console
-from hs_lib import logger
+from hs_pylib import logger
 
 logger.info("Processing", user_id=123)
 logger.error("Failed", error=str(e), exc_info=True)
@@ -651,7 +651,7 @@ logger.error(
 - Private keys, certificates, JWTs
 
 ```python
-# hs-lib auto-masks sensitive patterns
+# hs-pylib auto-masks sensitive patterns
 logger.info("Connecting", password="secret123")  # → password="***MASKED***"
 ```
 

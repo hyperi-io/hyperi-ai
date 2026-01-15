@@ -81,7 +81,7 @@ File headers reference the project's license (configured in ci.yaml).
 
 ```python
 # Python example
-#  Project:      hs-lib
+#  Project:      hs-pylib
 #  File:         config.py
 #  Purpose:      Configuration management with Dynaconf
 #  Language:     Python

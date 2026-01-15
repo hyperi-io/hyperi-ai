@@ -317,7 +317,7 @@ All configuration follows this priority (highest to lowest):
 6. **defaults.yaml** → Safe fallback
 7. **Hard-coded** → Last resort in code
 
-**Python:** Use `hs-lib` (zero-config cascade via Dynaconf)
+**Python:** Use `hs-pylib` (zero-config cascade via Dynaconf)
 **Other languages:** See `$AI_ROOT/standards/common/CONFIG-AND-LOGGING.md`
 
 ### .env Files - Always Quote Values

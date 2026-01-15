@@ -37,7 +37,7 @@ This standards library represents the collation of years of HyperSec (and Derek'
 **For developers AND AI-assisted workflows:**
 
 - Project-specific context files (STATE.md, TODO.md, ARCHITECTURE.md)
-- Standardised infrastructure (hs-lib, [HyperSec CI](https://github.com/hypersec-io/ci), same tools everywhere)
+- Standardised infrastructure (hs-pylib, hs-rustlib, [HyperSec CI](https://github.com/hypersec-io/ci), same tools everywhere)
 - Meaningful commits and documentation (faster "resume" time)
 - Time-boxed work (minimum 2-hour chunks per project)
 

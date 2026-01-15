@@ -28,7 +28,7 @@ This rule can be invoked manually during a session to checkpoint progress, or at
    - **Previous 1-2 sessions** (recent context for continuity)
    - **Long-term strategic goals** (multi-session objectives)
    - **Known blockers/issues** (unresolved problems)
-   - **Migration paths** (e.g., "Strategic Goal: Replace ci_lib with hs-lib")
+   - **Migration paths** (e.g., "Strategic Goal: Migrate to hs-pylib")
 
    **SAFE TO REMOVE:**
    - Completed sessions older than 2-3 sessions (move to ARCHIVE.md if significant)

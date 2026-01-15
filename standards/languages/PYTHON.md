@@ -635,15 +635,15 @@ black --check src/    # Check only
 
 ---
 
-## Configuration and Logging (hs-lib)
+## Configuration and Logging (hs-pylib)
 
-**Python uses hs-lib for zero-config cascade and logging.**
+**Python uses hs-pylib for zero-config cascade and logging.**
 
 ### Configuration Cascade
 
 ```python
 # Zero-config - cascade is AUTOMATIC via Dynaconf
-from hs_lib.config import settings
+from hs_pylib.config import settings
 
 # Direct attribute access (Pythonic)
 host = settings.database.host         # Cascade automatic!

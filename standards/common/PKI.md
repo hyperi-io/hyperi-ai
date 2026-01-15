@@ -171,7 +171,7 @@ Post-quantum (ML-KEM, ML-DSA) isn't widely available yet. Our approach:
 1. **Use the strongest classical algorithms** - ECDSA P-384, Ed25519, AES-256, SHA-384
 2. **Enable hybrid PQ where available** - OpenSSH 9.9+ has mlkem768x25519-sha256
 3. **Plan for transition** - Design so you can swap the crypto can as you need to, ideally with the hs-<lang>lib config cascade
-4. **Common lib** - I'll add all of this to the hs-libs when I get a moment so it'll be easy
+4. **Common lib** - TLS helpers in hs-pylib and hs-rustlib implement these standards
 
 ---
 

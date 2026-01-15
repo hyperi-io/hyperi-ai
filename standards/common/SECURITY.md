@@ -409,10 +409,10 @@ def get_file(filename: str) -> str:
 - Session tokens, JWTs
 - PII (personally identifiable information)
 
-**✅ Use hs-lib auto-masking:**
+**✅ Use hs-pylib auto-masking:**
 
 ```python
-from hs_lib import logger
+from hs_pylib import logger
 
 # Automatically masks passwords, tokens, API keys
 logger.info("User login", username="alice", password="secret123")
