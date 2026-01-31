@@ -12,6 +12,10 @@
 
 Get AI-assisted development running in under 5 minutes.
 
+> **Note:** The `ai/` submodule provides standards and configuration - not code
+> to import. Your project never imports or links to it. Humans and AI assistants
+> read the standards; your code ignores this directory.
+
 ## TL;DR
 
 ```bash

@@ -3,6 +3,9 @@
 **Project:** [Project Name]
 **Purpose:** [Brief description of project purpose]
 
+> **Note:** The `ai/` submodule provides standards and configuration - not code
+> to import. Your project never imports or links to it.
+
 ---
 
 ## DO NOT ADD TO THIS FILE

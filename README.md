@@ -8,6 +8,22 @@ Standards, templates, and setup scripts for AI-assisted development.
 
 ---
 
+## Important: This Is Not a Code Dependency
+
+**The `ai/` submodule provides standards and configuration - not code to import.**
+Your project should never import, require, or link to anything in this directory.
+
+- ✅ Humans and AI assistants read standards from `ai/standards/`
+- ✅ Setup scripts create config files (`.claude/`, `STATE.md`, etc.)
+- ❌ No `import ai`, `require('ai')`, or build dependencies
+- ❌ No runtime code paths into `ai/`
+
+If you find yourself writing code that references `ai/`, stop - that's not how
+this works. The `ai/` directory provides coding standards for humans and AI
+assistants to follow, plus configuration for AI tools. It's not a library.
+
+---
+
 ## What This Is
 
 A standards library that attaches to any project to provide:

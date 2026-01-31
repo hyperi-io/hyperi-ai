@@ -7,6 +7,11 @@ Derek's prior) experience building at-scale, high-automation DevOps, DataOps,
 and DevSecOps projects. It is designed as an AI-friendly knowledge base that
 can be attached to any project as a git submodule.
 
+**Important:** The `ai/` submodule provides standards and configuration - not
+code to import. The parent project never imports, requires, or links to anything
+in `ai/`. Humans and AI assistants read these standards; the project's source
+code ignores this directory entirely.
+
 ---
 
 Core coding standards for all HyperSec projects. For detailed guidance, see:
