@@ -1,3 +1,15 @@
+## [1.11.0](https://github.com/hypersec-io/ai/compare/1.10.3...1.11.0) (2026-02-03)
+
+
+### Features
+
+* restructure RUST.md, add /review command, update licensing to FSL-1.1-ALv2 ([33f4746](https://github.com/hypersec-io/ai/commit/33f4746d1553d19ff71211083aa68af4689e6c2e))
+
+
+### Documentation
+
+* clarify ai/ is not a code dependency ([fb712c2](https://github.com/hypersec-io/ai/commit/fb712c21795dd93f18d48db218d319b86527255a))
+
 ## [1.10.3](https://github.com/hypersec-io/ai/compare/1.10.2...1.10.3) (2026-01-15)
 
 
