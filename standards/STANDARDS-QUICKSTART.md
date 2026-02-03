@@ -12,6 +12,22 @@ code to import. The parent project never imports, requires, or links to anything
 in `ai/`. Humans and AI assistants read these standards; the project's source
 code ignores this directory entirely.
 
+**Note:** HyperSec is rebranding to **HyperI** by April 2026. The `hs-` prefix
+on libraries (hs-pylib, hs-rustlib) will be renamed. References to "HyperSec"
+in these docs will be updated accordingly.
+
+---
+
+> **📌 Build Local First**
+>
+> Before pushing to CI, always run `ci/build-local.sh`. This catches most issues
+> locally and saves CI minutes. If it passes locally, it should pass in CI.
+>
+> ```bash
+> ci/build-local.sh        # Full local build + tests
+> ci/build-local.sh --help # See available options
+> ```
+
 ---
 
 Core coding standards for all HyperSec projects. For detailed guidance, see:
@@ -323,6 +339,7 @@ All configuration follows this priority (highest to lowest):
 7. **Hard-coded** → Last resort in code
 
 **Python:** Use `hs-pylib` (zero-config cascade via Dynaconf)
+**Rust:** Use `hs-rustlib` (config-rs based cascade)
 **Other languages:** See `$AI_ROOT/standards/common/CONFIG-AND-LOGGING.md`
 
 ### .env Files - Always Quote Values
@@ -978,9 +995,10 @@ env:
 
 ### Licensing
 
-- **Default:** HyperSec EULA (`LicenseRef-HyperSec-EULA`) - no approval needed
-- **Open source:** Apache-2.0 (requires management approval)
-- ❌ MIT is NOT permitted
+- **Default:** FSL-1.1-ALv2 (Functional Source License with Apache 2.0 future conversion)
+- Copy license files: `ci/attach.sh --init licensing`
+- ❌ Never create custom LICENSE files - use the template
+- ❌ GPL/AGPL/SSPL dependencies NOT permitted
 
 **Full guide:** `$AI_ROOT/standards/common/LICENSING.md`
 
@@ -996,8 +1014,8 @@ env:
 # Purpose:   <One sentence>
 # Language:  Python
 #
-# License:   LicenseRef-HyperSec-EULA
-# Copyright: (c) <YEAR> HyperSec
+# License:   FSL-1.1-ALv2
+# Copyright: (c) <YEAR> HYPERI PTY LIMITED
 ```
 
 ### Never Include

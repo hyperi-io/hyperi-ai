@@ -3,52 +3,578 @@ name: rust-standards
 description: Rust coding standards using Cargo, clippy, and idiomatic patterns. Use when writing Rust code, reviewing Rust, or setting up Rust projects.
 ---
 
-# Rust Standards for HyperSec Projects
+> **📌 Derek's Hot Path Hard Lessons**
+>
+> These patterns come from building high-throughput data pipelines that process
+> PBs/hour. I've made the mistakes so you don't have to.
+>
+> **Improvements are WELCOME.** Found a better pattern? Know something I got
+> wrong? Fix it or ping me. This is a living document.
 
-**Rust coding standards for systems programming, CLI tools, and high-performance data processing**
+# Rust Standards for HyperI Projects
+
+Standards for systems programming, CLI tools, and high-throughput data processing.
+
+New to Rust? Start with [The Rust Book](https://doc.rust-lang.org/book/) for basics.
+This doc covers HyperI-specific patterns and hard-won lessons from production systems.
 
 ---
 
 ## Table of Contents
 
-1. [Quick Reference](#quick-reference)
-2. [Project Structure](#project-structure)
-3. [Rust Foundations](#rust-foundations)
-4. [Error Handling](#error-handling)
-5. [Ownership and Borrowing](#ownership-and-borrowing)
-6. [Structs and Enums](#structs-and-enums)
+1. [Code Style Rules](#code-style-rules) - the non-negotiables
+2. [Required Tooling](#required-tooling)
+3. [Quick Reference](#quick-reference)
+4. [Project Structure](#project-structure)
+5. [Error Handling](#error-handling)
+6. [Traits and Generics](#traits-and-generics)
 7. [Common Patterns](#common-patterns)
 8. [Testing](#testing)
 9. [Async with Tokio](#async-with-tokio)
-10. [Hot Path Optimization](#hot-path-optimization)
-11. [Zero-Copy Data Processing](#zero-copy-data-processing)
-12. [SIMD and Vectorized Processing](#simd-and-vectorized-processing)
-13. [Memory Management for Scale](#memory-management-for-scale)
-14. [Concurrency Patterns](#concurrency-patterns)
-15. [Data Pipeline Architecture](#data-pipeline-architecture)
-16. [8 Common Rust Mistakes](#8-common-rust-mistakes)
-17. [Clippy Configuration](#clippy-configuration)
-18. [Cargo.toml Best Practices](#cargotoml-best-practices)
-19. [Configuration (HyperSec Cascade)](#configuration-hypersec-cascade)
-20. [Logging (HyperSec Standard)](#logging-hypersec-standard)
-21. [AI Pitfalls to Avoid](#ai-pitfalls-to-avoid)
-22. [Resources](#resources)
+10. [Configuration and Logging](#configuration-and-logging)
+11. [External Libraries](#external-libraries-and-private-registries)
+12. [High Performance](#high-performance) - memory, zero-copy, SIMD, concurrency
+13. [Data Pipeline Architecture](#data-pipeline-architecture)
+14. [FFI and Unsafe](#ffi-and-unsafe-rust)
+15. [Clippy Configuration](#clippy-configuration)
+16. [Cargo.toml Best Practices](#cargotoml-best-practices)
+17. [Coming from Other Languages](#coming-from-other-languages)
+18. [For AI Assistants](#ai-pitfalls-to-avoid)
+19. [Resources](#resources)
+
+---
+
+## Code Style Rules
+
+These apply to all Rust code. No exceptions.
+
+### Macros Over Copy-Paste
+
+When you find yourself writing the third similar `impl` block, stop. Write a macro.
+
+```rust
+// ❌ Don't do this
+impl From<IoError> for AppError {
+    fn from(e: IoError) -> Self { AppError::Io(e) }
+}
+impl From<ParseError> for AppError {
+    fn from(e: ParseError) -> Self { AppError::Parse(e) }
+}
+impl From<DbError> for AppError {
+    fn from(e: DbError) -> Self { AppError::Database(e) }
+}
+
+// ✅ Do this
+macro_rules! impl_from_error {
+    ($($variant:ident => $error:ty),+ $(,)?) => {
+        $(
+            impl From<$error> for AppError {
+                fn from(e: $error) -> Self { AppError::$variant(e) }
+            }
+        )+
+    };
+}
+
+impl_from_error! {
+    Io => IoError,
+    Parse => ParseError,
+    Database => DbError,
+}
+```
+
+Three or more similar blocks in a code review? Ask for a macro.
+
+### Use `dbg!()` Freely
+
+Sprinkle `dbg!()` everywhere when debugging. It's better than `println!` because
+it shows file, line, and the expression itself.
+
+```rust
+let result = dbg!(calculate_value(x));  // [src/main.rs:42] calculate_value(x) = 123
+let processed = dbg!(items.iter().filter(|x| dbg!(x.is_valid())).count());
+```
+
+Just remember to remove them before committing. CI runs `clippy -D clippy::dbg_macro`.
+
+### No TODO Comments
+
+TODO comments rot. If you need to mark incomplete code, use `todo!()` so it
+won't compile silently and get forgotten.
+
+```rust
+// ❌ This will get lost
+fn process() {
+    // TODO: implement this
+    unimplemented!()
+}
+
+// ✅ This panics at runtime if reached - you'll know
+fn process() -> Result<Output> {
+    todo!("implement processing logic - see TODO.md#processing")
+}
+
+// For code paths that genuinely can't happen
+fn handle_impossible_case() {
+    unreachable!("this variant is never constructed")
+}
+```
+
+### Keep `main.rs` Tiny
+
+`main.rs` should be ~10 lines. Argument parsing, config load, call `run()`, done.
+
+```rust
+// src/main.rs
+#![forbid(unsafe_code)]
+
+use myapp::{run, Config, Error};
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let config = Config::from_args()?;
+    run(config).await
+}
+```
+
+All the actual logic lives in `lib.rs` and modules.
+
+### Module Organisation
+
+`lib.rs` is the module root. Keep it clean:
+
+```rust
+// src/lib.rs
+#![forbid(unsafe_code)]
+#![warn(clippy::all, clippy::pedantic)]
+#![allow(clippy::module_name_repetitions)]
+
+// Public API - only what external users need
+pub use config::Config;
+pub use error::{Error, Result};
+pub use pipeline::Pipeline;
+
+// Prelude for internal use
+pub mod prelude {
+    pub use crate::error::{Error, Result};
+    pub use crate::config::Config;
+    pub use tracing::{debug, error, info, warn, instrument};
+}
+
+// Private by default
+mod config;
+mod error;
+mod pipeline;
+mod transform;
+mod buffer;
+
+// Public only when genuinely needed
+pub mod types;
+
+// Entry point
+pub async fn run(config: Config) -> Result<()> {
+    let pipeline = Pipeline::new(config)?;
+    pipeline.run().await
+}
+```
+
+### Prelude Pattern
+
+A `prelude` module reduces import boilerplate:
+
+```rust
+// src/prelude.rs
+pub use crate::error::{Error, Result};
+pub use crate::types::{Record, Batch};
+pub use std::sync::Arc;
+pub use tracing::{debug, error, info, warn, instrument};
+
+// Then in every other module:
+use crate::prelude::*;
+```
+
+### Minimal Visibility - Only `pub` What's Needed
+
+```rust
+// ❌ BAD - Everything public
+pub mod internal_helpers;
+pub fn private_utility() { }
+pub struct InternalState { pub field: i32 }
+
+// ✅ GOOD - Minimal visibility
+mod internal_helpers;           // Private module
+fn private_utility() { }        // Private function
+pub struct Config {             // Public struct
+    pub(crate) internal: i32,   // Crate-visible field
+    timeout: Duration,          // Private field
+}
+```
+
+### `#[must_use]` Extensively
+
+Mark functions whose return values shouldn't be ignored:
+
+```rust
+#[must_use]
+pub fn calculate_hash(data: &[u8]) -> u64 {
+    // ...
+}
+
+#[must_use = "this `Result` may contain an error that should be handled"]
+pub fn try_connect(addr: &str) -> Result<Connection> {
+    // ...
+}
+
+// Compiler warns if return value is ignored:
+// calculate_hash(data);  // warning: unused return value of `calculate_hash` that must be used
+```
+
+### Parse Constructors for Validated Types
+
+Use "parse, don't validate" pattern with constructors that enforce invariants:
+
+```rust
+/// Port number (1-65535)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Port(u16);
+
+impl Port {
+    /// Parse and validate port number
+    pub fn new(value: u16) -> Result<Self, PortError> {
+        if value == 0 {
+            return Err(PortError::Zero);
+        }
+        Ok(Self(value))
+    }
+
+    pub fn get(self) -> u16 {
+        self.0
+    }
+}
+
+impl std::str::FromStr for Port {
+    type Err = PortError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let value: u16 = s.parse().map_err(|_| PortError::Invalid)?;
+        Self::new(value)
+    }
+}
+
+// Usage: validation at boundary, trust internally
+let port: Port = "8080".parse()?;  // Validated once
+start_server(port);                 // No re-validation needed
+```
+
+### Type-State Pattern for Compile-Time Safety
+
+Encode state transitions in the type system:
+
+```rust
+// States as zero-sized types
+pub struct Unvalidated;
+pub struct Validated;
+pub struct Ready;
+
+pub struct Request<State> {
+    data: RequestData,
+    _state: std::marker::PhantomData<State>,
+}
+
+impl Request<Unvalidated> {
+    pub fn new(data: RequestData) -> Self {
+        Self { data, _state: std::marker::PhantomData }
+    }
+
+    pub fn validate(self) -> Result<Request<Validated>, ValidationError> {
+        validate_data(&self.data)?;
+        Ok(Request { data: self.data, _state: std::marker::PhantomData })
+    }
+}
+
+impl Request<Validated> {
+    pub fn prepare(self) -> Request<Ready> {
+        Request { data: self.data, _state: std::marker::PhantomData }
+    }
+}
+
+impl Request<Ready> {
+    pub async fn send(self) -> Result<Response> {
+        // Only Ready requests can be sent
+        send_request(self.data).await
+    }
+}
+
+// Compile-time enforcement:
+// Request::new(data).send().await;  // ERROR: no method `send` on Request<Unvalidated>
+// Request::new(data).validate()?.prepare().send().await;  // OK
+```
+
+### Lean Into Traits and Generics
+
+Use traits and generics extensively (without going overboard):
+
+```rust
+// ✅ GOOD - Generic over input types
+pub fn process<T: AsRef<[u8]>>(input: T) -> Result<Output> {
+    let bytes = input.as_ref();
+    // Works with &[u8], Vec<u8>, Bytes, etc.
+}
+
+// ✅ GOOD - Trait for pluggable behaviour
+pub trait Sink: Send + Sync {
+    fn write(&self, batch: &Batch) -> Result<()>;
+    fn flush(&self) -> Result<()>;
+}
+
+pub struct Pipeline<S: Sink> {
+    sink: S,
+}
+
+// ✅ GOOD - Extension traits for ergonomics
+pub trait ResultExt<T> {
+    fn log_err(self) -> Result<T>;
+}
+
+impl<T, E: std::fmt::Display> ResultExt<T> for Result<T, E> {
+    fn log_err(self) -> Result<T, E> {
+        if let Err(ref e) = self {
+            tracing::error!("{}", e);
+        }
+        self
+    }
+}
+```
+
+---
+
+## Required Tooling
+
+Every Rust project **MUST** have these files and tools configured.
+
+### Required Files in Every Project
+
+```text
+myproject/
+├── Cargo.toml              # Project manifest
+├── Cargo.lock              # Locked dependencies (commit this!)
+├── rustfmt.toml            # Formatter config
+├── clippy.toml             # Linter config
+├── deny.toml               # Dependency checker config
+├── rust-toolchain.toml     # Toolchain pinning
+├── .cargo/
+│   └── config.toml         # Cargo config (registry, build flags)
+└── src/
+    ├── main.rs             # Entry point (small!)
+    └── lib.rs              # Library root
+```
+
+### rustfmt.toml (Required)
+
+```toml
+# Rust formatter configuration
+edition = "2021"
+max_width = 100
+tab_spaces = 4
+use_small_heuristics = "Default"
+imports_granularity = "Module"
+group_imports = "StdExternalCrate"
+reorder_imports = true
+```
+
+### rust-toolchain.toml (Required)
+
+```toml
+# Pin Rust toolchain for reproducible builds
+[toolchain]
+channel = "1.83"
+components = ["rustfmt", "clippy", "llvm-tools-preview"]
+targets = ["x86_64-unknown-linux-gnu"]
+```
+
+### deny.toml (Required)
+
+```toml
+# cargo-deny configuration
+# Run: cargo deny check
+
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "warn"
+notice = "warn"
+
+[licenses]
+unlicensed = "deny"
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "MPL-2.0",
+    "Unicode-DFS-2016",
+]
+copyleft = "warn"
+default = "deny"
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+skip = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+```
+
+### Required Development Tools
+
+Install these tools for every Rust project:
+
+```bash
+# Essential tools (install once)
+cargo install cargo-nextest      # Better test runner
+cargo install cargo-deny         # License/advisory checker
+cargo install cargo-tarpaulin    # Code coverage
+cargo install bacon              # Background checker (like cargo-watch)
+cargo install cargo-chef         # Docker layer caching
+
+# Optional but recommended
+cargo install cargo-audit        # Security audit
+cargo install cargo-outdated     # Check for outdated deps
+cargo install cargo-machete      # Find unused dependencies
+```
+
+### Development Workflow Commands
+
+```bash
+# Use bacon for continuous checking (replaces cargo watch)
+bacon                           # Runs clippy on save
+bacon test                      # Runs tests on save
+bacon clippy                    # Runs clippy on save
+
+# Use nextest for testing (faster, better output)
+cargo nextest run               # Run all tests
+cargo nextest run --no-capture  # Show println! output
+cargo nextest run -E 'test(unit)'  # Filter by name
+
+# Coverage with tarpaulin
+cargo tarpaulin --out Html      # Generate HTML report
+cargo tarpaulin --out Lcov      # For CI upload
+
+# Dependency checking
+cargo deny check                # Licenses, advisories, bans
+cargo audit                     # Security vulnerabilities
+cargo outdated                  # Check for updates
+cargo machete                   # Find unused deps
+```
+
+### Docker Builds with cargo-chef
+
+Use cargo-chef for efficient Docker layer caching:
+
+```dockerfile
+# Stage 1: Chef - prepare dependency recipe
+FROM rust:1.83-slim AS chef
+RUN cargo install cargo-chef
+WORKDIR /app
+
+# Stage 2: Planner - create recipe.json
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+# Stage 3: Builder - build dependencies (cached layer)
+FROM chef AS builder
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+# Build application (only this layer rebuilds on code change)
+COPY . .
+RUN cargo build --release
+
+# Stage 4: Runtime
+FROM debian:bookworm-slim
+COPY --from=builder /app/target/release/myapp /usr/local/bin/
+CMD ["myapp"]
+```
+
+### CI Quality Pipeline
+
+```yaml
+# .github/workflows/ci.yml
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Deny check
+        run: cargo deny check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install nextest
+        run: cargo install cargo-nextest
+
+      - name: Run tests
+        run: cargo nextest run --all-features
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Generate coverage
+        run: cargo tarpaulin --out Lcov
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+```
 
 ---
 
 ## Quick Reference
 
 ```bash
+# Essential commands
 cargo build                     # Build debug
 cargo build --release           # Build release
-cargo test                      # Run tests
+cargo nextest run               # Run tests (preferred over cargo test)
 cargo clippy                    # Lint
 cargo fmt                       # Format
 cargo check                     # Type check (fast)
 cargo doc --open                # Generate docs
 cargo bench                     # Run benchmarks
 cargo tree                      # Dependency tree
-cargo audit                     # Security audit
+cargo deny check                # License/advisory check
+
+# Development workflow
+bacon                           # Continuous clippy (use instead of cargo watch)
+bacon test                      # Continuous testing
+cargo tarpaulin --out Html      # Coverage report
 ```
 
 ### Type Quick Reference
@@ -144,175 +670,41 @@ data-pipeline/
 
 ## Rust Foundations
 
-### Variables and Mutability
+For fundamentals (variables, types, control flow, functions), read [The Rust Book](https://doc.rust-lang.org/book/) chapters 3-5. It's better than anything I could write here.
+
+What follows is the stuff The Book doesn't emphasise enough.
+
+### Closures - Know Your Traits
 
 ```rust
-// Immutable by default
-let x = 5;
-// x = 6;  // Error!
-
-// Explicitly mutable
-let mut y = 5;
-y = 6;  // OK
-
-// Shadowing - create new variable with same name
-let x = "hello";        // Now a &str, not i32
-let x = x.len();        // Now a usize
-
-// Constants - computed at compile time
-const MAX_CONNECTIONS: u32 = 1000;
-const TIMEOUT_MS: u64 = 30_000;
-
-// Static - has fixed memory address
-static VERSION: &str = "1.0.0";
-```
-
-### Primitive Types
-
-```rust
-// Integers
-let byte: u8 = 255;
-let signed: i32 = -42;
-let large: u64 = 1_000_000_000;
-let index: usize = vec.len();
-
-// Floats
-let pi: f64 = 3.14159265359;
-let approx: f32 = 3.14;
-
-// Boolean
-let active: bool = true;
-
-// Character (Unicode scalar, 4 bytes)
-let c: char = '🦀';
-
-// Unit type (empty tuple)
-let unit: () = ();
-```
-
-### Compound Types
-
-```rust
-// Tuple - fixed size, mixed types
-let point: (i32, i32) = (10, 20);
-let (x, y) = point;              // Destructuring
-let first = point.0;             // Index access
-
-// Array - fixed size, same type, stack allocated
-let arr: [i32; 5] = [1, 2, 3, 4, 5];
-let zeros = [0; 100];            // 100 zeros
-let first = arr[0];
-let slice: &[i32] = &arr[1..3];  // Slice
-
-// Vec - dynamic size, heap allocated
-let mut vec: Vec<i32> = Vec::new();
-let vec = vec![1, 2, 3];
-vec.push(4);
-```
-
-### Control Flow
-
-```rust
-// if/else - expression, not statement
-let status = if count > 0 { "active" } else { "empty" };
-
-// match - exhaustive pattern matching
-match result {
-    Ok(value) => println!("Got: {}", value),
-    Err(e) => eprintln!("Error: {}", e),
-}
-
-// match with guards
-match number {
-    n if n < 0 => "negative",
-    0 => "zero",
-    n if n < 10 => "small",
-    _ => "large",
-}
-
-// if let - single pattern match
-if let Some(value) = optional {
-    println!("Has value: {}", value);
-}
-
-// while let
-while let Some(item) = iter.next() {
-    process(item);
-}
-
-// loop with break value
-let result = loop {
-    if condition {
-        break computed_value;
-    }
-};
-
-// for with ranges
-for i in 0..10 { }           // 0 to 9
-for i in 0..=10 { }          // 0 to 10 inclusive
-for (i, item) in vec.iter().enumerate() { }
-```
-
-### Functions
-
-```rust
-// Basic function
-fn add(a: i32, b: i32) -> i32 {
-    a + b  // No semicolon = return value
-}
-
-// Early return
-fn divide(a: f64, b: f64) -> Option<f64> {
-    if b == 0.0 {
-        return None;
-    }
-    Some(a / b)
-}
-
-// Generic function
-fn first<T>(slice: &[T]) -> Option<&T> {
-    slice.first()
-}
-
-// Multiple generic bounds
-fn process<T: Clone + Debug>(item: T) { }
-
-// Where clause for complex bounds
-fn process<T, U>(t: T, u: U)
-where
-    T: Clone + Send + 'static,
-    U: Debug + Default,
-{ }
-```
-
-### Closures
-
-```rust
-// Inferred types
-let add = |a, b| a + b;
-
-// Explicit types
-let add: fn(i32, i32) -> i32 = |a, b| a + b;
-
-// Capturing environment
-let multiplier = 3;
-let multiply = |x| x * multiplier;  // Borrows multiplier
-
-// Move closure - takes ownership
-let data = vec![1, 2, 3];
-let closure = move || {
-    println!("{:?}", data);  // Owns data
-};
-
-// Closure traits:
 // Fn     - borrows immutably (can call multiple times)
 // FnMut  - borrows mutably (can call multiple times)
 // FnOnce - takes ownership (can call once)
+
+// Move closure - takes ownership of captured variables
+let data = vec![1, 2, 3];
+let closure = move || {
+    println!("{:?}", data);  // Owns data now
+};
+// data is gone - moved into closure
+```
+
+When passing closures to functions, use `impl Fn...` for flexibility:
+
+```rust
+fn call_twice(f: impl Fn()) {
+    f();
+    f();
+}
 ```
 
 ---
 
 ## Error Handling
+
+Rust error handling is verbose until you learn the patterns. Then it's actually pleasant.
+
+**Libraries:** Use `thiserror` for custom error types. **Applications:** Use `anyhow` for quick prototyping, then migrate to proper types when the code stabilises.
 
 ### Custom Error Types with thiserror
 
@@ -434,7 +826,11 @@ fn parse_fast(input: &[u8]) -> Result<Record, FastError> {
 
 ## Ownership and Borrowing
 
+This is the bit that makes Rust feel hard at first. But it's also why Rust code doesn't segfault or leak memory. The borrow checker is doing at compile time what you'd do in your head (and occasionally forget) in C.
+
 ### The Three Rules
+
+Memorise these. Everything else flows from them:
 
 1. **Each value has exactly one owner**
 2. **When the owner goes out of scope, the value is dropped**
@@ -847,6 +1243,10 @@ match char {
 
 ## Testing
 
+Use `cargo nextest` instead of `cargo test`. It's faster, has better output, and runs tests in parallel properly. Install it: `cargo install cargo-nextest`.
+
+For coverage, use `cargo tarpaulin`. For property-based testing, use `proptest`. For benchmarks, use `criterion`.
+
 ### Unit Tests
 
 ```rust
@@ -988,6 +1388,10 @@ async fn test_pipeline_end_to_end() {
 ---
 
 ## Async with Tokio
+
+Rust async is different from Go goroutines or Python asyncio. You need a runtime (we use Tokio), and `async fn` returns a future that does nothing until awaited.
+
+**Key rule:** Never block in async code. Use `tokio::time::sleep`, not `std::thread::sleep`. Use `tokio::fs`, not `std::fs`. If you must call blocking code, wrap it in `tokio::task::spawn_blocking`.
 
 ### Async Functions
 
@@ -2627,6 +3031,1065 @@ fn hot_path(data: &[u8]) {
 
 ---
 
+## Traits and Generics
+
+### Trait Basics
+
+```rust
+/// Define behaviour that types can implement
+pub trait Processor {
+    /// Associated type - implementor chooses the concrete type
+    type Output;
+
+    /// Required method - must be implemented
+    fn process(&self, input: &[u8]) -> Self::Output;
+
+    /// Provided method - default implementation, can be overridden
+    fn name(&self) -> &'static str {
+        "unnamed"
+    }
+}
+
+/// Implement trait for a type
+struct JsonProcessor;
+
+impl Processor for JsonProcessor {
+    type Output = serde_json::Value;
+
+    fn process(&self, input: &[u8]) -> Self::Output {
+        serde_json::from_slice(input).unwrap_or_default()
+    }
+
+    fn name(&self) -> &'static str {
+        "json"
+    }
+}
+```
+
+### The Orphan Rule
+
+You can only implement a trait on a type if **either** the trait **or** the type is local to your crate:
+
+```rust
+// ✅ OK - your trait on external type
+impl MyTrait for Vec<i32> { }
+
+// ✅ OK - external trait on your type
+impl Display for MyType { }
+
+// ❌ ERROR - both trait and type are external
+impl Display for Vec<i32> { }  // Orphan rule violation
+```
+
+This ensures code coherence and prevents conflicting implementations across crates.
+
+### Generic Functions
+
+```rust
+// Single trait bound
+fn process<T: Processor>(processor: T, data: &[u8]) -> T::Output {
+    processor.process(data)
+}
+
+// Multiple bounds with +
+fn process_and_log<T: Processor + Debug>(processor: T, data: &[u8]) -> T::Output {
+    println!("Using processor: {:?}", processor);
+    processor.process(data)
+}
+
+// Where clause for complex bounds
+fn transform<T, U>(input: T, transformer: U) -> U::Output
+where
+    T: AsRef<[u8]>,
+    U: Processor + Send + Sync + 'static,
+{
+    transformer.process(input.as_ref())
+}
+
+// impl Trait in argument position (syntactic sugar)
+fn process_any(processor: impl Processor) {
+    let _ = processor.process(b"data");
+}
+
+// impl Trait in return position - single concrete type
+fn create_processor() -> impl Processor<Output = String> {
+    StringProcessor::new()
+}
+```
+
+### Trait Objects (Dynamic Dispatch)
+
+```rust
+// Box<dyn Trait> for runtime polymorphism
+fn process_dynamic(processor: Box<dyn Processor<Output = String>>) -> String {
+    processor.process(b"input")
+}
+
+// &dyn Trait for borrowed trait objects
+fn process_borrowed(processor: &dyn Processor<Output = String>) -> String {
+    processor.process(b"input")
+}
+
+// Vec of trait objects - heterogeneous collection
+fn process_many(processors: Vec<Box<dyn Processor<Output = String>>>) {
+    for p in processors {
+        println!("{}: {}", p.name(), p.process(b"data"));
+    }
+}
+
+// Object safety rules - trait must be object-safe to use as dyn Trait:
+// ✅ Methods with &self or &mut self receiver
+// ✅ Methods with no type parameters
+// ❌ Methods returning Self
+// ❌ Methods with generic type parameters
+// ❌ Static methods (no self)
+
+// ❌ NOT object-safe
+trait NotObjectSafe {
+    fn clone_self(&self) -> Self;  // Returns Self
+    fn generic<T>(&self, t: T);    // Generic method
+}
+
+// ✅ Object-safe
+trait ObjectSafe {
+    fn process(&self) -> Box<dyn ObjectSafe>;  // Returns trait object, not Self
+    fn name(&self) -> &str;
+}
+```
+
+### When to Use Static vs Dynamic Dispatch
+
+```rust
+// ✅ Static dispatch (generics) - use when:
+// - Performance is critical (no vtable lookup)
+// - Types known at compile time
+// - Monomorphization acceptable (larger binary)
+fn fast_process<T: Processor>(p: T, data: &[u8]) -> T::Output {
+    p.process(data)  // Direct call, inlined
+}
+
+// ✅ Dynamic dispatch (trait objects) - use when:
+// - Need heterogeneous collections
+// - Plugin systems / runtime loading
+// - Reducing binary size
+// - API boundary stability
+fn flexible_process(p: &dyn Processor<Output = String>, data: &[u8]) -> String {
+    p.process(data)  // vtable lookup
+}
+
+// Pattern: Store trait objects, process with generics
+struct Pipeline {
+    stages: Vec<Box<dyn Stage>>,  // Dynamic storage
+}
+
+impl Pipeline {
+    fn add<S: Stage + 'static>(&mut self, stage: S) {
+        self.stages.push(Box::new(stage));  // Generic addition
+    }
+}
+```
+
+### Associated Types vs Generic Parameters
+
+```rust
+// Associated type - one implementation per type
+trait Iterator {
+    type Item;  // Determined by implementor
+    fn next(&mut self) -> Option<Self::Item>;
+}
+
+// Each type has exactly one Item type
+impl Iterator for Counter {
+    type Item = u32;  // Counter always yields u32
+    fn next(&mut self) -> Option<u32> { ... }
+}
+
+// Generic parameter - multiple implementations per type
+trait Converter<T> {
+    fn convert(&self) -> T;
+}
+
+// Same type can implement multiple conversions
+impl Converter<String> for MyType {
+    fn convert(&self) -> String { ... }
+}
+impl Converter<i32> for MyType {
+    fn convert(&self) -> i32 { ... }
+}
+
+// Rule of thumb:
+// - Associated type: "A type HAS one X" (Iterator has one Item type)
+// - Generic param: "A type can BE converted to many X" (can convert to String, i32, etc.)
+```
+
+### Supertraits and Trait Inheritance
+
+```rust
+// Supertrait - require another trait
+trait Serializable: Debug + Clone {
+    fn serialize(&self) -> Vec<u8>;
+}
+
+// Implementors must also implement Debug and Clone
+#[derive(Debug, Clone)]
+struct Record { id: u64 }
+
+impl Serializable for Record {
+    fn serialize(&self) -> Vec<u8> {
+        format!("{:?}", self).into_bytes()
+    }
+}
+
+// Multiple supertraits
+trait Service: Send + Sync + 'static {
+    fn handle(&self, request: Request) -> Response;
+}
+```
+
+### Marker Traits
+
+```rust
+// Marker traits have no methods - they mark capabilities
+// Standard library markers:
+
+// Send - safe to transfer between threads
+// Sync - safe to share references between threads (&T is Send)
+// Copy - can be copied bitwise (no Drop)
+// Sized - has known size at compile time (default bound)
+// Unpin - can be moved after being pinned
+
+// Auto traits - implemented automatically unless opted out
+struct ThreadSafeData {
+    value: i32,  // i32 is Send + Sync, so ThreadSafeData is too
+}
+
+// Opt out with negative impl (nightly) or PhantomData
+use std::marker::PhantomData;
+use std::cell::UnsafeCell;
+
+struct NotSync {
+    _marker: PhantomData<UnsafeCell<()>>,  // UnsafeCell is !Sync
+}
+
+// Custom marker trait
+trait DatabaseConnection: Send + Sync {}
+
+fn spawn_with_db<D: DatabaseConnection>(db: D) {
+    std::thread::spawn(move || {
+        // db is guaranteed Send + Sync
+    });
+}
+```
+
+### Default Trait Implementations
+
+```rust
+// The Default trait
+#[derive(Default)]
+struct Config {
+    port: u16,
+    host: String,
+    #[default]  // Requires nightly or manual impl
+    timeout_ms: u64,
+}
+
+// Manual Default implementation
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            port: 8080,
+            host: "localhost".to_string(),
+            timeout_ms: 30_000,
+        }
+    }
+}
+
+// Using Default
+let config = Config::default();
+let config = Config { port: 9000, ..Default::default() };
+
+// Default in generics
+fn create_with_defaults<T: Default>() -> T {
+    T::default()
+}
+```
+
+### Extension Traits
+
+```rust
+// Add methods to existing types without modifying them
+trait StringExt {
+    fn truncate_with_ellipsis(&self, max_len: usize) -> String;
+}
+
+impl StringExt for str {
+    fn truncate_with_ellipsis(&self, max_len: usize) -> String {
+        if self.len() <= max_len {
+            self.to_string()
+        } else {
+            format!("{}...", &self[..max_len.saturating_sub(3)])
+        }
+    }
+}
+
+// Usage - must import the trait!
+use crate::StringExt;
+let short = "Hello, World!".truncate_with_ellipsis(8);  // "Hello..."
+
+// Common pattern: extension traits for Result/Option
+trait ResultExt<T, E> {
+    fn log_err(self) -> Result<T, E>;
+}
+
+impl<T, E: std::fmt::Display> ResultExt<T, E> for Result<T, E> {
+    fn log_err(self) -> Result<T, E> {
+        if let Err(ref e) = self {
+            tracing::error!("Error: {}", e);
+        }
+        self
+    }
+}
+```
+
+### Generic Structs and Enums
+
+```rust
+// Generic struct
+struct Container<T> {
+    value: T,
+}
+
+impl<T> Container<T> {
+    fn new(value: T) -> Self {
+        Self { value }
+    }
+
+    fn into_inner(self) -> T {
+        self.value
+    }
+}
+
+// Methods only for specific types
+impl Container<String> {
+    fn len(&self) -> usize {
+        self.value.len()
+    }
+}
+
+// Methods with additional bounds
+impl<T: Clone> Container<T> {
+    fn cloned(&self) -> T {
+        self.value.clone()
+    }
+}
+
+// Multiple type parameters
+struct Pair<K, V> {
+    key: K,
+    value: V,
+}
+
+// Generic enum
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+// PhantomData for unused type parameters
+use std::marker::PhantomData;
+
+struct TypedId<T> {
+    id: u64,
+    _marker: PhantomData<T>,  // T not used in fields
+}
+
+// Different types even though same underlying data
+type UserId = TypedId<User>;
+type OrderId = TypedId<Order>;
+```
+
+### Const Generics
+
+```rust
+// Generic over constant values (not just types)
+struct Buffer<const N: usize> {
+    data: [u8; N],
+}
+
+impl<const N: usize> Buffer<N> {
+    fn new() -> Self {
+        Self { data: [0; N] }
+    }
+
+    fn len(&self) -> usize {
+        N
+    }
+}
+
+// Usage
+let small: Buffer<64> = Buffer::new();
+let large: Buffer<4096> = Buffer::new();
+
+// Const generic in functions
+fn copy_fixed<const N: usize>(src: &[u8; N], dst: &mut [u8; N]) {
+    dst.copy_from_slice(src);
+}
+
+// Combine with type generics
+struct Matrix<T, const ROWS: usize, const COLS: usize> {
+    data: [[T; COLS]; ROWS],
+}
+```
+
+### Blanket Implementations
+
+```rust
+// Implement trait for all types that satisfy bounds
+// From std: impl<T: Display> ToString for T
+
+trait Describable {
+    fn describe(&self) -> String;
+}
+
+// Blanket impl: any Debug type is Describable
+impl<T: std::fmt::Debug> Describable for T {
+    fn describe(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+// Now ALL Debug types have describe()
+let x = 42;
+println!("{}", x.describe());  // "42"
+
+// Common blanket impls in ecosystem:
+// - impl<T: Error> From<T> for Box<dyn Error>
+// - impl<T: AsRef<str>> From<T> for String
+// - impl<T: Iterator> IntoIterator for T
+```
+
+---
+
+## FFI and Unsafe Rust
+
+### When Unsafe is Necessary
+
+Unsafe Rust is required for:
+1. Dereferencing raw pointers
+2. Calling unsafe functions (including FFI)
+3. Accessing/modifying mutable statics
+4. Implementing unsafe traits
+5. Accessing fields of unions
+
+### Raw Pointers
+
+```rust
+// Creating raw pointers is safe, dereferencing is unsafe
+let x = 42;
+let ptr: *const i32 = &x;      // Immutable raw pointer
+let mut y = 42;
+let mut_ptr: *mut i32 = &mut y; // Mutable raw pointer
+
+// Rust 2024+: Use raw borrow operators (preferred)
+let ptr: *const i32 = &raw const x;
+let mut_ptr: *mut i32 = &raw mut y;
+
+// Dereferencing requires unsafe
+unsafe {
+    println!("Value: {}", *ptr);
+    *mut_ptr = 100;
+}
+
+// Null pointers
+let null_ptr: *const i32 = std::ptr::null();
+let null_mut: *mut i32 = std::ptr::null_mut();
+
+// Check for null before dereferencing
+if !ptr.is_null() {
+    unsafe { println!("{}", *ptr); }
+}
+
+// Pointer arithmetic
+unsafe {
+    let arr = [1, 2, 3, 4, 5];
+    let ptr = arr.as_ptr();
+    let third = *ptr.add(2);  // arr[2]
+    let second = *ptr.offset(1);  // arr[1]
+}
+```
+
+### FFI Basics - Calling C from Rust
+
+```rust
+// Link to C library (Rust 2024 edition: all items in unsafe extern are unsafe)
+#[link(name = "c")]
+unsafe extern "C" {
+    fn strlen(s: *const std::ffi::c_char) -> usize;
+    fn printf(format: *const std::ffi::c_char, ...) -> i32;
+
+    // Mark known-safe functions explicitly
+    safe fn abs(input: i32) -> i32;
+}
+
+// Pre-2024 edition syntax (still valid)
+#[link(name = "mylib")]
+extern "C" {
+    fn my_function(x: i32) -> i32;  // Implicitly unsafe to call
+}
+
+// Safe wrapper around unsafe FFI
+pub fn safe_strlen(s: &std::ffi::CStr) -> usize {
+    unsafe { strlen(s.as_ptr()) }
+}
+
+// Usage
+use std::ffi::CString;
+
+fn main() {
+    let s = CString::new("Hello").expect("CString::new failed");
+    let len = safe_strlen(&s);
+    println!("Length: {}", len);
+}
+```
+
+### C String Handling
+
+```rust
+use std::ffi::{CStr, CString, c_char};
+
+// Rust string to C string (owned, null-terminated)
+fn rust_to_c(s: &str) -> CString {
+    CString::new(s).expect("String contains null byte")
+}
+
+// C string to Rust (borrowed)
+unsafe fn c_to_rust<'a>(ptr: *const c_char) -> &'a str {
+    CStr::from_ptr(ptr)
+        .to_str()
+        .expect("Invalid UTF-8")
+}
+
+// C string to owned Rust String
+unsafe fn c_to_rust_owned(ptr: *const c_char) -> String {
+    CStr::from_ptr(ptr)
+        .to_string_lossy()  // Replaces invalid UTF-8 with �
+        .into_owned()
+}
+
+// Pattern: C callback with string
+extern "C" fn log_callback(message: *const c_char) {
+    let msg = unsafe {
+        if message.is_null() {
+            return;
+        }
+        CStr::from_ptr(message).to_string_lossy()
+    };
+    tracing::info!("{}", msg);
+}
+```
+
+### Exposing Rust to C
+
+```rust
+// Prevent name mangling
+#[no_mangle]
+pub extern "C" fn rust_add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+// Return allocated string to C (caller must free)
+#[no_mangle]
+pub extern "C" fn rust_greeting(name: *const c_char) -> *mut c_char {
+    let name = unsafe {
+        if name.is_null() {
+            return std::ptr::null_mut();
+        }
+        CStr::from_ptr(name).to_string_lossy()
+    };
+
+    let greeting = format!("Hello, {}!", name);
+    CString::new(greeting)
+        .map(|s| s.into_raw())  // Transfer ownership to C
+        .unwrap_or(std::ptr::null_mut())
+}
+
+// Free function for C to call
+#[no_mangle]
+pub extern "C" fn rust_free_string(ptr: *mut c_char) {
+    if !ptr.is_null() {
+        unsafe {
+            drop(CString::from_raw(ptr));  // Reclaim and drop
+        }
+    }
+}
+```
+
+### repr(C) for C-Compatible Structs
+
+```rust
+// Ensure C-compatible memory layout
+#[repr(C)]
+pub struct Point {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[repr(C)]
+pub struct Buffer {
+    pub data: *mut u8,
+    pub len: usize,
+    pub capacity: usize,
+}
+
+// Opaque types - hide Rust implementation from C
+#[repr(C)]
+pub struct OpaqueHandle {
+    _private: [u8; 0],  // Zero-sized, prevents construction in C
+}
+
+// Create/destroy pattern for opaque types
+#[no_mangle]
+pub extern "C" fn processor_new() -> *mut OpaqueHandle {
+    let processor = Box::new(RealProcessor::new());
+    Box::into_raw(processor) as *mut OpaqueHandle
+}
+
+#[no_mangle]
+pub extern "C" fn processor_free(ptr: *mut OpaqueHandle) {
+    if !ptr.is_null() {
+        unsafe {
+            drop(Box::from_raw(ptr as *mut RealProcessor));
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn processor_process(
+    ptr: *mut OpaqueHandle,
+    data: *const u8,
+    len: usize,
+) -> i32 {
+    let processor = unsafe {
+        if ptr.is_null() { return -1; }
+        &mut *(ptr as *mut RealProcessor)
+    };
+
+    let slice = unsafe {
+        if data.is_null() { return -1; }
+        std::slice::from_raw_parts(data, len)
+    };
+
+    match processor.process(slice) {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
+}
+```
+
+### Bindgen for Automatic Bindings
+
+```rust
+// build.rs - generate Rust bindings from C headers
+fn main() {
+    println!("cargo:rerun-if-changed=wrapper.h");
+
+    let bindings = bindgen::Builder::default()
+        .header("wrapper.h")
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        // Allowlist specific functions/types
+        .allowlist_function("mylib_.*")
+        .allowlist_type("MyLib.*")
+        // Block problematic items
+        .blocklist_item("FILE")
+        .generate()
+        .expect("Unable to generate bindings");
+
+    let out_path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("Couldn't write bindings");
+}
+
+// src/lib.rs - include generated bindings
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+```
+
+### cbindgen for C Header Generation
+
+```toml
+# cbindgen.toml
+language = "C"
+include_guard = "MY_LIB_H"
+no_includes = true
+sys_includes = ["stdint.h", "stdbool.h"]
+
+[export]
+include = ["Point", "Buffer", "processor_.*"]
+```
+
+```bash
+# Generate header
+cbindgen --config cbindgen.toml --output include/mylib.h
+```
+
+### Unsafe Traits
+
+```rust
+// Unsafe trait - implementor guarantees invariants
+unsafe trait TrustedLen: Iterator {
+    // Implementor guarantees size_hint() is exact
+}
+
+// Unsafe impl - "I promise this is correct"
+unsafe impl<T> TrustedLen for std::vec::IntoIter<T> {}
+
+// Common unsafe traits:
+// - Send: safe to transfer to another thread
+// - Sync: safe to share between threads
+// - GlobalAlloc: custom allocator
+
+// Implementing Send/Sync manually
+struct MyWrapper(*mut u8);
+
+// "I guarantee this is safe to send between threads"
+unsafe impl Send for MyWrapper {}
+unsafe impl Sync for MyWrapper {}
+```
+
+### Safe Abstractions Over Unsafe
+
+```rust
+/// Safe wrapper around raw buffer
+pub struct SafeBuffer {
+    ptr: *mut u8,
+    len: usize,
+    capacity: usize,
+}
+
+impl SafeBuffer {
+    /// Creates a new buffer. All unsafe operations are encapsulated.
+    pub fn new(capacity: usize) -> Self {
+        let layout = std::alloc::Layout::array::<u8>(capacity).unwrap();
+        let ptr = unsafe { std::alloc::alloc(layout) };
+        if ptr.is_null() {
+            std::alloc::handle_alloc_error(layout);
+        }
+        Self { ptr, len: 0, capacity }
+    }
+
+    /// Safe slice access
+    pub fn as_slice(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
+    }
+
+    /// Safe mutable slice access
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
+    }
+
+    /// Push with bounds checking
+    pub fn push(&mut self, byte: u8) -> Result<(), BufferFull> {
+        if self.len >= self.capacity {
+            return Err(BufferFull);
+        }
+        unsafe {
+            self.ptr.add(self.len).write(byte);
+        }
+        self.len += 1;
+        Ok(())
+    }
+}
+
+impl Drop for SafeBuffer {
+    fn drop(&mut self) {
+        if !self.ptr.is_null() {
+            let layout = std::alloc::Layout::array::<u8>(self.capacity).unwrap();
+            unsafe { std::alloc::dealloc(self.ptr, layout) };
+        }
+    }
+}
+
+// Implement Send/Sync if safe
+unsafe impl Send for SafeBuffer {}
+unsafe impl Sync for SafeBuffer {}
+```
+
+### Unsafe Code Guidelines
+
+```rust
+// ❌ Bad - unsafe block too large
+unsafe {
+    let ptr = get_pointer();
+    validate_something();  // Safe code in unsafe block
+    process_data();        // Safe code in unsafe block
+    *ptr = 42;             // Only this needs unsafe
+}
+
+// ✅ Good - minimal unsafe scope
+let ptr = get_pointer();
+validate_something();
+process_data();
+unsafe { *ptr = 42; }  // Only unsafe operation
+
+// ❌ Bad - no safety comment
+unsafe impl Send for MyType {}
+
+// ✅ Good - document safety invariants
+// SAFETY: MyType contains only thread-safe types (AtomicU64, Arc).
+// The raw pointer field is never dereferenced, only used as an identifier.
+unsafe impl Send for MyType {}
+
+// ❌ Bad - unsafe function without safety docs
+pub unsafe fn process_raw(ptr: *mut u8, len: usize) {
+    // ...
+}
+
+// ✅ Good - document preconditions in doc comment
+/// Processes raw bytes in place.
+///
+/// # Safety
+///
+/// - `ptr` must be valid for reads and writes of `len` bytes
+/// - `ptr` must be properly aligned for u8
+/// - The memory must not be accessed by other threads during this call
+pub unsafe fn process_raw(ptr: *mut u8, len: usize) {
+    // ...
+}
+
+// ✅ Good - SAFETY comment before unsafe block (for callers)
+fn safe_wrapper(data: &mut [u8]) {
+    let ptr = data.as_mut_ptr();
+    let len = data.len();
+
+    // SAFETY: ptr and len come from a valid slice, so ptr is valid for
+    // len bytes, properly aligned, and we have exclusive access via &mut.
+    unsafe {
+        process_raw(ptr, len);
+    }
+}
+```
+
+### Unwinding Across FFI Boundaries
+
+```rust
+// If panics or foreign exceptions may cross an FFI boundary,
+// use -unwind ABI variants to avoid undefined behaviour
+
+// ❌ Dangerous - panic across FFI is UB without -unwind
+#[no_mangle]
+pub extern "C" fn might_panic() {
+    panic!("This causes UB if it unwinds into C!");
+}
+
+// ✅ Safe - use catch_unwind to prevent unwinding
+use std::panic::catch_unwind;
+
+#[no_mangle]
+pub extern "C" fn safe_function() -> i32 {
+    match catch_unwind(|| {
+        // Rust code that might panic
+        risky_operation()
+    }) {
+        Ok(result) => result,
+        Err(_) => -1,  // Return error code instead of unwinding
+    }
+}
+
+// ✅ Safe - use C-unwind if unwinding is intentional (Rust 2024+)
+#[no_mangle]
+pub extern "C-unwind" fn can_unwind() {
+    panic!("This can safely unwind through C++ code");
+}
+
+// Calling foreign functions that might throw
+unsafe extern "C-unwind" {
+    fn cpp_function_that_throws();
+}
+```
+
+### Common FFI Patterns
+
+```rust
+// Error handling across FFI boundary
+#[repr(C)]
+pub enum ErrorCode {
+    Success = 0,
+    NullPointer = -1,
+    InvalidArgument = -2,
+    BufferTooSmall = -3,
+    InternalError = -99,
+}
+
+// Thread-local error message
+thread_local! {
+    static LAST_ERROR: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
+}
+
+fn set_last_error(msg: String) {
+    LAST_ERROR.with(|e| *e.borrow_mut() = Some(msg));
+}
+
+#[no_mangle]
+pub extern "C" fn get_last_error() -> *const c_char {
+    LAST_ERROR.with(|e| {
+        e.borrow()
+            .as_ref()
+            .map(|s| s.as_ptr() as *const c_char)
+            .unwrap_or(std::ptr::null())
+    })
+}
+
+// Callback pattern
+type Callback = extern "C" fn(data: *const u8, len: usize, user_data: *mut std::ffi::c_void);
+
+#[no_mangle]
+pub extern "C" fn process_with_callback(
+    input: *const u8,
+    input_len: usize,
+    callback: Callback,
+    user_data: *mut std::ffi::c_void,
+) -> ErrorCode {
+    if input.is_null() || input_len == 0 {
+        return ErrorCode::NullPointer;
+    }
+
+    let data = unsafe { std::slice::from_raw_parts(input, input_len) };
+
+    // Process and invoke callback
+    let result = process_internal(data);
+    callback(result.as_ptr(), result.len(), user_data);
+
+    ErrorCode::Success
+}
+```
+
+### Miri for Unsafe Code Verification
+
+```bash
+# Install Miri
+rustup +nightly component add miri
+
+# Run tests under Miri (detects undefined behaviour)
+cargo +nightly miri test
+
+# Run specific test
+cargo +nightly miri test test_unsafe_buffer
+
+# Common issues Miri catches:
+#
+# - Use after free
+# - Out of bounds access
+# - Invalid pointer alignment
+# - Data races
+# - Uninitialised memory reads
+```
+
+---
+
+## Coming from Other Languages
+
+If you're new to Rust from another language, here's what will trip you up.
+
+### From Python
+
+**The borrow checker will hurt at first.** In Python everything is a reference and the GC sorts it out. In Rust you must think about ownership. Start by cloning liberally (it's fine for learning), then optimise once you understand the patterns.
+
+```rust
+// ❌ Fails - data moved
+let data = vec![1, 2, 3];
+process(data);
+process(data);  // Error: value used after move
+
+// ✅ Clone when learning (refactor later)
+let data = vec![1, 2, 3];
+process(data.clone());
+process(data);
+
+// ✅ Better: borrow
+fn process(data: &[i32]) { ... }
+process(&data);
+process(&data);
+```
+
+**No exceptions.** Use `Result<T, E>` and the `?` operator. It's actually nicer than try/catch once you get used to it.
+
+**No `None` as a default.** `Option<T>` is explicit. No `AttributeError` at runtime.
+
+### From Go
+
+**Error handling is similar** - Rust's `Result<T, E>` is like Go's `(T, error)` but type-safe. You can't ignore errors without explicitly calling `.unwrap()`.
+
+```rust
+// Go-ish pattern
+result := doThing()
+if result.Err != nil {
+    return result.Err
+}
+
+// Rust - cleaner with ?
+let result = do_thing()?;  // Returns early if Err
+```
+
+**No nil.** Rust has `Option<T>` which forces you to handle the `None` case. No more nil pointer panics.
+
+**Generics are more powerful** but also more complex. Start simple, add bounds when the compiler complains.
+
+**No goroutines.** Rust async is different - you need a runtime (Tokio). Threads are also available if you prefer the Go mental model.
+
+### From TypeScript/JavaScript
+
+**Types are not optional.** Every value has a concrete type at compile time. No `any` escape hatch.
+
+**No garbage collection.** Ownership rules replace the GC. Variables are dropped when they go out of scope.
+
+**String handling is explicit.** `String` vs `&str` - owned vs borrowed. Coming from JS where strings just work, this takes adjustment.
+
+```rust
+// ❌ Won't compile
+fn greet(name: String) { ... }
+greet("world");  // &str not String
+
+// ✅ Accept reference
+fn greet(name: &str) { ... }
+greet("world");
+greet(&my_string);
+```
+
+**No null or undefined.** Use `Option<T>` for "might not exist".
+
+### From C/C++
+
+**You'll feel at home** but safer. The borrow checker does at compile time what you did mentally (or forgot and got a segfault).
+
+**No manual memory management.** Forget `malloc`/`free`. Rust handles it. You can opt into manual control with `unsafe` but you shouldn't need it for most code.
+
+**No header files.** Modules and `pub` visibility handle API exposure.
+
+**Macros are different.** Rust macros are hygienic and operate on the AST, not text substitution. They're powerful but different from C preprocessor macros.
+
+### Common Gotchas for Everyone
+
+| Coming From | Gotcha | Rust Way |
+|-------------|--------|----------|
+| Python | Everything is mutable | `let mut` for mutability |
+| Go | `nil` everywhere | `Option<T>` is explicit |
+| TypeScript | `any` escape hatch | No escape - fix the types |
+| C | Manual memory management | Ownership system |
+| Java | Everything is a reference | Value types by default |
+| All | Exceptions | `Result<T, E>` + `?` |
+
+### The Mindset Shift
+
+Rust will reject your first attempts. This is normal. The compiler is teaching you patterns that prevent bugs. Once you stop fighting it and start listening, code that compiles tends to work.
+
+Key realisation: **The compiler is your pair programmer.** Read the error messages - they usually tell you exactly what to fix.
+
+---
+
 ## AI Pitfalls to Avoid
 
 The following sections are specific guidance for AI code assistants working with Rust.
@@ -2732,6 +4195,692 @@ use actix_web_extras::...;   // Version may differ
 // ✅ Well-known crates:
 // tokio, serde, anyhow, thiserror, tracing, clap, axum, reqwest
 // rayon, dashmap, parking_lot, memchr, sonic-rs, criterion
+```
+
+---
+
+## External Libraries and Private Registries
+
+### Private Cargo Registry Configuration
+
+For enterprise environments using private artifact repositories:
+
+```toml
+# .cargo/config.toml
+[registries.hypersec]
+index = "sparse+https://hypersec.jfrog.io/artifactory/api/cargo/hypersec-cargo-virtual/index/"
+
+[build]
+# Optional: Use mold linker for faster builds
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "force-frame-pointers=yes"]  # Better profiling
+
+[target.aarch64-unknown-linux-gnu]
+rustflags = ["-C", "force-frame-pointers=yes"]
+```
+
+```toml
+# Cargo.toml - using private registry
+[dependencies]
+hs-rustlib = { version = ">=1.3", registry = "hypersec", features = [
+    "config", "logger", "metrics", "transport-kafka", "http-server"
+]}
+```
+
+### Linking C Libraries via Wrapper Crates
+
+For C libraries like librdkafka, use safe Rust wrapper crates:
+
+```toml
+# Cargo.toml - rdkafka with C library compilation
+[dependencies]
+rdkafka = { version = ">=0.38", features = [
+    "cmake-build",  # Compile librdkafka from source
+    "ssl",          # Link OpenSSL for TLS
+    "sasl",         # Link SASL for Kerberos/PLAIN auth
+]}
+
+# Pure Rust compression alternatives
+lz4_flex = ">=0.11"     # Pure Rust LZ4 (preferred over C binding)
+snap = ">=1.1"          # Pure Rust Snappy
+zstd = ">=0.13"         # Rust wrapper around libzstd C library
+```
+
+### Safe Wrappers for C Libraries
+
+Pattern: Configure C library through safe Rust API without direct FFI:
+
+```rust
+use rdkafka::ClientConfig;
+use rdkafka::producer::FutureProducer;
+
+fn create_kafka_producer(config: &KafkaConfig) -> Result<FutureProducer> {
+    let mut client_config = ClientConfig::new();
+
+    // All configuration passed safely to underlying librdkafka
+    client_config.set("bootstrap.servers", config.brokers.join(","));
+    client_config.set("batch.size", config.batch_size.to_string());
+    client_config.set("compression.type", &config.compression);
+    client_config.set("acks", &config.acks);
+    client_config.set("message.max.bytes", "8388608");  // 8MiB
+
+    // TLS configuration for librdkafka
+    if config.tls.enabled {
+        client_config.set("security.protocol", "ssl");
+        client_config.set("ssl.ca.location", &config.tls.ca_path);
+        client_config.set("ssl.certificate.location", &config.tls.cert_path);
+        client_config.set("ssl.key.location", &config.tls.key_path);
+    }
+
+    // SASL authentication
+    if let Some(ref sasl) = config.sasl {
+        client_config.set("security.protocol", "sasl_ssl");
+        client_config.set("sasl.mechanism", &sasl.mechanism.to_uppercase());
+        client_config.set("sasl.username", &sasl.username);
+        client_config.set("sasl.password", &sasl.password);
+    }
+
+    // Create producer - initialises librdkafka safely
+    client_config.create().map_err(Error::Kafka)
+}
+```
+
+### Pure Rust vs C Library Trade-offs
+
+| Category | Pure Rust | C Wrapper | Recommendation |
+|----------|-----------|-----------|----------------|
+| **TLS** | rustls | OpenSSL bindings | Pure Rust (rustls) |
+| **JSON** | serde_json, sonic-rs | - | Pure Rust (sonic-rs for SIMD) |
+| **Compression** | lz4_flex, snap | zstd, flate2 | Pure Rust when available |
+| **Kafka** | - | rdkafka | C wrapper (no pure Rust alternative) |
+| **Protobuf** | prost | protobuf-native | Pure Rust (prost) |
+
+```rust
+// Prefer pure Rust TLS
+use rustls::ServerConfig;
+use tokio_rustls::TlsAcceptor;
+
+// Not: OpenSSL bindings
+// use openssl::ssl::SslAcceptor;
+```
+
+### Forbid Unsafe in Application Code
+
+```rust
+// src/lib.rs and src/main.rs
+#![forbid(unsafe_code)]
+
+// All FFI is handled by wrapper crates
+// No direct unsafe blocks in application code
+```
+
+---
+
+## At-Scale Performance Patterns
+
+Production patterns from HyperSec data pipelines handling PB/s scale.
+
+### Global Allocator Selection
+
+```rust
+// main.rs - jemalloc for long-running servers
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
+// Fallback to mimalloc (often faster for mixed workloads)
+#[cfg(all(feature = "mimalloc", not(feature = "jemalloc")))]
+#[global_allocator]
+static GLOBAL_MIMALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+```
+
+```toml
+# Cargo.toml features
+[features]
+default = ["jemalloc"]
+jemalloc = ["dep:tikv-jemallocator", "dep:tikv-jemalloc-ctl"]
+mimalloc = ["dep:mimalloc"]
+```
+
+### Lock-Free Concurrent Data Structures
+
+```rust
+use dashmap::DashMap;
+use parking_lot::{Mutex, RwLock};
+use rustc_hash::FxHashMap;
+use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
+
+pub struct BufferManager {
+    // DashMap: lock-free concurrent HashMap (fine-grained sharding)
+    hot_buffers: DashMap<CompactString, TableBuffer>,
+
+    // FxHashMap: faster than std HashMap for internal use
+    schemas: FxHashMap<String, TableSchema>,
+
+    // parking_lot: faster than std::sync for LRU tracking
+    lru: Mutex<LruTracker>,
+
+    // Atomics: lock-free counters (Relaxed ordering for stats)
+    messages_buffered: AtomicU64,
+    bytes_buffered: AtomicU64,
+    under_pressure: AtomicBool,
+}
+
+impl BufferManager {
+    #[inline]
+    pub fn record_message(&self, bytes: usize) {
+        // No lock needed - atomic increment
+        self.messages_buffered.fetch_add(1, Ordering::Relaxed);
+        self.bytes_buffered.fetch_add(bytes as u64, Ordering::Relaxed);
+    }
+
+    pub fn stats(&self) -> BufferStats {
+        // Snapshot with relaxed ordering (eventual consistency OK for stats)
+        BufferStats {
+            messages: self.messages_buffered.load(Ordering::Relaxed),
+            bytes: self.bytes_buffered.load(Ordering::Relaxed),
+        }
+    }
+}
+```
+
+### Tiered Buffer Architecture
+
+Two-tier system: hot (memory) + cold (disk spool) with LRU eviction:
+
+```rust
+use compact_str::CompactString;
+use crossbeam_channel::{Sender, Receiver};
+
+pub struct TieredBufferManager {
+    // Tier 1: Hot buffers (LRU-bounded, in-memory)
+    hot_buffers: DashMap<CompactString, HotBuffer>,
+    max_hot_buffers: usize,  // e.g., 64 buffers × 1MB = 64MB bound
+    lru: Mutex<LruTracker>,
+
+    // Tier 2: Cold spool (disk-backed, compressed)
+    spool_tx: Sender<StagedBatch>,
+    max_spool_bytes: u64,     // e.g., 10GB
+    min_free_disk_bytes: u64, // e.g., 1GB reserved
+
+    // Concurrency control
+    writer_semaphore: Arc<Semaphore>,  // Max concurrent writers
+}
+
+struct HotBuffer {
+    messages: Vec<Vec<u8>>,
+    offsets: Vec<KafkaOffset>,
+    size: usize,
+    last_access: Instant,
+    created_at: Instant,
+}
+
+impl HotBuffer {
+    /// Zero-copy drain: steals ownership without copying
+    fn drain(&mut self) -> (Vec<Vec<u8>>, Vec<KafkaOffset>) {
+        (
+            std::mem::take(&mut self.messages),
+            std::mem::take(&mut self.offsets),
+        )
+    }
+}
+```
+
+### Batch Processing with Pre-allocation
+
+```rust
+const RECV_BATCH_SIZE: usize = 100;
+const FLUSH_BATCH_SIZE: usize = 10_000;
+
+impl BufferManager {
+    pub fn get_ready_for_flush(&mut self) -> Vec<FlushBatch> {
+        // Count first to pre-allocate exact capacity
+        let ready_count = self.buffers.values()
+            .filter(|buf| buf.should_flush())
+            .count();
+
+        // Single allocation with exact size
+        let mut batches = Vec::with_capacity(ready_count);
+
+        for (table, buffer) in self.buffers.iter_mut() {
+            if buffer.should_flush() {
+                let (messages, offsets) = buffer.drain();
+                batches.push(FlushBatch {
+                    table: CompactString::from(table.as_str()),
+                    messages,
+                    offsets,
+                });
+            }
+        }
+
+        batches
+    }
+}
+
+/// NDJSON batch creation with single allocation
+fn create_ndjson_batch(messages: Vec<Vec<u8>>) -> Vec<u8> {
+    // Calculate exact size needed
+    let total_size: usize = messages.iter().map(|m| m.len() + 1).sum();
+    let mut data = Vec::with_capacity(total_size);
+
+    // Sequential write (cache-friendly)
+    for msg in messages {
+        data.extend_from_slice(&msg);
+        data.push(b'\n');
+    }
+
+    data
+}
+```
+
+### Object Pooling for Hot Paths
+
+```rust
+use crossbeam_channel::{bounded, Sender, Receiver};
+
+pub trait Poolable: Default {
+    fn reset(&mut self);
+}
+
+pub struct ObjectPool<T: Poolable> {
+    available_rx: Receiver<T>,
+    return_tx: Sender<T>,
+    creates: AtomicUsize,
+    hits: AtomicUsize,
+}
+
+impl<T: Poolable> ObjectPool<T> {
+    pub fn new(capacity: usize) -> Self {
+        let (return_tx, available_rx) = bounded(capacity);
+
+        // Pre-populate pool
+        for _ in 0..capacity {
+            let _ = return_tx.try_send(T::default());
+        }
+
+        Self {
+            available_rx,
+            return_tx,
+            creates: AtomicUsize::new(0),
+            hits: AtomicUsize::new(0),
+        }
+    }
+
+    pub fn get(&self) -> Pooled<T> {
+        let obj = match self.available_rx.try_recv() {
+            Ok(obj) => {
+                self.hits.fetch_add(1, Ordering::Relaxed);
+                obj
+            }
+            Err(_) => {
+                self.creates.fetch_add(1, Ordering::Relaxed);
+                T::default()
+            }
+        };
+
+        Pooled {
+            inner: Some(obj),
+            return_tx: self.return_tx.clone(),
+        }
+    }
+}
+
+pub struct Pooled<T: Poolable> {
+    inner: Option<T>,
+    return_tx: Sender<T>,
+}
+
+impl<T: Poolable> Drop for Pooled<T> {
+    fn drop(&mut self) {
+        if let Some(mut obj) = self.inner.take() {
+            obj.reset();  // Clear for reuse
+            let _ = self.return_tx.try_send(obj);  // Return to pool
+        }
+    }
+}
+
+impl<T: Poolable> std::ops::Deref for Pooled<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.inner.as_ref().unwrap()
+    }
+}
+
+impl<T: Poolable> std::ops::DerefMut for Pooled<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        self.inner.as_mut().unwrap()
+    }
+}
+```
+
+### Kafka Offset Management (At-Least-Once)
+
+```rust
+#[derive(Debug, Clone)]
+pub struct KafkaOffset {
+    pub topic: Arc<str>,  // Shared across thousands of offsets
+    pub partition: i32,
+    pub offset: i64,
+}
+
+impl KafkaOffset {
+    /// Share existing topic Arc (cheap clone - refcount increment only)
+    pub fn with_shared_topic(topic: Arc<str>, partition: i32, offset: i64) -> Self {
+        Self { topic, partition, offset }
+    }
+}
+
+/// Commit only max offset per partition (not per message)
+pub fn commit_kafka_offsets(offsets: &[KafkaOffset]) -> Result<()> {
+    // Group by topic/partition, keep max offset
+    let mut max_offsets: HashMap<(Arc<str>, i32), i64> = HashMap::new();
+
+    for off in offsets {
+        max_offsets
+            .entry((off.topic.clone(), off.partition))
+            .and_modify(|existing| {
+                if off.offset > *existing {
+                    *existing = off.offset;
+                }
+            })
+            .or_insert(off.offset);
+    }
+
+    // Single commit per partition batch
+    commit_offsets(&max_offsets)
+}
+```
+
+### Lazy Allocation Patterns
+
+```rust
+/// Only allocate timestamp string if field is missing
+fn add_timestamp_if_missing(data: &mut Map<String, Value>) {
+    static TIMESTAMP_FIELD: &str = "@timestamp";
+
+    if !data.contains_key(TIMESTAMP_FIELD) {
+        // Lazy allocation - only format if needed
+        let ts = chrono::Utc::now().to_rfc3339();
+        data.insert(TIMESTAMP_FIELD.into(), Value::String(ts));
+    }
+}
+
+/// Zero-allocation key sanitisation when no changes needed
+fn sanitize_key_owned(key: String, strip_at: bool, collapse_underscores: bool) -> String {
+    let needs_change = (strip_at && key.starts_with('@'))
+        || (collapse_underscores && key.contains("__"));
+
+    // Fast path: return original (zero allocation)
+    if !needs_change {
+        return key;  // Move, not copy
+    }
+
+    // Slow path: modify only when needed
+    let mut result = if strip_at && key.starts_with('@') {
+        key[1..].to_string()
+    } else {
+        key
+    };
+
+    if collapse_underscores && result.contains("__") {
+        // Single-pass O(n) collapse
+        let mut collapsed = String::with_capacity(result.len());
+        let mut prev_underscore = false;
+        for c in result.chars() {
+            if c == '_' {
+                if !prev_underscore {
+                    collapsed.push(c);
+                }
+                prev_underscore = true;
+            } else {
+                collapsed.push(c);
+                prev_underscore = false;
+            }
+        }
+        result = collapsed;
+    }
+
+    result
+}
+```
+
+### Release Profile for Production
+
+```toml
+[profile.release]
+lto = "thin"          # Link-time optimisation (thin = faster compile)
+codegen-units = 1     # Single codegen unit = better optimisation
+strip = true          # Remove debug symbols
+panic = "abort"       # No unwinding overhead
+opt-level = 3         # Maximum optimisation
+
+[profile.bench]
+lto = "thin"
+codegen-units = 1
+
+# Advanced options (documented, not default):
+# - PGO: cargo pgo build (10-20% improvement)
+# - BOLT: post-link optimisation (additional 5-15%)
+# - Fat LTO: lto = true (slower compile, sometimes faster runtime)
+```
+
+### Inline Hints on Hot Paths
+
+```rust
+// Always inline small, frequently-called functions
+#[inline]
+pub fn validate(&self, payload: &Bytes) -> ValidationResult {
+    // Hot path validation
+}
+
+#[inline]
+pub fn route(&self, payload: &Bytes) -> RouteResult {
+    // Hot path routing
+}
+
+#[inline]
+fn has_field(&self, payload: &Bytes, field: &str) -> bool {
+    // Zero-copy field check
+    sonic_rs::get_from_slice(payload, [field].as_slice()).is_ok()
+}
+```
+
+---
+
+## Real-World SIMD Patterns
+
+### Multi-Architecture SIMD with Runtime Detection
+
+Pattern from dfe-loader's Mison JSON parser:
+
+```rust
+use std::sync::OnceLock;
+
+#[derive(Debug, Clone, Copy)]
+pub enum SimdCapability {
+    Avx2,
+    Sse42,
+    Neon,
+    Scalar,
+}
+
+static SIMD_CAPABILITY: OnceLock<SimdCapability> = OnceLock::new();
+
+pub fn get_simd_capability() -> SimdCapability {
+    *SIMD_CAPABILITY.get_or_init(|| {
+        #[cfg(target_arch = "x86_64")]
+        {
+            if is_x86_feature_detected!("avx2") {
+                return SimdCapability::Avx2;
+            }
+            if is_x86_feature_detected!("sse4.2") {
+                return SimdCapability::Sse42;
+            }
+        }
+        #[cfg(target_arch = "aarch64")]
+        {
+            // NEON is always available on aarch64
+            return SimdCapability::Neon;
+        }
+        SimdCapability::Scalar
+    })
+}
+
+/// Dispatch to best available implementation
+pub fn build_character_bitmaps(chunk: &[u8; 64]) -> CharacterBitmaps {
+    match get_simd_capability() {
+        SimdCapability::Avx2 => unsafe { build_character_bitmaps_avx2(chunk) },
+        SimdCapability::Sse42 => unsafe { build_character_bitmaps_sse42(chunk) },
+        SimdCapability::Neon => unsafe { build_character_bitmaps_neon(chunk) },
+        SimdCapability::Scalar => build_character_bitmaps_scalar(chunk),
+    }
+}
+```
+
+### AVX2 Structural Character Detection (256-bit)
+
+```rust
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CharacterBitmaps {
+    pub quote: u64,      // "
+    pub backslash: u64,  // \
+    pub colon: u64,      // :
+    pub comma: u64,      // ,
+    pub open_brace: u64, // {
+    pub close_brace: u64,// }
+    pub open_bracket: u64,  // [
+    pub close_bracket: u64, // ]
+}
+
+/// Process 64 bytes at once using AVX2
+/// Returns bitmaps where bit N is set if character found at position N
+#[target_feature(enable = "avx2")]
+unsafe fn build_character_bitmaps_avx2(chunk: &[u8; 64]) -> CharacterBitmaps {
+    // Broadcast each target character to all 32 lanes
+    let quote_vec = _mm256_set1_epi8(b'"' as i8);
+    let colon_vec = _mm256_set1_epi8(b':' as i8);
+    let comma_vec = _mm256_set1_epi8(b',' as i8);
+    let open_brace_vec = _mm256_set1_epi8(b'{' as i8);
+    let close_brace_vec = _mm256_set1_epi8(b'}' as i8);
+
+    // Load two 32-byte halves
+    let data0 = _mm256_loadu_si256(chunk.as_ptr() as *const __m256i);
+    let data1 = _mm256_loadu_si256(chunk.as_ptr().add(32) as *const __m256i);
+
+    // Parallel comparison: 32 bytes at a time
+    // cmpeq returns 0xFF for match, 0x00 for miss
+    let quote0 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(data0, quote_vec)) as u32;
+    let quote1 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(data1, quote_vec)) as u32;
+
+    let colon0 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(data0, colon_vec)) as u32;
+    let colon1 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(data1, colon_vec)) as u32;
+
+    // ... repeat for other characters
+
+    // Combine into 64-bit bitmaps
+    CharacterBitmaps {
+        quote: (quote0 as u64) | ((quote1 as u64) << 32),
+        colon: (colon0 as u64) | ((colon1 as u64) << 32),
+        // ... other fields
+        ..Default::default()
+    }
+}
+```
+
+### sonic-rs for SIMD JSON Parsing
+
+```rust
+use sonic_rs::{from_slice, get_from_slice, LazyValue};
+use std::borrow::Cow;
+
+/// Full SIMD-accelerated parse (when you need the whole document)
+pub fn parse_json_fast(data: &[u8]) -> Result<serde_json::Value> {
+    sonic_rs::from_slice(data).map_err(|e| Error::Json(e.to_string()))
+}
+
+/// Zero-copy field extraction (4-8x faster than full DOM parse)
+#[inline]
+pub fn extract_field<'a>(payload: &'a [u8], field: &str) -> Option<&'a str> {
+    let lazy: LazyValue = get_from_slice(payload, &[field]).ok()?;
+    lazy.as_str()
+}
+
+/// Nested field extraction with dot notation
+#[inline]
+pub fn extract_nested_field<'a>(payload: &'a [u8], path: &str) -> Option<&'a str> {
+    let parts: Vec<&str> = path.split('.').collect();
+    let lazy: LazyValue = get_from_slice(payload, parts.as_slice()).ok()?;
+    lazy.as_str()
+}
+
+/// Zero-copy with Cow: borrowed when possible, owned only for escaped strings
+pub fn extract_field_cow<'a>(payload: &'a [u8], field: &str) -> Option<Cow<'a, str>> {
+    let lazy: LazyValue = get_from_slice(payload, &[field]).ok()?;
+    let raw_cow = lazy.as_raw_cow();
+
+    match raw_cow {
+        Cow::Borrowed(s) if !s.contains('\\') => {
+            // No escapes = true zero-copy from payload bytes
+            Some(Cow::Borrowed(&s[1..s.len()-1]))  // Strip quotes
+        }
+        _ => {
+            // Escaped = must allocate for unescaping
+            lazy.as_str().map(|s| Cow::Owned(s.to_string()))
+        }
+    }
+}
+
+/// Validate JSON structure without building DOM
+#[inline]
+pub fn validate_json(payload: &[u8]) -> bool {
+    sonic_rs::from_slice::<LazyValue>(payload).is_ok()
+}
+```
+
+### SIMD String Search with memchr
+
+```rust
+use memchr::{memchr, memchr2, memchr3, memmem};
+
+/// Find newline - much faster than iter().position()
+#[inline]
+pub fn find_newline(data: &[u8]) -> Option<usize> {
+    memchr(b'\n', data)
+}
+
+/// Find any delimiter (CSV/TSV flexible parsing)
+#[inline]
+pub fn find_delimiter(data: &[u8]) -> Option<usize> {
+    memchr3(b',', b'\t', b'|', data)
+}
+
+/// Count lines efficiently
+pub fn count_lines(data: &[u8]) -> usize {
+    memchr::memchr_iter(b'\n', data).count()
+}
+
+/// Precompiled searcher for repeated pattern matching
+pub struct PatternMatcher {
+    finder: memmem::Finder<'static>,
+}
+
+impl PatternMatcher {
+    pub fn new(pattern: &'static [u8]) -> Self {
+        Self {
+            finder: memmem::Finder::new(pattern),
+        }
+    }
+
+    #[inline]
+    pub fn find(&self, haystack: &[u8]) -> Option<usize> {
+        self.finder.find(haystack)
+    }
+}
 ```
 
 ---

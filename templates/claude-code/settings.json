@@ -27,6 +27,7 @@
       "Find",
       "SlashCommand(/load)",
       "SlashCommand(/save)",
+      "SlashCommand(/review)",
       "Read(~/.gitconfig)",
       "Bash(.tmp/*)",
       "Bash(mkdir .tmp *)",

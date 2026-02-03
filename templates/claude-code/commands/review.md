@@ -1,0 +1,151 @@
+# Code Review
+
+You are performing a code review of this project. Load the appropriate standards and analyse the codebase.
+
+---
+
+## Step 1: Detect Project Languages
+
+Check for config files in project root to determine which language standards to load:
+
+| Config File | Language |
+|-------------|----------|
+| `Cargo.toml` | Rust |
+| `pyproject.toml`, `setup.py`, `requirements.txt` | Python |
+| `go.mod` | Go |
+| `package.json`, `tsconfig.json` | TypeScript |
+| `CMakeLists.txt`, `*.cpp`, `*.hpp` | C++ |
+
+**Important:** A project may use multiple languages. Load ALL that apply.
+
+Also check for shell scripts:
+
+- If `scripts/` directory exists with `.sh` files → also load Bash
+- If project is primarily shell scripts → load Bash
+
+---
+
+## Step 2: Load Standards
+
+Load in this order:
+
+### Always Load
+
+- `ai/standards/code-assistant/CODE-REVIEW.md` (~760 tokens)
+
+### Load Per Detected Language
+
+| Language | Standard File |
+|----------|---------------|
+| Rust | `ai/standards/languages/RUST.md` |
+| Python | `ai/standards/languages/PYTHON.md` |
+| Go | `ai/standards/languages/GOLANG.md` |
+| TypeScript | `ai/standards/languages/TYPESCRIPT.md` |
+| C++ | `ai/standards/languages/CPP.md` |
+| Bash | `ai/standards/languages/BASH.md` |
+
+### Conditional
+
+Only load if relevant files exist:
+
+| Condition | Load |
+|-----------|------|
+| `Dockerfile` or `docker-compose.yaml` | `ai/standards/infrastructure/DOCKER.md` |
+| `certs/`, `ssl/`, `tls/`, `pki/` directories | `ai/standards/common/PKI.md` |
+| `*.tf` files | `ai/standards/infrastructure/TERRAFORM.md` |
+
+---
+
+## Step 3: Understand the Project
+
+Before reviewing, understand what you're looking at:
+
+1. **Read key files:**
+   - `README.md` - what does this project do?
+   - `STATE.md` or `CLAUDE.md` - project context (if exists)
+   - Main entry point (`main.rs`, `main.py`, `main.go`, `index.ts`, etc.)
+
+2. **Identify architecture:**
+   - Is this a library or application?
+   - What are the main modules/packages?
+   - Where is the core business logic?
+
+3. **Check existing patterns:**
+   - How are errors handled currently?
+   - What testing patterns are used?
+   - Is there a consistent code style?
+
+---
+
+## Step 4: Perform the Review
+
+Focus your review on:
+
+### Priority 1 - Critical Issues (blockers)
+
+- Security vulnerabilities (hardcoded secrets, injection, path traversal)
+- Error handling that swallows/ignores errors
+- Panics/crashes in library code
+- Missing error context
+
+### Priority 2 - Code Quality
+
+- Functions that are too long or do too much
+- Excessive nesting / complexity
+- Copy-paste code that should be abstracted
+- Missing tests for core functionality
+
+### Priority 3 - Language-Specific
+
+- Apply the patterns from the loaded language standard
+- Check for language idioms being violated
+- Look for anti-patterns specific to that language
+
+---
+
+## Step 5: Output Format
+
+Structure your review as:
+
+```markdown
+# Code Review: [Project Name]
+
+## Summary
+[1-2 sentence overview of code quality and main findings]
+
+## 🔴 Critical Issues (must fix)
+- [file:line] **Issue title**
+  - Problem: What's wrong
+  - Fix: How to fix it
+  - Example: (if helpful)
+
+## 🟡 Improvements (should fix)
+- [file:line] **Issue title**
+  - Problem: What's wrong
+  - Fix: How to fix it
+
+## 🟢 Suggestions (nice to have)
+- [file:line] Minor improvement suggestion
+
+## ✅ What's Good
+- Positive observations about the codebase
+- Good patterns being followed
+- Strong test coverage areas
+
+## Recommendations
+[Top 3-5 actionable next steps, prioritised]
+```
+
+---
+
+## Review Scope Options
+
+The user may specify a scope:
+
+- `/review` - Full project review
+- `/review src/` - Review specific directory
+- `/review src/auth.rs` - Review specific file
+- `/review --security` - Security-focused review only
+- `/review --tests` - Test coverage/quality review only
+
+Adjust your focus accordingly.
