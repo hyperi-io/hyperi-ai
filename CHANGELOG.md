@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/hypersec-io/ai/compare/1.11.0...1.11.1) (2026-02-05)
+
+
+### Bug Fixes
+
+* update all licensing to FSL-1.1-ALv2, add license checks to /review ([46d6073](https://github.com/hypersec-io/ai/commit/46d60738ca8648c0bf4f9101723a2b07c83c83dc))
+
 ## [1.11.0](https://github.com/hypersec-io/ai/compare/1.10.3...1.11.0) (2026-02-03)
 
 
