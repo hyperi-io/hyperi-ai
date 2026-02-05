@@ -4,7 +4,7 @@
   Purpose:      5-minute guide to adding HyperSec AI to your project
   Language:     Markdown
 
-  License:      LicenseRef-HyperSec-EULA
+  License:      FSL-1.1-ALv2
   Copyright:    (c) 2025 HyperSec Pty Ltd
 -->
 

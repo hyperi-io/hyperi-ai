@@ -2,7 +2,7 @@
 # Project:      HyperSec AI
 # File:         attach.sh
 # Purpose:      Attach AI standards to a project
-# License:      LicenseRef-HyperSec-EULA
+# License:      FSL-1.1-ALv2
 # Copyright:    (c) 2026 HyperSec Pty Ltd
 #
 # Bash 3.2 compatible (macOS default)

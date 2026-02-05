@@ -273,7 +273,7 @@ galaxy_info:
   author: HyperSec
   company: HyperSec
   description: Installs and configures myapp
-  license: LicenseRef-HyperSec-EULA
+  license: FSL-1.1-ALv2
   min_ansible_version: "2.12"
 
   platforms:

@@ -3,7 +3,7 @@
 # File:      agents/common.sh
 # Purpose:   Shared functions for agent setup scripts
 #
-# License:   LicenseRef-HyperSec-EULA
+# License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HyperSec Pty Ltd
 #
 # Bash 3.2 compatible (macOS default)

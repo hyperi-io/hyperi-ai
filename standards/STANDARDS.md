@@ -92,7 +92,7 @@ standards/
 │   ├── DESIGN-PRINCIPLES.md (SOLID, DRY, KISS, YAGNI)
 │   ├── ERROR-HANDLING.md (security-first errors)
 │   ├── GIT.md (git conventions)
-│   ├── LICENSING.md (HyperSec EULA, Apache 2.0)
+│   ├── LICENSING.md (FSL-1.1-ALv2)
 │   ├── NO-MOCKS-POLICY.md (production code policy)
 │   ├── PKI.md (TLS, SSH, certificates, CNSA 2.0)
 │   ├── SECURITY.md (input validation, secrets)

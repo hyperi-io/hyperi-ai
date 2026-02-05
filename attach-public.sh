@@ -2,7 +2,7 @@
 # Project:      HyperSec AI
 # File:         attach-public.sh
 # Purpose:      Attach AI standards to a PUBLIC repo (no submodule, gitignored)
-# License:      LicenseRef-HyperSec-EULA
+# License:      FSL-1.1-ALv2
 # Copyright:    (c) 2026 HyperSec Pty Ltd
 #
 # Use this for public/open-source repositories where you don't want to expose

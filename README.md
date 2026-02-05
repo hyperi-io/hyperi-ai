@@ -1,10 +1,10 @@
-# HyperSec AI Code Assistant Standards
+# HyperI AI Code Assistant Standards
 
 Standards, templates, and setup scripts for AI-assisted development.
 
 **[QUICKSTART.md](QUICKSTART.md)** - Get started in 5 minutes
 
-**License:** HyperSec EULA (proprietary)
+**License:** FSL-1.1-ALv2 (Functional Source License)
 
 ---
 
@@ -362,6 +362,8 @@ Documentation uses these variables:
 
 ## License
 
-HyperSec EULA (Proprietary) - See [LICENSE](LICENSE)
+FSL-1.1-ALv2 (Functional Source License) - See [LICENSE](LICENSE)
 
-Copyright (c) 2026 HyperSec
+Each version becomes Apache 2.0 licensed on the second anniversary of its release.
+
+Copyright (c) 2025-2026 HYPERI PTY LIMITED (ABN 31 622 581 748)

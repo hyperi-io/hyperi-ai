@@ -1,24 +1,23 @@
 # Code Header Standards (All Languages)
 
-This document defines code header standards for all AI assistants.
-Headers are language-specific, but rules are universal.
+Standard file headers for all HyperI projects.
 
 ---
 
-## Header Requirements (REUSE/SPDX Compliant)
+## Header Format
 
-**CRITICAL:** All source code files MUST have a standard header.
+Every source file includes a header with project info and license reference.
 
-### Minimum Required Fields
+### Required Fields
 
 ```text
 Project:      <PROJECT_NAME>
 File:         <FILENAME>
 Purpose:      <One-sentence description>
-Language:     <Python|Bash|C|Go|JavaScript|etc.>
+Language:     <Python|Bash|Go|Rust|TypeScript|etc.>
 
-License:      <SPDX-Identifier>
-Copyright:    (c) <YEAR> <ORGANISATION>
+License:      FSL-1.1-ALv2
+Copyright:    (c) <YEAR> HYPERI PTY LIMITED
 ```
 
 ### Optional Fields
@@ -34,60 +33,29 @@ Notes:
 
 ---
 
-## License in Headers
+## NEVER Include
 
-File headers reference the project's license (configured in ci.yaml).
-
-**Supported licenses:**
-
-| License | SPDX Identifier |
-|---------|-----------------|
-| HyperSec EULA (default) | `LicenseRef-HyperSec-EULA` |
-| Apache 2.0 (requires approval) | `Apache-2.0` |
-
-**Full licensing guide:** See [LICENSING.md](LICENSING.md) for:
-
-- License selection and approval process
-- LICENSE file templates
-- Project file configuration (pyproject.toml, package.json, etc.)
-- Third-party dependency requirements
+| Field | Reason |
+|-------|--------|
+| Version numbers | Use CHANGELOG.md and git tags |
+| Change dates | Use git history |
+| Author names | Always organisation (HYPERI PTY LIMITED) |
+| Modification history | That's what git is for |
 
 ---
 
-## Rules for AI Assistants
+## Language Examples
 
-### ALWAYS
-
-✅ **Use project's license** - From ci.yaml configuration
-✅ **Use current year** - From system date (not model training date)
-✅ **Use organisation name** - From project configuration
-✅ **Include SPDX identifier** - Standard format
-✅ **One-sentence purpose** - Clear and concise
-✅ **Language-appropriate comments** - # for Python, // for Go, etc.
-
-### NEVER
-
-❌ **Include version numbers** - Managed by CHANGELOG.md and git
-❌ **Include change dates** - Managed by git history
-❌ **Include author names** - Always "HyperSec" or organisation
-❌ **Include file modification history** - That's what git is for
-❌ **Copy headers from other projects** - Use project's configured license
-
----
-
-## Header Placement
-
-**Top of file, before any code:**
+### Python
 
 ```python
-# Python example
-#  Project:      hs-pylib
+#  Project:      my-project
 #  File:         config.py
 #  Purpose:      Configuration management with Dynaconf
 #  Language:     Python
 #
-#  License:      LicenseRef-HyperSec-EULA
-#  Copyright:    (c) 2025 HyperSec
+#  License:      FSL-1.1-ALv2
+#  Copyright:    (c) 2026 HYPERI PTY LIMITED
 #
 #  Description:
 #      Provides configuration cascade: CLI > ENV > .env > yaml > defaults
@@ -96,21 +64,37 @@ File headers reference the project's license (configured in ci.yaml).
 """Module docstring here."""
 
 import os
-...
 ```
 
+### Rust
+
+```rust
+//! Project:      my-crate
+//! File:         lib.rs
+//! Purpose:      Core library functionality
+//! Language:     Rust
+//!
+//! License:      FSL-1.1-ALv2
+//! Copyright:    (c) 2026 HYPERI PTY LIMITED
+
+pub mod config;
+```
+
+### Go
+
 ```go
-// Go example
-//  Project:      my-service
-//  File:         main.go
-//  Purpose:      Service entry point
-//  Language:     Go
+// Project:      my-service
+// File:         main.go
+// Purpose:      Service entry point
+// Language:     Go
 //
-//  License:      LicenseRef-HyperSec-EULA
-//  Copyright:    (c) 2025 HyperSec
+// License:      FSL-1.1-ALv2
+// Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 package main
 ```
+
+### Bash
 
 ```bash
 #!/usr/bin/env bash
@@ -120,12 +104,13 @@ package main
 #  Purpose:      Deploy application to production
 #  Language:     Bash
 #
-#  License:      LicenseRef-HyperSec-EULA
-#  Copyright:    (c) 2025 HyperSec
-#
+#  License:      FSL-1.1-ALv2
+#  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 set -euo pipefail
 ```
+
+### TypeScript
 
 ```typescript
 /**
@@ -134,48 +119,31 @@ set -euo pipefail
  * Purpose:      Application entry point
  * Language:     TypeScript
  *
- * License:      LicenseRef-HyperSec-EULA
- * Copyright:    (c) 2025 HyperSec
+ * License:      FSL-1.1-ALv2
+ * Copyright:    (c) 2026 HYPERI PTY LIMITED
  */
 
 import express from 'express';
 ```
 
-```rust
-//! Project:      my-crate
-//! File:         lib.rs
-//! Purpose:      Core library functionality
-//! Language:     Rust
-//!
-//! License:      LicenseRef-HyperSec-EULA
-//! Copyright:    (c) 2025 HyperSec
+---
 
-pub mod config;
-```
+## Header Placement
+
+- **Top of file**, before any code
+- After shebang line for scripts (`#!/usr/bin/env bash`)
+- Before module docstrings (Python) or package declarations (Go)
 
 ---
 
-## Language-Specific Templates
-
-**Headers are language-specific** - examples above demonstrate correct syntax for each language.
-
-Header requirements:
-
-- Comment syntax (# vs // vs /**/)
-- Header template
-- Examples
-
----
-
-## REUSE Compliance
+## REUSE/SPDX Compliance
 
 Follows REUSE Software Specification 3.3:
 
-- ✅ SPDX license identifier
-- ✅ Copyright notice
-- ✅ No version/changelog in headers (managed separately)
+- ✅ SPDX license identifier (`FSL-1.1-ALv2`)
+- ✅ Copyright notice with legal entity
 - ✅ Machine-readable format
-- ✅ Language-appropriate syntax
+- ✅ Language-appropriate comment syntax
 
 **For full spec:** <https://reuse.software/spec-3.3/>
 
@@ -183,15 +151,15 @@ Follows REUSE Software Specification 3.3:
 
 ## For AI Code Assistants
 
-**When creating new files:**
+### When Creating New Files
 
-1. Check project license from ci.yaml
-2. Get current year from system date
-3. Use appropriate comment syntax for language
-4. Fill all required fields
+1. Use `FSL-1.1-ALv2` license
+2. Use current year from system date
+3. Use `HYPERI PTY LIMITED` as copyright holder
+4. Use appropriate comment syntax for language
 5. Add header at top of file, before any code
 
-**When editing existing files:**
+### When Editing Existing Files
 
 1. Preserve existing headers (don't modify)
 2. If header is missing, add one

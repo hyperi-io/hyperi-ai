@@ -87,6 +87,7 @@ Focus your review on:
 - Error handling that swallows/ignores errors
 - Panics/crashes in library code
 - Missing error context
+- **License violations** (see License Compliance below)
 
 ### Priority 2 - Code Quality
 
@@ -135,6 +136,52 @@ Structure your review as:
 ## Recommendations
 [Top 3-5 actionable next steps, prioritised]
 ```
+
+---
+
+## License Compliance (ALWAYS CHECK)
+
+Every review must verify license compliance:
+
+### LICENSE File
+
+- [ ] `LICENSE` file exists in project root
+- [ ] Contains FSL-1.1-ALv2 (check for "Functional Source License")
+- [ ] Copyright line references "HYPERI PTY LIMITED"
+
+**If missing or wrong:** Flag as 🔴 Critical. Run `ci/attach.sh --init licensing` to fix.
+
+### File Headers
+
+Spot-check 3-5 source files for correct headers:
+
+```text
+License:      FSL-1.1-ALv2
+Copyright:    (c) <YEAR> HYPERI PTY LIMITED
+```
+
+**If using old format:** Flag as 🟡 Improvement. Headers should use FSL-1.1-ALv2, not EULA.
+
+### Dependency Licenses
+
+Check for prohibited licenses in dependencies:
+
+| License | Status |
+|---------|--------|
+| GPL, AGPL, LGPL | ❌ PROHIBITED (copyleft) |
+| SSPL | ❌ PROHIBITED |
+| CC-BY-NC | ❌ PROHIBITED (non-commercial) |
+| MIT, Apache-2.0, BSD | ✅ Allowed |
+| ISC, Zlib, Unlicense | ✅ Allowed |
+
+**How to check:**
+
+- Python: `pip-licenses` or check pyproject.toml
+- Rust: `cargo deny check licenses` or check Cargo.toml
+- Node: `license-checker` or check package.json
+- Go: `go-licenses` or check go.mod
+
+**If prohibited license found:** Flag as 🔴 Critical with specific dependency name.
 
 ---
 

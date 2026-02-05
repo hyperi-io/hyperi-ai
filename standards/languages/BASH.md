@@ -798,7 +798,7 @@ load test_helper
 # File:      <FILENAME>
 # Purpose:   <One sentence>
 #
-# License:   LicenseRef-HyperSec-EULA
+# License:   FSL-1.1-ALv2
 # Copyright: (c) <YEAR> HyperSec
 
 set -euo pipefail

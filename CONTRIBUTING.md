@@ -1,4 +1,4 @@
-# Contributing to HyperSec AI Standards
+# Contributing to HyperI AI Standards
 
 How to work with and contribute to this repository.
 
@@ -8,11 +8,12 @@ How to work with and contribute to this repository.
 
 ```text
 ai/
-├── install.sh           # Deploy STATE.md, TODO.md
-├── claude-code.sh       # Claude Code setup
-├── copilot.sh           # GitHub Copilot setup
-├── cursor.sh            # Cursor IDE setup
-├── gemini.sh            # Gemini Code setup
+├── attach.sh            # Deploy STATE.md, TODO.md
+├── agents/              # AI assistant setup scripts
+│   ├── claude.sh        # Claude Code setup
+│   ├── copilot.sh       # GitHub Copilot setup
+│   ├── cursor.sh        # Cursor IDE setup
+│   └── gemini.sh        # Gemini Code setup
 ├── standards/           # Main product - coding standards
 │   ├── STANDARDS.md             # Full reference
 │   ├── STANDARDS-QUICKSTART.md  # Core standards (always loaded)
@@ -294,6 +295,11 @@ Include:
 
 ## License
 
-HyperSec EULA (Proprietary) - See [LICENSE](LICENSE)
+This project is licensed under the Functional Source License, Version 1.1,
+ALv2 Future License (FSL-1.1-ALv2). See [LICENSE](LICENSE).
 
-Copyright (c) 2025 HyperSec. Internal use permitted. External use requires license agreement.
+All contributions are licensed under the same terms. Each version automatically
+becomes available under Apache License, Version 2.0 on the second anniversary
+of its release.
+
+Copyright (c) 2025-2026 HYPERI PTY LIMITED (ABN 31 622 581 748)

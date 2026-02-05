@@ -273,9 +273,10 @@ gh repo create org/repo-name
 
 ### Licensing
 
-- ✅ **Default:** HyperSec EULA (no approval needed)
-- ✅ **Open source:** Apache 2.0 (requires management approval)
-- ❌ **NEVER use MIT** - lacks patent protection
+- ✅ **Default:** FSL-1.1-ALv2 (Functional Source License with Apache 2.0 future)
+- Copy templates: `ci/attach.sh --init licensing`
+- ❌ Never create custom LICENSE files - use the template
+- ❌ GPL/AGPL/SSPL dependencies NOT permitted
 
 **Full guide:** See `$AI_ROOT/standards/common/LICENSING.md`
 

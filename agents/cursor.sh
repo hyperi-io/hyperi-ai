@@ -3,7 +3,7 @@
 # File:      agents/cursor.sh
 # Purpose:   Setup Cursor IDE configuration for a project
 #
-# License:   LicenseRef-HyperSec-EULA
+# License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HyperSec Pty Ltd
 #
 # Usage: ./agents/cursor.sh [--help] [--dry-run] [--force] [--path PATH] [--verbose]

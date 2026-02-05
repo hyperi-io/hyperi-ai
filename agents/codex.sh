@@ -3,7 +3,7 @@
 # File:      agents/codex.sh
 # Purpose:   Setup OpenAI Codex and VS Code AI configuration
 #
-# License:   LicenseRef-HyperSec-EULA
+# License:   FSL-1.1-ALv2
 # Copyright: (c) 2026 HyperSec Pty Ltd
 #
 # This script configures:
