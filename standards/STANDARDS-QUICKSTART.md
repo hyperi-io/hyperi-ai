@@ -996,6 +996,7 @@ env:
 ### Licensing
 
 - **Default:** FSL-1.1-ALv2 (Functional Source License with Apache 2.0 future conversion)
+- **Source of truth:** <https://github.com/hypersec-io/hyperi-licensing/tree/main/github-template>
 - Copy license files: `ci/attach.sh --init licensing`
 - ❌ Never create custom LICENSE files - use the template
 - ❌ GPL/AGPL/SSPL dependencies NOT permitted

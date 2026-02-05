@@ -274,6 +274,7 @@ gh repo create org/repo-name
 ### Licensing
 
 - ✅ **Default:** FSL-1.1-ALv2 (Functional Source License with Apache 2.0 future)
+- **Source of truth:** <https://github.com/hypersec-io/hyperi-licensing/tree/main/github-template>
 - Copy templates: `ci/attach.sh --init licensing`
 - ❌ Never create custom LICENSE files - use the template
 - ❌ GPL/AGPL/SSPL dependencies NOT permitted
