@@ -1,3 +1,15 @@
+## [1.11.2](https://github.com/hypersec-io/ai/compare/1.11.1...1.11.2) (2026-02-06)
+
+
+### Bug Fixes
+
+* add compact recovery hook to re-inject standards after compaction ([ee57ded](https://github.com/hypersec-io/ai/commit/ee57ded3d7c59ba3c4d0fcdcb82b8176c7a3132f))
+
+
+### Documentation
+
+* add hyperi-licensing source of truth URL to licensing sections ([4eecb67](https://github.com/hypersec-io/ai/commit/4eecb67c4044ae28c8aa7b9d896efafde110de2e))
+
 ## [1.11.1](https://github.com/hypersec-io/ai/compare/1.11.0...1.11.1) (2026-02-05)
 
 
