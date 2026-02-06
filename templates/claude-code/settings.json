@@ -13,6 +13,19 @@
   "enabledPlugins": {
     "docker": true
   },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/ai/hooks/on-compact.sh\""
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "WebSearch",
