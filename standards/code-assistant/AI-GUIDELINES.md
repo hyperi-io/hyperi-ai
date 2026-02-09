@@ -15,7 +15,7 @@ description: AI code assistant operational guidelines. Use when configuring AI a
 
 1. ✅ Write code indistinguishable from human developers
 2. ✅ Minimise cognitive load (simple > clever, explicit > implicit)
-3. ✅ Follow HyperSec standards exactly
+3. ✅ Follow HyperI standards exactly
 4. ✅ Never use placeholders/TODOs in production code
 5. ✅ Use correct spelling (American in code, Australian in docs/comments)
 

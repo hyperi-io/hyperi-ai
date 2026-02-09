@@ -114,7 +114,7 @@ logger.error(
 ### Example: Complete Error Logging
 
 ```python
-from hs_lib import logger
+from hyperi_pylib import logger
 import traceback
 
 def process_payment(user_id, amount, card_token, request_id):
@@ -297,7 +297,7 @@ except PaymentGatewayError as e:
 **✅ ALWAYS:**
 
 - Log hashed/masked versions if needed
-- Use sanitization filters (hs_lib.logger)
+- Use sanitization filters (hyperi_pylib.logger)
 - Audit logs for accidental leaks
 
 ### Examples
@@ -333,10 +333,10 @@ logger.info(f"Payment: card={masked_card}")
 
 ### Automatic Sanitization
 
-**Use hs_lib.logger (automatic masking):**
+**Use hyperi_pylib.logger (automatic masking):**
 
 ```python
-from hs_lib import logger
+from hyperi_pylib import logger
 
 # Automatically masks passwords, tokens, API keys
 logger.info("User login", username="alice", password="secret123")
@@ -434,7 +434,7 @@ raise HTTPException(
 **Track error rates:**
 
 ```python
-from hs_lib.metrics import create_metrics
+from hyperi_pylib.metrics import create_metrics
 
 metrics = create_metrics("myapp")
 

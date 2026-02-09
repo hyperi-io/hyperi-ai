@@ -25,7 +25,7 @@ project technologies:
 
 | Detected | Skill Created |
 |----------|---------------|
-| Always | `standards` (HyperSec coding standards) |
+| Always | `standards` (HyperI coding standards) |
 | pyproject.toml, requirements.txt | `python` |
 | go.mod | `golang` |
 | tsconfig.json, package.json | `typescript` |

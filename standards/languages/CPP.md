@@ -3,7 +3,7 @@ name: cpp-standards
 description: C++ coding standards for high-performance data systems. Use when writing C++ code, reviewing C++, or working on systems like ClickHouse. Covers memory safety, zero-copy patterns, SIMD, concurrency, and performance optimisation.
 ---
 
-# C++ Standards for HyperSec Projects
+# C++ Standards for HyperI Projects
 
 **C++ coding standards for high-performance data processing, database internals, and systems programming**
 
@@ -1064,6 +1064,7 @@ public:
 ```
 
 **When to use COW:**
+
 - Large objects (columns, blocks) shared across query pipeline
 - Need precise control over when copying happens
 - Want to avoid locks for read-only access

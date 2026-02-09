@@ -3,7 +3,7 @@ name: python-standards
 description: Python coding standards using uv, ruff, mypy, and pytest. Use when writing Python code, reviewing Python, or setting up Python projects. Covers project structure, typing, testing, and tooling.
 ---
 
-# Python Standards for HyperSec Projects
+# Python Standards for HyperI Projects
 
 **Comprehensive Python coding standards for DevOps, DataOps, and DevSecOps projects**
 
@@ -95,7 +95,7 @@ mypy src/                       # Type check
 ./ci/run test                   # Full CI suite
 ```
 
-### HyperSec CI Enforcement
+### HyperI CI Enforcement
 
 | Tool | Checks | Blocking? |
 |------|--------|-----------|
@@ -167,7 +167,7 @@ Only use native `python` or `pip` when:
 - System-level scripts outside project context
 - No alternative exists (rare)
 
-For HyperSec projects, **always use uv**.
+For HyperI projects, **always use uv**.
 
 ---
 
@@ -309,7 +309,7 @@ import typer
 from fastapi import FastAPI
 
 # Local
-from hs_lib import logger
+from hyperi_pylib import logger
 from myapp.models import User
 ```
 
@@ -324,7 +324,7 @@ from typing import Any
 from pathlib import *  # Unclear what's imported
 ```
 
-**HyperSec CI uses Ruff I rules to enforce import order automatically.**
+**HyperI CI uses Ruff I rules to enforce import order automatically.**
 
 ---
 
@@ -635,15 +635,15 @@ black --check src/    # Check only
 
 ---
 
-## Configuration and Logging (hs-pylib)
+## Configuration and Logging (hyperi-pylib)
 
-**Python uses hs-pylib for zero-config cascade and logging.**
+**Python uses hyperi-pylib for zero-config cascade and logging.**
 
 ### Configuration Cascade
 
 ```python
 # Zero-config - cascade is AUTOMATIC via Dynaconf
-from hs_pylib.config import settings
+from hyperi_pylib.config import settings
 
 # Direct attribute access (Pythonic)
 host = settings.database.host         # Cascade automatic!
@@ -665,7 +665,7 @@ api.timeout           → MYAPP_API_TIMEOUT
 
 ```python
 # Zero-config logging with RFC 3339, sensitive masking, auto-detect console
-from hs_lib import logger
+from hyperi_pylib import logger
 
 logger.info("Processing", user_id=123)
 logger.error("Failed", error=str(e), exc_info=True)
@@ -674,16 +674,16 @@ logger.error("Failed", error=str(e), exc_info=True)
 **Console (dev):** Solarized colours, emojis for levels
 **Container/CI:** RFC 3339 JSON, ASCII-only
 
-### HS-Lib Imports
+### hyperi-pylib Imports
 
 | Need | Import |
 |------|--------|
-| Logging | `from hs_lib import logger` |
-| Config | `from hs_lib.config import settings` |
-| Runtime paths | `from hs_lib import get_runtime_paths` |
-| Database URLs | `from hs_lib import build_database_url` |
-| Metrics | `from hs_lib import create_metrics` |
-| CLI | `from hs_lib import Application` |
+| Logging | `from hyperi_pylib import logger` |
+| Config | `from hyperi_pylib.config import settings` |
+| Runtime paths | `from hyperi_pylib import get_runtime_paths` |
+| Database URLs | `from hyperi_pylib import build_database_url` |
+| Metrics | `from hyperi_pylib import create_metrics` |
+| CLI | `from hyperi_pylib import Application` |
 
 **Why:** Zero-config, container-aware, production-ready, ENV-based
 

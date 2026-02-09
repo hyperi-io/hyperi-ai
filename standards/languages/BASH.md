@@ -3,7 +3,7 @@ name: bash-standards
 description: Bash scripting standards using shellcheck, strict mode, and portable patterns. Use when writing shell scripts, reviewing bash, or automating with shell.
 ---
 
-# Bash Standards for HyperSec Projects
+# Bash Standards for HyperI Projects
 
 **Shell scripting standards for CI/CD, automation, and infrastructure scripts**
 
@@ -380,7 +380,7 @@ done
 
 ---
 
-## Configuration Cascade (HyperSec Standard)
+## Configuration Cascade (HyperI Standard)
 
 Bash scripts follow the 7-layer config cascade:
 
@@ -388,7 +388,7 @@ Bash scripts follow the 7-layer config cascade:
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Configuration Cascade (HyperSec Standard)
+# Configuration Cascade (HyperI Standard)
 # Priority: CLI > ENV > .env > config.{env}.sh > config.sh > defaults > hardcoded
 
 # 1. Hardcoded defaults (lowest priority)
@@ -439,7 +439,7 @@ main() {
 
 ---
 
-## Logging (HyperSec Standard)
+## Logging (HyperI Standard)
 
 ### RFC 3339 Timestamps
 
@@ -799,7 +799,7 @@ load test_helper
 # Purpose:   <One sentence>
 #
 # License:   FSL-1.1-ALv2
-# Copyright: (c) <YEAR> HyperSec
+# Copyright: (c) <YEAR> HYPERI PTY LIMITED
 
 set -euo pipefail
 

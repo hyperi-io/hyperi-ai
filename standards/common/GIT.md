@@ -1,6 +1,6 @@
 # Git Standards
 
-Branch naming and commit message conventions for all HyperSec projects.
+Branch naming and commit message conventions for all HyperI projects.
 
 ---
 

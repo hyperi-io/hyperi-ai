@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Project:   HyperSec AI
+# Project:   HyperI AI
 # File:      agents/codex.sh
 # Purpose:   Setup OpenAI Codex and VS Code AI configuration
 #
 # License:   FSL-1.1-ALv2
-# Copyright: (c) 2026 HyperSec Pty Ltd
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 #
 # This script configures:
 # - OpenAI Codex CLI
@@ -189,45 +189,45 @@ EOF
     }
 
     # Core skills (always deployed)
-    create_skill "standards" "HyperSec coding standards - always use for code quality" "$standards_dir/STANDARDS-QUICKSTART.md"
+    create_skill "standards" "HyperI coding standards - always use for code quality" "$standards_dir/STANDARDS-QUICKSTART.md"
     echo "  Core: standards"
 
     # Detect and deploy language-specific skills
     # Python
     if [ -f "$PROJECT_ROOT/pyproject.toml" ] || [ -f "$PROJECT_ROOT/setup.py" ] || \
        [ -f "$PROJECT_ROOT/requirements.txt" ] || [ -f "$PROJECT_ROOT/uv.lock" ]; then
-        create_skill "python" "Python coding standards for HyperSec projects" "$standards_dir/languages/PYTHON.md"
+        create_skill "python" "Python coding standards for HyperI projects" "$standards_dir/languages/PYTHON.md"
         echo "  Detected: Python"
     fi
 
     # Go
     if [ -f "$PROJECT_ROOT/go.mod" ]; then
-        create_skill "golang" "Go coding standards for HyperSec projects" "$standards_dir/languages/GOLANG.md"
+        create_skill "golang" "Go coding standards for HyperI projects" "$standards_dir/languages/GOLANG.md"
         echo "  Detected: Go"
     fi
 
     # TypeScript/JavaScript
     if [ -f "$PROJECT_ROOT/tsconfig.json" ] || [ -f "$PROJECT_ROOT/package.json" ]; then
-        create_skill "typescript" "TypeScript coding standards for HyperSec projects" "$standards_dir/languages/TYPESCRIPT.md"
+        create_skill "typescript" "TypeScript coding standards for HyperI projects" "$standards_dir/languages/TYPESCRIPT.md"
         echo "  Detected: TypeScript"
     fi
 
     # Rust
     if [ -f "$PROJECT_ROOT/Cargo.toml" ]; then
-        create_skill "rust" "Rust coding standards for HyperSec projects" "$standards_dir/languages/RUST.md"
+        create_skill "rust" "Rust coding standards for HyperI projects" "$standards_dir/languages/RUST.md"
         echo "  Detected: Rust"
     fi
 
     # C++
     if [ -f "$PROJECT_ROOT/CMakeLists.txt" ] || \
        find "$PROJECT_ROOT" -maxdepth 1 \( -name "*.cpp" -o -name "*.hpp" -o -name "*.cc" -o -name "*.h" \) -type f 2>/dev/null | grep -q .; then
-        create_skill "cpp" "C++ coding standards for HyperSec projects" "$standards_dir/languages/CPP.md"
+        create_skill "cpp" "C++ coding standards for HyperI projects" "$standards_dir/languages/CPP.md"
         echo "  Detected: C++"
     fi
 
     # Bash
     if find "$PROJECT_ROOT" -maxdepth 1 -name "*.sh" -type f 2>/dev/null | grep -q .; then
-        create_skill "bash" "Bash scripting standards for HyperSec projects" "$standards_dir/languages/BASH.md"
+        create_skill "bash" "Bash scripting standards for HyperI projects" "$standards_dir/languages/BASH.md"
         echo "  Detected: Bash"
     fi
 

@@ -1,11 +1,11 @@
 ---
-name: hypersec-standards
-description: HyperSec coding standards and best practices. Use when writing code, reviewing code, making commits, or when quality and consistency matter. Covers git conventions, error handling, security, testing, and design principles.
+name: hyperi-standards
+description: HyperI coding standards and best practices. Use when writing code, reviewing code, making commits, or when quality and consistency matter. Covers git conventions, error handling, security, testing, and design principles.
 ---
 
-# HyperSec Coding Standards
+# HyperI Coding Standards
 
-Comprehensive coding standards for all HyperSec projects.
+Comprehensive coding standards for all HyperI projects.
 
 **Path Convention:** All file references use `$AI_ROOT` to indicate the directory where this repository is attached (e.g., `ai/`, `standards/`, `.ai/`). This makes standards path-agnostic and works regardless of where the repository is located.
 
@@ -13,13 +13,13 @@ Comprehensive coding standards for all HyperSec projects.
 
 ## About These Standards
 
-This standards library represents the collation of years of HyperSec (and Derek's prior) experience building at-scale, high-automation DevOps, DataOps, and DevSecOps projects. It is designed as an AI-friendly knowledge base that can be attached to any project as a git submodule.
+This standards library represents the collation of years of HyperI (and Derek's prior) experience building at-scale, high-automation DevOps, DataOps, and DevSecOps projects. It is designed as an AI-friendly knowledge base that can be attached to any project as a git submodule.
 
 ---
 
 ## Core Principles
 
-**Everything in HyperSec standards, AI guides, and CI automation is built around three key principles:**
+**Everything in HyperI standards, AI guides, and CI automation is built around three key principles:**
 
 ### 1. Reduce Cognitive Load
 
@@ -37,7 +37,7 @@ This standards library represents the collation of years of HyperSec (and Derek'
 **For developers AND AI-assisted workflows:**
 
 - Project-specific context files (STATE.md, TODO.md, ARCHITECTURE.md)
-- Standardised infrastructure (hs-pylib, hs-rustlib, [HyperSec CI](https://github.com/hypersec-io/ci), same tools everywhere)
+- Standardised infrastructure (hyperi-pylib, hyperi-rustlib, [HyperI CI](https://github.com/hypersec-io/ci), same tools everywhere)
 - Meaningful commits and documentation (faster "resume" time)
 - Time-boxed work (minimum 2-hour chunks per project)
 
@@ -64,7 +64,7 @@ This standards library represents the collation of years of HyperSec (and Derek'
 
 ## Quick Start
 
-**New to HyperSec?** Start here:
+**New to HyperI?** Start here:
 
 1. Read `$AI_ROOT/standards/common/CODE-STYLE.md` - Core language-agnostic code style
 2. Read `$AI_ROOT/standards/common/GIT.md` - Git conventions

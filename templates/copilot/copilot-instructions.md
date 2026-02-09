@@ -1,4 +1,4 @@
-# HyperSec Coding Standards - GitHub Copilot / OpenAI Codex Instructions
+# HyperI Coding Standards - GitHub Copilot / OpenAI Codex Instructions
 
 **Recommended model:** GPT-5.1-Codex (Nov 2025) - optimized for agentic coding with advanced reasoning
 

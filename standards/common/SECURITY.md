@@ -1,6 +1,6 @@
 # Security Standards
 
-**Security-first development practices for all HyperSec projects**
+**Security-first development practices for all HyperI projects**
 
 ---
 
@@ -207,7 +207,7 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 API_KEY = os.environ["API_KEY"]
 
 # ✅ Better - with validation and defaults for non-secrets
-from hs_lib.config import settings
+from hyperi_pylib.config import settings
 DATABASE_URL = settings.database.url  # Raises if missing
 LOG_LEVEL = settings.get("log_level", "INFO")  # Default for non-secret
 ```
@@ -409,10 +409,10 @@ def get_file(filename: str) -> str:
 - Session tokens, JWTs
 - PII (personally identifiable information)
 
-**✅ Use hs-pylib auto-masking:**
+**✅ Use hyperi-pylib auto-masking:**
 
 ```python
-from hs_pylib import logger
+from hyperi_pylib import logger
 
 # Automatically masks passwords, tokens, API keys
 logger.info("User login", username="alice", password="secret123")

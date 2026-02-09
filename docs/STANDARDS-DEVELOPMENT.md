@@ -1,6 +1,6 @@
 # Standards Development Process
 
-**Purpose:** Document how HyperSec coding standards are developed and maintained using human-AI collaboration.
+**Purpose:** Document how HyperI coding standards are developed and maintained using human-AI collaboration.
 
 ---
 
@@ -67,7 +67,7 @@ standards/
 ### Phase 1: Research
 
 1. Human identifies gap in standards
-2. AI researches existing HyperSec projects for patterns
+2. AI researches existing HyperI projects for patterns
 3. AI summarises findings with code examples
 4. Human reviews and confirms patterns to standardise
 

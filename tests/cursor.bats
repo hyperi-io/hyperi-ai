@@ -76,7 +76,7 @@ teardown() {
 
     [ "$status" -eq 0 ]
     ! grep -q "OLD VERSION" .cursor/rules/standards.mdc
-    grep -q "HyperSec Coding Standards" .cursor/rules/standards.mdc
+    grep -q "HyperI Coding Standards" .cursor/rules/standards.mdc
 }
 
 @test "TC-206: Dry run preview" {

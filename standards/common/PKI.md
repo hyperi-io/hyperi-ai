@@ -5,7 +5,7 @@ description: PKI, TLS, SSH, and cryptographic standards based on CNSA 2.0. Use w
 
 # PKI and Cryptographic Standards
 
-**Practical cryptography for HyperSec projects - based on CNSA 2.0 with real-world fallbacks**
+**Practical cryptography for HyperI projects - based on CNSA 2.0 with real-world fallbacks**
 
 ## Background (Derek)
 
@@ -24,7 +24,7 @@ Not everything needs maximum security. Here's how we think about the risk-reward
 
 ### prod (Production - Corporate Default)
 
-**For:** Production deployments, customer-facing services, HyperSec infrastructure
+**For:** Production deployments, customer-facing services, HyperI infrastructure
 
 | Component | Algorithm | Notes |
 | --------- | --------- | ----- |
@@ -105,7 +105,7 @@ See the [HIGH SECURITY: Federal Requirements](#high-security-federal-requirement
 ### SSH Keys (all profiles)
 
 ```bash
-ssh-keygen -t ed25519 -C "user@hypersec.io"
+ssh-keygen -t ed25519 -C "user@hyperi.io"
 ```
 
 Ed25519 for all profiles. RSA-4096 only when Ed25519 is unsupported.
@@ -170,8 +170,8 @@ Post-quantum (ML-KEM, ML-DSA) isn't widely available yet. Our approach:
 
 1. **Use the strongest classical algorithms** - ECDSA P-384, Ed25519, AES-256, SHA-384
 2. **Enable hybrid PQ where available** - OpenSSH 9.9+ has mlkem768x25519-sha256
-3. **Plan for transition** - Design so you can swap the crypto can as you need to, ideally with the hs-<lang>lib config cascade
-4. **Common lib** - TLS helpers in hs-pylib and hs-rustlib implement these standards
+3. **Plan for transition** - Design so you can swap the crypto can as you need to, ideally with the hyperi-pylib/hyperi-rustlib config cascade
+4. **Common lib** - TLS helpers in hyperi-pylib and hyperi-rustlib implement these standards
 
 ---
 
@@ -207,7 +207,7 @@ ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
 
 ### Avoid: ECDSA
 
-Don't use ECDSA for SSH keys. The NIST curves have NSA involvement concerns, and ECDSA requires a perfect random number generator for each signature. If the RNG fails, your private key leaks. 
+Don't use ECDSA for SSH keys. The NIST curves have NSA involvement concerns, and ECDSA requires a perfect random number generator for each signature. If the RNG fails, your private key leaks.
 Default entropy on most default OS deployment is woefully poor (see our Linix SOE improvements there) so this only amplifies the problem.
 
 ### Post-Quantum SSH (OpenSSH 9.9+)
@@ -228,7 +228,7 @@ The key exchange algorithms in order of preference:
 
 To explicitly prefer post-quantum in ssh_config:
 
-```
+```text
 Host *
     KexAlgorithms mlkem768x25519-sha256,sntrup761x25519-sha512,curve25519-sha256
 ```
@@ -262,7 +262,7 @@ chown -R $USER:$USER ~/.ssh
 
 ## Certificate Format: PEM
 
-**PEM is the standard format for all HyperSec certificates and keys.**
+**PEM is the standard format for all HyperI certificates and keys.**
 
 ### Why PEM
 
@@ -282,7 +282,7 @@ PEM files are:
 
 ### PEM File Naming
 
-```
+```text
 server.key       # Private key
 server.crt       # Certificate (or .pem)
 ca.crt           # CA certificate
@@ -340,12 +340,12 @@ openssl ecparam -genkey -name secp384r1 -out server.key
 
 # Generate CSR
 openssl req -new -key server.key -out server.csr \
-    -subj "/CN=app.example.com/O=HyperSec/C=AU"
+    -subj "/CN=app.example.com/O=HyperI/C=AU"
 
 # Self-signed certificate (dev/testing only)
 openssl req -x509 -new -key server.key -out server.crt \
     -days 365 -sha384 \
-    -subj "/CN=app.example.com/O=HyperSec/C=AU"
+    -subj "/CN=app.example.com/O=HyperI/C=AU"
 ```
 
 **One-liner for dev certs:**
@@ -378,12 +378,12 @@ openssl genrsa -out server.key 4096
 
 # Generate CSR
 openssl req -new -key server.key -out server.csr \
-    -subj "/CN=app.example.com/O=HyperSec/C=AU"
+    -subj "/CN=app.example.com/O=HyperI/C=AU"
 
 # Self-signed
 openssl req -x509 -new -key server.key -out server.crt \
     -days 365 -sha384 \
-    -subj "/CN=app.example.com/O=HyperSec/C=AU"
+    -subj "/CN=app.example.com/O=HyperI/C=AU"
 ```
 
 ### CA Certificates
@@ -395,7 +395,7 @@ For Certificate Authority certs (longer-lived):
 openssl ecparam -genkey -name secp384r1 -out ca.key
 openssl req -x509 -new -key ca.key -out ca.crt \
     -days 3650 -sha384 \
-    -subj "/CN=HyperSec Internal CA/O=HyperSec/C=AU"
+    -subj "/CN=HyperI Internal CA/O=HyperI/C=AU"
 
 # Sign a server cert with the CA
 openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key \
@@ -460,7 +460,7 @@ TLS 1.3 is the target. It removes weak cipher options and simplifies configurati
 
 When TLS 1.3 isn't available, use TLS 1.2 with AEAD ciphers only:
 
-```
+```text
 ECDHE-ECDSA-AES256-GCM-SHA384
 ECDHE-RSA-AES256-GCM-SHA384
 ECDHE-ECDSA-CHACHA20-POLY1305
@@ -705,7 +705,7 @@ ssl.protocol=TLSv1.3
 # Generate broker key and cert
 openssl ecparam -genkey -name secp384r1 -out broker.key
 openssl req -new -key broker.key -out broker.csr \
-    -subj "/CN=kafka.example.com/O=HyperSec/C=AU"
+    -subj "/CN=kafka.example.com/O=HyperI/C=AU"
 openssl x509 -req -in broker.csr -CA ca.crt -CAkey ca.key \
     -CAcreateserial -out broker.crt -days 365 -sha384
 
@@ -842,7 +842,7 @@ credentials.json
 
 For projects that need certificates:
 
-```
+```text
 project/
 ├── certs/                    # Gitignored directory
 │   ├── .gitkeep             # Only this file committed
@@ -1159,7 +1159,7 @@ resource "local_sensitive_file" "cert" {
     path: /etc/ssl/certs/server.csr
     privatekey_path: /etc/ssl/private/server.key
     common_name: "{{ ansible_fqdn }}"
-    organization_name: HyperSec
+    organization_name: HyperI
 
 # Self-signed cert (dev only)
 - name: Generate self-signed certificate
@@ -1301,8 +1301,8 @@ The tls_certs role includes Prometheus metrics for cert expiry monitoring:
 
 ```bash
 # /var/lib/node_exporter/textfile_collector/cert_expiry.prom
-ssl_certificate_expiry_timestamp_seconds{domain="devex.hypersec.io"} 1735689600
-ssl_certificate_days_remaining{domain="devex.hypersec.io"} 45
+ssl_certificate_expiry_timestamp_seconds{domain="devex.hyperi.io"} 1735689600
+ssl_certificate_days_remaining{domain="devex.hyperi.io"} 45
 ```
 
 ### Proxmox Certificate Locations
@@ -1431,7 +1431,7 @@ bao secrets tune -max-lease-ttl=87600h pki
 
 # Generate root CA (or import existing)
 bao write pki/root/generate/internal \
-    common_name="HyperSec Root CA" \
+    common_name="HyperI Root CA" \
     ttl=87600h \
     key_type=ec \
     key_bits=384
@@ -1453,7 +1453,7 @@ bao secrets tune -max-lease-ttl=43800h pki_int
 
 # Generate intermediate CSR
 bao write pki_int/intermediate/generate/internal \
-    common_name="HyperSec Intermediate CA" \
+    common_name="HyperI Intermediate CA" \
     key_type=ec \
     key_bits=384
 
@@ -1580,8 +1580,8 @@ aws acm-pca create-certificate-authority \
         SigningAlgorithm=SHA384WITHECDSA,\
         Subject='{
             "Country": "AU",
-            "Organization": "HyperSec",
-            "CommonName": "HyperSec Internal CA"
+            "Organization": "HyperI",
+            "CommonName": "HyperI Internal CA"
         }' \
     --certificate-authority-type ROOT
 
@@ -1887,16 +1887,16 @@ Before claiming CNSA 2.0 compliance:
 
 ---
 
-## HyperSec Library Integration
+## HyperI Library Integration
 
-The hs-pylib and hs-rustlib libraries provide TLS helpers that implement these PKI standards with zero-config secure defaults.
+The hyperi-pylib and hyperi-rustlib libraries provide TLS helpers that implement these PKI standards with zero-config secure defaults.
 
 ### Quick Start
 
-**Python (hs-pylib):**
+**Python (hyperi-pylib):**
 
 ```python
-from hs_pylib.tls import create_ssl_context
+from hyperi_pylib.tls import create_ssl_context
 
 # Uses prod profile by default (P-384, TLS 1.2+)
 ctx = create_ssl_context()
@@ -1907,10 +1907,10 @@ ctx = create_ssl_context(profile="devtest")   # Dev/staging (P-256)
 ctx = create_ssl_context(profile="highsec")   # Federal/CNSA 2.0
 ```
 
-**Rust (hs-rustlib):**
+**Rust (hyperi-rustlib):**
 
 ```rust
-use hs_rustlib::tls::{create_tls_config, TlsProfile};
+use hyperi_rustlib::tls::{create_tls_config, TlsProfile};
 
 // Uses Prod profile by default (P-384, TLS 1.2+)
 let config = create_tls_config(TlsProfile::Prod)?;
@@ -1920,12 +1920,12 @@ let config = create_tls_config(TlsProfile::Prod)?;
 
 For implementation details, usage patterns, and configuration options:
 
-- **Python:** See [hs-pylib/docs/PKI.md](https://github.com/hypersec/hs-pylib/blob/main/docs/PKI.md)
-- **Rust:** See [hs-rustlib/docs/PKI.md](https://github.com/hypersec/hs-rustlib/blob/main/docs/PKI.md)
+- **Python:** See [hyperi-pylib/docs/PKI.md](https://github.com/hypersec-io/hyperi-pylib/blob/main/docs/PKI.md)
+- **Rust:** See [hyperi-rustlib/docs/PKI.md](https://github.com/hypersec-io/hyperi-rustlib/blob/main/docs/PKI.md)
 
 ### What the Libraries Provide
 
-| Feature | hs-pylib | hs-rustlib |
+| Feature | hyperi-pylib | hyperi-rustlib |
 | ------- | -------- | ---------- |
 | SSL context factory | `create_ssl_context()` | `create_tls_config()` |
 | Profile-based config | `profile="prod"` | `TlsProfile::Prod` |

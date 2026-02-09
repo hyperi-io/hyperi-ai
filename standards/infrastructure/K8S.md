@@ -3,7 +3,7 @@ name: kubernetes-standards
 description: Kubernetes and Helm standards for deployments, services, and health probes. Use when writing K8s manifests, Helm charts, or deploying to Kubernetes.
 ---
 
-# Kubernetes Standards for HyperSec Projects
+# Kubernetes Standards for HyperI Projects
 
 **Runtime standards: HELM charts, deployments, services, ArgoCD, KEDA**
 
@@ -111,7 +111,7 @@ helm repo add minio https://operator.min.io/
 helm repo update
 ```
 
-**HyperSec standard stack:**
+**HyperI standard stack:**
 
 | Component | What We Use |
 | --------- | ----------- |

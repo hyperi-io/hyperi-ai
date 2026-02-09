@@ -38,7 +38,7 @@ A standards library that attaches to any project to provide:
 - Zero dependencies beyond standard Unix tools
 - Path-agnostic (works anywhere, any directory name)
 - Idempotent (safe to run repeatedly)
-- Works standalone or alongside HyperSec CI (`ci/` submodule)
+- Works standalone or alongside HyperI CI (`ci/` submodule)
 
 ---
 
@@ -187,7 +187,7 @@ ai/                              # This repository ($AI_ROOT)
 
 ---
 
-## Using with HyperSec CI
+## Using with HyperI CI
 
 The `ai/` and `ci/` submodules are designed to work together seamlessly:
 

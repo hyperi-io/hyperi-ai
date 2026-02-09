@@ -3,7 +3,7 @@ name: golang-standards
 description: Go coding standards using standard library patterns, error handling, and testing conventions. Use when writing Go code, reviewing Go, or setting up Go projects.
 ---
 
-# Go Standards for HyperSec Projects
+# Go Standards for HyperI Projects
 
 **Comprehensive Go coding standards for backend services, agents, and data processing**
 
@@ -40,7 +40,7 @@ myproject/
 └── Makefile
 ```
 
-### Simple Agent Layout (like hypersec-agent-windows)
+### Simple Agent Layout (like hyperi-agent-windows)
 
 ```text
 myagent/
@@ -281,7 +281,7 @@ func TestExample(t *testing.T) {
 
 ---
 
-## Configuration (HyperSec Cascade)
+## Configuration (HyperI Cascade)
 
 Go implements the 7-layer config cascade using Viper:
 
@@ -372,7 +372,7 @@ func processAndSetDefaults(config *Config) error {
 
 ---
 
-## Logging (HyperSec Standard)
+## Logging (HyperI Standard)
 
 ### RFC 3339 Timestamps (Required)
 
@@ -1063,7 +1063,7 @@ func (c *Client) Get(ctx context.Context, url string) (*Response, error) {
         return nil, fmt.Errorf("creating request for %s: %w", url, err)
     }
 
-    req.Header.Set("User-Agent", "hypersec-agent/1.0")
+    req.Header.Set("User-Agent", "hyperi-agent/1.0")
     req.Header.Set("Accept", "application/json")
 
     resp, err := c.httpClient.Do(req)
@@ -1377,7 +1377,7 @@ func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
 }
 ```
 
-### File Tailing (like hypersec-agent)
+### File Tailing (like hyperi-agent)
 
 ```go
 type FileTailer struct {

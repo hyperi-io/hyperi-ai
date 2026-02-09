@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Project:      HyperSec AI
+# Project:      HyperI AI
 # File:         attach-public.sh
 # Purpose:      Attach AI standards to a PUBLIC repo (no submodule, gitignored)
 # License:      FSL-1.1-ALv2
-# Copyright:    (c) 2026 HyperSec Pty Ltd
+# Copyright:    (c) 2026 HYPERI PTY LIMITED
 #
 # Use this for public/open-source repositories where you don't want to expose
 # internal AI standards as a submodule. The ai/ directory is cloned locally
@@ -62,7 +62,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 show_usage() {
     cat << 'EOF'
-attach-public.sh - Attach HyperSec AI to a PUBLIC repository
+attach-public.sh - Attach HyperI AI to a PUBLIC repository
 
 This script sets up AI standards WITHOUT creating a submodule. Use this for
 public/open-source repos where you don't want to expose internal tooling.
@@ -554,7 +554,7 @@ run_agent_detection() {
 
 print_summary() {
     echo ""
-    log_success "HyperSec AI attached (public repo mode)!"
+    log_success "HyperI AI attached (public repo mode)!"
     echo ""
     echo "What was set up:"
     echo "  - ai/ directory (gitignored, never committed)"
@@ -576,7 +576,7 @@ print_summary() {
 
 main() {
     echo ""
-    echo "=== HyperSec AI Attach (Public Repo Mode) ==="
+    echo "=== HyperI AI Attach (Public Repo Mode) ==="
     echo ""
 
     parse_args "$@"

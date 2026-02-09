@@ -3,7 +3,7 @@ name: typescript-standards
 description: TypeScript coding standards using strict mode, ESLint, and modern patterns. Use when writing TypeScript or JavaScript code, reviewing TS/JS, or setting up Node.js projects.
 ---
 
-# TypeScript Standards for HyperSec Projects
+# TypeScript Standards for HyperI Projects
 
 **Comprehensive TypeScript coding standards for monorepos, backend services, and React applications**
 
@@ -985,7 +985,7 @@ export const AuthenticatedClientLayer = Layer.effect(
 
 ---
 
-## Configuration Management (HyperSec Cascade)
+## Configuration Management (HyperI Cascade)
 
 TypeScript implements the 7-layer config cascade using Effect-TS Config + dotenv:
 
@@ -1063,7 +1063,7 @@ Effect.gen(function* () {
 
 ---
 
-## Logging (HyperSec Standard)
+## Logging (HyperI Standard)
 
 **Output Modes:**
 

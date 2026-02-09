@@ -99,7 +99,7 @@ This document provides critical guidance for AI code assistants working on any p
 
 **Usage (Claude Code):**
 
-```
+```text
 /load
 ```
 
@@ -127,7 +127,7 @@ This document provides critical guidance for AI code assistants working on any p
 
 **Usage (Claude Code):**
 
-```
+```text
 /save
 ```
 
@@ -151,7 +151,7 @@ AI assistants frequently overstate importance. **Always err on understatement.**
 - ❌ `feat:` ONLY for NEW VERY SIGNIFICANT and BROAD user-facing features
 - ❌ NEVER use `BREAKING CHANGE:` unless it breaks backward compatibility
 
-**Valid commit types (from [HyperSec CI](https://github.com/hypersec-io/ci) defaults.yaml):**
+**Valid commit types (from [HyperI CI](https://github.com/hypersec-io/ci) defaults.yaml):**
 
 **Semantic versioning (trigger version bumps):**
 
@@ -259,7 +259,7 @@ git commit -m "fix: improve error handling"  # NOT feat: unless truly new
 - ✅ **ALWAYS create new GitHub repositories as PRIVATE** unless user explicitly requests public
 - ❌ **NEVER create public repositories by default**
 
-**Why:** HyperSec projects are private by default for security and IP protection.
+**Why:** HyperI projects are private by default for security and IP protection.
 
 **Example:**
 
@@ -355,7 +355,7 @@ Includes:
 
 **Example workflow:**
 
-```
+```text
 On session start:
 1. Read <env> → Today: 2025-03-15
 2. Check own cutoff → Model cutoff: 2025-01-15

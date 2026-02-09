@@ -1,6 +1,6 @@
 # Linear Ticket Standard
 
-Standards for creating, updating, and managing Linear tickets at HyperSec.
+Standards for creating, updating, and managing Linear tickets at HyperI.
 
 **Goal:** Read this file → ask your AI assistant to create/update/find Linear tickets.
 
@@ -322,7 +322,7 @@ linear issues create \
 STEP 5: Report Back
 "Created DFE-XXX: <title>
 Priority: X, Estimate: Y
-URL: https://linear.app/hypersec/issue/DFE-XXX"
+URL: https://linear.app/hyperi/issue/DFE-XXX"
 ```
 
 ### Script: Update Ticket from Work Done
@@ -493,4 +493,4 @@ Examples:
 
 - [Linear Keyboard Shortcuts](https://linear.app/docs/keyboard-shortcuts)
 - [Linear CLI Documentation](https://github.com/anthropics/linear-cli)
-- [HyperSec Git Standards](GIT.md)
+- [HyperI Git Standards](GIT.md)

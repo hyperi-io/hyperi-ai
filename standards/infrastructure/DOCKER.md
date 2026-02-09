@@ -72,7 +72,7 @@ FROM nginx:1.25-alpine
 - **Vendor-maintained** - `gcr.io/distroless/*`, `quay.io/coreos/*`
 - **Your own registry** - `registry.example.com/myorg/*`
 
-**HyperSec standard images:**
+**HyperI standard images:**
 
 | Component | Image |
 | --------- | ----- |
@@ -411,7 +411,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 **Include minimal debug utilities in production containers.**
 
-HyperSec policy: Include small debug utilities. Removing tiny utilities for disk savings is inefficient. Containers should be debug-ready if cost is minimal (2-5% size increase).
+HyperI policy: Include small debug utilities. Removing tiny utilities for disk savings is inefficient. Containers should be debug-ready if cost is minimal (2-5% size increase).
 
 ```dockerfile
 # Debian/Ubuntu

@@ -3,7 +3,7 @@ name: ansible-standards
 description: Ansible standards for playbooks, roles, and configuration management. Use when writing Ansible playbooks, reviewing automation, or managing server configurations.
 ---
 
-# Ansible Standards for HyperSec Projects
+# Ansible Standards for HyperI Projects
 
 **Configuration management and automation standards for infrastructure-as-code**
 
@@ -270,8 +270,8 @@ myapp_logging_enabled: true
 ```yaml
 ---
 galaxy_info:
-  author: HyperSec
-  company: HyperSec
+  author: HyperI
+  company: HyperI
   description: Installs and configures myapp
   license: FSL-1.1-ALv2
   min_ansible_version: "2.12"
@@ -472,7 +472,7 @@ community.postgresql.postgresql_db
 # Add managed configuration block
 - name: Configure fail2ban for SSH
   ansible.builtin.copy:
-    dest: /etc/fail2ban/jail.d/zzz-50-hypersec-sshd.conf
+    dest: /etc/fail2ban/jail.d/zzz-50-hyperi-sshd.conf
     content: |
       [sshd]
       enabled = true
@@ -485,7 +485,7 @@ community.postgresql.postgresql_db
 - name: Ensure Match block for IP restrictions
   ansible.builtin.blockinfile:
     path: /etc/ssh/sshd_config
-    marker: "# {mark} ANSIBLE MANAGED BLOCK (HyperSec)"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK (HyperI)"
     block: |
       Match Address {{ allowed_ips | join(',') }}
         PermitRootLogin no
@@ -507,8 +507,8 @@ community.postgresql.postgresql_db
 
 - name: Deploy sysctl configuration
   ansible.builtin.template:
-    src: zzz-50-hypersec-sysctl.conf.j2
-    dest: /etc/sysctl.d/zzz-50-hypersec-sysctl.conf
+    src: zzz-50-hyperi-sysctl.conf.j2
+    dest: /etc/sysctl.d/zzz-50-hyperi-sysctl.conf
     mode: "0644"
 
 - name: Reload sysctl settings
@@ -614,7 +614,7 @@ server:
 
 ### Multi-Platform Tasks Pattern
 
-From HyperSec project patterns:
+From HyperI project patterns:
 
 ```yaml
 # Pattern: Same task for multiple platforms

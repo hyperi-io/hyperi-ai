@@ -289,7 +289,7 @@ Include:
 ## Getting Help
 
 - GitHub Issues: <https://github.com/hypersec-io/ai/issues>
-- Slack: #standards (HyperSec internal)
+- Slack: #standards (HyperI internal)
 
 ---
 

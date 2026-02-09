@@ -1,14 +1,14 @@
 <!--
-  Project:      HyperSec AI
+  Project:      HyperI AI
   File:         QUICKSTART.md
-  Purpose:      5-minute guide to adding HyperSec AI to your project
+  Purpose:      5-minute guide to adding HyperI AI to your project
   Language:     Markdown
 
   License:      FSL-1.1-ALv2
-  Copyright:    (c) 2025 HyperSec Pty Ltd
+  Copyright:    (c) 2026 HYPERI PTY LIMITED
 -->
 
-# HyperSec AI Quickstart
+# HyperI AI Quickstart
 
 Get AI-assisted development running in under 5 minutes.
 

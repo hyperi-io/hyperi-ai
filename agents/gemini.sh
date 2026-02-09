@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Project:   HyperSec AI
+# Project:   HyperI AI
 # File:      agents/gemini.sh
 # Purpose:   Setup Gemini Code configuration for a project
 #
 # License:   FSL-1.1-ALv2
-# Copyright: (c) 2026 HyperSec Pty Ltd
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 #
 # Usage: ./agents/gemini.sh [--help] [--dry-run] [--force] [--path PATH] [--verbose]
 #

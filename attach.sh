@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Project:      HyperSec AI
+# Project:      HyperI AI
 # File:         attach.sh
 # Purpose:      Attach AI standards to a project
 # License:      FSL-1.1-ALv2
-# Copyright:    (c) 2026 HyperSec Pty Ltd
+# Copyright:    (c) 2026 HYPERI PTY LIMITED
 #
 # Bash 3.2 compatible (macOS default)
 
@@ -71,7 +71,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 # Show usage information
 show_usage() {
     cat << 'EOF'
-attach.sh - Attach HyperSec AI standards to your project
+attach.sh - Attach HyperI AI standards to your project
 
 Usage: ./attach.sh [OPTIONS]
 
@@ -754,7 +754,7 @@ print_summary() {
     mode="$(detect_mode)"
 
     echo ""
-    log_success "HyperSec AI attached successfully!"
+    log_success "HyperI AI attached successfully!"
     echo ""
     echo "Next steps:"
     echo "  1. Review STATE.md and TODO.md in your project root"
@@ -790,7 +790,7 @@ print_summary() {
 # Main execution
 main() {
     echo ""
-    echo "=== HyperSec AI Attach ==="
+    echo "=== HyperI AI Attach ==="
     echo ""
 
     parse_args "$@"

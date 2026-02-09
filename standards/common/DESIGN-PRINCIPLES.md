@@ -492,4 +492,4 @@ class UserService:
 
 ## See Also
 
-- **Configuration & Logging:** See [CONFIG-AND-LOGGING.md](CONFIG-AND-LOGGING.md) for the HyperSec 7-layer config cascade and structured logging standards
+- **Configuration & Logging:** See [CONFIG-AND-LOGGING.md](CONFIG-AND-LOGGING.md) for the HyperI 7-layer config cascade and structured logging standards

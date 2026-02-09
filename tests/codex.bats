@@ -54,7 +54,7 @@ teardown() {
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Deployed:" ]]
-    grep -q "HyperSec Coding Standards" .github/copilot-instructions.md
+    grep -q "HyperI Coding Standards" .github/copilot-instructions.md
 }
 
 @test "TC-C05: Dry run shows actions without executing" {

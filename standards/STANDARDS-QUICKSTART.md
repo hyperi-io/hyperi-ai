@@ -1,8 +1,8 @@
-# HyperSec Coding Standards (Quick Reference)
+# HyperI Coding Standards (Quick Reference)
 
 ## About These Standards
 
-This standards library represents the collation of years of HyperSec (and
+This standards library represents the collation of years of HyperI (and
 Derek's prior) experience building at-scale, high-automation DevOps, DataOps,
 and DevSecOps projects. It is designed as an AI-friendly knowledge base that
 can be attached to any project as a git submodule.
@@ -12,9 +12,9 @@ code to import. The parent project never imports, requires, or links to anything
 in `ai/`. Humans and AI assistants read these standards; the project's source
 code ignores this directory entirely.
 
-**Note:** HyperSec is rebranding to **HyperI** by April 2026. The `hs-` prefix
-on libraries (hs-pylib, hs-rustlib) will be renamed. References to "HyperSec"
-in these docs will be updated accordingly.
+**Note:** HyperSec was rebranded to **HyperI**. Libraries have been renamed
+from `hs-` to `hyperi-` prefix (e.g. `hyperi-pylib`, `hyperi-rustlib`). The
+GitHub org (`hypersec-io`) will be renamed separately.
 
 ---
 
@@ -30,7 +30,7 @@ in these docs will be updated accordingly.
 
 ---
 
-Core coding standards for all HyperSec projects. For detailed guidance, see:
+Core coding standards for all HyperI projects. For detailed guidance, see:
 
 - **Languages:** `$AI_ROOT/standards/languages/`
   (Python, Go, TypeScript, Rust, Bash)
@@ -338,8 +338,8 @@ All configuration follows this priority (highest to lowest):
 6. **defaults.yaml** → Safe fallback
 7. **Hard-coded** → Last resort in code
 
-**Python:** Use `hs-pylib` (zero-config cascade via Dynaconf)
-**Rust:** Use `hs-rustlib` (config-rs based cascade)
+**Python:** Use `hyperi-pylib` (zero-config cascade via Dynaconf)
+**Rust:** Use `hyperi-rustlib` (config-rs based cascade)
 **Other languages:** See `$AI_ROOT/standards/common/CONFIG-AND-LOGGING.md`
 
 ### .env Files - Always Quote Values
@@ -469,7 +469,7 @@ def save_user(data: dict) -> int:
 
 ```bash
 # SSH key (all profiles)
-ssh-keygen -t ed25519 -C "user@hypersec.io"
+ssh-keygen -t ed25519 -C "user@hyperi.io"
 
 # Dev TLS cert (P-384)
 openssl req -newkey ec:<(openssl ecparam -name secp384r1) \
@@ -847,7 +847,7 @@ class DataSerializer:  # American class name
 
 ## 9. Semantic Release (All Projects)
 
-All HyperSec projects use semantic-release for automated versioning.
+All HyperI projects use semantic-release for automated versioning.
 
 ### Commit Type → Version Bump
 

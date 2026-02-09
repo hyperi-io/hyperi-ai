@@ -31,9 +31,9 @@ This doc covers HyperI-specific patterns and hard-won lessons from production sy
 7. [Common Patterns](#common-patterns)
 8. [Testing](#testing)
 9. [Async with Tokio](#async-with-tokio)
-10. [Configuration and Logging](#configuration-and-logging)
+10. [Configuration and Logging](#configuration-hyperi-cascade)
 11. [External Libraries](#external-libraries-and-private-registries)
-12. [High Performance](#high-performance) - memory, zero-copy, SIMD, concurrency
+12. [High Performance](#at-scale-performance-patterns) - memory, zero-copy, SIMD, concurrency
 13. [Data Pipeline Architecture](#data-pipeline-architecture)
 14. [FFI and Unsafe](#ffi-and-unsafe-rust)
 15. [Clippy Configuration](#clippy-configuration)
@@ -2922,7 +2922,7 @@ harness = false
 
 ---
 
-## Configuration (HyperSec Cascade)
+## Configuration (HyperI Cascade)
 
 Rust implements the 7-layer config cascade using `config-rs`:
 
@@ -2966,7 +2966,7 @@ fn load_config() -> Result<Config, config::ConfigError> {
 
 ---
 
-## Logging (HyperSec Standard)
+## Logging (HyperI Standard)
 
 Use `tracing` with RFC 3339 timestamps:
 
@@ -3475,6 +3475,7 @@ println!("{}", x.describe());  // "42"
 ### When Unsafe is Necessary
 
 Unsafe Rust is required for:
+
 1. Dereferencing raw pointers
 2. Calling unsafe functions (including FFI)
 3. Accessing/modifying mutable statics
@@ -4207,8 +4208,8 @@ For enterprise environments using private artifact repositories:
 
 ```toml
 # .cargo/config.toml
-[registries.hypersec]
-index = "sparse+https://hypersec.jfrog.io/artifactory/api/cargo/hypersec-cargo-virtual/index/"
+[registries.hyperi]
+index = "sparse+https://hyperi.jfrog.io/artifactory/api/cargo/hyperi-cargo-virtual/index/"
 
 [build]
 # Optional: Use mold linker for faster builds
@@ -4224,7 +4225,7 @@ rustflags = ["-C", "force-frame-pointers=yes"]
 ```toml
 # Cargo.toml - using private registry
 [dependencies]
-hs-rustlib = { version = ">=1.3", registry = "hypersec", features = [
+hyperi-rustlib = { version = ">=1.3", registry = "hyperi", features = [
     "config", "logger", "metrics", "transport-kafka", "http-server"
 ]}
 ```
@@ -4320,7 +4321,7 @@ use tokio_rustls::TlsAcceptor;
 
 ## At-Scale Performance Patterns
 
-Production patterns from HyperSec data pipelines handling PB/s scale.
+Production patterns from HyperI data pipelines handling PB/s scale.
 
 ### Global Allocator Selection
 

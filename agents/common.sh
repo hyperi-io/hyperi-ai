@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Project:   HyperSec AI
+# Project:   HyperI AI
 # File:      agents/common.sh
 # Purpose:   Shared functions for agent setup scripts
 #
 # License:   FSL-1.1-ALv2
-# Copyright: (c) 2026 HyperSec Pty Ltd
+# Copyright: (c) 2026 HYPERI PTY LIMITED
 #
 # Bash 3.2 compatible (macOS default)
 # Source this file from agent scripts: source "${SCRIPT_DIR}/common.sh"

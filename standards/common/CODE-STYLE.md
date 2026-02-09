@@ -346,7 +346,7 @@ for user in users:
 
 ### Documentation/Comments: Australian English
 
-**HyperSec documentation uses Australian spelling:**
+**HyperI documentation uses Australian spelling:**
 
 - ✅ Documentation: "colour", "realise", "organise", "favour"
 - ✅ Comments: "Initialise the database connection"

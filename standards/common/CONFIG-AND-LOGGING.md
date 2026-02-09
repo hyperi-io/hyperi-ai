@@ -1,6 +1,6 @@
 # Configuration and Logging Standards
 
-**HyperSec standard patterns for configuration cascade and structured logging**
+**HyperI standard patterns for configuration cascade and structured logging**
 
 ---
 
@@ -144,11 +144,11 @@ LOG_LEVEL="INFO"
 
 ## Multi-Language Implementation
 
-### Python (hs-pylib / Dynaconf)
+### Python (hyperi-pylib / Dynaconf)
 
 ```python
 # Zero-config - cascade is AUTOMATIC via Dynaconf
-from hs_pylib.config import settings
+from hyperi_pylib.config import settings
 
 # Direct attribute access (Pythonic)
 host = settings.database.host         # Cascade automatic!
@@ -277,7 +277,7 @@ export const settings = loadConfig();
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Configuration Cascade (HyperSec Standard)
+# Configuration Cascade (HyperI Standard)
 # Priority: CLI > ENV > .env > config.{env}.sh > config.sh > defaults > hardcoded
 
 # Priority 7: Hardcoded defaults (lowest priority)
@@ -410,11 +410,11 @@ impl Settings {
 
 ## Multi-Language Logging
 
-### Python (hs-pylib / Loguru)
+### Python (hyperi-pylib / Loguru)
 
 ```python
 # Zero-config logging with RFC 3339, sensitive masking, auto-detect console
-from hs_pylib import logger
+from hyperi_pylib import logger
 
 logger.info("Processing", user_id=123)
 logger.error("Failed", error=str(e), exc_info=True)
@@ -651,7 +651,7 @@ logger.error(
 - Private keys, certificates, JWTs
 
 ```python
-# hs-pylib auto-masks sensitive patterns
+# hyperi-pylib auto-masks sensitive patterns
 logger.info("Connecting", password="secret123")  # → password="***MASKED***"
 ```
 
