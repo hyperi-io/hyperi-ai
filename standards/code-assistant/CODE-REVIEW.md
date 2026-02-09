@@ -8,7 +8,7 @@
 
 ### Error Handling
 
-```
+```text
 ❌ Swallowed errors (empty catch, ignored Result/error)
 ❌ Generic error messages ("An error occurred")
 ❌ Missing error context (no file path, line number, input values)
@@ -17,7 +17,8 @@
 ```
 
 **Required pattern:**
-```
+
+```text
 ✅ Errors include: what failed + why + context (inputs, state)
 ✅ Errors propagate up with added context at each layer
 ✅ User-facing errors are actionable ("File X not found" not "IO error")
@@ -25,7 +26,7 @@
 
 ### Security
 
-```
+```text
 ❌ Hardcoded secrets, API keys, passwords
 ❌ SQL/command injection (string concatenation with user input)
 ❌ Path traversal (../../../etc/passwd)
@@ -35,7 +36,8 @@
 ```
 
 **Required pattern:**
-```
+
+```text
 ✅ Secrets from environment variables or secret managers
 ✅ Parameterised queries, not string interpolation
 ✅ Input validation at system boundaries
@@ -44,7 +46,7 @@
 
 ### Testing
 
-```
+```text
 ❌ No tests for new functionality
 ❌ Tests that mock the thing being tested
 ❌ Tests with hardcoded sleeps (time.sleep, setTimeout)
@@ -53,7 +55,8 @@
 ```
 
 **Required pattern:**
-```
+
+```text
 ✅ Real implementations over mocks (use fakes, test DBs, containers)
 ✅ Tests are deterministic and isolated
 ✅ Test names describe the scenario, not the method
@@ -66,7 +69,7 @@
 
 ### Design Principles
 
-```
+```text
 ⚠️ Functions >50 lines (extract helpers)
 ⚠️ >3 levels of nesting (early returns, extract)
 ⚠️ Magic numbers/strings (use named constants)
@@ -76,7 +79,8 @@
 ```
 
 **Preferred patterns:**
-```
+
+```text
 ✅ Single responsibility - functions do one thing
 ✅ Early returns reduce nesting
 ✅ Self-documenting names over comments
@@ -86,7 +90,7 @@
 
 ### Code Style
 
-```
+```text
 ⚠️ Inconsistent naming (mixedCase vs snake_case)
 ⚠️ Overly clever one-liners (prefer readable)
 ⚠️ Deep callback nesting (use async/await, promises, channels)

@@ -444,14 +444,14 @@ def test_create_secret(mock_api):
 
 **Don't accept:**
 
-```
+```text
 AI: "Here's a simple example of user authentication..."
 You: [Accept and commit]  ❌
 ```
 
 **Do this instead:**
 
-```
+```text
 AI: "Here's a simple example of user authentication..."
 You: "This is a simplified example. Please provide complete implementation with:
      - Password hashing (bcrypt)

@@ -425,7 +425,7 @@ def test_apply_seasonal_discount():
 
 **2. Let AI implement to pass tests:**
 
-```
+```text
 Prompt: "Implement calculate_seasonal_discount() to pass these tests"
 ```
 
