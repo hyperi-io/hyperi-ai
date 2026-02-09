@@ -1,3 +1,11 @@
+## [1.11.3](https://github.com/hypersec-io/ai/compare/1.11.2...1.11.3) (2026-02-09)
+
+
+### Bug Fixes
+
+* complete HyperSec to HyperI rebrand across all standards and scripts ([1ad4a05](https://github.com/hypersec-io/ai/commit/1ad4a054939c10a4432aaab663608987231465e2))
+* resolve all markdownlint errors (110 → 0) ([4694b2c](https://github.com/hypersec-io/ai/commit/4694b2c19af83fe6001d8aa1311b27293c69c6b2))
+
 ## [1.11.2](https://github.com/hypersec-io/ai/compare/1.11.1...1.11.2) (2026-02-06)
 
 
