@@ -1,3 +1,10 @@
+## [1.11.4](https://github.com/hyperi-io/ai/compare/1.11.3...1.11.4) (2026-02-10)
+
+
+### Bug Fixes
+
+* update GitHub org from hypersec-io to hyperi-io across all URLs and scripts ([4560f40](https://github.com/hyperi-io/ai/commit/4560f400b1e8be92856bb68cf06bcc2f92874d94))
+
 ## [1.11.3](https://github.com/hypersec-io/ai/compare/1.11.2...1.11.3) (2026-02-09)
 
 
