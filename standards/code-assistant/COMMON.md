@@ -151,7 +151,7 @@ AI assistants frequently overstate importance. **Always err on understatement.**
 - ❌ `feat:` ONLY for NEW VERY SIGNIFICANT and BROAD user-facing features
 - ❌ NEVER use `BREAKING CHANGE:` unless it breaks backward compatibility
 
-**Valid commit types (from [HyperI CI](https://github.com/hypersec-io/ci) defaults.yaml):**
+**Valid commit types (from [HyperI CI](https://github.com/hyperi-io/ci) defaults.yaml):**
 
 **Semantic versioning (trigger version bumps):**
 
@@ -274,7 +274,7 @@ gh repo create org/repo-name
 ### Licensing
 
 - ✅ **Default:** FSL-1.1-ALv2 (Functional Source License with Apache 2.0 future)
-- **Source of truth:** <https://github.com/hypersec-io/hyperi-licensing/tree/main/github-template>
+- **Source of truth:** <https://github.com/hyperi-io/hyperi-licensing/tree/main/github-template>
 - Copy templates: `ci/attach.sh --init licensing`
 - ❌ Never create custom LICENSE files - use the template
 - ❌ GPL/AGPL/SSPL dependencies NOT permitted

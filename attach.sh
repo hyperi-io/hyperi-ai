@@ -20,7 +20,7 @@ if [ -f "${SCRIPT_DIR}/../ci/config/org.sh" ]; then
 fi
 
 # Fallback defaults if org.sh not available
-GITHUB_ORG="${GITHUB_ORG:-hypersec-io}"
+GITHUB_ORG="${GITHUB_ORG:-hyperi-io}"
 CI_REPO_URL="${CI_REPO_URL:-https://github.com/${GITHUB_ORG}/ci.git}"
 AI_REPO_URL="${AI_REPO_URL:-https://github.com/${GITHUB_ORG}/ai.git}"
 
@@ -474,13 +474,13 @@ migrate_single_submodule() {
 }
 
 # Check and fix submodule URL for deprecated repos
-# Auto-fixes: hyperci/hs-ci → ci, hs-ai/standards → ai (same repos, renamed)
+# Auto-fixes: hyperci/hs-ci → ci, hs-ai/standards → ai, hypersec-io → hyperi-io
 # Warns only: missing .git suffix
 check_submodule_url() {
     local submodule_name="$1"
     local url="$2"
     local new_url=""
-    local org="${GITHUB_ORG:-hypersec-io}"
+    local org="${GITHUB_ORG:-hyperi-io}"
 
     # Check for old/deprecated repo names and auto-fix
     case "$url" in
@@ -507,6 +507,16 @@ check_submodule_url() {
             log_info "${submodule_name}: Updating deprecated 'hypersec-ai' URL → ai.git"
             ;;
     esac
+
+    # Check for old GitHub org name (hypersec-io → hyperi-io)
+    if [ -z "$new_url" ]; then
+        case "$url" in
+            *"github.com/hypersec-io/"*)
+                new_url="${url//hypersec-io/hyperi-io}"
+                log_info "${submodule_name}: Updating deprecated 'hypersec-io' org → hyperi-io"
+                ;;
+        esac
+    fi
 
     # Auto-fix deprecated URL if detected
     if [ -n "$new_url" ]; then

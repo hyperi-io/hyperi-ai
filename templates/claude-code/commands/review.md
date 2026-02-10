@@ -145,7 +145,7 @@ Every review must verify license compliance:
 
 ### LICENSE File
 
-**Source of truth:** <https://github.com/hypersec-io/hyperi-licensing/tree/main/github-template>
+**Source of truth:** <https://github.com/hyperi-io/hyperi-licensing/tree/main/github-template>
 
 - [ ] `LICENSE` file exists in project root
 - [ ] Contains FSL-1.1-ALv2 (check for "Functional Source License")

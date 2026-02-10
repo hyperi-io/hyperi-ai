@@ -20,11 +20,11 @@ Get AI-assisted development running in under 5 minutes.
 
 ```bash
 # AI + CI (recommended)
-git submodule add https://github.com/hypersec-io/ci.git ci && ./ci/attach.sh --python-package
-git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
+git submodule add https://github.com/hyperi-io/ci.git ci && ./ci/attach.sh --python-package
+git submodule add https://github.com/hyperi-io/ai.git ai && ./ai/attach.sh --claude
 
 # AI only
-git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
+git submodule add https://github.com/hyperi-io/ai.git ai && ./ai/attach.sh --claude
 ```
 
 ## Step 1: Add AI Submodule
@@ -32,14 +32,14 @@ git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --c
 **AI + CI (recommended):**
 
 ```bash
-git submodule add https://github.com/hypersec-io/ci.git ci && ./ci/attach.sh --python-package
-git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
+git submodule add https://github.com/hyperi-io/ci.git ci && ./ci/attach.sh --python-package
+git submodule add https://github.com/hyperi-io/ai.git ai && ./ai/attach.sh --claude
 ```
 
 **AI only:**
 
 ```bash
-git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --claude
+git submodule add https://github.com/hyperi-io/ai.git ai && ./ai/attach.sh --claude
 ```
 
 **Assistant options:** `--claude`, `--copilot`, `--cursor`, `--gemini`
@@ -48,7 +48,7 @@ git submodule add https://github.com/hypersec-io/ai.git ai && ./ai/attach.sh --c
 
 ```bash
 git init && git branch -m main
-git submodule add https://github.com/hypersec-io/ai.git ai
+git submodule add https://github.com/hyperi-io/ai.git ai
 ./ai/attach.sh --claude
 ```
 

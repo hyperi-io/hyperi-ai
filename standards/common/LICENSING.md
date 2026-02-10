@@ -9,7 +9,7 @@ HyperI licensing policy - FSL-1.1-ALv2 for all projects.
 All licensing files are maintained in the `hyperi-licensing` repository:
 
 ```bash
-git clone https://github.com/hypersec-io/hyperi-licensing.git /projects/hyperi-licensing
+git clone https://github.com/hyperi-io/hyperi-licensing.git /projects/hyperi-licensing
 ```
 
 **Template location:** `hyperi-licensing/github-template/`

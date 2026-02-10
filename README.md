@@ -105,7 +105,7 @@ EXAMPLES:
   /projects/ai/attach-public.sh --path /path/to/public-repo
 
   # Or clone ai/ manually, then run
-  git clone --depth 1 https://github.com/hypersec-io/ai.git ai
+  git clone --depth 1 https://github.com/hyperi-io/ai.git ai
   ./ai/attach-public.sh
 ```
 
@@ -193,8 +193,8 @@ The `ai/` and `ci/` submodules are designed to work together seamlessly:
 
 ```bash
 # Attach both submodules
-git submodule add https://github.com/hypersec-io/ci.git ci
-git submodule add https://github.com/hypersec-io/ai.git ai
+git submodule add https://github.com/hyperi-io/ci.git ci
+git submodule add https://github.com/hyperi-io/ai.git ai
 
 # Run either attach script - both configure both submodules
 ./ci/attach.sh --python-package

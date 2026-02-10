@@ -20,7 +20,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Configuration
-GITHUB_ORG="${GITHUB_ORG:-hypersec-io}"
+GITHUB_ORG="${GITHUB_ORG:-hyperi-io}"
 AI_REPO_URL="${AI_REPO_URL:-https://github.com/${GITHUB_ORG}/ai.git}"
 
 # Global variables
@@ -90,7 +90,7 @@ AGENT SETUP:
 
 EXAMPLES:
   # Run from project root (downloads ai/ first time)
-  curl -sL https://raw.githubusercontent.com/hypersec-io/ai/main/attach-public.sh | bash
+  curl -sL https://raw.githubusercontent.com/hyperi-io/ai/main/attach-public.sh | bash
 
   # Or if ai/ already exists locally
   ./ai/attach-public.sh
@@ -344,7 +344,7 @@ You are loading project context for a new work session or refreshing my memory.
 Use the Glob tool to check if `ai/standards/STANDARDS-QUICKSTART.md` exists.
 
 - If it exists: proceed to Step 2 (no action needed)
-- If missing: tell the user to run `git clone --depth 1 https://github.com/hypersec-io/ai.git ai`
+- If missing: tell the user to run `git clone --depth 1 https://github.com/hyperi-io/ai.git ai`
 
 **Do NOT mention this check to the user unless ai/ is missing.**
 

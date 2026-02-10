@@ -35,7 +35,7 @@ ai/
 ### Setup
 
 ```bash
-git clone https://github.com/hypersec-io/ai.git
+git clone https://github.com/hyperi-io/ai.git
 cd ai
 ```
 
@@ -288,7 +288,7 @@ Include:
 
 ## Getting Help
 
-- GitHub Issues: <https://github.com/hypersec-io/ai/issues>
+- GitHub Issues: <https://github.com/hyperi-io/ai/issues>
 - Slack: #standards (HyperI internal)
 
 ---

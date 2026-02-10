@@ -29,7 +29,7 @@ Not everything needs maximum security. Here's how we think about the risk-reward
 | Component | Algorithm | Notes |
 | --------- | --------- | ----- |
 | SSH keys | Ed25519 | Fast, secure, universally supported |
-| TLS certificates | **ECDSA P-384** | What we actually use in hypersec-infra-devex |
+| TLS certificates | **ECDSA P-384** | What we actually use in hyperi-infra |
 | CA certificates | ECDSA P-384 | Long-lived certs get stronger curves |
 | Symmetric | AES-256-GCM | TLS 1.3 default |
 | Hashing | SHA-384 | Matches P-384 security level |
@@ -38,7 +38,7 @@ Not everything needs maximum security. Here's how we think about the risk-reward
 **Why P-384 for prod:**
 
 - 192-bit security level vs P-256's 128-bit
-- Already proven in our stack (hypersec-infra-devex runs P-384 everywhere)
+- Already proven in our stack (hyperi-infra runs P-384 everywhere)
 - CNSA 2.0 approved for national security systems
 - Future-proofs against classical cryptanalysis advances
 - Let's Encrypt, OpenBao, OpenVPN all handle P-384 well
@@ -1920,8 +1920,8 @@ let config = create_tls_config(TlsProfile::Prod)?;
 
 For implementation details, usage patterns, and configuration options:
 
-- **Python:** See [hyperi-pylib/docs/PKI.md](https://github.com/hypersec-io/hyperi-pylib/blob/main/docs/PKI.md)
-- **Rust:** See [hyperi-rustlib/docs/PKI.md](https://github.com/hypersec-io/hyperi-rustlib/blob/main/docs/PKI.md)
+- **Python:** See [hyperi-pylib/docs/PKI.md](https://github.com/hyperi-io/hyperi-pylib/blob/main/docs/PKI.md)
+- **Rust:** See [hyperi-rustlib/docs/PKI.md](https://github.com/hyperi-io/hyperi-rustlib/blob/main/docs/PKI.md)
 
 ### What the Libraries Provide
 
