@@ -1,3 +1,10 @@
+## [1.11.5](https://github.com/hyperi-io/ai/compare/1.11.4...1.11.5) (2026-02-16)
+
+
+### Bug Fixes
+
+* auto-update ai and ci submodules on /load, respect pinned mode ([27ce27a](https://github.com/hyperi-io/ai/commit/27ce27aa20bb7fa4d1946efa32bb337c4e443063))
+
 ## [1.11.4](https://github.com/hyperi-io/ai/compare/1.11.3...1.11.4) (2026-02-10)
 
 
