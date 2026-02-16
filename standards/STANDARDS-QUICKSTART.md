@@ -1439,8 +1439,9 @@ After listing files, use Read tool on specific paths.
 2. Read TODO.md (current tasks)
 3. Read STANDARDS-QUICKSTART.md (this file)
 4. Read relevant language files from `standards/languages/`
-5. Check git status and recent commits
-6. Be ready - no greetings, wait for first task
+5. Update `ai` and `ci` submodules (if attached and not pinned via `update=none`)
+6. Check git status and recent commits
+7. Be ready - no greetings, wait for first task
 
 ### /save (Checkpoint Progress)
 

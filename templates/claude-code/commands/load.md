@@ -82,25 +82,47 @@ Glob for config files in project root (not subdirs, not `.venv/`, not `node_modu
 
 ---
 
-## Step 8: Sync and Ready
+## Step 8: Update Submodules
 
-1. **Update `ai` submodule** (only if `ai/.git` exists):
+Update `ai` and `ci` submodules if they are attached and auto-update is enabled.
+
+The update mode is stored in `.gitmodules`:
+
+- `update = rebase` → auto-update from upstream (default)
+- `update = none` → pinned, skip update
+
+### For each submodule (`ai`, then `ci`)
+
+1. Check if `<name>/.git` exists (submodule is attached)
+2. Read the update mode:
 
    ```bash
-   git submodule update --remote ai 2>/dev/null || true
+   git config -f .gitmodules submodule.<name>.update 2>/dev/null
    ```
 
-   Skip silently if no submodule or not a git repo.
+3. **If `rebase` (or unset):** Update from upstream and report the result:
 
-2. Sync with remote:
+   ```bash
+   git submodule update --remote <name> 2>/dev/null || true
+   ```
+
+4. **If `none`:** Skip — the project has pinned this submodule. Note it silently.
+
+Report what happened for each (e.g. "ai: updated", "ci: pinned, skipped").
+
+---
+
+## Step 9: Sync and Ready
+
+1. Sync with remote:
 
    ```bash
    git pull --rebase 2>/dev/null || true
    ```
 
-3. Check git status: `git status --short` and `git log --oneline -5`
+2. Check git status: `git status --short` and `git log --oneline -5`
 
-4. Be ready - no greetings, wait for the user's first task
+3. Be ready - no greetings, wait for the user's first task
 
 ---
 
