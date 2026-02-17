@@ -1,3 +1,10 @@
+## [1.11.6](https://github.com/hyperi-io/ai/compare/1.11.5...1.11.6) (2026-02-17)
+
+
+### Bug Fixes
+
+* avoid chained bash commands in /load to prevent permission prompts ([bf181d7](https://github.com/hyperi-io/ai/commit/bf181d721259e6af54ed6e43380aba231f9776fd))
+
 ## [1.11.5](https://github.com/hyperi-io/ai/compare/1.11.4...1.11.5) (2026-02-16)
 
 
