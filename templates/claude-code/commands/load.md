@@ -93,20 +93,22 @@ The update mode is stored in `.gitmodules`:
 
 ### For each submodule (`ai`, then `ci`)
 
-1. Check if `<name>/.git` exists (submodule is attached)
-2. Read the update mode:
+1. Check if `<name>/.git` exists — use `ls -d <name>/.git` (one call per submodule,
+   do NOT chain commands)
+2. If the submodule is not attached (file not found), skip it
+3. Read the update mode:
 
    ```bash
-   git config -f .gitmodules submodule.<name>.update 2>/dev/null
+   git config -f .gitmodules submodule.<name>.update
    ```
 
-3. **If `rebase` (or unset):** Update from upstream and report the result:
+4. **If `rebase` (or unset):** Update from upstream:
 
    ```bash
-   git submodule update --remote <name> 2>/dev/null || true
+   git submodule update --remote <name>
    ```
 
-4. **If `none`:** Skip — the project has pinned this submodule. Note it silently.
+5. **If `none`:** Skip — the project has pinned this submodule. Note it silently.
 
 Report what happened for each (e.g. "ai: updated", "ci: pinned, skipped").
 
@@ -117,12 +119,27 @@ Report what happened for each (e.g. "ai: updated", "ci: pinned, skipped").
 1. Sync with remote:
 
    ```bash
-   git pull --rebase 2>/dev/null || true
+   git pull --rebase
    ```
 
-2. Check git status: `git status --short` and `git log --oneline -5`
+2. Check git status and recent commits — run as **separate** Bash calls:
+
+   ```bash
+   git status --short
+   ```
+
+   ```bash
+   git log --oneline -5
+   ```
 
 3. Be ready - no greetings, wait for the user's first task
+
+---
+
+**IMPORTANT — Bash permissions:** Run every bash command as its own individual
+Bash tool call. Do NOT chain commands with `&&`, `||`, or `;` — these trigger
+permission prompts. Single commands like `git status --short` match allowed
+patterns and run without approval.
 
 ---
 
