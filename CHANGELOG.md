@@ -1,3 +1,10 @@
+## [1.11.7](https://github.com/hyperi-io/ai/compare/1.11.6...1.11.7) (2026-02-18)
+
+
+### Bug Fixes
+
+* allow git submodule update without permission prompt ([191221b](https://github.com/hyperi-io/ai/commit/191221b077e203600b2bcae31ce7961dfe7837cb))
+
 ## [1.11.6](https://github.com/hyperi-io/ai/compare/1.11.5...1.11.6) (2026-02-17)
 
 
