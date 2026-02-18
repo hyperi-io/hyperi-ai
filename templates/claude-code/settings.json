@@ -95,6 +95,7 @@
       "Bash(export:*)",
       "Bash(source:*)",
       "Bash(date:*)",
+      "Bash(git submodule update:*)",
       "Bash(./ci/bootstrap:*)",
       "Bash(./ci/run:*)",
       "Bash(./ci/ai:*)",
