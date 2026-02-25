@@ -72,7 +72,17 @@ Run `git status` and `git diff --stat`.
 
 If found, offer to clean it up.
 
-### 5. Summary for Developer
+### 5. Commit and Push Session State
+
+After updating TODO.md and STATE.md, commit and push:
+
+1. Stage only `TODO.md` and `STATE.md`
+2. Commit with `chore: save session state`
+3. `git pull --rebase` then `git push`
+
+This ensures session state is persisted to the remote before the session ends.
+
+### 6. Summary for Developer
 
 Provide concise summary:
 
