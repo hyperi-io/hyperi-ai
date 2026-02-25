@@ -74,13 +74,14 @@ If found, offer to clean it up.
 
 ### 5. Commit and Push Session State
 
-After updating TODO.md and STATE.md, commit and push:
+**Only if TODO.md and STATE.md are NOT in `.gitignore`:**
 
-1. Stage only `TODO.md` and `STATE.md`
-2. Commit with `chore: save session state`
-3. `git pull --rebase` then `git push`
+1. Check: `git check-ignore TODO.md STATE.md 2>/dev/null`
+2. Stage whichever files are tracked (not ignored)
+3. Commit with `chore: save session state`
+4. `git pull --rebase` then `git push`
 
-This ensures session state is persisted to the remote before the session ends.
+Skip this step entirely if both files are gitignored.
 
 ### 6. Summary for Developer
 
