@@ -1,3 +1,11 @@
+## [1.11.8](https://github.com/hyperi-io/ai/compare/1.11.7...1.11.8) (2026-02-25)
+
+
+### Bug Fixes
+
+* add session state commit and push step to /save command ([e666fc9](https://github.com/hyperi-io/ai/commit/e666fc9df7259aea8bf1f2d33ce828408b7572a8))
+* skip session state commit when TODO.md/STATE.md are gitignored ([6c94a70](https://github.com/hyperi-io/ai/commit/6c94a7029aee5bdb5423868d8bcf9a4d4f11f156))
+
 ## [1.11.7](https://github.com/hyperi-io/ai/compare/1.11.6...1.11.7) (2026-02-18)
 
 
