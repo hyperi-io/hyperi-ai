@@ -37,7 +37,7 @@ files than w/ anything you've used in OLTP.
 - [Materialised Views and Projections](#materialised-views-and-projections) — incremental, refreshable
 - [New Features (v24.x — v26.x)](#new-features-v24x--v26x) — JSON type, text index
 - [Use Case Patterns](#use-case-patterns) — data warehouse, time-series, logs
-- [DFE (Data Flow Engine)](#dfe-data-flow-engine) — common header, dfe-loader, dfe-receiver, Arrow pipeline
+- [DFE (Data Fusion Engine)](#dfe-data-fusion-engine) — common header, dfe-loader, dfe-receiver, Arrow pipeline
 - [For AI Assistants: Stop Making These Mistakes](#for-ai-assistants-stop-making-these-mistakes)
 - [Other Useful Reads](#other-useful-reads)
 
@@ -2004,7 +2004,7 @@ ORDER BY level;
 
 ---
 
-## DFE (Data Flow Engine)
+## DFE (Data Fusion Engine)
 
 This section covers HyperI's DFE pipeline — how data flows from source systems
 into ClickHouse via `dfe-receiver` and `dfe-loader`. The generic ClickHouse advice
