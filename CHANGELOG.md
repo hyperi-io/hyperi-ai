@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/hyperi-io/ai/compare/1.12.0...1.12.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* DT nag lines ([0de69a9](https://github.com/hyperi-io/ai/commit/0de69a9eea6366ffaec21a170ab271eb01872642))
+
 ## [1.12.0](https://github.com/hyperi-io/ai/compare/1.11.8...1.12.0) (2026-02-27)
 
 
