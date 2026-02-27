@@ -1,3 +1,10 @@
+## [1.12.0](https://github.com/hyperi-io/ai/compare/1.11.8...1.12.0) (2026-02-27)
+
+
+### Features
+
+* add ClickHouse SQL standards with 35 AI mistake rules ([5ef18b7](https://github.com/hyperi-io/ai/commit/5ef18b7099f36141158b821f1a98f2eda467e19b))
+
 ## [1.11.8](https://github.com/hyperi-io/ai/compare/1.11.7...1.11.8) (2026-02-25)
 
 
