@@ -103,7 +103,8 @@ standards/
 │   ├── GOLANG.md
 │   ├── TYPESCRIPT.md
 │   ├── RUST.md
-│   └── BASH.md
+│   ├── BASH.md
+│   └── SQL-CLICKHOUSE.md
 │
 └── infrastructure/ (infrastructure standards)
     ├── DOCKER.md (Dockerfile, multi-stage, health checks)

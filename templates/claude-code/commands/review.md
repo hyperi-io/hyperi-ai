@@ -15,6 +15,7 @@ Check for config files in project root to determine which language standards to 
 | `go.mod` | Go |
 | `package.json`, `tsconfig.json` | TypeScript |
 | `CMakeLists.txt`, `*.cpp`, `*.hpp` | C++ |
+| `clickhouse-server.xml`, `.sql` with `ENGINE = *MergeTree` | ClickHouse SQL |
 
 **Important:** A project may use multiple languages. Load ALL that apply.
 
@@ -43,6 +44,7 @@ Load in this order:
 | TypeScript | `ai/standards/languages/TYPESCRIPT.md` |
 | C++ | `ai/standards/languages/CPP.md` |
 | Bash | `ai/standards/languages/BASH.md` |
+| ClickHouse SQL | `ai/standards/languages/SQL-CLICKHOUSE.md` |
 
 ### Conditional
 

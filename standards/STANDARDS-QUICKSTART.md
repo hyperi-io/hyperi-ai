@@ -33,7 +33,7 @@ GitHub org has been renamed from `hypersec-io` to `hyperi-io`.
 Core coding standards for all HyperI projects. For detailed guidance, see:
 
 - **Languages:** `$AI_ROOT/standards/languages/`
-  (Python, Go, TypeScript, Rust, Bash)
+  (Python, Go, TypeScript, Rust, Bash, ClickHouse SQL)
 - **Infrastructure:** `$AI_ROOT/standards/infrastructure/`
   (K8s/HELM, Terraform, Ansible)
 
@@ -1158,6 +1158,7 @@ Path: $PROJECT_ROOT (not $AI_ROOT)
 | `Cargo.toml`, `Cargo.lock` | Rust | `RUST.md` |
 | `CMakeLists.txt`, `*.cpp`, `*.hpp`, `*.cc` | C++ | `CPP.md` |
 | `*.sh` scripts only (no other lang files) | Bash | `BASH.md` |
+| `clickhouse-server.xml`, `clickhouse-client.xml`, `.sql` with `ENGINE = *MergeTree` | ClickHouse SQL | `SQL-CLICKHOUSE.md` |
 
 ### Step 2: Verify by Reading Config File
 
@@ -1168,6 +1169,7 @@ Path: $PROJECT_ROOT (not $AI_ROOT)
 - TypeScript → Read `tsconfig.json` or `package.json`
 - Rust → Read `Cargo.toml`
 - C++ → Read `CMakeLists.txt` or check for `.cpp`/`.hpp` files
+- ClickHouse SQL → Look for `clickhouse-server.xml`, `clickhouse-client.xml`, or `.sql` files containing `ENGINE = MergeTree` patterns
 
 ### Step 3: Load the ENTIRE Language Standards File
 
@@ -1180,6 +1182,7 @@ $AI_ROOT/standards/languages/TYPESCRIPT.md
 $AI_ROOT/standards/languages/RUST.md
 $AI_ROOT/standards/languages/CPP.md
 $AI_ROOT/standards/languages/BASH.md
+$AI_ROOT/standards/languages/SQL-CLICKHOUSE.md
 ```
 
 ### Step 4: Check for Infrastructure

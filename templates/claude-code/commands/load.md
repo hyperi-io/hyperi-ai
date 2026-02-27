@@ -59,6 +59,7 @@ Glob for config files in project root (not subdirs, not `.venv/`, not `node_modu
 | `Cargo.toml` | `ai/standards/languages/RUST.md` |
 | `CMakeLists.txt`, `*.cpp`, `*.hpp` | `ai/standards/languages/CPP.md` |
 | `*.sh` only (no other lang) | `ai/standards/languages/BASH.md` |
+| `clickhouse-server.xml`, `.sql` with `ENGINE = *MergeTree` | `ai/standards/languages/SQL-CLICKHOUSE.md` |
 
 ---
 

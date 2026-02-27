@@ -290,6 +290,16 @@ deploy_skills() {
         echo "  Detected: Bash"
     fi
 
+    # ClickHouse SQL
+    if [ -f "$PROJECT_ROOT/clickhouse-server.xml" ] || \
+       [ -f "$PROJECT_ROOT/clickhouse-client.xml" ] || \
+       [ -f "$PROJECT_ROOT/config/clickhouse-server.xml" ] || \
+       (find "$PROJECT_ROOT" -maxdepth 2 -name "*.sql" -type f 2>/dev/null | \
+        xargs grep -l 'ENGINE.*MergeTree' 2>/dev/null | grep -q .); then
+        create_skill "clickhouse-sql" "$standards_dir/languages/SQL-CLICKHOUSE.md"
+        echo "  Detected: ClickHouse SQL"
+    fi
+
     # Detect infrastructure
     # Docker
     if [ -f "$PROJECT_ROOT/Dockerfile" ] || [ -f "$PROJECT_ROOT/docker-compose.yaml" ] || \
