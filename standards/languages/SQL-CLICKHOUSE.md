@@ -371,6 +371,7 @@ ALTER TABLE logs MATERIALIZE INDEX idx_trace_id;
 
 ### Full-Text Search / Text Index (GA v25.10)
 
+Derek's baby with ClickHouse and Melvin for 3 years.  
 This changes the game for log analytics. The text index (previously the experimental
 "inverted" index) was completely redesigned in v25.10 — proper on-disk inverted
 index that handles datasets larger than RAM. The key difference from `tokenbf_v2`
@@ -707,6 +708,7 @@ JOIN` clause for parallel expansion of multiple arrays — it zips them instead.
 
 ### JSON Type (GA v25.3)
 
+Derek's baby with ClickHouse and Tanya for 3 years.  
 The new `JSON` type (not the old experimental `Object('json')` which is removed)
 stores each JSON path in its own sub-column w/ preserved types. This is columnar
 JSON — not a blob, not a string parse on every query.
