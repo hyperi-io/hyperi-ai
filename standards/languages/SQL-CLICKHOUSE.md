@@ -1417,7 +1417,7 @@ your approach (TTL, partitioned DROP, or redesign the table).
 
 ```sql
 -- Lightweight delete — fast, non-blocking
-DELETE FROM dfe.events WHERE _uuid = '01936f1e-...-abcd1234';
+DELETE FROM dfe.default WHERE _uuid = '01936f1e-...-abcd1234';
 
 -- Check for pending deletes
 SELECT * FROM system.mutations WHERE is_done = 0;
@@ -1431,11 +1431,11 @@ ReplacingMergeTree won't work.
 
 ```sql
 -- ❌ Heavy mutation — rewrites all parts containing matching rows
-ALTER TABLE dfe.events UPDATE severity = 'archived'
+ALTER TABLE dfe.default UPDATE severity = 'archived'
     WHERE _timestamp_load < '2023-01-01';
 
 -- ❌ Heavy mutation — rewrites parts
-ALTER TABLE dfe.events DELETE WHERE _org_id = '';
+ALTER TABLE dfe.default DELETE WHERE _org_id = '';
 
 -- Monitor mutation progress
 SELECT * FROM system.mutations
@@ -1538,7 +1538,7 @@ SELECT
     _org_id,
     count() AS event_count,
     uniqState(source_ip) AS unique_sources  -- -State suffix for aggregate storage
-FROM dfe.events
+FROM dfe.default
 GROUP BY hour, _org_id;
 
 -- Step 3: Backfill from existing data (after MV creation)
@@ -1548,7 +1548,7 @@ SELECT
     _org_id,
     count() AS event_count,
     uniqState(source_ip) AS unique_sources
-FROM dfe.events
+FROM dfe.default
 GROUP BY hour, _org_id;
 
 -- Step 4: Query with -Merge suffix
@@ -1595,7 +1595,7 @@ INSERT INTO agg SELECT
     toDate(_timestamp_load) AS date,
     uniqState(source_ip),
     sumState(bytes_transferred)
-FROM dfe.events GROUP BY date;
+FROM dfe.default GROUP BY date;
 
 -- Read with -Merge
 SELECT date, uniqMerge(user_count), sumMerge(total)
@@ -1616,7 +1616,7 @@ AS SELECT
     _org_id,
     count() AS total_events,
     uniqExact(source_ip) AS unique_sources
-FROM dfe.events
+FROM dfe.default
 WHERE _timestamp_load >= today() - 7
 GROUP BY date, _org_id;
 
@@ -1633,7 +1633,7 @@ auto-selects the best one at query time. No query rewriting, no separate tables 
 manage. The tradeoff: extra storage and write amplification.
 
 ```sql
-CREATE TABLE dfe.events (
+CREATE TABLE dfe.default (
     _timestamp DateTime64(3, 'UTC'),
     _timestamp_load DateTime64(3, 'UTC'),
     _org_id LowCardinality(String),
@@ -1656,8 +1656,8 @@ CREATE TABLE dfe.events (
 ORDER BY (_org_id, severity, _timestamp_load);
 
 -- Backfill projections for existing data
-ALTER TABLE dfe.events MATERIALIZE PROJECTION by_source_ip;
-ALTER TABLE dfe.events MATERIALIZE PROJECTION daily_counts;
+ALTER TABLE dfe.default MATERIALIZE PROJECTION by_source_ip;
+ALTER TABLE dfe.default MATERIALIZE PROJECTION daily_counts;
 ```
 
 **Projections vs Materialised Views:**
@@ -1735,7 +1735,7 @@ queries on wide tables.
 ```sql
 -- Lazy materialisation kicks in here:
 SELECT source_ip, rule_name, severity, _json
-FROM dfe.events
+FROM dfe.default
 WHERE _org_id = 'acme'
 ORDER BY _timestamp_load DESC
 LIMIT 100;
@@ -2344,7 +2344,7 @@ WHERE _org_id = 'acme'
   AND _timestamp_load >= '2026-01-01';
 
 -- Stage 2: Break out hot paths as you learn what's queried heavily
-CREATE TABLE dfe.events (
+CREATE TABLE dfe.default (
     _timestamp_load DateTime64(3) DEFAULT now64(3) CODEC(Delta, ZSTD(1)),
     _timestamp DateTime64(3) CODEC(Delta, ZSTD(1)),
     _org_id LowCardinality(String) CODEC(ZSTD(1)),
@@ -2407,10 +2407,10 @@ count. Name your columns.
 
 ```sql
 -- ❌
-SELECT * FROM dfe.events WHERE _timestamp_load > now() - INTERVAL 1 HOUR;
+SELECT * FROM dfe.default WHERE _timestamp_load > now() - INTERVAL 1 HOUR;
 -- ✅
 SELECT severity, source_ip, _timestamp_load
-FROM dfe.events WHERE _timestamp_load > now() - INTERVAL 1 HOUR;
+FROM dfe.default WHERE _timestamp_load > now() - INTERVAL 1 HOUR;
 ```
 
 ### Do Not Use CTEs Expecting Materialisation
@@ -2420,12 +2420,12 @@ scans. We've seen this turn a 500GB scan into a TB of I/O.
 
 ```sql
 -- ❌ (2 references = 2 full scans)
-WITH by_src AS (SELECT source_ip, count() AS hits FROM dfe.events GROUP BY source_ip)
+WITH by_src AS (SELECT source_ip, count() AS hits FROM dfe.default GROUP BY source_ip)
 SELECT * FROM by_src WHERE hits > 1000
 UNION ALL SELECT * FROM by_src WHERE hits <= 1000;
 -- ✅
 CREATE TEMPORARY TABLE tmp AS
-    SELECT source_ip, count() AS hits FROM dfe.events GROUP BY source_ip;
+    SELECT source_ip, count() AS hits FROM dfe.default GROUP BY source_ip;
 SELECT * FROM tmp WHERE hits > 1000
 UNION ALL SELECT * FROM tmp WHERE hits <= 1000;
 ```
@@ -2448,9 +2448,9 @@ On 1.8B rows: `DISTINCT` = 5.8s. `GROUP BY` = 1.3s. 4.5x faster.
 
 ```sql
 -- ❌
-SELECT DISTINCT source_ip FROM dfe.events;
+SELECT DISTINCT source_ip FROM dfe.default;
 -- ✅
-SELECT source_ip FROM dfe.events GROUP BY source_ip;
+SELECT source_ip FROM dfe.default GROUP BY source_ip;
 ```
 
 ### Do Not Use `Nullable` Columns by Default
@@ -2566,9 +2566,9 @@ and burns massive I/O. Only use for specific needs — and target partitions.
 
 ```sql
 -- ❌ (blocks for hours)
-OPTIMIZE TABLE dfe.events FINAL;
+OPTIMIZE TABLE dfe.default FINAL;
 -- ✅ (scoped to partition)
-OPTIMIZE TABLE dfe.events PARTITION '202601' FINAL;
+OPTIMIZE TABLE dfe.default PARTITION '202601' FINAL;
 ```
 
 ### Do Not Assume `CASE` / `if()` / `multiIf()` Short-Circuits
@@ -2579,13 +2579,13 @@ not row-by-row. Your "safe" division guard still crashes w/ `Division by zero`.
 ```sql
 -- ❌ (crashes — ELSE branch evaluated regardless of WHEN)
 SELECT CASE WHEN total = 0 THEN 0 ELSE hits / total END AS rate
-FROM dfe.events;
+FROM dfe.default;
 -- ❌ (same crash w/ if())
-SELECT if(total != 0, hits / total, 0) FROM dfe.events;
+SELECT if(total != 0, hits / total, 0) FROM dfe.default;
 -- ✅ (nullIf on the denominator — always safe)
-SELECT hits / nullIf(total, 0) AS rate FROM dfe.events;
+SELECT hits / nullIf(total, 0) AS rate FROM dfe.default;
 -- ✅ (OrZero variants — purpose-built for this)
-SELECT intDivOrZero(hits, total) AS rate FROM dfe.events;
+SELECT intDivOrZero(hits, total) AS rate FROM dfe.default;
 ```
 
 Open since 2017 ([#1562](https://github.com/ClickHouse/ClickHouse/issues/1562)).
@@ -2601,9 +2601,9 @@ zero overhead, but returns garbage if NULLs are actually present.
 
 ```sql
 -- ❌ (PostgreSQL habit — 3.4x slower)
-SELECT coalesce(latency_ms, 0) FROM dfe.events;
+SELECT coalesce(latency_ms, 0) FROM dfe.default;
 -- ✅
-SELECT ifNull(latency_ms, 0) FROM dfe.events;
+SELECT ifNull(latency_ms, 0) FROM dfe.default;
 ```
 
 ### Do Not Expect Materialised Views to Backfill
@@ -2617,15 +2617,15 @@ exists but is discouraged — it can miss concurrent inserts and OOM on large ta
 CREATE MATERIALIZED VIEW hourly_stats
 ENGINE = AggregatingMergeTree() ORDER BY hour
 AS SELECT toStartOfHour(_timestamp_load) AS hour, countState() AS cnt
-FROM dfe.events GROUP BY hour;
+FROM dfe.default GROUP BY hour;
 -- ✅ (create MV, then manually backfill in chunks)
 CREATE MATERIALIZED VIEW hourly_stats
 ENGINE = AggregatingMergeTree() ORDER BY hour
 AS SELECT toStartOfHour(_timestamp_load) AS hour, countState() AS cnt
-FROM dfe.events GROUP BY hour;
+FROM dfe.default GROUP BY hour;
 INSERT INTO hourly_stats
 SELECT toStartOfHour(_timestamp_load) AS hour, countState() AS cnt
-FROM dfe.events
+FROM dfe.default
 WHERE _timestamp_load >= '2025-01-01' AND _timestamp_load < '2025-02-01'
 GROUP BY hour;
 -- repeat for each month
@@ -2642,11 +2642,11 @@ you don't notice, the worse it gets.
 -- ❌ (plain aggregates — type mismatch or silent corruption)
 INSERT INTO daily_stats
 SELECT toDate(_timestamp_load) AS day, count() AS cnt, avg(latency_ms) AS avg_lat
-FROM dfe.events GROUP BY day;
+FROM dfe.default GROUP BY day;
 -- ✅ (insert w/ -State, query w/ -Merge — GROUP BY still required)
 INSERT INTO daily_stats
 SELECT toDate(_timestamp_load) AS day, countState() AS cnt, avgState(latency_ms) AS avg_lat
-FROM dfe.events GROUP BY day;
+FROM dfe.default GROUP BY day;
 
 SELECT day, countMerge(cnt) AS cnt, avgMerge(avg_lat) AS avg_lat
 FROM daily_stats GROUP BY day;
@@ -2703,10 +2703,10 @@ Keyset pagination — constant time regardless of page depth.
 ```sql
 -- ❌ (O(n) — gets worse w/ every page)
 SELECT _uuid, _timestamp_load, severity
-FROM dfe.events ORDER BY _timestamp_load DESC LIMIT 50 OFFSET 2450;
+FROM dfe.default ORDER BY _timestamp_load DESC LIMIT 50 OFFSET 2450;
 -- ✅ (keyset — pass last seen values from previous page)
 SELECT _uuid, _timestamp_load, severity
-FROM dfe.events
+FROM dfe.default
 WHERE (_timestamp_load, _uuid) < ('2026-02-01 12:00:00', last_seen_uuid)
 ORDER BY _timestamp_load DESC, _uuid DESC
 LIMIT 50;
@@ -2736,9 +2736,9 @@ distinct values = 20x slower than `uniq()` and can OOM.
 
 ```sql
 -- ❌ (stores every distinct value in memory)
-SELECT COUNT(DISTINCT source_ip) FROM dfe.events;
+SELECT COUNT(DISTINCT source_ip) FROM dfe.default;
 -- ✅ (HyperLogLog — 0.81% error, 20x faster, constant memory)
-SELECT uniq(source_ip) FROM dfe.events;
+SELECT uniq(source_ip) FROM dfe.default;
 -- ✅ (or change the default)
 SET count_distinct_implementation = 'uniq';
 ```
@@ -2768,11 +2768,11 @@ or zeros — no error, no warning. Breaks every downstream `isNull()` check.
 
 ```sql
 -- ❌ (NULLs silently become '' — data loss)
-SELECT CAST(nullable_col AS String) FROM dfe.events;
+SELECT CAST(nullable_col AS String) FROM dfe.default;
 -- ✅ (toString preserves Nullable)
-SELECT toString(nullable_col) FROM dfe.events;
+SELECT toString(nullable_col) FROM dfe.default;
 -- ✅ (explicit Nullable in CAST if you must use CAST)
-SELECT CAST(nullable_col AS Nullable(String)) FROM dfe.events;
+SELECT CAST(nullable_col AS Nullable(String)) FROM dfe.default;
 ```
 
 ### Do Not Use `ALTER TABLE UPDATE/DELETE` as Routine Operations
@@ -2783,13 +2783,13 @@ Running them per-request = "Too many mutations" error = cluster instability.
 
 ```sql
 -- ❌ (heavyweight — rewrites full parts, blocks merges)
-ALTER TABLE dfe.events UPDATE status = 'processed' WHERE _uuid = '...';
+ALTER TABLE dfe.default UPDATE status = 'processed' WHERE _uuid = '...';
 -- ✅ (ReplacingMergeTree — insert new version, old one deduped on merge)
-INSERT INTO dfe.events (_uuid, status, version) VALUES ('...', 'processed', now());
+INSERT INTO dfe.default (_uuid, status, version) VALUES ('...', 'processed', now());
 -- ✅ (TTL for time-based cleanup — automatic, zero maintenance)
-ALTER TABLE dfe.events MODIFY TTL _timestamp_load + INTERVAL 1 YEAR DELETE;
+ALTER TABLE dfe.default MODIFY TTL _timestamp_load + INTERVAL 1 YEAR DELETE;
 -- ✅ (lightweight DELETE for GDPR — batch weekly, not per-request)
-DELETE FROM dfe.events WHERE user_id IN (SELECT user_id FROM deletion_queue);
+DELETE FROM dfe.default WHERE user_id IN (SELECT user_id FROM deletion_queue);
 ```
 
 ### Do Not Forget `ON CLUSTER` for Replicated Tables
@@ -2799,9 +2799,9 @@ replicas stay unchanged — schema drift, intermittent failures, fun debugging.
 
 ```sql
 -- ❌ (only changes one node)
-ALTER TABLE dfe.events ADD COLUMN new_col String DEFAULT '';
+ALTER TABLE dfe.default ADD COLUMN new_col String DEFAULT '';
 -- ✅ (propagates to all replicas)
-ALTER TABLE dfe.events ON CLUSTER '{cluster}' ADD COLUMN new_col String DEFAULT '';
+ALTER TABLE dfe.default ON CLUSTER '{cluster}' ADD COLUMN new_col String DEFAULT '';
 ```
 
 ### Do Not Forget `GLOBAL` in Distributed Subqueries
@@ -2829,12 +2829,12 @@ Rewrite as JOINs — always works, always stable.
 ```sql
 -- ❌ (Beta — can crash or give wrong results on distributed)
 SELECT user_id, amount,
-    (SELECT max(amount) FROM dfe.events e2 WHERE e2._org_id = e._org_id) AS max_amount
-FROM dfe.events e;
+    (SELECT max(amount) FROM dfe.default e2 WHERE e2._org_id = e._org_id) AS max_amount
+FROM dfe.default e;
 -- ✅ (rewrite as JOIN)
 SELECT e.user_id, e.amount, m.max_amount
-FROM dfe.events e
-JOIN (SELECT _org_id, max(amount) AS max_amount FROM dfe.events GROUP BY _org_id) m
+FROM dfe.default e
+JOIN (SELECT _org_id, max(amount) AS max_amount FROM dfe.default GROUP BY _org_id) m
   ON e._org_id = m._org_id;
 ```
 
