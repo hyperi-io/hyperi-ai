@@ -9,8 +9,7 @@ on:
 jobs:
   test:
     name: Run Bats Tests
-    runs-on: ubuntu-latest
-
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
