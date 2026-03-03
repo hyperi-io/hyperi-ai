@@ -148,46 +148,36 @@ deploy_commands() {
         exit $EXIT_ERROR
     fi
 
-    # Calculate relative paths
-    local rel_load rel_save
-    rel_load="$(relative_path "$dst_dir" "$src_dir/load.md")"
-    rel_save="$(relative_path "$dst_dir" "$src_dir/save.md")"
-
-    local load_dst="$dst_dir/load.md"
-    local save_dst="$dst_dir/save.md"
+    # Commands to deploy (add new commands here)
+    local commands="load save review simplify"
 
     if [ "$DRY_RUN" = "true" ]; then
-        if [ ! -e "$load_dst" ] || [ "$FORCE" = "true" ]; then
-            echo "Would symlink: $load_dst -> $rel_load"
-        else
-            echo "Would skip (preserving existing): $load_dst"
-        fi
-        if [ ! -e "$save_dst" ] || [ "$FORCE" = "true" ]; then
-            echo "Would symlink: $save_dst -> $rel_save"
-        else
-            echo "Would skip (preserving existing): $save_dst"
-        fi
+        for cmd in $commands; do
+            local dst="$dst_dir/${cmd}.md"
+            if [ ! -e "$dst" ] || [ "$FORCE" = "true" ]; then
+                echo "Would symlink: $dst -> .../${cmd}.md"
+            else
+                echo "Would skip (preserving existing): $dst"
+            fi
+        done
         [ -e "$dst_dir/start.md" ] && echo "Would remove: $dst_dir/start.md (deprecated)"
         return 0
     fi
 
-    # Deploy load.md
-    if [ ! -e "$load_dst" ] || [ "$FORCE" = "true" ]; then
-        [ -e "$load_dst" ] || [ -L "$load_dst" ] && rm -f "$load_dst"
-        ln -s "$rel_load" "$load_dst"
-        agent_log_success "Symlinked: $load_dst -> $rel_load"
-    else
-        agent_log_info "Skipped (preserving existing): $load_dst"
-    fi
+    for cmd in $commands; do
+        local src="$src_dir/${cmd}.md"
+        local dst="$dst_dir/${cmd}.md"
+        local rel
+        rel="$(relative_path "$dst_dir" "$src")"
 
-    # Deploy save.md
-    if [ ! -e "$save_dst" ] || [ "$FORCE" = "true" ]; then
-        [ -e "$save_dst" ] || [ -L "$save_dst" ] && rm -f "$save_dst"
-        ln -s "$rel_save" "$save_dst"
-        agent_log_success "Symlinked: $save_dst -> $rel_save"
-    else
-        agent_log_info "Skipped (preserving existing): $save_dst"
-    fi
+        if [ ! -e "$dst" ] || [ "$FORCE" = "true" ]; then
+            [ -e "$dst" ] || [ -L "$dst" ] && rm -f "$dst"
+            ln -s "$rel" "$dst"
+            agent_log_success "Symlinked: $dst -> $rel"
+        else
+            agent_log_info "Skipped (preserving existing): $dst"
+        fi
+    done
 
     # Remove deprecated start.md if it exists
     if [ -e "$dst_dir/start.md" ]; then
@@ -451,8 +441,10 @@ print_summary() {
         echo ""
         echo "Configuration (symlinked to ai/templates/claude-code/):"
         echo "  .claude/settings.json     -> settings.json"
-        echo "  .claude/commands/load.md  -> commands/load.md"
-        echo "  .claude/commands/save.md  -> commands/save.md"
+        echo "  .claude/commands/load.md      -> commands/load.md"
+        echo "  .claude/commands/save.md      -> commands/save.md"
+        echo "  .claude/commands/review.md    -> commands/review.md"
+        echo "  .claude/commands/simplify.md  -> commands/simplify.md"
         echo "  .claude/skills/           -> skills/ (auto-detected)"
         echo "  CLAUDE.md -> STATE.md"
         echo ""
