@@ -86,7 +86,7 @@ Run each command separately (never chain with `&&`):
 
 1. `git check-ignore TODO.md STATE.md`
 2. Stage whichever files are tracked (not ignored)
-3. Commit with `chore: save session state`
+3. Commit with `chore: save session state [skip ci]`
 4. `git pull --rebase`
 5. `git push`
 
