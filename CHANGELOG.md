@@ -1,3 +1,15 @@
+## [1.14.0](https://github.com/hyperi-io/ai/compare/1.13.0...1.14.0) (2026-03-03)
+
+
+### Features
+
+* add /simplify command wrapping marketplace plugin with project standards ([8eb67f8](https://github.com/hyperi-io/ai/commit/8eb67f891f61f68dac3501e2b5dddf63ca58f4e1))
+
+
+### Bug Fixes
+
+* add [skip ci] to automated session state commit message ([6096cb6](https://github.com/hyperi-io/ai/commit/6096cb6456aa96c421a08acce64dd8d68ec19a34))
+
 ## [1.13.0](https://github.com/hyperi-io/ai/compare/1.12.1...1.13.0) (2026-03-03)
 
 
