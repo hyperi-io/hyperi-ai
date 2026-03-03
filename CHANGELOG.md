@@ -1,3 +1,10 @@
+## [1.13.0](https://github.com/hyperi-io/ai/compare/1.12.1...1.13.0) (2026-03-03)
+
+
+### Features
+
+* add end-of-day housekeeping operations to /save command ([8409180](https://github.com/hyperi-io/ai/commit/84091803cd76f8191080b7e023aac80430eb2bcb))
+
 ## [1.12.1](https://github.com/hyperi-io/ai/compare/1.12.0...1.12.1) (2026-02-27)
 
 
