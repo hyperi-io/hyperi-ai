@@ -1,0 +1,1 @@
+../../templates/claude-code/commands/simplify.md

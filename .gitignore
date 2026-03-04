@@ -4,7 +4,10 @@
 /TODO.md
 
 # Claude Code configuration (created by claude-code.sh)
-.claude/
+# Use .claude/* (not .claude/) so we can un-ignore specific subdirs
+.claude/*
+# Exception: commands are the canonical self-use setup committed to this repo
+!.claude/commands/
 
 # Python (no Python in this project, but may be in parent project)
 __pycache__/
