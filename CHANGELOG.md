@@ -1,3 +1,10 @@
+## [1.14.5](https://github.com/hyperi-io/ai/compare/1.14.4...1.14.5) (2026-03-04)
+
+
+### Bug Fixes
+
+* MEMORY dir, test fixes, shellcheck clean, docs and release config ([e530a77](https://github.com/hyperi-io/ai/commit/e530a771fcb69cf43d860589ce50af5c4b118836))
+
 ## [1.14.4](https://github.com/hyperi-io/ai/compare/1.14.3...1.14.4) (2026-03-04)
 
 
