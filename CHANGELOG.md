@@ -1,3 +1,10 @@
+## [1.14.1](https://github.com/hyperi-io/ai/compare/1.14.0...1.14.1) (2026-03-04)
+
+
+### Refactoring
+
+* unified multi-agent standards delivery from standards/rules/ ([99deefe](https://github.com/hyperi-io/ai/commit/99deefe28b229138ff999c9ed1c03df9ca1e248f))
+
 ## [1.14.0](https://github.com/hyperi-io/ai/compare/1.13.0...1.14.0) (2026-03-03)
 
 
