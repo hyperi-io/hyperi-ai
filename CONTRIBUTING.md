@@ -8,26 +8,46 @@ How to work with and contribute to this repository.
 
 ```text
 ai/
-├── attach.sh            # Deploy STATE.md, TODO.md
+├── attach.sh            # Deploy STATE.md, TODO.md (internal repos)
+├── attach-public.sh     # Deploy for public repos (gitignored mode)
 ├── agents/              # AI assistant setup scripts
+│   ├── common.sh        # Shared functions (CLI detection, logging, detection)
 │   ├── claude.sh        # Claude Code setup
-│   ├── copilot.sh       # GitHub Copilot setup
+│   ├── codex.sh         # OpenAI Codex / GitHub Copilot setup
 │   ├── cursor.sh        # Cursor IDE setup
 │   └── gemini.sh        # Gemini Code setup
 ├── standards/           # Main product - coding standards
 │   ├── STANDARDS.md             # Full reference
-│   ├── STANDARDS-QUICKSTART.md  # Quick reference index
-│   ├── rules/                  # Compact rules (<200 lines each)
+│   ├── STANDARDS-QUICKSTART.md  # Router/index → standards/rules/
+│   ├── rules/                  # Compact rules (<200 lines each, single source)
 │   ├── code-assistant/          # AI-specific guidance
 │   ├── common/                  # Language-agnostic standards
-│   ├── languages/               # Python, Go, TypeScript, Rust, Bash
+│   ├── languages/               # Python, Go, TypeScript, Rust, Bash, C++
 │   └── infrastructure/          # Docker, K8s, Terraform, Ansible
 ├── templates/           # Deployment templates
 │   ├── STATE.md, TODO.md        # Cross-assistant
 │   └── claude-code/, copilot/, cursor/, gemini/
+├── tools/               # Development tools
+│   └── compact-standards.py    # Generate compact rules from full standards
 ├── tests/               # BATS test suite
 └── docs/                # Project documentation
 ```
+
+---
+
+## Standards Architecture (v2)
+
+Standards are delivered in three layers, all sourced from `standards/rules/`:
+
+1. **CAG (Context-Augmented Generation):** `UNIVERSAL.md` loaded explicitly via `/load`
+2. **RAG (Retrieval-Augmented Generation):** Path-scoped rule files (e.g. `python.md`) auto-injected by Claude Code when editing matching files — survives context compaction
+3. **Skills (On-Demand):** Full standards in `standards/languages/` and `standards/infrastructure/` loaded via `/review` or `/simplify`
+
+Each agent's deploy script converts `standards/rules/*.md` into its platform's format:
+- **Claude Code:** Symlinked to `.claude/rules/` (YAML `paths:` frontmatter preserved)
+- **Cursor:** Converted to `.cursor/rules/*.mdc` (`category: Always|Auto Attached`)
+- **Codex/Copilot:** Concatenated into `.github/copilot-instructions.md` at deploy time
+- **Gemini:** Read via `/load` with detection table
 
 ---
 
@@ -43,22 +63,17 @@ cd ai
 ### Making Changes
 
 ```bash
-# 1. Create branch
-git checkout -b fix/no-ref/your-change
+# 1. Make changes to standards/, templates/, or scripts
 
-# 2. Make changes to standards/, templates/, or scripts
-
-# 3. Test
+# 2. Test
 bats tests/
-./install.sh --dry-run
-./claude-code.sh --dry-run
+shellcheck agents/*.sh attach*.sh
 
-# 4. Commit (conventional commits)
+# 3. Commit (conventional commits)
 git commit -m "fix: your change description"
 
-# 5. Push and create PR
-git push origin fix/no-ref/your-change
-gh pr create
+# 4. Push — semantic-release handles versioning automatically
+git push origin main
 ```
 
 ---
@@ -74,9 +89,9 @@ bats tests/
 ### Run Specific Tests
 
 ```bash
-bats tests/install.bats
+bats tests/attach.bats
 bats tests/claude-code.bats
-bats tests/copilot.bats
+bats tests/codex.bats
 bats tests/cursor.bats
 bats tests/gemini.bats
 ```
@@ -85,14 +100,20 @@ bats tests/gemini.bats
 
 ```bash
 # Preview without changes
-./install.sh --dry-run --verbose
-./claude-code.sh --dry-run --verbose
+./attach.sh --dry-run --verbose
 
 # Test in temp directory
-mkdir -p /tmp/test-project && cd /tmp/test-project
-git init
-/path/to/ai/install.sh --path .
-/path/to/ai/claude-code.sh --path .
+TMP_DIR=$(mktemp -d)
+git init "$TMP_DIR"
+./attach.sh --path "$TMP_DIR" --no-agent
+./agents/claude.sh --path "$TMP_DIR" --dry-run
+rm -rf "$TMP_DIR"
+```
+
+### ShellCheck
+
+```bash
+shellcheck agents/*.sh attach*.sh
 ```
 
 ---
@@ -116,19 +137,21 @@ docs/no-ref/update-readme
 | Type | Bump |
 |------|------|
 | `fix:` | PATCH (1.0.0 → 1.0.1) |
+| `refactor:` | PATCH (1.0.0 → 1.0.1) |
 | `feat:` | MINOR (1.0.0 → 1.1.0) |
-| `BREAKING CHANGE:` footer | MAJOR (1.0.0 → 2.0.0) |
+| `BREAKING CHANGE:` footer or `!` suffix | MAJOR (1.0.0 → 2.0.0) |
 
 **No release:**
 
-`docs:`, `test:`, `chore:`, `ci:`, `refactor:`
+`docs:`, `test:`, `chore:`, `ci:`
 
 ### Commit Examples
 
 ```bash
 git commit -m "fix: handle missing STATE.md gracefully"
-git commit -m "feat: add support for cursor IDE"
+git commit -m "feat: add support for new AI assistant"
 git commit -m "docs: update standards loading section"
+git commit -m "refactor!: restructure standards delivery" -m "BREAKING CHANGE: consumers must re-run attach.sh"
 ```
 
 ---
@@ -156,11 +179,11 @@ git commit -m "docs: update standards loading section"
 
 ### Adding New Standards
 
-1. Create file in appropriate directory
-2. Follow existing format
-3. Run `tools/compact-standards.py` to generate compact rule
-4. Update `/load` commands if auto-detection needed
-5. Add detection markers to `agents/common.sh` `detect_project_technologies()`
+1. Create full standard in appropriate `standards/languages/` or `standards/infrastructure/` directory
+2. Run `tools/compact-standards.py` to generate compact rule in `standards/rules/`
+3. Add detection markers to `agents/common.sh` `detect_project_technologies()`
+4. Add skill deployment to `agents/claude.sh` `deploy_skills()`
+5. The compact rule is automatically picked up by all agent deploy scripts
 
 ---
 
@@ -173,7 +196,7 @@ git commit -m "docs: update standards loading section"
 ```bash
 declare -A map        # Associative arrays (bash 4+)
 ${var^^}              # Case modification (bash 4+)
-command &> /dev/null  # Combined redirection (bash 4+)
+command &> /dev/null  # Combined redirect (bash 4+)
 mapfile -t arr        # mapfile (bash 4+)
 ```
 
@@ -190,18 +213,28 @@ indexed_array=()      # Indexed arrays
 
 1. Start with `#!/usr/bin/env bash` and `set -euo pipefail`
 2. Support `--help`, `--dry-run`, `--force`, `--path`, `--verbose`
-3. Use helper-first function ordering
-4. Keep under 300 lines
-5. Make idempotent (safe to run repeatedly)
-6. Run ShellCheck before committing
+3. Use helper-first function ordering with `main()` at bottom
+4. Make idempotent (safe to run repeatedly)
+5. Run `shellcheck` before committing; run `macbash` if installed
 
-### Adding New Scripts
+### set -e Safety
 
-1. Copy structure from existing script (e.g., `claude-code.sh`)
+Capture non-zero exit codes without triggering errexit:
+
+```bash
+local exit_code=0
+some_command || exit_code=$?
+# use $exit_code instead of checking $?
+```
+
+### Adding New Agent Scripts
+
+1. Copy structure from an existing agent script (e.g., `agents/claude.sh`)
 2. Create templates in `templates/<assistant>/`
 3. Add BATS tests in `tests/<assistant>.bats`
-4. Update README.md
-5. Commit with `feat:` type
+4. Update `attach.sh` and `attach-public.sh` `run_agent_detection()`
+5. Update README.md
+6. Commit with `feat:` type
 
 ---
 
@@ -211,24 +244,25 @@ indexed_array=()      # Indexed arrays
 
 `templates/STATE.md` and `templates/TODO.md` are shared by all assistants.
 
-Changes here affect all users - document clearly in commits.
+Changes here affect all users — document clearly in commits.
 
 ### Assistant-Specific Templates
 
 | Directory | Contents |
 |-----------|----------|
-| `templates/claude-code/` | settings.json, commands/load.md, commands/save.md |
-| `templates/copilot/` | copilot-instructions.md |
-| `templates/cursor/` | cli.json, rules/*.mdc |
-| `templates/gemini/` | settings.json, commands/load.md, commands/save.md |
+| `templates/claude-code/` | settings.json, commands/load.md, save.md, review.md, simplify.md |
+| `templates/copilot/` | header.md (combined into copilot-instructions.md at deploy time) |
+| `templates/cursor/` | cli.json, rules/session-start.mdc, session-save.mdc |
+| `templates/gemini/` | settings.json, commands/load.md, save.md |
 
 ### Template Behaviour
 
 | File Type | Default Behaviour |
 |-----------|-------------------|
-| Settings files | Preserve existing (skip if exists) |
-| Commands/rules | Always overwrite (versioned) |
-| Symlinks | Skip if exists |
+| Settings files | Preserve existing (skip if exists); `--force` to overwrite |
+| Commands | Always re-deployed as symlinks (versioned, always current) |
+| Rules | Symlinked on first deploy; `--force` to re-link |
+| Skills | Created on first deploy; `--force` to recreate |
 
 ---
 
@@ -237,7 +271,7 @@ Changes here affect all users - document clearly in commits.
 Fully automated via semantic-release:
 
 1. Push to main
-2. Commits analysed for type
+2. Commits analysed for type (breaking change → major, feat → minor, fix/refactor → patch)
 3. VERSION file updated
 4. CHANGELOG.md generated
 5. Git tag created
@@ -254,7 +288,7 @@ Fully automated via semantic-release:
 Use conventional commit format:
 
 ```text
-fix: handle edge case in install.sh
+fix: handle edge case in attach.sh
 feat: add support for new AI assistant
 docs: update installation guide
 ```

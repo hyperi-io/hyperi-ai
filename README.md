@@ -143,10 +143,10 @@ which will clone `ai/` automatically if missing. To manually update: `git -C ai 
 
 | Script | CLI | Creates |
 |--------|-----|---------|
-| `agents/claude.sh` | `claude` | `.claude/settings.json`, `.claude/commands/`, `CLAUDE.md` → `STATE.md` |
-| `agents/cursor.sh` | `agent` | `.cursor/cli.json`, `.cursor/rules/`, `CURSOR.md` → `STATE.md` |
+| `agents/claude.sh` | `claude` | `.claude/settings.json`, `.claude/commands/` (symlinks), `.claude/rules/` (symlinks), `.claude/skills/`, `.claude/memory/`, `CLAUDE.md` → `STATE.md` |
+| `agents/cursor.sh` | `agent` | `.cursor/cli.json`, `.cursor/rules/*.mdc` (converted from `standards/rules/`), `CURSOR.md` → `STATE.md` |
 | `agents/gemini.sh` | `gemini` | `.gemini/settings.json`, `.gemini/commands/`, `GEMINI.md` → `STATE.md` |
-| `agents/codex.sh` | `codex` | `.github/copilot-instructions.md`, `.github/skills/`, `.vscode/settings.json`, `CODEX.md` → `STATE.md` |
+| `agents/codex.sh` | `codex` | `.github/copilot-instructions.md` (generated), `.github/skills/`, `.vscode/settings.json`, `CODEX.md` → `STATE.md` |
 
 ---
 
@@ -158,16 +158,18 @@ ai/                              # This repository ($AI_ROOT)
 ├── attach-public.sh             # Attach AI to public repo (gitignored mode)
 │
 ├── agents/                      # Agent setup scripts
-│   ├── common.sh               # Shared functions (CLI detection, logging)
+│   ├── common.sh               # Shared functions (CLI detection, logging, tech detection)
 │   ├── claude.sh               # Claude Code setup
 │   ├── cursor.sh               # Cursor IDE setup
 │   ├── gemini.sh               # Gemini Code setup
-│   └── codex.sh                # OpenAI Codex / VS Code setup
+│   └── codex.sh                # OpenAI Codex / GitHub Copilot setup
 │
 ├── standards/                   # Coding standards (main product)
 │   ├── STANDARDS.md             # Full reference
-│   ├── STANDARDS-QUICKSTART.md  # Quick reference index to rules
-│   ├── rules/                  # Compact rules (<200 lines each)
+│   ├── STANDARDS-QUICKSTART.md  # Router → standards/rules/ (compact single source)
+│   ├── rules/                  # Compact rules (<200 lines) — single source for all agents
+│   │   ├── UNIVERSAL.md        # Cross-cutting rules (always loaded)
+│   │   └── <topic>.md          # Path-scoped rules (auto-injected by file type)
 │   ├── code-assistant/          # AI-specific guidance
 │   ├── common/                  # Language-agnostic standards
 │   ├── languages/               # Python, Go, TypeScript, Rust, Bash, C++
@@ -176,11 +178,14 @@ ai/                              # This repository ($AI_ROOT)
 ├── templates/                   # Deployment templates
 │   ├── STATE.md                 # Session state template
 │   ├── TODO.md                  # Task tracking template
-│   ├── claude-code/             # Claude Code configs
-│   ├── cursor/                  # Cursor configs
+│   ├── claude-code/             # Claude Code configs (commands, settings)
+│   ├── cursor/                  # Cursor configs (cli.json, session rules)
 │   ├── gemini/                  # Gemini configs
-│   ├── copilot/                 # Copilot/Codex configs
+│   ├── copilot/                 # Copilot/Codex header template
 │   └── github/skills/           # VS Code Agent Skills templates
+│
+├── tools/                       # Development tools
+│   └── compact-standards.py    # Generate compact rules from full standards (API script)
 │
 ├── tests/                       # BATS test suite
 └── docs/                        # Project documentation
@@ -257,31 +262,39 @@ git config -f .gitmodules submodule.ai.update none
 
 ---
 
-## Standards Loading
+## Standards Loading (Three-Layer Architecture)
 
-AI assistants load standards based on project files detected:
+Standards are delivered in three layers, each with different persistence:
 
-**Always loaded:**
+### Layer 1 — CAG: Always loaded via `/load`
 
-- `standards/rules/UNIVERSAL.md` (~137 lines, cross-cutting rules)
+`standards/rules/UNIVERSAL.md` (~137 lines) — cross-cutting rules loaded at session start.
 
-**Auto-detected by project files:**
+### Layer 2 — RAG: Auto-injected by file type (survives context compaction)
 
-| Project Files | Standards Loaded |
-|---------------|------------------|
-| `pyproject.toml`, `*.py` | `languages/PYTHON.md` |
-| `go.mod` | `languages/GOLANG.md` |
-| `package.json`, `tsconfig.json` | `languages/TYPESCRIPT.md` |
-| `Cargo.toml` | `languages/RUST.md` |
-| `*.sh` | `languages/BASH.md` |
-| `CMakeLists.txt`, `*.cpp` | `languages/CPP.md` |
-| `Dockerfile` | `infrastructure/DOCKER.md` |
-| `Chart.yaml` | `infrastructure/K8S.md` |
-| `*.tf` | `infrastructure/TERRAFORM.md` |
-| `ansible.cfg` | `infrastructure/ANSIBLE.md` |
-| `certs/`, `ssl/`, `pki/` | `common/PKI.md` |
+Compact path-scoped rules in `.claude/rules/` are injected automatically by Claude Code
+when you edit matching files. They survive context compaction — unlike session-loaded content.
 
-**Token budget:** ~15-20K tokens typical session (vs ~50K+ if all loaded)
+| Project Files | Rule Auto-Injected |
+|---------------|-------------------|
+| `pyproject.toml`, `*.py` | `python.md` |
+| `go.mod` | `golang.md` |
+| `package.json`, `tsconfig.json` | `typescript.md` |
+| `Cargo.toml` | `rust.md` |
+| `*.sh` | `bash.md` |
+| `CMakeLists.txt`, `*.cpp` | `cpp.md` |
+| `Dockerfile`, `docker-compose.yaml` | `docker.md` |
+| `Chart.yaml`, `values.yaml` | `k8s.md` |
+| `*.tf` | `terraform.md` |
+| `ansible.cfg`, `playbook.yml` | `ansible.md` |
+| `*.crt`, `*.pem`, `ssl/`, `pki/` | `pki.md` |
+
+### Layer 3 — Skills: Full standards on demand
+
+Full standards in `.claude/skills/` are loaded explicitly via `/review` or `/simplify`
+when you need deep reference. Not loaded at session start — preserves context budget.
+
+**Token budget:** ~15-20K tokens typical session (vs ~50K+ if all loaded upfront)
 
 ---
 
@@ -306,15 +319,20 @@ After running `./ai/attach.sh --agent claude`:
 **`/load`** - Begin session
 
 - Establishes current date (not training data date)
-- Loads TODO.md (tasks), STATE.md (static context)
-- Loads standards based on project type
-- Syncs git and updates ai submodule
+- Reads TODO.md (tasks) and STATE.md (static project context)
+- Loads `standards/rules/UNIVERSAL.md` (cross-cutting rules, CAG layer)
+- Updates ai submodule if auto-update is enabled
+- Syncs git
 
 **`/save`** - Checkpoint progress
 
 - Updates TODO.md with task progress
-- Validates STATE.md has no forbidden content
+- Validates STATE.md has no forbidden content (no dates, versions, task lists)
 - Checks git status
+
+**`/review`** - Code review against full standards (loads skills on demand)
+
+**`/simplify`** - Review for reuse, quality, and efficiency
 
 **Best practice:** Run `/save` every 30-40 exchanges or before breaks.
 

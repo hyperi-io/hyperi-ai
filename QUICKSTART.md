@@ -19,12 +19,9 @@ Get AI-assisted development running in under 5 minutes.
 ## TL;DR
 
 ```bash
-# AI + CI (recommended)
-git submodule add https://github.com/hyperi-io/ci.git ci && ./ci/attach.sh --python-package
-git submodule add https://github.com/hyperi-io/ai.git ai && ./ai/attach.sh --claude
-
-# AI only
-git submodule add https://github.com/hyperi-io/ai.git ai && ./ai/attach.sh --claude
+# Add submodule then attach (run commands separately — do not chain with &&)
+git submodule add https://github.com/hyperi-io/ai.git ai
+./ai/attach.sh --agent claude
 ```
 
 ## Step 1: Add AI Submodule
@@ -32,24 +29,28 @@ git submodule add https://github.com/hyperi-io/ai.git ai && ./ai/attach.sh --cla
 **AI + CI (recommended):**
 
 ```bash
-git submodule add https://github.com/hyperi-io/ci.git ci && ./ci/attach.sh --python-package
-git submodule add https://github.com/hyperi-io/ai.git ai && ./ai/attach.sh --claude
+git submodule add https://github.com/hyperi-io/ci.git ci
+./ci/attach.sh --python-package
+git submodule add https://github.com/hyperi-io/ai.git ai
+./ai/attach.sh --agent claude
 ```
 
 **AI only:**
 
 ```bash
-git submodule add https://github.com/hyperi-io/ai.git ai && ./ai/attach.sh --claude
+git submodule add https://github.com/hyperi-io/ai.git ai
+./ai/attach.sh --agent claude
 ```
 
-**Assistant options:** `--claude`, `--copilot`, `--cursor`, `--gemini`
+**Assistant options:** `--agent claude`, `--agent codex`, `--agent cursor`, `--agent gemini`
 
 **Greenfield projects** (no git repo yet):
 
 ```bash
-git init && git branch -m main
+git init
+git branch -m main
 git submodule add https://github.com/hyperi-io/ai.git ai
-./ai/attach.sh --claude
+./ai/attach.sh --agent claude
 ```
 
 ## Step 2: Start Using
@@ -57,9 +58,12 @@ git submodule add https://github.com/hyperi-io/ai.git ai
 **Claude Code:**
 
 ```bash
-/load    # Begin session (loads standards, state)
+/load    # Begin session (loads standards, state, syncs submodule)
 /save    # Checkpoint progress
 ```
+
+Standards are auto-injected as you edit files — no manual loading needed.
+Editing `*.py` → python rules inject. Editing `*.sh` → bash rules inject.
 
 **Other assistants:** Configs auto-created, just start coding.
 
@@ -69,12 +73,16 @@ git submodule add https://github.com/hyperi-io/ai.git ai
 |------|---------|
 | `STATE.md` | Project state and context for AI |
 | `TODO.md` | Task tracking |
-| `.claude/` | Claude Code configuration (if `--claude`) |
+| `.claude/` | Claude Code configuration (if `--agent claude`) |
+| `.claude/rules/` | Compact path-scoped standards (auto-inject by file type) |
+| `.claude/skills/` | Full standards for `/review` and `/simplify` |
+| `.claude/memory/` | Project-specific persistent memory |
 
 ## Updating AI
 
 ```bash
 git submodule update --remote ai
+./ai/attach.sh --agent claude
 ```
 
 ## Upgrading Existing Projects
@@ -83,7 +91,7 @@ If your project has outdated AI config:
 
 ```bash
 git submodule update --remote ai
-./ai/attach.sh --claude         # Auto-fixes configuration
+./ai/attach.sh --agent claude --force
 ```
 
 ## More Information

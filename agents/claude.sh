@@ -12,7 +12,7 @@ set -euo pipefail
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=agents/common.sh
+# shellcheck source=agents/common.sh disable=SC1091
 source "${SCRIPT_DIR}/common.sh"
 
 # Global variables
@@ -48,7 +48,7 @@ detect_paths() {
 check_agent_cli() {
     if ! agent_installed "$AGENT_CLI"; then
         agent_log_info "${AGENT_NAME} CLI '${AGENT_CLI}' not installed (skipping)"
-        exit $EXIT_NOT_INSTALLED
+        exit "$EXIT_NOT_INSTALLED"
     fi
     if [ "$VERBOSE" = "true" ]; then
         agent_log_info "${AGENT_NAME} CLI found: $(command -v "$AGENT_CLI")"
@@ -60,7 +60,7 @@ check_prerequisites() {
     if [ ! -f "$PROJECT_ROOT/STATE.md" ]; then
         agent_log_error "STATE.md not found in project root"
         agent_log_info "Run attach.sh first: ./ai/attach.sh"
-        exit $EXIT_ERROR
+        exit "$EXIT_ERROR"
     fi
 
     if [ "$VERBOSE" = "true" ]; then
@@ -74,24 +74,28 @@ setup_claude_dir() {
     local commands_dir="$claude_dir/commands"
     local rules_dir="$claude_dir/rules"
     local skills_dir="$claude_dir/skills"
+    local memory_dir="$claude_dir/memory"
 
     if [ "$DRY_RUN" = "true" ]; then
         echo "Would create: $claude_dir/"
         echo "Would create: $commands_dir/"
         echo "Would create: $rules_dir/"
         echo "Would create: $skills_dir/"
+        echo "Would create: $memory_dir/"
         return 0
     fi
 
     mkdir -p "$commands_dir"
     mkdir -p "$rules_dir"
     mkdir -p "$skills_dir"
+    mkdir -p "$memory_dir"
 
     if [ "$VERBOSE" = "true" ]; then
         agent_log_info "Created: $claude_dir/"
         agent_log_info "Created: $commands_dir/"
         agent_log_info "Created: $rules_dir/"
         agent_log_info "Created: $skills_dir/"
+        agent_log_info "Created: $memory_dir/"
     fi
 }
 
@@ -113,7 +117,7 @@ deploy_settings() {
 
     if [ ! -f "$src" ]; then
         agent_log_error "Template not found: $src"
-        exit $EXIT_ERROR
+        exit "$EXIT_ERROR"
     fi
 
     # Calculate relative path from .claude/ to template
@@ -149,7 +153,7 @@ deploy_commands() {
 
     if [ ! -d "$src_dir" ]; then
         agent_log_error "Commands directory not found: $src_dir"
-        exit $EXIT_ERROR
+        exit "$EXIT_ERROR"
     fi
 
     # Commands to deploy (add new commands here)
@@ -157,12 +161,7 @@ deploy_commands() {
 
     if [ "$DRY_RUN" = "true" ]; then
         for cmd in $commands; do
-            local dst="$dst_dir/${cmd}.md"
-            if [ ! -e "$dst" ] || [ "$FORCE" = "true" ]; then
-                echo "Would symlink: $dst -> .../${cmd}.md"
-            else
-                echo "Would skip (preserving existing): $dst"
-            fi
+            echo "Would symlink: $dst_dir/${cmd}.md -> .../${cmd}.md"
         done
         [ -e "$dst_dir/start.md" ] && echo "Would remove: $dst_dir/start.md (deprecated)"
         return 0
@@ -174,23 +173,16 @@ deploy_commands() {
         local rel
         rel="$(relative_path "$dst_dir" "$src")"
 
-        if [ ! -e "$dst" ] || [ "$FORCE" = "true" ]; then
-            [ -e "$dst" ] || [ -L "$dst" ] && rm -f "$dst"
-            ln -s "$rel" "$dst"
-            agent_log_success "Symlinked: $dst -> $rel"
-        else
-            agent_log_info "Skipped (preserving existing): $dst"
-        fi
+        # Commands are always re-deployed — versioned and must stay current
+        [ -e "$dst" ] || [ -L "$dst" ] && rm -f "$dst"
+        ln -s "$rel" "$dst"
+        agent_log_success "Symlinked: $dst -> $rel"
     done
 
     # Remove deprecated start.md if it exists
     if [ -e "$dst_dir/start.md" ]; then
         rm -f "$dst_dir/start.md"
         agent_log_info "Removed: $dst_dir/start.md (deprecated, replaced by load.md)"
-    fi
-
-    if [ "$VERBOSE" = "true" ]; then
-        agent_log_info "  Use --force to overwrite with symlinks"
     fi
 }
 
@@ -207,7 +199,9 @@ deploy_rules() {
         return 0
     fi
 
-    mkdir -p "$rules_dst"
+    if [ "$DRY_RUN" != "true" ]; then
+        mkdir -p "$rules_dst"
+    fi
     agent_log_info "Deploying rules (compact standards for context persistence)..."
 
     local count=0
@@ -275,7 +269,9 @@ deploy_skills() {
         local skill_md="$skill_dir/SKILL.md"
 
         if [ ! -f "$src_file" ]; then
-            [ "$VERBOSE" = "true" ] && agent_log_info "Skill source not found: $src_file" || true
+            if [ "$VERBOSE" = "true" ]; then
+                agent_log_info "Skill source not found: $src_file"
+            fi
             return 0
         fi
 
@@ -295,7 +291,9 @@ deploy_skills() {
             [ -e "$skill_dir" ] && rm -rf "$skill_dir"
             mkdir -p "$skill_dir"
             ln -s "$rel_path" "$skill_md"
-            [ "$VERBOSE" = "true" ] && agent_log_info "Created skill: $name/ with SKILL.md -> $rel_path" || true
+            if [ "$VERBOSE" = "true" ]; then
+                agent_log_info "Created skill: $name/ with SKILL.md -> $rel_path"
+            fi
         fi
     }
 
@@ -350,8 +348,8 @@ deploy_skills() {
     if [ -f "$PROJECT_ROOT/clickhouse-server.xml" ] || \
        [ -f "$PROJECT_ROOT/clickhouse-client.xml" ] || \
        [ -f "$PROJECT_ROOT/config/clickhouse-server.xml" ] || \
-       (find "$PROJECT_ROOT" -maxdepth 2 -name "*.sql" -type f 2>/dev/null | \
-        xargs grep -l 'ENGINE.*MergeTree' 2>/dev/null | grep -q .); then
+       (find "$PROJECT_ROOT" -maxdepth 2 -name "*.sql" -type f -print0 2>/dev/null | \
+        xargs -0 grep -l 'ENGINE.*MergeTree' 2>/dev/null | grep -q .); then
         create_skill "clickhouse-sql" "$standards_dir/languages/SQL-CLICKHOUSE.md"
         echo "  Detected: ClickHouse SQL"
     fi
@@ -593,7 +591,7 @@ parse_args() {
             --path)
                 if [ -z "${2:-}" ]; then
                     agent_log_error "--path requires an argument"
-                    exit $EXIT_ERROR
+                    exit "$EXIT_ERROR"
                 fi
                 PROJECT_ROOT="$2"
                 shift 2
@@ -601,7 +599,7 @@ parse_args() {
             *)
                 agent_log_error "Unknown option: $1"
                 echo "Try '$0 --help' for more information"
-                exit $EXIT_ERROR
+                exit "$EXIT_ERROR"
                 ;;
         esac
     done
@@ -612,13 +610,13 @@ validate_environment() {
     # Check if project root exists
     if [ ! -d "$PROJECT_ROOT" ]; then
         agent_log_error "Project directory does not exist: $PROJECT_ROOT"
-        exit $EXIT_ERROR
+        exit "$EXIT_ERROR"
     fi
 
     # Check if project root is writable
     if [ ! -w "$PROJECT_ROOT" ]; then
         agent_log_error "Project directory is not writable: $PROJECT_ROOT"
-        exit $EXIT_ERROR
+        exit "$EXIT_ERROR"
     fi
 }
 

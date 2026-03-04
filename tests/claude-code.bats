@@ -29,6 +29,7 @@ teardown() {
 
     [ "$status" -eq 0 ]
     [ -d ".claude" ]
+    [ -d ".claude/memory" ]
     [ -f ".claude/settings.json" ]
     [ -f ".claude/commands/load.md" ]
     [ -f ".claude/commands/save.md" ]
@@ -56,7 +57,9 @@ teardown() {
     ./ai/attach.sh --no-agent
     ./ai/agents/claude.sh
 
-    echo '/* custom */' >> .claude/settings.json
+    # Break the symlink and replace with a modified real file
+    rm .claude/settings.json
+    echo '/* custom */' > .claude/settings.json
     run ./ai/agents/claude.sh --force
 
     [ "$status" -eq 0 ]
@@ -68,7 +71,8 @@ teardown() {
     ./ai/attach.sh --no-agent
     ./ai/agents/claude.sh
 
-    # Modify command
+    # Break the symlink and replace with stale content
+    rm .claude/commands/load.md
     echo "OLD VERSION" > .claude/commands/load.md
 
     run ./ai/agents/claude.sh
@@ -113,7 +117,9 @@ teardown() {
     ./ai/attach.sh --no-agent
     unmock_cli "claude"
 
-    run ./ai/agents/claude.sh
+    # Use a restricted PATH so a system-installed claude is not found
+    run env PATH="$TEST_ROOT/mock-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+        ./ai/agents/claude.sh
 
     [ "$status" -eq $EXIT_NOT_INSTALLED ]
     [[ "$output" =~ "not installed" ]]
