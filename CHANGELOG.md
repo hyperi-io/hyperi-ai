@@ -1,3 +1,19 @@
+## [1.14.2](https://github.com/hyperi-io/ai/compare/1.14.1...1.14.2) (2026-03-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* All consumer projects must re-run attach.sh and their
+agent script (claude.sh, cursor.sh, codex.sh, gemini.sh) after updating
+the ai submodule. Cursor rules are now dynamically generated from
+standards/rules/ instead of a static template. Codex copilot-instructions.md
+is regenerated on every deploy. STANDARDS-QUICKSTART.md is no longer the
+monolithic standards reference — use standards/rules/UNIVERSAL.md instead.
+
+### Refactoring
+
+* mark v2 — multi-agent standards delivery restructure ([71dc561](https://github.com/hyperi-io/ai/commit/71dc561fb021e1ddec6fcad863b0602b20f60cc1))
+
 ## [1.14.1](https://github.com/hyperi-io/ai/compare/1.14.0...1.14.1) (2026-03-04)
 
 
