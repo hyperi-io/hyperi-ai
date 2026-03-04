@@ -39,19 +39,45 @@ Read in this order:
 
 ---
 
-## Step 4: Load Universal Standards (CAG Layer)
+## Step 4: Load Standards (CAG Layer)
 
-Read this compact file — it contains the critical cross-cutting rules:
+### Step 4a — Universal rules (always)
 
-- [UNIVERSAL.md](../../ai/standards/rules/UNIVERSAL.md)
+Read: [UNIVERSAL.md](../../ai/standards/rules/UNIVERSAL.md)
 
-**Do NOT load full language or infrastructure standards here.** Those are delivered
-as path-scoped rules in `.claude/rules/` and auto-inject when you edit matching
-files (e.g. editing `*.py` triggers `python.md`). This saves context and
-survives compaction.
+Cross-cutting rules (spelling, git, code style, security). Always load this.
 
-For deep reference (e.g. during `/review` or `/simplify`), the full standards
-are available as skills — invoke them explicitly when needed.
+### Step 4b — Detect technologies and load relevant rules
+
+Check the project root for these marker files/dirs. For each match, read the
+corresponding rule file and output its content. Load all that match — a project
+can have multiple.
+
+Run each check as a **separate** Bash call (do not chain with `&&`).
+
+| Check (from project root) | Load this rule |
+|---|---|
+| `ls pyproject.toml 2>/dev/null \|\| ls *.py 2>/dev/null \|\| ls uv.lock 2>/dev/null` | `../../ai/standards/rules/python.md` |
+| `ls *.sh 2>/dev/null \|\| ls *.bats 2>/dev/null` | `../../ai/standards/rules/bash.md` |
+| `ls tsconfig.json 2>/dev/null \|\| ls package.json 2>/dev/null \|\| ls *.ts 2>/dev/null` | `../../ai/standards/rules/typescript.md` |
+| `ls Cargo.toml 2>/dev/null` | `../../ai/standards/rules/rust.md` |
+| `ls go.mod 2>/dev/null` | `../../ai/standards/rules/golang.md` |
+| `ls Dockerfile 2>/dev/null \|\| ls docker-compose.yml 2>/dev/null \|\| ls docker-compose.yaml 2>/dev/null` | `../../ai/standards/rules/docker.md` |
+| `ls ansible.cfg 2>/dev/null \|\| ls playbook*.yml 2>/dev/null \|\| ls -d playbooks 2>/dev/null` | `../../ai/standards/rules/ansible.md` |
+| `ls Chart.yaml 2>/dev/null \|\| ls values.yaml 2>/dev/null \|\| ls -d charts 2>/dev/null` | `../../ai/standards/rules/k8s.md` |
+| `ls *.tf 2>/dev/null` | `../../ai/standards/rules/terraform.md` |
+| `ls CMakeLists.txt 2>/dev/null \|\| ls *.cpp 2>/dev/null` | `../../ai/standards/rules/cpp.md` |
+| `ls *.sql 2>/dev/null` | `../../ai/standards/rules/clickhouse-sql.md` |
+| `ls -d certs 2>/dev/null \|\| ls -d ssl 2>/dev/null \|\| ls -d pki 2>/dev/null` | `../../ai/standards/rules/pki.md` |
+
+If **no markers match**, skip — only UNIVERSAL.md is needed.
+
+Note: path-scoped rules in `.claude/rules/` also auto-inject when Claude
+**reads** matching files mid-session (RAG layer). Step 4b provides upfront
+coverage for planning conversations and new file creation.
+
+For deep reference during `/review` or `/simplify`, full standards are
+available as skills — invoke them explicitly when needed.
 
 ---
 

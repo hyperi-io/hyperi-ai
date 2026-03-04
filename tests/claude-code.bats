@@ -112,6 +112,37 @@ teardown() {
     rm -rf "$TMP_DIR"
 }
 
+@test "TC-110: standards.md command is deployed" {
+    cd "$TEST_SUBMODULE"
+    ./ai/attach.sh --no-agent
+    run ./ai/agents/claude.sh --verbose
+
+    [ "$status" -eq 0 ]
+    [ -f ".claude/commands/standards.md" ]
+}
+
+@test "TC-111: load.md contains tech detection markers" {
+    run grep -q "Cargo.toml" "$AI_SOURCE/templates/claude-code/commands/load.md"
+    [ "$status" -eq 0 ]
+
+    run grep -q "pyproject.toml" "$AI_SOURCE/templates/claude-code/commands/load.md"
+    [ "$status" -eq 0 ]
+
+    run grep -q "go.mod" "$AI_SOURCE/templates/claude-code/commands/load.md"
+    [ "$status" -eq 0 ]
+
+    run grep -q "Dockerfile" "$AI_SOURCE/templates/claude-code/commands/load.md"
+    [ "$status" -eq 0 ]
+
+    run grep -q "tsconfig.json" "$AI_SOURCE/templates/claude-code/commands/load.md"
+    [ "$status" -eq 0 ]
+}
+
+@test "TC-112: settings.json allows SlashCommand /standards" {
+    run grep -q "SlashCommand(/standards)" "$AI_SOURCE/templates/claude-code/settings.json"
+    [ "$status" -eq 0 ]
+}
+
 @test "TC-109: Exit code 2 when CLI not installed" {
     cd "$TEST_SUBMODULE"
     ./ai/attach.sh --no-agent

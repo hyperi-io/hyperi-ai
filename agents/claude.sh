@@ -157,7 +157,7 @@ deploy_commands() {
     fi
 
     # Commands to deploy (add new commands here)
-    local commands="load save review simplify"
+    local commands="load save review simplify standards"
 
     if [ "$DRY_RUN" = "true" ]; then
         for cmd in $commands; do
@@ -509,6 +509,7 @@ print_summary() {
         echo "  .claude/commands/save.md      -> commands/save.md"
         echo "  .claude/commands/review.md    -> commands/review.md"
         echo "  .claude/commands/simplify.md  -> commands/simplify.md"
+        echo "  .claude/commands/standards.md -> commands/standards.md"
         echo "  .claude/rules/            -> rules/ (compact, path-scoped, survives compaction)"
         echo "  .claude/skills/           -> skills/ (full standards, on-demand for /review /simplify)"
         echo "  CLAUDE.md -> STATE.md"
