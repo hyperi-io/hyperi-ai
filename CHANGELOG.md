@@ -1,3 +1,10 @@
+## [1.14.3](https://github.com/hyperi-io/ai/compare/1.14.2...1.14.3) (2026-03-04)
+
+
+### Bug Fixes
+
+* prevent set -e from aborting agent detection on EXIT_NOT_INSTALLED ([95700b5](https://github.com/hyperi-io/ai/commit/95700b53d76db28d30bef54c204cc944fed905ca))
+
 ## [1.14.2](https://github.com/hyperi-io/ai/compare/1.14.1...1.14.2) (2026-03-04)
 
 
