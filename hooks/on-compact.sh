@@ -13,7 +13,7 @@ set -euo pipefail
 # $CLAUDE_PROJECT_DIR is set by Claude Code to the parent project root
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 AI_DIR="${PROJECT_DIR}/ai"
-QUICKSTART="${AI_DIR}/standards/STANDARDS-QUICKSTART.md"
+UNIVERSAL="${AI_DIR}/standards/rules/UNIVERSAL.md"
 
 # Preamble
 cat << 'EOF'
@@ -22,19 +22,21 @@ cat << 'EOF'
 
 ## Context Recovery (Post-Compaction)
 
-Context was compacted. Coding standards have been re-injected below.
+Context was compacted. Universal coding standards have been re-injected below.
+Language-specific standards are delivered as path-scoped rules in `.claude/rules/`
+and will auto-inject when you edit matching files.
 
-**Run `/load` to restore full project state** (STATE.md, TODO.md, language-specific standards).
+**Run `/load` to restore full project state** (STATE.md, TODO.md).
 
 ---
 
 EOF
 
-# Re-inject the full STANDARDS-QUICKSTART.md
-if [ -f "$QUICKSTART" ]; then
-    cat "$QUICKSTART"
+# Re-inject UNIVERSAL.md (compact cross-cutting rules)
+if [ -f "$UNIVERSAL" ]; then
+    cat "$UNIVERSAL"
 else
-    echo "WARNING: STANDARDS-QUICKSTART.md not found at ${QUICKSTART}"
+    echo "WARNING: UNIVERSAL.md not found at ${UNIVERSAL}"
     echo "The ai/ submodule may not be initialised. Run /load manually."
 fi
 

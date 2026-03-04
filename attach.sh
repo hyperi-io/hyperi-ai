@@ -63,10 +63,10 @@ else
     NC=''
 fi
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $*"; }
-log_success() { echo -e "${GREEN}[OK]${NC} $*"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+log_info() { printf "%b\n" "${BLUE}[INFO]${NC} $*"; }
+log_success() { printf "%b\n" "${GREEN}[OK]${NC} $*"; }
+log_warn() { printf "%b\n" "${YELLOW}[WARN]${NC} $*"; }
+log_error() { printf "%b\n" "${RED}[ERROR]${NC} $*" >&2; }
 
 # Show usage information
 show_usage() {
@@ -584,7 +584,6 @@ check_state_md_forbidden() {
 migrate_state_files() {
     local state_file="$PROJECT_ROOT/STATE.md"
     local claude_file="$PROJECT_ROOT/CLAUDE.md"
-    local todo_file="$PROJECT_ROOT/TODO.md"
     local migrated=false
 
     # Check STATE.md
@@ -608,7 +607,8 @@ migrate_state_files() {
     for ai_file in "$PROJECT_ROOT/CURSOR.md" "$PROJECT_ROOT/GEMINI.md" "$PROJECT_ROOT/CODEX.md"; do
         if [ -f "$ai_file" ] && [ ! -L "$ai_file" ]; then
             if ! check_state_md_forbidden "$ai_file"; then
-                local basename_file=$(basename "$ai_file")
+                local basename_file
+                basename_file=$(basename "$ai_file")
                 log_warn "$basename_file contains forbidden content"
                 log_info "  Should be symlink to STATE.md or removed"
                 migrated=true
@@ -702,11 +702,11 @@ run_agent_detection() {
         run_single_agent "$SPECIFIC_AGENT"
         local exit_code=$?
         case $exit_code in
-            $EXIT_SUCCESS)
+            "$EXIT_SUCCESS")
                 log_success "Configured: $SPECIFIC_AGENT"
                 return 0
                 ;;
-            $EXIT_NOT_INSTALLED)
+            "$EXIT_NOT_INSTALLED")
                 log_warn "${SPECIFIC_AGENT} CLI not installed"
                 return 0  # Not an error
                 ;;
@@ -739,14 +739,14 @@ run_agent_detection() {
         local exit_code=$?
 
         case $exit_code in
-            $EXIT_SUCCESS)
+            "$EXIT_SUCCESS")
                 log_success "Configured: $agent"
                 return 0
                 ;;
-            $EXIT_ERROR)
+            "$EXIT_ERROR")
                 return 1  # Stop on error
                 ;;
-            $EXIT_NOT_INSTALLED)
+            "$EXIT_NOT_INSTALLED")
                 continue  # Try next agent
                 ;;
         esac

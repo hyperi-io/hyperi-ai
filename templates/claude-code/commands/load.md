@@ -39,51 +39,23 @@ Read in this order:
 
 ---
 
-## Step 4: Load Standards
+## Step 4: Load Universal Standards (CAG Layer)
 
-Read the ENTIRE file (do not truncate):
+Read this compact file — it contains the critical cross-cutting rules:
 
-- [STANDARDS-QUICKSTART.md](../../ai/standards/STANDARDS-QUICKSTART.md)
+- [UNIVERSAL.md](../../ai/standards/rules/UNIVERSAL.md)
 
----
+**Do NOT load full language or infrastructure standards here.** Those are delivered
+as path-scoped rules in `.claude/rules/` and auto-inject when you edit matching
+files (e.g. editing `*.py` triggers `python.md`). This saves context and
+survives compaction.
 
-## Step 5: Detect Project Language
-
-Glob for config files in project root (not subdirs, not `.venv/`, not `node_modules/`):
-
-| Config File Found | Load (COMPLETE FILE) |
-|-------------------|----------------------|
-| `pyproject.toml`, `setup.py` | `ai/standards/languages/PYTHON.md` |
-| `go.mod` | `ai/standards/languages/GOLANG.md` |
-| `package.json`, `tsconfig.json` | `ai/standards/languages/TYPESCRIPT.md` |
-| `Cargo.toml` | `ai/standards/languages/RUST.md` |
-| `CMakeLists.txt`, `*.cpp`, `*.hpp` | `ai/standards/languages/CPP.md` |
-| `*.sh` only (no other lang) | `ai/standards/languages/BASH.md` |
-| `clickhouse-server.xml`, `.sql` with `ENGINE = *MergeTree` | `ai/standards/languages/SQL-CLICKHOUSE.md` |
+For deep reference (e.g. during `/review` or `/simplify`), the full standards
+are available as skills — invoke them explicitly when needed.
 
 ---
 
-## Step 6: Check for Infrastructure
-
-| IaC Files Found | Load (COMPLETE FILE) |
-|-----------------|----------------------|
-| `Dockerfile`, `docker-compose.yaml` | `ai/standards/infrastructure/DOCKER.md` |
-| `Chart.yaml`, `values.yaml` | `ai/standards/infrastructure/K8S.md` |
-| `*.tf` | `ai/standards/infrastructure/TERRAFORM.md` |
-| `ansible.cfg`, `playbook.yml` | `ai/standards/infrastructure/ANSIBLE.md` |
-
----
-
-## Step 7: Check for PKI/TLS
-
-| Files/Dirs Found | Load (COMPLETE FILE) |
-|------------------|----------------------|
-| `certs/`, `ssl/`, `pki/`, `tls/` dirs | `ai/standards/common/PKI.md` |
-| `*.crt`, `*.pem`, `ssl*.xml`, `*-tls.yaml` | `ai/standards/common/PKI.md` |
-
----
-
-## Step 8: Update Submodules
+## Step 5: Update Submodules
 
 Update `ai` and `ci` submodules if they are attached and auto-update is enabled.
 
@@ -113,9 +85,32 @@ The update mode is stored in `.gitmodules`:
 
 Report what happened for each (e.g. "ai: updated", "ci: pinned, skipped").
 
+### After updating the `ai` submodule
+
+If the `ai` submodule was updated (not skipped/pinned), check if deployment-relevant
+files changed. Run this from the **project root**:
+
+```bash
+git -C ai diff HEAD@{1}..HEAD --name-only
+```
+
+If the output includes ANY of these paths, the user needs to re-run attach:
+
+- `agents/claude.sh` (agent deployment logic changed)
+- `templates/claude-code/` (commands, settings, or config changed)
+- `standards/rules/` (compact rule files changed or added)
+
+**If matches found**, tell the user:
+
+> The ai submodule update includes changes to deployment files (commands, rules,
+> or agent config). Run `./ai/agents/claude.sh` to re-deploy, then restart this
+> session for the changes to take effect.
+
+**If no matches** or the diff is empty, continue silently.
+
 ---
 
-## Step 9: Sync and Ready
+## Step 6: Sync and Ready
 
 1. Sync with remote:
 

@@ -8,9 +8,9 @@
 
 **Single path - always load:**
 
-1. `STANDARDS-QUICKSTART.md` - Core coding standards
-2. Relevant `languages/*.md` file(s) - Based on project config files detected
-3. Relevant `infrastructure/*.md` file(s) - Based on IaC files detected
+1. `rules/UNIVERSAL.md` - Cross-cutting coding rules (~137 lines)
+2. Relevant `rules/<lang>.md` file(s) - Auto-injected by agent when editing matching files
+3. Full `languages/*.md` and `infrastructure/*.md` for deep reference
 
 **Auto-detection:**
 
@@ -41,7 +41,7 @@
 
 | File Type | Maximum |
 |-----------|---------|
-| STANDARDS-QUICKSTART.md | 12K |
+| Compact rule (each) | 200 lines |
 | Language file (each) | 10K |
 | Infrastructure file (each) | 10K |
 
@@ -49,7 +49,7 @@
 
 | File | Tokens | Status |
 |------|--------|--------|
-| STANDARDS-QUICKSTART.md | ~7.5K | ✅ Under budget |
+| UNIVERSAL.md (compact) | ~137 lines | ✅ Under budget |
 | PYTHON.md | ~3.7K | ✅ Under budget |
 | GOLANG.md | ~8.7K | ✅ Under budget |
 | TYPESCRIPT.md | ~7.7K | ✅ Under budget |
@@ -96,7 +96,8 @@
 ```text
 standards/
 ├── STANDARDS.md              # Full entry point (reference)
-├── STANDARDS-QUICKSTART.md   # Core standards (always loaded)
+├── STANDARDS-QUICKSTART.md   # Quick reference index
+├── rules/                   # Compact rules (<200 lines each)
 │
 ├── code-assistant/           # AI profile
 │   ├── COMMON.md

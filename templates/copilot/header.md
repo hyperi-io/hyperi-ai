@@ -14,38 +14,12 @@ If using VS Code 1.108 or later, enable Agent Skills for enhanced context:
 
 Skills are located in `.github/skills/` and are automatically loaded based on project context.
 
-## Standards Location
-
-Standards are located in: `$AI_ROOT/standards/`
-
-Where `$AI_ROOT` is the directory where this repository is attached (e.g., `ai/`, `standards/`, `.ai/`).
-
 ## Session Start - Read These Files
 
-**Step 1: Read critical documentation** (in this order):
+**Read these files** (in this order):
 
 1. `STATE.md` or `CODEX.md` - Current project state and session history
 2. `TODO.md` - Current tasks and priorities
-3. `$AI_ROOT/standards/STANDARDS.md` - Contains complete loading strategy
-
-**Step 2: Follow STANDARDS.md loading instructions**
-
-STANDARDS.md contains the complete "For Code Assistants" section with CAG/RAG loading strategy, Tier 1 files (mandatory load), and Tier 2 files (on-demand RAG index).
-
-## Essential Files (Tier 1 - Always Load)
-
-1. **AI Guidance:**
-   - `$AI_ROOT/standards/code-assistant/COMMON.md` - Session management, bash, commits
-   - `$AI_ROOT/standards/code-assistant/AI-GUIDELINES.md` - Cognitive load research
-   - `$AI_ROOT/standards/code-assistant/PYTHON.md` - Python-specific guidance (for Python projects)
-
-2. **Essential Standards:**
-   - `$AI_ROOT/standards/common/QUICK-REFERENCE.md` - One-page cheat sheet
-   - `$AI_ROOT/standards/common/GIT.md` - Git conventions
-   - `$AI_ROOT/standards/common/CHARS-POLICY.md` - File/directory naming rules
-
-3. **Python Projects:**
-   - `$AI_ROOT/standards/python/CODING-PYTHON.md` - Python coding standards
 
 ## Key Principles
 
@@ -57,7 +31,7 @@ STANDARDS.md contains the complete "For Code Assistants" section with CAG/RAG lo
 
 - **AI code has 4x higher defect rates** - Always review AI-generated code carefully
 - **Human-first design** - No AI conventions to learn, same cognitive load as human code
-- **No mocks in production** - See `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
+- **Mock-aware testing** - Mocks are scaffolding, not testing. Both unit and integration tests required.
 
 ## Session Save Instructions
 
@@ -77,7 +51,3 @@ At the end of a session or when checkpointing progress:
 3. **Check git status** - Any uncommitted changes to review?
 
 4. **Review test status** - Did all tests pass?
-
-## Reference
-
-For complete standards documentation, see: `$AI_ROOT/standards/STANDARDS.md`

@@ -35,7 +35,7 @@ teardown() {
     run ./ai/agents/gemini.sh
 
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "ERROR: STATE.md not found" ]]
+    [[ "$output" =~ "attach.sh first" ]]
 }
 
 @test "TC-G03: Idempotent - safe to run twice" {

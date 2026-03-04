@@ -775,22 +775,24 @@ The following sections are specific guidance for AI code assistants working with
 
 ---
 
-## No Mocks Policy
+## Mock-Aware Testing Policy
 
-**"No mocks" = no mocking internal code. External dependencies are legitimate mock targets.**
+**Mocks are scaffolding, not testing. Mock-only tests ≠ production tested.**
 
-| Mock Target | Allowed? |
-|-------------|----------|
-| Internal functions/classes | ❌ NO |
-| External APIs, DBs, K8s, network | ✅ YES |
+| Mock Target | In Unit Tests? | Integration Test Required? |
+|-------------|---------------|---------------------------|
+| Internal functions/classes | ❌ Never mock | N/A — test real code |
+| External APIs, DBs, K8s, network | ✅ Yes | ✅ Yes — against sandbox/testcontainers |
 
 ```python
-# ❌ BAD - mocking internal code
+# ❌ BAD - mocking internal code (tests nothing real)
 with patch('myapp.utils.calculate') as m: ...
 
-# ✅ GOOD - mocking external boundary
+# ✅ GOOD - mock external boundary, test real internal logic
 with patch('myapp.clients.stripe.charge') as m: ...
 ```
+
+**Two-layer requirement:** Unit tests (mocks OK for external boundaries) + integration tests (no mocks).
 
 **Production code must be complete:** No TODOs, no `return True` placeholders, no `except: pass`.
 

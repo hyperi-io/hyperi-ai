@@ -55,10 +55,10 @@ else
     RED='' GREEN='' YELLOW='' BLUE='' NC=''
 fi
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $*"; }
-log_success() { echo -e "${GREEN}[OK]${NC} $*"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+log_info() { printf "%b\n" "${BLUE}[INFO]${NC} $*"; }
+log_success() { printf "%b\n" "${GREEN}[OK]${NC} $*"; }
+log_warn() { printf "%b\n" "${YELLOW}[WARN]${NC} $*"; }
+log_error() { printf "%b\n" "${RED}[ERROR]${NC} $*" >&2; }
 
 show_usage() {
     cat << 'EOF'
@@ -265,13 +265,15 @@ setup_gitignore() {
 ai/' "$gitignore"
         else
             # Add new section
-            echo "" >> "$gitignore"
-            echo "# AI assistant work files - never commit (local only, public repo)" >> "$gitignore"
-            echo "ai/" >> "$gitignore"
-            echo ".claude/" >> "$gitignore"
-            echo "STATE.md" >> "$gitignore"
-            echo "TODO.md" >> "$gitignore"
-            echo "CLAUDE.md" >> "$gitignore"
+            {
+                echo ""
+                echo "# AI assistant work files - never commit (local only, public repo)"
+                echo "ai/"
+                echo ".claude/"
+                echo "STATE.md"
+                echo "TODO.md"
+                echo "CLAUDE.md"
+            } >> "$gitignore"
         fi
     else
         # Create .gitignore
@@ -341,7 +343,7 @@ You are loading project context for a new work session or refreshing my memory.
 
 **This project uses a gitignored `ai/` directory for standards.**
 
-Use the Glob tool to check if `ai/standards/STANDARDS-QUICKSTART.md` exists.
+Use the Glob tool to check if `ai/standards/rules/UNIVERSAL.md` exists.
 
 - If it exists: proceed to Step 2 (no action needed)
 - If missing: tell the user to run `git clone --depth 1 https://github.com/hyperi-io/ai.git ai`
@@ -359,40 +361,40 @@ Read in this order:
 
 ---
 
-## Step 3: Load Standards (COMPLETE FILE)
+## Step 3: Load Universal Standards
 
-Read the ENTIRE file (do not truncate):
+Read the universal standards (cross-cutting rules for all code):
 
-- [STANDARDS-QUICKSTART.md](../../ai/standards/STANDARDS-QUICKSTART.md)
-
----
-
-## Step 4: Detect Project Language
-
-Follow the "MANDATORY: Detect Project Language" section in STANDARDS-QUICKSTART.md:
-
-1. **Glob** for config files in project root (not subdirs, not `.venv/`, not `node_modules/`, not git submodules)
-2. **Read** the config file to confirm language
-3. **Read the ENTIRE language standards file** (do not truncate):
-
-| Config File Found | Load (COMPLETE FILE) |
-|-------------------|----------------------|
-| `pyproject.toml`, `setup.py` | `ai/standards/languages/PYTHON.md` |
-| `go.mod` | `ai/standards/languages/GOLANG.md` |
-| `package.json`, `tsconfig.json` | `ai/standards/languages/TYPESCRIPT.md` |
-| `Cargo.toml` | `ai/standards/languages/RUST.md` |
-| `*.sh` only (no other lang) | `ai/standards/languages/BASH.md` |
+- [UNIVERSAL.md](../../ai/standards/rules/UNIVERSAL.md)
 
 ---
 
-## Step 5: Check for Infrastructure
+## Step 4: Detect and Load Language Rules
 
-| IaC Files Found | Load (COMPLETE FILE) |
-|-----------------|----------------------|
-| `Dockerfile`, `docker-compose.yaml` | `ai/standards/infrastructure/DOCKER.md` |
-| `Chart.yaml`, `values.yaml` | `ai/standards/infrastructure/K8S.md` |
-| `*.tf` | `ai/standards/infrastructure/TERRAFORM.md` |
-| `ansible.cfg`, `playbook.yml` | `ai/standards/infrastructure/ANSIBLE.md` |
+Glob for config files in the project root (not subdirs, not `.venv/`, not `node_modules/`, not git submodules), then read the matching compact rule:
+
+| Config File Found | Load Rule File |
+|-------------------|----------------|
+| `pyproject.toml`, `setup.py` | `ai/standards/rules/python.md` |
+| `go.mod` | `ai/standards/rules/golang.md` |
+| `package.json`, `tsconfig.json` | `ai/standards/rules/typescript.md` |
+| `Cargo.toml` | `ai/standards/rules/rust.md` |
+| `*.sh` only (no other lang) | `ai/standards/rules/bash.md` |
+
+---
+
+## Step 5: Check for Infrastructure Rules
+
+| IaC Files Found | Load Rule File |
+|-----------------|----------------|
+| `Dockerfile`, `docker-compose.yaml` | `ai/standards/rules/docker.md` |
+| `Chart.yaml`, `values.yaml` | `ai/standards/rules/k8s.md` |
+| `*.tf` | `ai/standards/rules/terraform.md` |
+| `ansible.cfg`, `playbook.yml` | `ai/standards/rules/ansible.md` |
+
+Also read these universal rules: `ai/standards/rules/testing.md`, `ai/standards/rules/error-handling.md`, `ai/standards/rules/security.md`
+
+For full reference, see `ai/standards/languages/` and `ai/standards/infrastructure/`.
 
 ---
 
@@ -513,8 +515,8 @@ run_agent_detection() {
         run_single_agent "$SPECIFIC_AGENT"
         local exit_code=$?
         case $exit_code in
-            $EXIT_SUCCESS) log_success "Configured: $SPECIFIC_AGENT" ;;
-            $EXIT_NOT_INSTALLED) log_warn "${SPECIFIC_AGENT} CLI not installed" ;;
+            "$EXIT_SUCCESS") log_success "Configured: $SPECIFIC_AGENT" ;;
+            "$EXIT_NOT_INSTALLED") log_warn "${SPECIFIC_AGENT} CLI not installed" ;;
             *) return 1 ;;
         esac
         return 0
@@ -535,14 +537,14 @@ run_agent_detection() {
         run_single_agent "$agent"
         local exit_code=$?
         case $exit_code in
-            $EXIT_SUCCESS)
+            "$EXIT_SUCCESS")
                 log_success "Configured: $agent"
                 return 0
                 ;;
-            $EXIT_ERROR)
+            "$EXIT_ERROR")
                 return 1
                 ;;
-            $EXIT_NOT_INSTALLED)
+            "$EXIT_NOT_INSTALLED")
                 continue
                 ;;
         esac

@@ -92,7 +92,7 @@ This document provides critical guidance for AI code assistants working on any p
 
 - Reads STATE.md (project state and history)
 - Reads TODO.md (current tasks)
-- Loads STANDARDS-QUICKSTART.md + relevant language files
+- Loads UNIVERSAL.md + path-scoped language/infra rules
 - Checks git status and recent commits
 - Verifies environment (Python version, virtual environments)
 - Personalizes greeting (from git config)
@@ -103,7 +103,7 @@ This document provides critical guidance for AI code assistants working on any p
 /load
 ```
 
-**Other AI assistants:** Manually read STATE.md, TODO.md, STANDARDS-QUICKSTART.md, and relevant language files.
+**Other AI assistants:** Manually read STATE.md, TODO.md, `ai/standards/rules/UNIVERSAL.md`, and relevant language rules from `ai/standards/rules/`.
 
 ### `/save` - Session Progress Checkpoint
 

@@ -41,6 +41,7 @@
       "SlashCommand(/load)",
       "SlashCommand(/save)",
       "SlashCommand(/review)",
+      "SlashCommand(/simplify)",
       "Read(~/.gitconfig)",
       "Bash(.tmp/*)",
       "Bash(mkdir .tmp *)",

@@ -166,7 +166,8 @@ ai/                              # This repository ($AI_ROOT)
 │
 ├── standards/                   # Coding standards (main product)
 │   ├── STANDARDS.md             # Full reference
-│   ├── STANDARDS-QUICKSTART.md  # Core standards (~7.5K tokens)
+│   ├── STANDARDS-QUICKSTART.md  # Quick reference index to rules
+│   ├── rules/                  # Compact rules (<200 lines each)
 │   ├── code-assistant/          # AI-specific guidance
 │   ├── common/                  # Language-agnostic standards
 │   ├── languages/               # Python, Go, TypeScript, Rust, Bash, C++
@@ -262,7 +263,7 @@ AI assistants load standards based on project files detected:
 
 **Always loaded:**
 
-- `STANDARDS-QUICKSTART.md` (~7.5K tokens)
+- `standards/rules/UNIVERSAL.md` (~137 lines, cross-cutting rules)
 
 **Auto-detected by project files:**
 

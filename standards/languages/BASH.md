@@ -12,12 +12,14 @@ description: Bash scripting standards using shellcheck, strict mode, and portabl
 ## Quick Reference
 
 **Lint:** `shellcheck script.sh`
+**Portability:** `macbash script.sh` (checks for macOS/BSD incompatibilities)
 **Test:** `bats tests/`
 **Debug:** `bash -x script.sh`
 
 **Non-negotiable:**
 
 - ShellCheck with zero warnings
+- macbash with zero warnings (macOS/BSD portability)
 - BATS for all scripts > 50 lines
 - Bash 3.2+ compatibility (macOS support)
 - Always use `#!/usr/bin/env bash` shebang
@@ -711,6 +713,55 @@ echo $intentionally_unquoted
 
 ---
 
+## macbash — macOS/BSD Portability Checker (Required)
+
+[macbash](https://github.com/hyperi-io/macbash) detects GNU/Linux-specific constructs that break on macOS (BSD). Run alongside ShellCheck.
+
+**Check availability first:** `command -v macbash` — if installed, zero warnings required before merge.
+
+### Running macbash
+
+```bash
+# Check if installed
+command -v macbash >/dev/null 2>&1 && macbash script.sh
+
+# Check single file
+macbash script.sh
+
+# Check all scripts
+macbash scripts/*.sh
+
+# Auto-fix in place
+macbash -w script.sh
+
+# Preview fixes (dry-run)
+macbash -w --dry-run script.sh
+```
+
+### Common Issues macbash Catches
+
+| Issue | GNU/Linux | Portable Fix |
+|-------|-----------|-------------|
+| `echo -e` | Interprets escapes | `printf "%b\n"` |
+| `sed -i ''` vs `sed -i''` | Different syntax | `sed -i'' -e '...'` |
+| `readarray`/`mapfile` | Bash 4+ | `while IFS= read -r` loop |
+| `${var,,}` / `${var^^}` | Bash 4+ | `tr '[:upper:]' '[:lower:]'` |
+| `grep -P` | PCRE (GNU only) | `grep -E` (extended regex) |
+| `date -d` | GNU date | Conditional per platform |
+
+### CI Integration
+
+Run both tools in your CI pipeline:
+
+```bash
+shellcheck scripts/*.sh
+macbash scripts/*.sh
+```
+
+Both must pass with zero warnings before merge.
+
+---
+
 ## BATS Testing
 
 ### Test File Structure
@@ -1052,17 +1103,19 @@ result=$(echo "$(date)")
 ```
 
 **Always run ShellCheck before accepting AI-generated Bash code.**
+**If macbash is available** (`command -v macbash`), **run it too** — fix all warnings.
 
 ---
 
-## No Mocks Policy
+## Mock-Aware Testing Policy
 
-**"No mocks" = no mocking internal code. External boundaries are legitimate mock targets.**
+**Mocks are scaffolding, not testing. Mock-only BATS tests ≠ production tested.**
 
-For bash scripts, this means:
+For bash scripts:
 
 - ❌ Don't stub internal functions with fake implementations
-- ✅ Mock external commands (curl, kubectl, aws CLI) in BATS tests
+- ✅ Mock external commands (curl, kubectl, aws CLI) in BATS unit tests
+- ✅ Integration tests must exercise real commands against test infrastructure
 
 **Production scripts must be complete:** No `# TODO`, no `exit 0` without logic, no hardcoded example paths.
 

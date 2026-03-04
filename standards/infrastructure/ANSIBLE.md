@@ -1070,7 +1070,7 @@ vars:
 
 ---
 
-## No Mocks Policy (Production Playbooks)
+## Mock-Aware Testing Policy (Production Playbooks)
 
 Production Ansible code must be complete before committing.
 

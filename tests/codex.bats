@@ -32,7 +32,7 @@ teardown() {
     run ./ai/agents/codex.sh
 
     [ "$status" -eq 1 ]
-    [[ "$output" =~ "ERROR: STATE.md not found" ]]
+    [[ "$output" =~ "attach.sh first" ]]
 }
 
 @test "TC-C03: Idempotent - safe to run twice" {
@@ -43,7 +43,7 @@ teardown() {
     # Second run
     run ./ai/agents/codex.sh
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "Skipped (preserving existing):" ]]
+    [[ "$output" =~ "Generated:" ]]
 }
 
 @test "TC-C04: Force flag overwrites copilot-instructions.md" {
@@ -53,7 +53,7 @@ teardown() {
     run ./ai/agents/codex.sh --force
 
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "Deployed:" ]]
+    [[ "$output" =~ "Generated:" ]]
     grep -q "HyperI Coding Standards" .github/copilot-instructions.md
 }
 
@@ -62,7 +62,7 @@ teardown() {
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Would create:" ]]
-    [[ "$output" =~ "Would deploy:" ]]
+    [[ "$output" =~ "Would generate:" ]]
     [ ! -f ".github/copilot-instructions.md" ]
     [ ! -L "CODEX.md" ]
 }
@@ -107,6 +107,7 @@ teardown() {
     [ "$status" -eq 0 ]
     [ -d ".github/skills/standards" ]
     [ -f ".github/skills/standards/SKILL.md" ]
+    grep -q "UNIVERSAL.md" .github/skills/standards/SKILL.md
 }
 
 @test "TC-C11: Creates .vscode directory" {

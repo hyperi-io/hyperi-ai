@@ -16,7 +16,8 @@ ai/
 │   └── gemini.sh        # Gemini Code setup
 ├── standards/           # Main product - coding standards
 │   ├── STANDARDS.md             # Full reference
-│   ├── STANDARDS-QUICKSTART.md  # Core standards (always loaded)
+│   ├── STANDARDS-QUICKSTART.md  # Quick reference index
+│   ├── rules/                  # Compact rules (<200 lines each)
 │   ├── code-assistant/          # AI-specific guidance
 │   ├── common/                  # Language-agnostic standards
 │   ├── languages/               # Python, Go, TypeScript, Rust, Bash
@@ -138,7 +139,8 @@ git commit -m "docs: update standards loading section"
 
 | Directory | Purpose |
 |-----------|---------|
-| `standards/STANDARDS-QUICKSTART.md` | Core standards, always loaded (~7.5K tokens) |
+| `standards/rules/UNIVERSAL.md` | Cross-cutting rules, always loaded (~137 lines) |
+| `standards/rules/<topic>.md` | Compact path-scoped rules (<200 lines each) |
 | `standards/code-assistant/` | AI-specific guidance |
 | `standards/common/` | Language-agnostic standards |
 | `standards/languages/` | Per-language: PYTHON.md, GOLANG.md, etc. |
@@ -148,7 +150,7 @@ git commit -m "docs: update standards loading section"
 
 | File Type | Maximum |
 |-----------|---------|
-| STANDARDS-QUICKSTART.md | 12K tokens |
+| Compact rule (each) | 200 lines max |
 | Language file (each) | 10K tokens |
 | Infrastructure file (each) | 10K tokens |
 
@@ -156,9 +158,9 @@ git commit -m "docs: update standards loading section"
 
 1. Create file in appropriate directory
 2. Follow existing format
-3. Update `STANDARDS-QUICKSTART.md` if it references new content
+3. Run `tools/compact-standards.py` to generate compact rule
 4. Update `/load` commands if auto-detection needed
-5. Test token count: `wc -c FILE.md | awk '{print int($1/4)}'`
+5. Add detection markers to `agents/common.sh` `detect_project_technologies()`
 
 ---
 

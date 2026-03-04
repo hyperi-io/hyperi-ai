@@ -78,7 +78,7 @@ This standards library represents the collation of years of HyperI (and Derek's 
 ```text
 standards/
 ├── STANDARDS.md (this file - entry point for 500K+ context)
-├── STANDARDS-QUICKSTART.md (core standards for <500K context)
+├── STANDARDS-QUICKSTART.md (quick reference index to rules)
 │
 ├── code-assistant/ (AI guidance - language agnostic)
 │   ├── COMMON.md (session mgmt, bash, commits)
@@ -93,7 +93,7 @@ standards/
 │   ├── ERROR-HANDLING.md (security-first errors)
 │   ├── GIT.md (git conventions)
 │   ├── LICENSING.md (FSL-1.1-ALv2)
-│   ├── NO-MOCKS-POLICY.md (production code policy)
+│   ├── MOCKS-POLICY.md (mock-aware testing policy)
 │   ├── PKI.md (TLS, SSH, certificates, CNSA 2.0)
 │   ├── SECURITY.md (input validation, secrets)
 │   └── TESTING.md (test-first development)
@@ -179,7 +179,7 @@ standards/
 
 ### Code Completeness (Review/AI Code)
 
-**No mocks in production:** `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`
+**Mock-aware testing:** `$AI_ROOT/standards/common/MOCKS-POLICY.md`
 
 ### AI Code Assistants
 
@@ -216,7 +216,7 @@ standards/
 **Check against:**
 
 1. `$AI_ROOT/standards/common/CODE-STYLE.md` - Core standards compliance
-2. `$AI_ROOT/standards/common/NO-MOCKS-POLICY.md` - No placeholder code
+2. `$AI_ROOT/standards/common/MOCKS-POLICY.md` - Mock-aware testing, no placeholder code
 3. `$AI_ROOT/standards/common/ERROR-HANDLING.md` - Security-first errors
 4. `$AI_ROOT/standards/common/SECURITY.md` - Input validation, secrets
 5. `$AI_ROOT/standards/code-assistant/AI-GUIDELINES.md` - Extra scrutiny for AI code
@@ -241,7 +241,7 @@ standards/
 
 - [ ] Follows code style standards (`$AI_ROOT/standards/common/CODE-STYLE.md`)
 - [ ] Follows language-specific standards (`$AI_ROOT/standards/languages/`)
-- [ ] No TODO/FIXME comments in src/ (`$AI_ROOT/standards/common/NO-MOCKS-POLICY.md`)
+- [ ] No TODO/FIXME comments in src/ (`$AI_ROOT/standards/common/MOCKS-POLICY.md`)
 - [ ] Error handling is security-first (`$AI_ROOT/standards/common/ERROR-HANDLING.md`)
 - [ ] Input validation present (`$AI_ROOT/standards/common/SECURITY.md`)
 - [ ] Tests pass (80%+ coverage) (`$AI_ROOT/standards/common/TESTING.md`)
@@ -258,10 +258,10 @@ standards/
 
 **All AI code assistants load:**
 
-1. `$AI_ROOT/standards/STANDARDS-QUICKSTART.md` (core standards)
-2. Language files from `$AI_ROOT/standards/languages/` - detect by project config files
-3. Infrastructure files from `$AI_ROOT/standards/infrastructure/` - detect by IaC files present
+1. `$AI_ROOT/standards/rules/UNIVERSAL.md` (cross-cutting rules — always load first)
+2. Path-scoped rules from `$AI_ROOT/standards/rules/` (auto-injected by agent when editing matching files)
+3. Full standards from `$AI_ROOT/standards/languages/` and `$AI_ROOT/standards/infrastructure/` for deep reference
 
-**Auto-detection:** Match project files (e.g., `pyproject.toml`, `go.mod`, `Chart.yaml`, `*.tf`) to the corresponding standards file in the appropriate directory. File names are self-documenting (e.g., `PYTHON.md`, `GOLANG.md`, `K8S.md`, `TERRAFORM.md`).
+**Auto-detection:** Match project files (e.g., `pyproject.toml`, `go.mod`, `Chart.yaml`, `*.tf`) to the corresponding compact rule in `$AI_ROOT/standards/rules/`. Full standards are available for code review and complex decisions.
 
 ---

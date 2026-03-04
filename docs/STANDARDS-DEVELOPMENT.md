@@ -19,9 +19,9 @@
 
 **Single path - always load:**
 
-1. `STANDARDS-QUICKSTART.md` - Core coding standards
-2. Relevant `languages/*.md` file(s) - Based on project config files
-3. Relevant `infrastructure/*.md` file(s) - Based on IaC files
+1. `rules/UNIVERSAL.md` - Cross-cutting coding rules (~137 lines)
+2. Relevant `rules/<lang>.md` file(s) - Auto-injected when editing matching files
+3. Full `languages/*.md` and `infrastructure/*.md` for deep reference
 
 See [TOKEN-ENGINEERING.md](TOKEN-ENGINEERING.md) for auto-detection rules.
 
@@ -32,7 +32,8 @@ See [TOKEN-ENGINEERING.md](TOKEN-ENGINEERING.md) for auto-detection rules.
 ```text
 standards/
 ├── STANDARDS.md              # Full reference (not session-loaded)
-├── STANDARDS-QUICKSTART.md   # Core standards (always loaded)
+├── STANDARDS-QUICKSTART.md   # Quick reference index
+├── rules/                   # Compact rules (<200 lines each)
 │
 ├── code-assistant/           # AI-specific guidance
 │   ├── COMMON.md             # Session management, commits

@@ -116,34 +116,127 @@ deploy_cli_json() {
     fi
 }
 
-# Deploy rules (always overwrite - these are versioned)
+# Deploy rules — converts compact standards to .mdc format
+# Universal rules (no frontmatter) → category: Always
+# Path-scoped rules (has paths:) → category: Auto Attached with globs
+# Session commands deployed from templates
 deploy_rules() {
-    local src_dir="$AI_ROOT/templates/cursor/rules"
+    local rules_src="$AI_ROOT/standards/rules"
+    local templates_dir="$AI_ROOT/templates/cursor/rules"
     local dst_dir="$PROJECT_ROOT/.cursor/rules"
 
-    if [ ! -d "$src_dir" ]; then
-        agent_log_error "Rules directory not found: $src_dir"
-        exit $EXIT_ERROR
-    fi
-
-    if [ "$DRY_RUN" = "true" ]; then
-        echo "Would deploy: $dst_dir/standards.mdc"
-        echo "Would deploy: $dst_dir/session-start.mdc"
-        echo "Would deploy: $dst_dir/session-save.mdc"
+    if [ ! -d "$rules_src" ]; then
+        agent_log_warn "Rules directory not found: $rules_src"
+        agent_log_info "Falling back to template rules only"
+        # Deploy session templates even without compact rules
+        if [ -d "$templates_dir" ]; then
+            cp "$templates_dir/session-start.mdc" "$dst_dir/" 2>/dev/null || true
+            cp "$templates_dir/session-save.mdc" "$dst_dir/" 2>/dev/null || true
+        fi
         return 0
     fi
 
-    # Always overwrite rules (they're versioned templates)
-    cp "$src_dir/standards.mdc" "$dst_dir/"
-    cp "$src_dir/session-start.mdc" "$dst_dir/"
-    cp "$src_dir/session-save.mdc" "$dst_dir/"
+    # Deploy session commands from templates (always overwrite)
+    if [ "$DRY_RUN" = "true" ]; then
+        echo "Would deploy: $dst_dir/session-start.mdc"
+        echo "Would deploy: $dst_dir/session-save.mdc"
+    else
+        cp "$templates_dir/session-start.mdc" "$dst_dir/"
+        cp "$templates_dir/session-save.mdc" "$dst_dir/"
+        agent_log_success "Deployed: session-start.mdc, session-save.mdc"
+    fi
 
-    agent_log_success "Deployed: $dst_dir/standards.mdc"
-    agent_log_success "Deployed: $dst_dir/session-start.mdc"
-    agent_log_success "Deployed: $dst_dir/session-save.mdc"
+    # Detect project technologies for selective deployment
+    detect_project_technologies
 
-    if [ "$VERBOSE" = "true" ]; then
-        agent_log_info "  Rules are always updated (versioned templates)"
+    agent_log_info "Converting compact rules to .mdc format..."
+
+    local count=0
+    for src_file in "$rules_src"/*.md; do
+        [ -f "$src_file" ] || continue
+        local name
+        name="$(basename "$src_file" .md)"
+        local dst_file="$dst_dir/${name}.mdc"
+        local description="$name standards"
+
+        local globs
+        globs="$(extract_rule_globs "$src_file")"
+
+        if [ -n "$globs" ]; then
+            # Path-scoped rule — only deploy if technology detected
+            local is_detected=false
+            for tech in "${DETECTED_LANGS[@]}" "${DETECTED_INFRA[@]}"; do
+                if [ "$tech" = "$name" ]; then
+                    is_detected=true
+                    break
+                fi
+            done
+
+            if [ "$is_detected" != "true" ]; then
+                [ "$VERBOSE" = "true" ] && agent_log_info "  Skipped (not detected): $name"
+                continue
+            fi
+
+            if [ "$DRY_RUN" = "true" ]; then
+                echo "Would deploy: $dst_file (Auto Attached, globs: $globs)"
+                count=$((count + 1))
+                continue
+            fi
+
+            # Write .mdc with Auto Attached category and globs
+            {
+                echo "---"
+                echo "category: Auto Attached"
+                echo "description: $description"
+                echo "globs: \"$globs\""
+                echo "---"
+                echo ""
+                extract_rule_body "$src_file"
+            } > "$dst_file"
+            count=$((count + 1))
+            [ "$VERBOSE" = "true" ] && agent_log_info "  Deployed: $name.mdc (Auto Attached)"
+        else
+            # Universal rule (no paths) → category: Always
+            if [ "$DRY_RUN" = "true" ]; then
+                echo "Would deploy: $dst_file (Always)"
+                count=$((count + 1))
+                continue
+            fi
+
+            {
+                echo "---"
+                echo "category: Always"
+                echo "description: $description"
+                echo "---"
+                echo ""
+                cat "$src_file"
+            } > "$dst_file"
+            count=$((count + 1))
+            [ "$VERBOSE" = "true" ] && agent_log_info "  Deployed: $name.mdc (Always)"
+        fi
+    done
+
+    if [ "$DRY_RUN" != "true" ]; then
+        agent_log_success "Deployed $count rule files to $dst_dir/"
+    fi
+
+    # Also deploy user standards if present
+    local user_standards="${XDG_CONFIG_HOME:-$HOME/.config}/ai/USER-CODING-STANDARDS.md"
+    if [ -f "$user_standards" ]; then
+        local user_dst="$dst_dir/user-standards.mdc"
+        if [ "$DRY_RUN" = "true" ]; then
+            echo "Would deploy: $user_dst (Always, user standards)"
+        else
+            {
+                echo "---"
+                echo "category: Always"
+                echo "description: User coding standards overrides"
+                echo "---"
+                echo ""
+                cat "$user_standards"
+            } > "$user_dst"
+            agent_log_success "Deployed user standards: $user_dst"
+        fi
     fi
 }
 
@@ -191,21 +284,14 @@ print_summary() {
         agent_log_success "Cursor IDE setup complete!"
         echo ""
         echo "Configuration:"
-        echo "  .cursor/cli.json              - Cursor permissions"
-        echo "  .cursor/rules/standards.mdc   - Always-attached: Standards loading"
-        echo "  .cursor/rules/session-start.mdc - Auto-attached: Session initialisation"
-        echo "  .cursor/rules/session-save.mdc   - Manual: Session save instructions"
-        echo "  CURSOR.md -> STATE.md         - Project state symlink"
+        echo "  .cursor/cli.json                - Cursor permissions"
+        echo "  .cursor/rules/UNIVERSAL.mdc     - Always: Cross-cutting standards"
+        echo "  .cursor/rules/<lang>.mdc        - Auto Attached: Detected language rules"
+        echo "  .cursor/rules/session-start.mdc - Auto Attached: Session initialisation"
+        echo "  .cursor/rules/session-save.mdc  - Manual: Session save instructions"
+        echo "  CURSOR.md -> STATE.md           - Project state symlink"
         echo ""
-        echo "Next steps:"
-        echo "  1. Open project in Cursor IDE"
-        echo "  2. Rules will be automatically loaded based on their categories"
-        echo "  3. Review CURSOR.md (links to STATE.md)"
-        echo ""
-        echo "Note: Rules are categorised as:"
-        echo "  - standards.mdc: Always (always loaded)"
-        echo "  - session-start.mdc: Auto Attached (loaded when relevant)"
-        echo "  - session-save.mdc: Manual (invoke when needed)"
+        echo "Detected: ${DETECTED_LANGS[*]:-none} ${DETECTED_INFRA[*]:-}"
     fi
     echo "================================"
 }

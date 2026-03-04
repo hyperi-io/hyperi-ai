@@ -5,7 +5,7 @@ description: HyperI coding standards - always use for code quality
 
 # HyperI Coding Standards
 
-See the full standards document at: `ai/standards/STANDARDS-QUICKSTART.md`
+See the universal standards at: `ai/standards/rules/UNIVERSAL.md`
 
 ## Quick Reference
 
@@ -33,6 +33,7 @@ See the full standards document at: `ai/standards/STANDARDS-QUICKSTART.md`
 - Test behaviour, not implementation
 - Arrange-Act-Assert pattern
 - 80%+ coverage target
+- Mock-aware: mock-only tests ≠ production tested
 
 ### Security
 
@@ -41,4 +42,5 @@ See the full standards document at: `ai/standards/STANDARDS-QUICKSTART.md`
 - Use parameterised queries
 - Least privilege principle
 
-For complete standards, read: `ai/standards/STANDARDS-QUICKSTART.md`
+For complete standards, read: `ai/standards/rules/UNIVERSAL.md`
+Language-specific rules are in: `ai/standards/rules/<lang>.md`
