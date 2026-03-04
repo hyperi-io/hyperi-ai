@@ -1,3 +1,10 @@
+## [1.14.6](https://github.com/hyperi-io/ai/compare/1.14.5...1.14.6) (2026-03-04)
+
+
+### Bug Fixes
+
+* require ci local-build gate before every push ([4e9ea9f](https://github.com/hyperi-io/ai/commit/4e9ea9f8b2640dfad0c2ec714fa3b631fadb019b))
+
 ## [1.14.5](https://github.com/hyperi-io/ai/compare/1.14.4...1.14.5) (2026-03-04)
 
 
