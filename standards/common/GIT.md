@@ -171,6 +171,47 @@ No need to manually remove - hooks handle this automatically.
 2. **No** - cancel the commit
 3. **Change** - provide guidance to revise the message, then re-approve
 
+### Local Build Before Push (ci submodule)
+
+**Philosophy:** The local build IS the CI pipeline. By the time you push,
+everything must already be green locally. CI is a formality — a second pair
+of eyes on a known-good build. Nothing should fail on CI that has not
+already passed locally.
+
+If the `ci` submodule is attached, run the full local build as the **mandatory
+final step** before seeking push approval:
+
+```bash
+# Check if ci is attached
+ls ci/.git 2>/dev/null || echo "ci not attached — skip local build"
+
+# If attached, run before every push
+./ci/local-build.sh
+```
+
+This executes the identical quality → tests → build pipeline that CI runs,
+using the same tooling and environment.
+
+**Options:**
+
+```bash
+./ci/local-build.sh                # Full (quality + tests + build) — use this
+./ci/local-build.sh --skip-build   # Quality + tests only (faster, no artefacts)
+```
+
+Default to the full build. Use `--skip-build` only when the user explicitly
+wants a fast feedback loop and is not shipping artefacts.
+
+**Push order:**
+
+1. `./ci/local-build.sh` — must pass
+2. `git pull --rebase`
+3. Seek user approval (commit list + projected version bump)
+4. `git push`
+
+If the local build fails, fix the issues before pushing. Do NOT bypass
+with `git push --no-verify` unless the user explicitly instructs it.
+
 ### Pushing Commits
 
 - **ALWAYS** run `git pull --rebase` before pushing. Semantic-release CI
