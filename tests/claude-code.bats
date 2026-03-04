@@ -121,25 +121,33 @@ teardown() {
     [ -f ".claude/commands/standards.md" ]
 }
 
-@test "TC-111: load.md contains tech detection markers" {
-    run grep -q "Cargo.toml" "$AI_SOURCE/templates/claude-code/commands/load.md"
+@test "TC-111: inject-standards.sh contains tech detection markers" {
+    run grep -q "Cargo.toml" "$AI_SOURCE/hooks/inject-standards.sh"
     [ "$status" -eq 0 ]
 
-    run grep -q "pyproject.toml" "$AI_SOURCE/templates/claude-code/commands/load.md"
+    run grep -q "pyproject.toml" "$AI_SOURCE/hooks/inject-standards.sh"
     [ "$status" -eq 0 ]
 
-    run grep -q "go.mod" "$AI_SOURCE/templates/claude-code/commands/load.md"
+    run grep -q "go.mod" "$AI_SOURCE/hooks/inject-standards.sh"
     [ "$status" -eq 0 ]
 
-    run grep -q "Dockerfile" "$AI_SOURCE/templates/claude-code/commands/load.md"
+    run grep -q "Dockerfile" "$AI_SOURCE/hooks/inject-standards.sh"
     [ "$status" -eq 0 ]
 
-    run grep -q "tsconfig.json" "$AI_SOURCE/templates/claude-code/commands/load.md"
+    run grep -q "tsconfig.json" "$AI_SOURCE/hooks/inject-standards.sh"
     [ "$status" -eq 0 ]
 }
 
 @test "TC-112: settings.json allows SlashCommand /standards" {
     run grep -q "SlashCommand(/standards)" "$AI_SOURCE/templates/claude-code/settings.json"
+    [ "$status" -eq 0 ]
+}
+
+@test "TC-113: settings.json wires SessionStart startup hook" {
+    run grep -q "inject-standards.sh" "$AI_SOURCE/templates/claude-code/settings.json"
+    [ "$status" -eq 0 ]
+
+    run grep -q '"startup"' "$AI_SOURCE/templates/claude-code/settings.json"
     [ "$status" -eq 0 ]
 }
 

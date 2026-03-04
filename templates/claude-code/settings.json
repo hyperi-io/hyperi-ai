@@ -16,6 +16,16 @@
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/ai/hooks/inject-standards.sh\"",
+            "statusMessage": "Loading coding standards..."
+          }
+        ]
+      },
+      {
         "matcher": "compact",
         "hooks": [
           {
