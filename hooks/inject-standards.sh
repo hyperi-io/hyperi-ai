@@ -32,9 +32,13 @@ fi
 # Check project root for marker files/dirs and inject matching rule files.
 # Each rule is a compact standards file (44-173 lines).
 
+LOADED_RULES="UNIVERSAL"
+
 inject_rule() {
     local rule_file="$RULES_DIR/$1"
+    local name="${1%.md}"
     if [ -f "$rule_file" ]; then
+        LOADED_RULES="${LOADED_RULES}, ${name}"
         echo "---"
         echo ""
         cat "$rule_file"
@@ -104,3 +108,8 @@ fi
 if [ -d certs ] || [ -d ssl ] || [ -d pki ]; then
     inject_rule "pki.md"
 fi
+
+# --- Summary ---
+echo "---"
+echo ""
+echo "**HyperI AI standards loaded:** ${LOADED_RULES}"
