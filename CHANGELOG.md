@@ -1,3 +1,10 @@
+## [1.14.4](https://github.com/hyperi-io/ai/compare/1.14.3...1.14.4) (2026-03-04)
+
+
+### Bug Fixes
+
+* add self-use /load command and Claude Code commands for ai repo ([01b553f](https://github.com/hyperi-io/ai/commit/01b553f837c7d19e905367e06aafc874a504ceb3))
+
 ## [1.14.3](https://github.com/hyperi-io/ai/compare/1.14.2...1.14.3) (2026-03-04)
 
 
