@@ -1,3 +1,5 @@
+## [1.14.7](https://github.com/hyperi-io/ai/compare/1.14.6...1.14.7) (2026-03-04)
+
 ## [1.14.6](https://github.com/hyperi-io/ai/compare/1.14.5...1.14.6) (2026-03-04)
 
 
