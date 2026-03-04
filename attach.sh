@@ -677,9 +677,11 @@ run_single_agent() {
     fi
 
     log_info "Running ${agent} setup..."
+    # Capture exit code without triggering set -e
+    local exit_code=0
     # shellcheck disable=SC2086
-    "$script" $force_flag $verbose_flag
-    return $?
+    "$script" $force_flag $verbose_flag || exit_code=$?
+    return $exit_code
 }
 
 # Run agent detection based on mode
@@ -699,8 +701,8 @@ run_agent_detection() {
 
     # Specific agent requested
     if [ -n "$SPECIFIC_AGENT" ]; then
-        run_single_agent "$SPECIFIC_AGENT"
-        local exit_code=$?
+        local exit_code=0
+        run_single_agent "$SPECIFIC_AGENT" || exit_code=$?
         case $exit_code in
             "$EXIT_SUCCESS")
                 log_success "Configured: $SPECIFIC_AGENT"
@@ -720,9 +722,9 @@ run_agent_detection() {
     if [ "$SETUP_ALL_AGENTS" = true ]; then
         local any_configured=false
         for agent in "${AGENT_PRIORITY[@]}"; do
-            run_single_agent "$agent"
-            local exit_code=$?
-            if [ $exit_code -eq $EXIT_SUCCESS ]; then
+            local exit_code=0
+            run_single_agent "$agent" || exit_code=$?
+            if [ $exit_code -eq "$EXIT_SUCCESS" ]; then
                 any_configured=true
             fi
         done
@@ -735,8 +737,8 @@ run_agent_detection() {
 
     # Default: first installed agent wins
     for agent in "${AGENT_PRIORITY[@]}"; do
-        run_single_agent "$agent"
-        local exit_code=$?
+        local exit_code=0
+        run_single_agent "$agent" || exit_code=$?
 
         case $exit_code in
             "$EXIT_SUCCESS")

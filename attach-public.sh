@@ -497,9 +497,11 @@ run_single_agent() {
     fi
 
     log_info "Running ${agent} setup..."
+    # Capture exit code without triggering set -e
+    local exit_code=0
     # shellcheck disable=SC2086
-    "$script" $force_flag $verbose_flag
-    return $?
+    "$script" $force_flag $verbose_flag || exit_code=$?
+    return $exit_code
 }
 
 run_agent_detection() {
@@ -512,8 +514,8 @@ run_agent_detection() {
     log_info "=== Agent Detection ==="
 
     if [ -n "$SPECIFIC_AGENT" ]; then
-        run_single_agent "$SPECIFIC_AGENT"
-        local exit_code=$?
+        local exit_code=0
+        run_single_agent "$SPECIFIC_AGENT" || exit_code=$?
         case $exit_code in
             "$EXIT_SUCCESS") log_success "Configured: $SPECIFIC_AGENT" ;;
             "$EXIT_NOT_INSTALLED") log_warn "${SPECIFIC_AGENT} CLI not installed" ;;
@@ -525,8 +527,9 @@ run_agent_detection() {
     if [ "$SETUP_ALL_AGENTS" = true ]; then
         local any_configured=false
         for agent in "${AGENT_PRIORITY[@]}"; do
-            run_single_agent "$agent"
-            [ $? -eq $EXIT_SUCCESS ] && any_configured=true
+            local exit_code=0
+            run_single_agent "$agent" || exit_code=$?
+            [ $exit_code -eq "$EXIT_SUCCESS" ] && any_configured=true
         done
         [ "$any_configured" = false ] && log_warn "No AI agent CLIs found"
         return 0
@@ -534,8 +537,8 @@ run_agent_detection() {
 
     # Default: first installed agent wins
     for agent in "${AGENT_PRIORITY[@]}"; do
-        run_single_agent "$agent"
-        local exit_code=$?
+        local exit_code=0
+        run_single_agent "$agent" || exit_code=$?
         case $exit_code in
             "$EXIT_SUCCESS")
                 log_success "Configured: $agent"
