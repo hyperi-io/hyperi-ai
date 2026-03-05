@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/hyperi-io/ai/compare/1.15.0...1.15.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* simplify sleep permissions and allow ci/scripts/claude in settings.json ([2a1b8ce](https://github.com/hyperi-io/ai/commit/2a1b8ce046dd9e9a9e07e7a3fe32c843034c5398))
+
 ## [1.15.0](https://github.com/hyperi-io/ai/compare/1.14.7...1.15.0) (2026-03-05)
 
 
