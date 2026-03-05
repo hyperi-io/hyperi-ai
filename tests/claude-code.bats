@@ -121,20 +121,20 @@ teardown() {
     [ -f ".claude/commands/standards.md" ]
 }
 
-@test "TC-111: inject-standards.sh contains tech detection markers" {
-    run grep -q "Cargo.toml" "$AI_SOURCE/hooks/inject-standards.sh"
+@test "TC-111: common.py contains tech detection markers" {
+    run grep -q "Cargo.toml" "$AI_SOURCE/hooks/common.py"
     [ "$status" -eq 0 ]
 
-    run grep -q "pyproject.toml" "$AI_SOURCE/hooks/inject-standards.sh"
+    run grep -q "pyproject.toml" "$AI_SOURCE/hooks/common.py"
     [ "$status" -eq 0 ]
 
-    run grep -q "go.mod" "$AI_SOURCE/hooks/inject-standards.sh"
+    run grep -q "go.mod" "$AI_SOURCE/hooks/common.py"
     [ "$status" -eq 0 ]
 
-    run grep -q "Dockerfile" "$AI_SOURCE/hooks/inject-standards.sh"
+    run grep -q "Dockerfile" "$AI_SOURCE/hooks/common.py"
     [ "$status" -eq 0 ]
 
-    run grep -q "tsconfig.json" "$AI_SOURCE/hooks/inject-standards.sh"
+    run grep -q "tsconfig.json" "$AI_SOURCE/hooks/common.py"
     [ "$status" -eq 0 ]
 }
 
@@ -144,10 +144,34 @@ teardown() {
 }
 
 @test "TC-113: settings.json wires SessionStart startup hook" {
-    run grep -q "inject-standards.sh" "$AI_SOURCE/templates/claude-code/settings.json"
+    run grep -q "inject_standards.py" "$AI_SOURCE/templates/claude-code/settings.json"
     [ "$status" -eq 0 ]
 
     run grep -q '"startup"' "$AI_SOURCE/templates/claude-code/settings.json"
+    [ "$status" -eq 0 ]
+}
+
+@test "TC-114: settings.json wires Stop hook (lint_check.py)" {
+    run grep -q "lint_check.py" "$AI_SOURCE/templates/claude-code/settings.json"
+    [ "$status" -eq 0 ]
+
+    run grep -q '"Stop"' "$AI_SOURCE/templates/claude-code/settings.json"
+    [ "$status" -eq 0 ]
+}
+
+@test "TC-115: settings.json wires SubagentStart hook" {
+    run grep -q "subagent_context.py" "$AI_SOURCE/templates/claude-code/settings.json"
+    [ "$status" -eq 0 ]
+
+    run grep -q '"SubagentStart"' "$AI_SOURCE/templates/claude-code/settings.json"
+    [ "$status" -eq 0 ]
+}
+
+@test "TC-116: settings.json wires PreToolUse Bash hook" {
+    run grep -q "safety_guard.py" "$AI_SOURCE/templates/claude-code/settings.json"
+    [ "$status" -eq 0 ]
+
+    run grep -q '"PreToolUse"' "$AI_SOURCE/templates/claude-code/settings.json"
     [ "$status" -eq 0 ]
 }
 

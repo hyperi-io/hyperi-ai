@@ -37,25 +37,25 @@ setup_test_env() {
     mkdir -p "$TEST_SUBMODULE/ai"
     mkdir -p "$TEST_SUBMODULE/ai/agents"
     echo "gitdir: ../.git/modules/ai" > "$TEST_SUBMODULE/ai/.git" 2>/dev/null || true
-    cp -r "$AI_SOURCE"/{attach.sh,standards,templates} "$TEST_SUBMODULE/ai/" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_SUBMODULE/ai/" 2>/dev/null || true
     cp -r "$AI_SOURCE"/agents/*.sh "$TEST_SUBMODULE/ai/agents/" 2>/dev/null || true
-    chmod +x "$TEST_SUBMODULE/ai/attach.sh" "$TEST_SUBMODULE/ai/agents/"*.sh 2>/dev/null || true
+    chmod +x "$TEST_SUBMODULE/ai/attach.sh" "$TEST_SUBMODULE/ai/agents/"*.sh "$TEST_SUBMODULE/ai/hooks/"*.py 2>/dev/null || true
 
     # Setup clone test
     mkdir -p "$TEST_CLONE/ai"
     mkdir -p "$TEST_CLONE/ai/agents"
-    cp -r "$AI_SOURCE"/{attach.sh,standards,templates} "$TEST_CLONE/ai/"
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_CLONE/ai/"
     cp -r "$AI_SOURCE"/agents/*.sh "$TEST_CLONE/ai/agents/" 2>/dev/null || true
-    chmod +x "$TEST_CLONE/ai/attach.sh" "$TEST_CLONE/ai/agents/"*.sh 2>/dev/null || true
+    chmod +x "$TEST_CLONE/ai/attach.sh" "$TEST_CLONE/ai/agents/"*.sh "$TEST_CLONE/ai/hooks/"*.py 2>/dev/null || true
     # Create .git directory (simulates clone)
     mkdir -p "$TEST_CLONE/ai/.git"
 
     # Setup standalone test
     mkdir -p "$TEST_STANDALONE/ai"
     mkdir -p "$TEST_STANDALONE/ai/agents"
-    cp -r "$AI_SOURCE"/{attach.sh,standards,templates} "$TEST_STANDALONE/ai/" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_STANDALONE/ai/" 2>/dev/null || true
     cp -r "$AI_SOURCE"/agents/*.sh "$TEST_STANDALONE/ai/agents/" 2>/dev/null || true
-    chmod +x "$TEST_STANDALONE/ai/attach.sh" "$TEST_STANDALONE/ai/agents/"*.sh 2>/dev/null || true
+    chmod +x "$TEST_STANDALONE/ai/attach.sh" "$TEST_STANDALONE/ai/agents/"*.sh "$TEST_STANDALONE/ai/hooks/"*.py 2>/dev/null || true
     # No .git (simulates unzipped)
 }
 

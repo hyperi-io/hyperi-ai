@@ -42,7 +42,7 @@ Read in this order:
 ## Step 4: Verify Standards Are Loaded
 
 Coding standards are injected automatically by the `SessionStart` hook
-(`inject-standards.sh`). This runs before your first message and detects
+(`inject_standards.py`). This runs before your first message and detects
 project technologies from marker files (Cargo.toml, pyproject.toml, etc.),
 injecting UNIVERSAL.md plus all matching language/infra rule files.
 
