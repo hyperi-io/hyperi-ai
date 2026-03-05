@@ -1,3 +1,10 @@
+## [1.15.2](https://github.com/hyperi-io/ai/compare/1.15.1...1.15.2) (2026-03-05)
+
+
+### Bug Fixes
+
+* remove overly restrictive deny patterns from settings.json ([4d02278](https://github.com/hyperi-io/ai/commit/4d022782a0c24d107166c4bf1668d2a99970d164))
+
 ## [1.15.1](https://github.com/hyperi-io/ai/compare/1.15.0...1.15.1) (2026-03-05)
 
 
