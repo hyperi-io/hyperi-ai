@@ -78,12 +78,31 @@ Editing `*.py` → python rules inject. Editing `*.sh` → bash rules inject.
 | `.claude/skills/` | Full standards for `/review` and `/simplify` |
 | `.claude/memory/` | Project-specific persistent memory |
 
-## Updating AI
+## Auto-Update (Default)
+
+**Both `ai/` and `ci/` submodules auto-update from upstream on every Claude
+Code session start.** No manual commands needed — the `SessionStart` hook
+handles it silently, including re-deploying changed commands, rules, and skills.
+
+To force an immediate update outside of Claude Code:
 
 ```bash
 git submodule update --remote ai
 ./ai/attach.sh --agent claude
 ```
+
+## Pinning (Disable Auto-Update)
+
+To lock a submodule to a specific version:
+
+```bash
+# Pin via .gitmodules (auto-update hook will skip pinned submodules)
+git config -f .gitmodules submodule.ai.update none
+git add .gitmodules
+git commit -m "chore: pin ai submodule"
+```
+
+To unpin: `git config -f .gitmodules submodule.ai.update rebase`
 
 ## Upgrading Existing Projects
 

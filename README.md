@@ -218,47 +218,67 @@ git submodule add https://github.com/hyperi-io/ai.git ai
 
 ---
 
-## Submodule Configuration
+## Submodule Auto-Update
 
-### Default (auto-update)
+### Default behaviour (auto-update on every session)
 
-Submodules auto-update from upstream when you run `git submodule update`:
+**Both `ai/` and `ci/` submodules are automatically updated from upstream
+every time a Claude Code session starts.** This happens silently via the
+`SessionStart` hook — no manual `git submodule update` needed.
 
-```bash
-git submodule update --remote ai
-```
+The hook also auto-reattaches: if updated files include commands, rules, or
+agent config, it re-runs `claude.sh` to re-deploy them.
 
 Settings stored in `.gitmodules` (propagates to all clones):
 
-- `update = rebase` - Apply upstream changes
-- `fetchRecurseSubmodules = true` - Include in clone
+- `update = rebase` — apply upstream changes (default)
+- `fetchRecurseSubmodules = true` — include in clone
 
-### Pinned mode (--pin)
+### Pinning a submodule (disable auto-update)
 
-Disable auto-update for fixed versions:
+If you need a fixed version (e.g., for reproducible builds or auditing),
+pin the submodule. The auto-update hook respects this and will skip it.
 
 ```bash
+# Pin via attach
 ./ai/attach.sh --pin
+
+# Or set directly in .gitmodules
+git config -f .gitmodules submodule.ai.update none
+git config -f .gitmodules submodule.ci.update none   # pin ci too
+git add .gitmodules
+git commit -m "chore: pin ai and ci submodules"
 ```
 
-Update to specific version manually:
+Update a pinned submodule to a specific version manually:
 
 ```bash
 git -C ai fetch
-git -C ai checkout v1.0.0
+git -C ai checkout v2.0.0
 git add ai
-git commit -m "chore: pin ai to v1.0.0"
+git commit -m "chore: pin ai to v2.0.0"
 ```
 
-### Switch between modes
+### Unpinning (re-enable auto-update)
 
 ```bash
-# Enable auto-update (default)
 git config -f .gitmodules submodule.ai.update rebase
-
-# Disable auto-update (pinned)
-git config -f .gitmodules submodule.ai.update none
+git config -f .gitmodules submodule.ci.update rebase
+git add .gitmodules
+git commit -m "chore: unpin ai and ci submodules"
 ```
+
+### How auto-update works
+
+On every Claude Code session start, the `inject_standards.py` hook:
+
+1. Checks `.gitmodules` for each submodule (`ai`, `ci`)
+2. If `update = none` → skip (pinned)
+3. If `update = rebase` or unset → run `git submodule update --remote <name>`
+4. After updating `ai/`, checks if deployment files changed and re-deploys
+5. Writes a version stamp to `.claude/.ai-version` for change tracking
+
+This is fully silent — no output unless something actually changed.
 
 ---
 
