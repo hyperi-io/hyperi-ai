@@ -2,7 +2,7 @@
 # Project:      HyperI AI
 # File:         attach-public.sh
 # Purpose:      Attach AI standards to a PUBLIC repo (no submodule, gitignored)
-# License:      FSL-1.1-ALv2
+# License:      Proprietary
 # Copyright:    (c) 2026 HYPERI PTY LIMITED
 #
 # Use this for public/open-source repositories where you don't want to expose

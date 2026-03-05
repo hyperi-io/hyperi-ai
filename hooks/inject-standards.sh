@@ -3,7 +3,7 @@
 # File:      hooks/inject-standards.sh
 # Purpose:   Detect project technologies and inject matching coding standards
 #
-# License:   FSL-1.1-ALv2
+# License:   Proprietary
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 #
 # Used as a Claude Code SessionStart hook (matcher: startup).

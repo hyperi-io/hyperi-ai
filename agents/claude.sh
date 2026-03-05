@@ -3,7 +3,7 @@
 # File:      agents/claude.sh
 # Purpose:   Setup Claude Code configuration for a project
 #
-# License:   FSL-1.1-ALv2
+# License:   Proprietary
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 #
 # Usage: ./agents/claude.sh [--help] [--dry-run] [--force] [--no-managed] [--path PATH] [--verbose]
