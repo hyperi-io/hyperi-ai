@@ -494,7 +494,7 @@ write_version_stamp() {
         return 0
     fi
 
-    if command -v git >/dev/null 2>&1 && [ -d "$AI_ROOT/.git" ]; then
+    if command -v git >/dev/null 2>&1 && { [ -d "$AI_ROOT/.git" ] || [ -f "$AI_ROOT/.git" ]; }; then
         local version
         version="$(git -C "$AI_ROOT" rev-parse HEAD 2>/dev/null || true)"
         if [ -n "$version" ]; then
