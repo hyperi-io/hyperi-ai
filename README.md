@@ -34,8 +34,8 @@ A standards library that attaches to any project to provide:
 
 **Design:**
 
-- Pure bash 3.2+ (macOS, Linux, WSL)
-- Zero dependencies beyond standard Unix tools
+- **Hooks:** Python 3 stdlib (no pip dependencies) — technology detection, standards injection, safety, formatting, linting
+- **Scripts:** Bash 3.2+ (macOS, Linux, WSL) — attach.sh, agent deployment
 - Path-agnostic (works anywhere, any directory name)
 - Idempotent (safe to run repeatedly)
 - Works standalone or alongside HyperI CI (`ci/` submodule)
@@ -157,12 +157,21 @@ ai/                              # This repository ($AI_ROOT)
 ├── attach.sh                    # Attach AI to project (submodule mode)
 ├── attach-public.sh             # Attach AI to public repo (gitignored mode)
 │
-├── agents/                      # Agent setup scripts
-│   ├── common.sh               # Shared functions (CLI detection, logging, tech detection)
-│   ├── claude.sh               # Claude Code setup
+├── agents/                      # Agent setup scripts (bash)
+│   ├── common.sh               # Shared functions (CLI detection, logging)
+│   ├── claude.sh               # Claude Code setup + version stamp
 │   ├── cursor.sh               # Cursor IDE setup
 │   ├── gemini.sh               # Gemini Code setup
 │   └── codex.sh                # OpenAI Codex / GitHub Copilot setup
+│
+├── hooks/                       # Claude Code hooks (Python 3 stdlib)
+│   ├── common.py               # Shared: tech detection, rule injection, safety, formatting
+│   ├── inject_standards.py     # SessionStart(startup): date + standards + auto-update
+│   ├── on_compact.py           # SessionStart(compact): re-inject after compaction
+│   ├── auto_format.py          # PostToolUse(Edit|Write): run formatter on edited files
+│   ├── subagent_context.py     # SubagentStart: inject standards into subagents
+│   ├── safety_guard.py         # PreToolUse(Bash): block dangerous commands
+│   └── lint_check.py           # Stop: lint modified files, feed errors back
 │
 ├── standards/                   # Coding standards (main product)
 │   ├── STANDARDS.md             # Full reference
@@ -178,7 +187,7 @@ ai/                              # This repository ($AI_ROOT)
 ├── templates/                   # Deployment templates
 │   ├── STATE.md                 # Session state template
 │   ├── TODO.md                  # Task tracking template
-│   ├── claude-code/             # Claude Code configs (commands, settings)
+│   ├── claude-code/             # Claude Code configs (commands, settings, hook wiring)
 │   ├── cursor/                  # Cursor configs (cli.json, session rules)
 │   ├── gemini/                  # Gemini configs
 │   ├── copilot/                 # Copilot/Codex header template
@@ -187,7 +196,7 @@ ai/                              # This repository ($AI_ROOT)
 ├── tools/                       # Development tools
 │   └── compact-standards.py    # Generate compact rules from full standards (API script)
 │
-├── tests/                       # BATS test suite
+├── tests/                       # BATS test suite (86 tests)
 └── docs/                        # Project documentation
 ```
 
@@ -286,28 +295,33 @@ This is fully silent — no output unless something actually changed.
 
 Standards are delivered in three layers, each with different persistence:
 
-### Layer 1 — CAG: Always loaded via `/load`
+### Layer 1 — CAG: Auto-injected at session start
 
-`standards/rules/UNIVERSAL.md` (~137 lines) — cross-cutting rules loaded at session start.
+`standards/rules/UNIVERSAL.md` plus all detected technology rules are automatically
+injected into Claude's context by the `SessionStart` hook (`inject_standards.py`).
+This also injects the current date and web-search-before-code mandate.
+
+Technology detection scans up to 3 levels deep (handles monorepos and workspaces):
+
+| Marker Files Detected | Rule Auto-Injected |
+|----------------------|-------------------|
+| `pyproject.toml`, `setup.py`, `requirements.txt` | `python.md` |
+| `go.mod` | `golang.md` |
+| `package.json`, `tsconfig.json` | `typescript.md` |
+| `Cargo.toml` | `rust.md` |
+| `*.sh`, `*.bats` | `bash.md` |
+| `CMakeLists.txt`, `*.cpp`, `*.cc` | `cpp.md` |
+| `Dockerfile`, `docker-compose.yml` | `docker.md` |
+| `Chart.yaml`, `values.yaml` | `k8s.md` |
+| `*.tf` | `terraform.md` |
+| `ansible.cfg`, `playbook*.yml` | `ansible.md` |
+| `*.sql` | `clickhouse-sql.md` |
+| `certs/`, `ssl/`, `pki/` | `pki.md` |
 
 ### Layer 2 — RAG: Auto-injected by file type (survives context compaction)
 
 Compact path-scoped rules in `.claude/rules/` are injected automatically by Claude Code
 when you edit matching files. They survive context compaction — unlike session-loaded content.
-
-| Project Files | Rule Auto-Injected |
-|---------------|-------------------|
-| `pyproject.toml`, `*.py` | `python.md` |
-| `go.mod` | `golang.md` |
-| `package.json`, `tsconfig.json` | `typescript.md` |
-| `Cargo.toml` | `rust.md` |
-| `*.sh` | `bash.md` |
-| `CMakeLists.txt`, `*.cpp` | `cpp.md` |
-| `Dockerfile`, `docker-compose.yaml` | `docker.md` |
-| `Chart.yaml`, `values.yaml` | `k8s.md` |
-| `*.tf` | `terraform.md` |
-| `ansible.cfg`, `playbook.yml` | `ansible.md` |
-| `*.crt`, `*.pem`, `ssl/`, `pki/` | `pki.md` |
 
 ### Layer 3 — Skills: Full standards on demand
 
@@ -332,33 +346,83 @@ Skills are YAML-frontmatter markdown files automatically loaded based on project
 
 ---
 
-## Claude Code Usage
+## Claude Code Integration
 
-After running `./ai/attach.sh --agent claude`:
+After running `./ai/attach.sh --agent claude`, Claude Code gets a full hook
+chain that runs automatically — no manual setup per session.
 
-**`/load`** - Begin session
+### What happens automatically (no user action needed)
 
-- Establishes current date (not training data date)
-- Reads TODO.md (tasks) and STATE.md (static project context)
-- Loads `standards/rules/UNIVERSAL.md` (cross-cutting rules, CAG layer)
-- Updates ai submodule if auto-update is enabled
-- Syncs git
+| When | Hook | What It Does |
+|------|------|-------------|
+| Session start | `inject_standards.py` | Auto-updates ai/ci submodules, injects current date, detects project technologies, injects UNIVERSAL + matching rules, auto-reattaches if submodule changed |
+| Context compacted | `on_compact.py` | Re-injects date and standards (lost during compaction) |
+| File edited/written | `auto_format.py` | Runs formatter (ruff, rustfmt, gofmt, prettier, shfmt, clang-format) |
+| Subagent spawned | `subagent_context.py` | Injects standards into subagent context (they miss SessionStart) |
+| Bash command run | `safety_guard.py` | Blocks dangerous commands (rm -rf /, force push main, dd, mkfs, fork bombs) |
+| Task completed | `lint_check.py` | Lints modified files, feeds errors back to Claude to fix |
 
-**`/save`** - Checkpoint progress
+### Session lifecycle (normal flow)
 
-- Updates TODO.md with task progress
-- Validates STATE.md has no forbidden content (no dates, versions, task lists)
-- Checks git status
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. USER OPENS PROJECT IN CLAUDE CODE                            │
+│                                                                 │
+│    SessionStart(startup) fires automatically:                   │
+│    ├── Auto-update ai/ and ci/ submodules (if not pinned)       │
+│    ├── Auto-reattach (re-deploy if submodule files changed)     │
+│    ├── Inject current date (overrides stale training data)      │
+│    ├── Detect project technologies (scans 3 levels deep)        │
+│    └── Inject UNIVERSAL.md + all matching tech rules            │
+│                                                                 │
+│    Standards are now in context. No /load needed for standards.  │
+├─────────────────────────────────────────────────────────────────┤
+│ 2. USER RUNS /load (optional but recommended)                   │
+│                                                                 │
+│    ├── Reads TODO.md (task tracking)                            │
+│    ├── Reads STATE.md (project architecture, decisions)         │
+│    ├── Syncs git (pull --rebase, status, recent commits)        │
+│    └── Verifies standards are loaded                            │
+├─────────────────────────────────────────────────────────────────┤
+│ 3. USER WORKS — hooks fire automatically                        │
+│                                                                 │
+│    Edit/Write file → auto_format.py runs formatter              │
+│    Bash command    → safety_guard.py blocks dangerous commands   │
+│    Spawn subagent  → subagent_context.py injects standards      │
+│    Task completes  → lint_check.py checks modified files        │
+├─────────────────────────────────────────────────────────────────┤
+│ 4. CONTEXT COMPACTS (automatic, when context window fills)      │
+│                                                                 │
+│    SessionStart(compact) fires:                                 │
+│    ├── Re-injects current date                                  │
+│    ├── Re-injects all standards (lost during compaction)        │
+│    └── Prompts user to run /load for full project state         │
+├─────────────────────────────────────────────────────────────────┤
+│ 5. USER RUNS /save (periodically, every 30-40 exchanges)       │
+│                                                                 │
+│    ├── Updates TODO.md with progress                            │
+│    ├── Validates STATE.md                                       │
+│    └── Checks git status                                        │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-**`/review`** - Code review against full standards (loads skills on demand)
+### Slash commands
 
-**`/simplify`** - Review for reuse, quality, and efficiency
+**`/load`** — Restore full session context (TODO.md, STATE.md, git sync).
+Standards are already loaded by the SessionStart hook — `/load` verifies and
+supplements with project state.
+
+**`/save`** — Checkpoint progress (TODO.md, STATE.md validation, git status)
+
+**`/review`** — Code review against full standards (loads skills on demand)
+
+**`/simplify`** — Review for reuse, quality, and efficiency
+
+**`/standards <topic>`** — Force-load a specific rule file (e.g., `/standards rust`)
 
 **Best practice:** Run `/save` every 30-40 exchanges or before breaks.
 
 ### Recommended VS Code Settings
-
-Add to your VS Code `settings.json` for optimal Claude Code experience:
 
 ```json
 {

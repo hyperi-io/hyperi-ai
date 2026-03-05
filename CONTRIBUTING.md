@@ -10,12 +10,20 @@ How to work with and contribute to this repository.
 ai/
 ├── attach.sh            # Deploy STATE.md, TODO.md (internal repos)
 ├── attach-public.sh     # Deploy for public repos (gitignored mode)
-├── agents/              # AI assistant setup scripts
-│   ├── common.sh        # Shared functions (CLI detection, logging, detection)
-│   ├── claude.sh        # Claude Code setup
+├── agents/              # Agent setup scripts (bash)
+│   ├── common.sh        # Shared functions (CLI detection, logging)
+│   ├── claude.sh        # Claude Code setup + version stamp
 │   ├── codex.sh         # OpenAI Codex / GitHub Copilot setup
 │   ├── cursor.sh        # Cursor IDE setup
 │   └── gemini.sh        # Gemini Code setup
+├── hooks/               # Claude Code hooks (Python 3 stdlib only)
+│   ├── common.py        # Shared: tech detection, rule injection, safety, formatting
+│   ├── inject_standards.py   # SessionStart(startup): date + standards + auto-update
+│   ├── on_compact.py         # SessionStart(compact): re-inject after compaction
+│   ├── auto_format.py        # PostToolUse: run formatter on edited files
+│   ├── subagent_context.py   # SubagentStart: inject standards into subagents
+│   ├── safety_guard.py       # PreToolUse(Bash): block dangerous commands
+│   └── lint_check.py         # Stop: lint modified files, feed errors back
 ├── standards/           # Main product - coding standards
 │   ├── STANDARDS.md             # Full reference
 │   ├── STANDARDS-QUICKSTART.md  # Router/index → standards/rules/
@@ -29,7 +37,7 @@ ai/
 │   └── claude-code/, copilot/, cursor/, gemini/
 ├── tools/               # Development tools
 │   └── compact-standards.py    # Generate compact rules from full standards
-├── tests/               # BATS test suite
+├── tests/               # BATS test suite (86 tests)
 └── docs/                # Project documentation
 ```
 
@@ -39,7 +47,7 @@ ai/
 
 Standards are delivered in three layers, all sourced from `standards/rules/`:
 
-1. **CAG (Context-Augmented Generation):** `UNIVERSAL.md` loaded explicitly via `/load`
+1. **CAG (Context-Augmented Generation):** `UNIVERSAL.md` + detected tech rules auto-injected at session start by `inject_standards.py` (SessionStart hook). Also injects current date and web-search-before-code mandate. Re-injected by `on_compact.py` after context compaction.
 2. **RAG (Retrieval-Augmented Generation):** Path-scoped rule files (e.g. `python.md`) auto-injected by Claude Code when editing matching files — survives context compaction
 3. **Skills (On-Demand):** Full standards in `standards/languages/` and `standards/infrastructure/` loaded via `/review` or `/simplify`
 
@@ -80,7 +88,7 @@ git push origin main
 
 ## Testing
 
-### Run All Tests
+### Run All Tests (86 tests)
 
 ```bash
 bats tests/
@@ -89,11 +97,12 @@ bats tests/
 ### Run Specific Tests
 
 ```bash
-bats tests/attach.bats
-bats tests/claude-code.bats
-bats tests/codex.bats
-bats tests/cursor.bats
-bats tests/gemini.bats
+bats tests/attach.bats           # attach.sh tests
+bats tests/claude-code.bats      # Claude Code agent + hook wiring tests
+bats tests/standards-rules.bats  # Standards injection + Python hook tests
+bats tests/codex.bats            # Codex agent tests
+bats tests/cursor.bats           # Cursor agent tests
+bats tests/gemini.bats           # Gemini agent tests
 ```
 
 ### Manual Testing
@@ -181,7 +190,7 @@ git commit -m "refactor!: restructure standards delivery" -m "BREAKING CHANGE: c
 
 1. Create full standard in appropriate `standards/languages/` or `standards/infrastructure/` directory
 2. Run `tools/compact-standards.py` to generate compact rule in `standards/rules/`
-3. Add detection markers to `agents/common.sh` `detect_project_technologies()`
+3. Add detection entry to `hooks/common.py` `TECH_DETECTIONS` table
 4. Add skill deployment to `agents/claude.sh` `deploy_skills()`
 5. The compact rule is automatically picked up by all agent deploy scripts
 
@@ -226,6 +235,53 @@ local exit_code=0
 some_command || exit_code=$?
 # use $exit_code instead of checking $?
 ```
+
+---
+
+## Hook Development (Python 3)
+
+All Claude Code hooks live in `hooks/` and use Python 3 stdlib only (no pip).
+
+### Architecture
+
+- **`hooks/common.py`** — shared module, single source of truth for:
+  - Technology detection (`TECH_DETECTIONS` table + `detect_technologies()`)
+  - Rule injection (`inject_rules()`)
+  - Hook I/O (`read_hook_input()`, `hook_response()`)
+  - Formatter/linter mapping (`get_formatter()`, `get_linter()`)
+  - Safety patterns (`check_command_safety()`)
+  - Auto-reattach (`check_version_and_reattach()`)
+  - Submodule auto-update (`auto_update_submodules()`)
+
+- **Individual hooks** — thin wrappers that call common.py functions
+
+### Hook Events and I/O
+
+| Hook Event | stdin | stdout | Notes |
+|------------|-------|--------|-------|
+| `SessionStart` | — | Injected into Claude's context | Only hook whose stdout Claude sees |
+| `PostToolUse` | JSON (tool_input) | NOT injected (side-effect only) | GitHub issue #18427 |
+| `SubagentStart` | JSON (agent_type) | JSON with `additionalContext` | Injects into subagent |
+| `PreToolUse` | JSON (tool_input) | JSON with `permissionDecision` | Can deny commands |
+| `Stop` | JSON (stop_hook_active) | — (uses exit code 2 + stderr) | Known reliability issue #24327 |
+
+### Adding a New Hook
+
+1. Create `hooks/<name>.py` with shebang `#!/usr/bin/env python3`
+2. Import common.py: `sys.path.insert(0, str(Path(__file__).resolve().parent))`
+3. Add hook wiring to `templates/claude-code/settings.json`
+4. Add BATS tests in `tests/standards-rules.bats`
+5. Make executable: `chmod +x hooks/<name>.py`
+6. Add to `agents/claude.sh` `print_summary()` hook display
+
+### Guidelines
+
+- **Python 3 stdlib only** — no pip, no external dependencies
+- **Always exit 0** unless deliberately blocking (PreToolUse deny, Stop exit 2)
+- **Graceful degradation** — if a tool isn't installed, skip silently
+- **No side effects on error** — catch exceptions, don't crash the session
+
+---
 
 ### Adding New Agent Scripts
 
