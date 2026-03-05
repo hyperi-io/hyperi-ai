@@ -32,7 +32,19 @@ def main() -> None:
     if old_ai.exists() and not new_ai.exists():
         try:
             from migrate_submodule_name import main as migrate_main
-            migrate_main()
+            rc = migrate_main()
+            if rc == 0:
+                print("**Submodule migrated: `ai/` → `hyperi-ai/`**")
+                print("Run `git add .gitmodules hyperi-ai .claude && "
+                      'git commit -m "chore: migrate ai submodule to hyperi-ai"` '
+                      "to commit the rename.")
+                print("")
+            else:
+                print("**WARNING: Submodule migration may be incomplete.**")
+                print("See manual steps: `git submodule deinit -f ai && git rm -f ai "
+                      "&& rm -rf .git/modules/ai && git submodule add "
+                      "https://github.com/hyperi-io/hyperi-ai.git hyperi-ai`")
+                print("")
         except Exception as exc:
             print(f"[migrate] auto-migration failed: {exc}", file=sys.stderr)
 

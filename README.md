@@ -262,6 +262,61 @@ On every Claude Code session start, the `inject_standards.py` hook:
 
 This is fully silent — no output unless something actually changed.
 
+### Migrating from `ai/` to `hyperi-ai/`
+
+Projects using the old `ai/` submodule name need a one-time migration.
+
+**Automatic (recommended):**
+
+```bash
+# Update the submodule to get the migration script, then re-attach
+git submodule update --remote ai
+./ai/attach.sh --agent claude
+```
+
+The updated `attach.sh` detects the old name and migrates automatically:
+renames the directory, updates `.gitmodules`, moves `.git/modules/`,
+fixes gitdir pointers, and updates `.claude/` config paths.
+
+After it completes, commit the result and **start a new Claude Code session**
+(the old session's hook paths still reference `ai/`):
+
+```bash
+git add .gitmodules hyperi-ai .claude
+git commit -m "chore: migrate ai submodule to hyperi-ai"
+```
+
+**Verify it worked:**
+
+```bash
+# Directory renamed
+ls -d hyperi-ai/           # should exist
+ls -d ai/ 2>/dev/null      # should not exist
+
+# Submodule functional
+git -C hyperi-ai status    # should show clean working tree
+
+# Hooks point to new path
+grep hyperi-ai .claude/settings.json   # should show hyperi-ai/hooks/
+```
+
+**Manual (if auto-migration fails):**
+
+```bash
+git submodule deinit -f ai
+git rm -f ai
+rm -rf .git/modules/ai
+git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
+./hyperi-ai/attach.sh --agent claude
+git add .gitmodules hyperi-ai .claude
+git commit -m "chore: migrate ai submodule to hyperi-ai"
+```
+
+> **Note:** The SessionStart hook also attempts the migration automatically —
+> starting a new Claude Code session in a project with the old `ai/` submodule
+> will trigger the rename and report the result in the session. You still need
+> to commit the changes and restart the session afterwards.
+
 ---
 
 ## Standards Loading (Three-Layer Architecture)
