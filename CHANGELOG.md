@@ -1,3 +1,10 @@
+## [1.16.0](https://github.com/hyperi-io/ai/compare/1.15.2...1.16.0) (2026-03-05)
+
+
+### Features
+
+* auto-update ai submodule on session start if behind remote ([814ac60](https://github.com/hyperi-io/ai/commit/814ac606c30f7f3c67f2ec9f2528c105603d871c))
+
 ## [1.15.2](https://github.com/hyperi-io/ai/compare/1.15.1...1.15.2) (2026-03-05)
 
 
