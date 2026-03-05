@@ -34,6 +34,7 @@ DRY_RUN=false
 FORCE=false
 VERBOSE=false
 PIN_SUBMODULE=false
+RESET_STATE=false
 
 # Agent detection mode
 SPECIFIC_AGENT=""           # Set when --agent <name> is used
@@ -78,7 +79,9 @@ Usage: ./attach.sh [OPTIONS]
 OPTIONS:
   --help, -h       Show this help message
   --dry-run        Show what would be done without making changes
-  --force          Overwrite existing files
+  --force          Overwrite existing config files (does NOT touch STATE.md/TODO.md)
+  --reset-state    Overwrite STATE.md and TODO.md with fresh templates
+                   (Use with --force to reset everything)
   --path PATH      Specify custom project root (default: parent of ai/)
   --verbose        Enable verbose output
 
@@ -110,8 +113,11 @@ EXAMPLES:
   # Preview changes without modifying files
   ./ai/attach.sh --dry-run
 
-  # Force overwrite existing files
+  # Force overwrite config files (keeps STATE.md/TODO.md)
   ./ai/attach.sh --force
+
+  # Reset everything including STATE.md/TODO.md
+  ./ai/attach.sh --force --reset-state
 
   # Pin submodule version (no auto-update)
   ./ai/attach.sh --pin
@@ -133,6 +139,10 @@ parse_args() {
                 ;;
             --force)
                 FORCE=true
+                shift
+                ;;
+            --reset-state)
+                RESET_STATE=true
                 shift
                 ;;
             --verbose)
@@ -590,7 +600,7 @@ migrate_state_files() {
     if [ -f "$state_file" ] && ! check_state_md_forbidden "$state_file"; then
         log_warn "STATE.md contains forbidden content (sessions, versions, progress)"
         log_warn "  SSoT rules: Tasks go in TODO.md, versions from git"
-        log_info "  Review and clean manually, or use --force to replace with template"
+        log_info "  Review and clean manually, or use --reset-state to replace with template"
         migrated=true
     fi
 
@@ -643,11 +653,17 @@ deploy_templates() {
     # Check for migration needs before deploying
     migrate_state_files
 
-    # Deploy STATE.md
+    # Deploy STATE.md and TODO.md
+    # These are user content — only overwrite with --reset-state, never with just --force
+    local saved_force="$FORCE"
+    if [ "$RESET_STATE" = true ]; then
+        FORCE=true
+    else
+        FORCE=false
+    fi
     copy_if_missing "$templates_dir/STATE.md" "$PROJECT_ROOT/STATE.md"
-
-    # Deploy TODO.md
     copy_if_missing "$templates_dir/TODO.md" "$PROJECT_ROOT/TODO.md"
+    FORCE="$saved_force"
 }
 
 # Run a single agent setup script

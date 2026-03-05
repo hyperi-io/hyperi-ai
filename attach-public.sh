@@ -29,6 +29,7 @@ PROJECT_ROOT=""
 # Defaults
 DRY_RUN=false
 FORCE=false
+RESET_STATE=false
 VERBOSE=false
 
 # Agent detection mode
@@ -117,6 +118,10 @@ parse_args() {
                 ;;
             --force)
                 FORCE=true
+                shift
+                ;;
+            --reset-state)
+                RESET_STATE=true
                 shift
                 ;;
             --verbose)
@@ -455,8 +460,12 @@ deploy_templates() {
         return
     fi
 
+    # STATE.md and TODO.md — user content, only overwrite with --reset-state
+    local state_force=false
+    [ "$RESET_STATE" = true ] && state_force=true
+
     # STATE.md
-    if [ ! -f "$PROJECT_ROOT/STATE.md" ] || [ "$FORCE" = true ]; then
+    if [ ! -f "$PROJECT_ROOT/STATE.md" ] || [ "$state_force" = true ]; then
         if [ -f "$templates_dir/STATE.md" ]; then
             cp "$templates_dir/STATE.md" "$PROJECT_ROOT/STATE.md"
             log_success "Deployed: STATE.md"
@@ -466,7 +475,7 @@ deploy_templates() {
     fi
 
     # TODO.md
-    if [ ! -f "$PROJECT_ROOT/TODO.md" ] || [ "$FORCE" = true ]; then
+    if [ ! -f "$PROJECT_ROOT/TODO.md" ] || [ "$state_force" = true ]; then
         if [ -f "$templates_dir/TODO.md" ]; then
             cp "$templates_dir/TODO.md" "$PROJECT_ROOT/TODO.md"
             log_success "Deployed: TODO.md"
