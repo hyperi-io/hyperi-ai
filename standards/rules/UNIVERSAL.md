@@ -88,6 +88,56 @@ Always quote values in `.env` files.
 - No American marketing hype: "Amazing!", "Game-changing!", "World-class!"
 - Australian understated: "This should help", "Performance is improved"
 
+## Web Search Before Code (MANDATORY — HARD ENFORCEMENT)
+
+AI models have stale training data (often 6-18+ months old). Our projects use
+bleeding-edge tools and libraries. Using outdated dependencies, deprecated APIs,
+or old patterns wastes significant engineering time on remediation.
+
+### RULE: Web Search ALL Dependency Versions (NO EXCEPTIONS)
+
+**Every time** you add, update, or recommend a package/library/dependency:
+
+1. **Web search for the CURRENT latest version** of that specific package.
+   Your training data version is almost certainly wrong.
+2. **Web search whether the package itself has been superseded.** The entire
+   library may have been replaced (e.g., psycopg2 → psycopg 3, requests → httpx).
+3. **Use the version from the web search result**, not from your training data.
+
+This applies to: pip packages, npm packages, cargo crates, go modules, Docker
+base images, Helm charts, Terraform providers — ALL dependencies at ALL levels.
+
+**The extra search time ALWAYS saves remediation time. No exceptions.**
+
+### RULE: Web Search Before Significant Implementation
+
+Before writing any non-trivial implementation:
+
+1. **Web search for the LATEST approach** to the problem using the CURRENT YEAR
+   (see injected date above). Do NOT rely on training data patterns.
+2. **Check for breaking changes** in the latest major versions of frameworks and
+   libraries you plan to use.
+
+### Common Traps (Examples — Not Exhaustive)
+
+These are examples your training data gets WRONG. There are many more — always search.
+
+| Wrong (Training Data) | Correct (Current) | Why |
+|---|---|---|
+| `psycopg2` / `psycopg2-binary` | `psycopg[binary]` (psycopg 3) | psycopg2 is legacy |
+| `python-jose` | `joserfc` or `PyJWT` | python-jose is unmaintained |
+| `requests` | `httpx` | async support, HTTP/2, modern API |
+| `datetime.utcnow()` | `datetime.now(UTC)` | deprecated in Python 3.12 |
+| `pkg_resources` | `importlib.metadata` | deprecated, slow |
+| React class components | functional components + hooks | classes are legacy |
+| `moment.js` | `date-fns` or `Temporal` | moment is in maintenance mode |
+| Webpack (new projects) | Vite | unless project already uses Webpack |
+| `urllib3` directly | `httpx` or `requests` | low-level, not needed |
+| `flask` (new APIs) | `fastapi` or `litestar` | unless project uses Flask |
+
+**CRITICAL:** When in doubt, SEARCH. A 30-second web search prevents hours of
+debugging deprecated APIs, missing features, or security vulnerabilities.
+
 ## AI Code of Conduct
 
 ### NEVER

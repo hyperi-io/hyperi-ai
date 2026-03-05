@@ -487,6 +487,25 @@ create_symlink() {
     fi
 }
 
+# Write version stamp for auto-reattach detection
+write_version_stamp() {
+    if [ "$DRY_RUN" = "true" ]; then
+        echo "Would write: $PROJECT_ROOT/.claude/.ai-version"
+        return 0
+    fi
+
+    if command -v git >/dev/null 2>&1 && [ -d "$AI_ROOT/.git" ]; then
+        local version
+        version="$(git -C "$AI_ROOT" rev-parse HEAD 2>/dev/null || true)"
+        if [ -n "$version" ]; then
+            echo "$version" > "$PROJECT_ROOT/.claude/.ai-version"
+            if [ "$VERBOSE" = "true" ]; then
+                agent_log_info "Version stamp: $version"
+            fi
+        fi
+    fi
+}
+
 # Print summary
 print_summary() {
     echo ""
@@ -515,8 +534,12 @@ print_summary() {
         echo "  CLAUDE.md -> STATE.md"
         echo ""
         echo "Hooks (run from ai/hooks/ via settings.json):"
-        echo "  SessionStart(startup) -> inject-standards.sh (auto-detect + inject)"
-        echo "  SessionStart(compact) -> on-compact.sh (re-inject + git state)"
+        echo "  SessionStart(startup) -> inject_standards.py (auto-detect + inject + reattach)"
+        echo "  SessionStart(compact) -> on_compact.py (re-inject standards)"
+        echo "  PostToolUse(Edit|Write) -> auto_format.py (run formatter on edited files)"
+        echo "  SubagentStart          -> subagent_context.py (inject standards into subagents)"
+        echo "  PreToolUse(Bash)       -> safety_guard.py (block dangerous commands)"
+        echo "  Stop                   -> lint_check.py (lint modified files, feed errors back)"
         echo ""
         echo "Next steps:"
         echo "  1. Open project in Claude Code — standards inject automatically"
@@ -639,6 +662,7 @@ main() {
     deploy_skills
     create_symlink
     install_managed_settings
+    write_version_stamp
     print_summary
 }
 

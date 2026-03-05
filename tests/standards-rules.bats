@@ -69,22 +69,11 @@ load test_helper
 }
 
 @test "TC-214: standards.md references correct relative path to rules dir" {
-    # From the deployed location (.claude/commands/standards.md -> templates/claude-code/commands/standards.md)
-    # the reference ../../ai/standards/rules/ resolves to:
-    #   $project_root/.claude/commands/ + ../../ai/standards/rules/
-    #   = $project_root/ai/standards/rules/
-    # We verify the standards.md file itself mentions the expected relative path
     run grep -q "ai/standards/rules" "$AI_SOURCE/templates/claude-code/commands/standards.md"
     [ "$status" -eq 0 ]
 }
 
 @test "TC-215: Path references in standards.md resolve from TEST_SUBMODULE structure" {
-    # Simulate the consumer project layout from test_helper:
-    # TEST_SUBMODULE/ai/ contains the ai submodule files
-    # standards.md would be at TEST_SUBMODULE/.claude/commands/standards.md (symlink)
-    # and reference ../../ai/standards/rules/
-    # Resolved: TEST_SUBMODULE/.claude/commands/../../ai/standards/rules/
-    #         = TEST_SUBMODULE/ai/standards/rules/
     setup_test_env
     local rules_path="$TEST_SUBMODULE/ai/standards/rules"
     [ -d "$rules_path" ] || {
@@ -94,86 +83,222 @@ load test_helper
     cleanup_test_env
 }
 
-@test "TC-216: load.md references inject-standards.sh hook for standards" {
-    # load.md Step 4 now delegates standards loading to the SessionStart hook
-    run grep -q "inject-standards.sh" "$AI_SOURCE/templates/claude-code/commands/load.md"
+@test "TC-216: load.md references inject_standards.py hook for standards" {
+    run grep -q "inject_standards.py" "$AI_SOURCE/templates/claude-code/commands/load.md"
     [ "$status" -eq 0 ]
 }
 
-@test "TC-217: inject-standards.sh has detection for all major languages" {
-    local hook="$AI_SOURCE/hooks/inject-standards.sh"
+@test "TC-217: common.py has detection for all major languages" {
+    local hook="$AI_SOURCE/hooks/common.py"
     [ -f "$hook" ]
 
     local markers="Cargo.toml pyproject.toml go.mod Dockerfile tsconfig.json ansible.cfg Chart.yaml CMakeLists.txt"
     for marker in $markers; do
         grep -q "$marker" "$hook" || {
-            echo "FAIL: inject-standards.sh missing detection for: $marker"
+            echo "FAIL: common.py missing detection for: $marker"
             return 1
         }
     done
 }
 
-@test "TC-218: inject-standards.sh is executable" {
-    [ -x "$AI_SOURCE/hooks/inject-standards.sh" ]
+@test "TC-218: inject_standards.py is executable" {
+    [ -x "$AI_SOURCE/hooks/inject_standards.py" ]
 }
 
-@test "TC-219: inject-standards.sh outputs UNIVERSAL.md for any project" {
+@test "TC-219: inject_standards.py outputs UNIVERSAL.md for any project" {
     setup_test_env
     export CLAUDE_PROJECT_DIR="$TEST_SUBMODULE"
 
-    run bash "$AI_SOURCE/hooks/inject-standards.sh"
+    run python3 "$AI_SOURCE/hooks/inject_standards.py"
 
     [ "$status" -eq 0 ]
-    # UNIVERSAL.md should always be in the output
     [[ "$output" =~ "UNIVERSAL" ]] || [[ "$output" =~ "universal" ]] || {
-        # Check for any content from UNIVERSAL.md (it has a heading)
         [ -n "$output" ]
     }
     cleanup_test_env
 }
 
-@test "TC-220: inject-standards.sh detects Rust from Cargo.toml" {
+@test "TC-220: inject_standards.py detects Rust from Cargo.toml" {
     setup_test_env
     cd "$TEST_SUBMODULE"
-    # Create a Cargo.toml marker file
     echo '[package]' > Cargo.toml
     echo 'name = "test"' >> Cargo.toml
     export CLAUDE_PROJECT_DIR="$TEST_SUBMODULE"
 
-    run bash "$AI_SOURCE/hooks/inject-standards.sh"
+    run python3 "$AI_SOURCE/hooks/inject_standards.py"
 
     [ "$status" -eq 0 ]
-    # Output should contain rust.md content (has "Rust" in its heading)
     [[ "$output" =~ [Rr]ust ]]
     cleanup_test_env
 }
 
-@test "TC-221: inject-standards.sh detects Docker from Dockerfile" {
+@test "TC-221: inject_standards.py detects Docker from Dockerfile" {
     setup_test_env
     cd "$TEST_SUBMODULE"
     echo 'FROM debian:bookworm' > Dockerfile
     export CLAUDE_PROJECT_DIR="$TEST_SUBMODULE"
 
-    run bash "$AI_SOURCE/hooks/inject-standards.sh"
+    run python3 "$AI_SOURCE/hooks/inject_standards.py"
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ [Dd]ocker ]]
     cleanup_test_env
 }
 
-@test "TC-222: inject-standards.sh exits 0 when ai submodule missing" {
+@test "TC-222: inject_standards.py exits 0 when ai submodule missing" {
     local tmp
     tmp="$(mktemp -d)"
     export CLAUDE_PROJECT_DIR="$tmp"
 
-    run bash "$AI_SOURCE/hooks/inject-standards.sh"
+    run python3 "$AI_SOURCE/hooks/inject_standards.py"
 
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "not found" ]] || [[ "$output" =~ "WARNING" ]]
+    [[ "$output" =~ "not found" ]] || [[ "$output" =~ "WARNING" ]] || [[ "$output" =~ "No rules" ]]
     rm -rf "$tmp"
 }
 
-@test "TC-223: on-compact.sh calls inject-standards.sh" {
-    run grep -q "inject-standards.sh" "$AI_SOURCE/hooks/on-compact.sh"
+@test "TC-223: on_compact.py calls inject_rules" {
+    run grep -q "inject_rules" "$AI_SOURCE/hooks/on_compact.py"
     [ "$status" -eq 0 ]
+}
+
+# --- New hook tests ---
+
+@test "TC-230: auto_format.py exits 0 with empty JSON input" {
+    run bash -c 'echo "{}" | python3 "'"$AI_SOURCE"'/hooks/auto_format.py"'
+    [ "$status" -eq 0 ]
+}
+
+@test "TC-231: auto_format.py exits 0 for unknown file extension" {
+    run bash -c 'echo "{\"tool_input\":{\"file_path\":\"/tmp/test.xyz\"}}" | python3 "'"$AI_SOURCE"'/hooks/auto_format.py"'
+    [ "$status" -eq 0 ]
+}
+
+@test "TC-232: safety_guard.py allows safe commands (ls -la)" {
+    run bash -c 'echo "{\"tool_input\":{\"command\":\"ls -la\"}}" | python3 "'"$AI_SOURCE"'/hooks/safety_guard.py"'
+    [ "$status" -eq 0 ]
+    # Safe command — no output (implicit allow)
+    [ -z "$output" ]
+}
+
+@test "TC-233: safety_guard.py denies rm -rf / with JSON deny response" {
+    run bash -c 'echo "{\"tool_input\":{\"command\":\"rm -rf /\"}}" | python3 "'"$AI_SOURCE"'/hooks/safety_guard.py"'
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "deny" ]]
+}
+
+@test "TC-234: safety_guard.py denies force push to main" {
+    run bash -c 'echo "{\"tool_input\":{\"command\":\"git push --force origin main\"}}" | python3 "'"$AI_SOURCE"'/hooks/safety_guard.py"'
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "deny" ]]
+}
+
+@test "TC-235: subagent_context.py outputs valid JSON with additionalContext" {
+    setup_test_env
+    export CLAUDE_PROJECT_DIR="$TEST_SUBMODULE"
+
+    run bash -c 'echo "{\"agent_type\":\"Explore\"}" | python3 "'"$AI_SOURCE"'/hooks/subagent_context.py"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "additionalContext" ]]
+    cleanup_test_env
+}
+
+@test "TC-236: subagent_context.py includes UNIVERSAL in context" {
+    setup_test_env
+    export CLAUDE_PROJECT_DIR="$TEST_SUBMODULE"
+
+    run bash -c 'echo "{\"agent_type\":\"Explore\"}" | python3 "'"$AI_SOURCE"'/hooks/subagent_context.py"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "UNIVERSAL" ]] || [[ "$output" =~ "universal" ]]
+    cleanup_test_env
+}
+
+@test "TC-237: common.py detect_technologies finds Rust from Cargo.toml" {
+    setup_test_env
+    cd "$TEST_SUBMODULE"
+    echo '[package]' > Cargo.toml
+
+    run python3 -c "
+import sys; sys.path.insert(0, '$AI_SOURCE/hooks')
+from pathlib import Path
+import common
+techs = common.detect_technologies(Path('$TEST_SUBMODULE'))
+names = [t[0] for t in techs]
+print(' '.join(names))
+"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "rust" ]]
+    cleanup_test_env
+}
+
+@test "TC-238: All hook .py files are executable" {
+    for f in "$AI_SOURCE/hooks/"*.py; do
+        [ -x "$f" ] || {
+            echo "FAIL: $f is not executable"
+            return 1
+        }
+    done
+}
+
+@test "TC-239: settings.json wires all 7 hooks" {
+    local settings="$AI_SOURCE/templates/claude-code/settings.json"
+
+    grep -q "inject_standards.py" "$settings"
+    grep -q "on_compact.py" "$settings"
+    grep -q "auto_format.py" "$settings"
+    grep -q "subagent_context.py" "$settings"
+    grep -q "safety_guard.py" "$settings"
+    grep -q "lint_check.py" "$settings"
+    grep -q '"SessionStart"' "$settings"
+    grep -q '"PostToolUse"' "$settings"
+    grep -q '"SubagentStart"' "$settings"
+    grep -q '"PreToolUse"' "$settings"
+    grep -q '"Stop"' "$settings"
+}
+
+@test "TC-240: lint_check.py exits 0 when stop_hook_active is true" {
+    run bash -c 'echo "{\"stop_hook_active\":true}" | python3 "'"$AI_SOURCE"'/hooks/lint_check.py"'
+    [ "$status" -eq 0 ]
+}
+
+@test "TC-241: lint_check.py exits 0 when no modified files" {
+    setup_test_env
+    export CLAUDE_PROJECT_DIR="$TEST_SUBMODULE"
+
+    run bash -c 'echo "{}" | python3 "'"$AI_SOURCE"'/hooks/lint_check.py"'
+
+    [ "$status" -eq 0 ]
+    cleanup_test_env
+}
+
+@test "TC-242: claude.sh writes .ai-version stamp" {
+    setup_test_env
+    cd "$TEST_SUBMODULE"
+    mock_cli "claude"
+    ./ai/attach.sh --no-agent
+
+    # Create a real git repo in ai/ so rev-parse works
+    rm -f ai/.git
+    cd ai
+    git init -q
+    git config user.email "test@example.com"
+    git config user.name "Test User"
+    touch .gitkeep
+    git add .gitkeep
+    git commit -q -m "init"
+    cd "$TEST_SUBMODULE"
+
+    run ./ai/agents/claude.sh
+
+    [ "$status" -eq 0 ]
+    [ -f ".claude/.ai-version" ]
+    # Version stamp should be a git hash (40 hex chars)
+    local stamp
+    stamp="$(cat .claude/.ai-version)"
+    [ ${#stamp} -eq 40 ]
+    cleanup_test_env
+    clear_mocks
 }

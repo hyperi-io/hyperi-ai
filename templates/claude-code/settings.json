@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/ai/hooks/inject-standards.sh\"",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/inject_standards.py\"",
             "statusMessage": "Loading coding standards..."
           }
         ]
@@ -30,7 +30,50 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/ai/hooks/on-compact.sh\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/on_compact.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/auto_format.py\"",
+            "statusMessage": "Formatting..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/subagent_context.py\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/safety_guard.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/lint_check.py\""
           }
         ]
       }
