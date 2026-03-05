@@ -1,3 +1,25 @@
+## [2.0.0](https://github.com/hyperi-io/hyperi-ai/compare/1.16.2...2.0.0) (2026-03-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* The submodule directory is now hyperi-ai/ instead of ai/.
+Consumer projects must re-run attach.sh after updating.
+
+- Rename all path references across scripts, hooks, templates, tests, docs
+- Add hooks/migrate_submodule_name.py for automatic migration of existing
+  ai/ submodules (handles .gitmodules, .git/modules, directory rename,
+  gitdir pointer, settings.json, command templates)
+- Wire migration into attach.sh (runs before detect_paths) and
+  inject_standards.py (runs at SessionStart)
+- Update TC-005 to verify --force does not overwrite STATE.md
+- Fix gemini load.md double-prefix bug (hyperi-hyperi-ai)
+- GitHub repo renamed from hyperi-io/ai to hyperi-io/hyperi-ai
+
+### Refactoring
+
+* rename submodule from ai to hyperi-ai ([c3e5502](https://github.com/hyperi-io/hyperi-ai/commit/c3e5502a5ea07b4ff42f279fac04b20051477433))
+
 ## [1.16.1](https://github.com/hyperi-io/hyperi-ai/compare/1.16.0...1.16.1) (2026-03-05)
 
 
