@@ -278,25 +278,8 @@
       "Bash(yq * | grep:*)",
       "Bash(yq * | head:*)",
       "Bash(yq * | less:*)",
-      "Bash(sleep [0-9])",
-      "Bash(sleep 0.*)",
-      "Bash(sleep 1.*)",
-      "Bash(sleep 2.*)",
-      "Bash(sleep 3.*)",
-      "Bash(sleep 4.*)",
-      "Bash(sleep 5.*)"
-    ],
-    "deny": [
-      "Bash(sleep 1[0-9]:*)",
-      "Bash(sleep 2[0-9]:*)",
-      "Bash(sleep 3[0-9]:*)",
-      "Bash(sleep 4[0-9]:*)",
-      "Bash(sleep 5[0-9]:*)",
-      "Bash(sleep 6[0-9]:*)",
-      "Bash(sleep 7[0-9]:*)",
-      "Bash(sleep 8[0-9]:*)",
-      "Bash(sleep 9[0-9]:*)",
-      "Bash(sleep [0-9][0-9][0-9]:*)"
+      "Bash(sleep:*)",
+      "Bash(ci/scripts/claude/**)"
     ],
     "ask": [
       "Read(./.env)",
