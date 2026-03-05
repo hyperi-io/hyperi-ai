@@ -26,8 +26,8 @@ import common  # noqa: E402
 def main() -> None:
     project_dir = common.get_project_dir()
 
-    # Auto-update: silently pull latest ai submodule if behind remote
-    common.auto_update_submodule(project_dir)
+    # Auto-update: silently pull latest ai and ci submodules if behind remote
+    common.auto_update_submodules(project_dir)
 
     # Auto-reattach: detect submodule updates and re-deploy if needed
     reattach_msg = common.check_version_and_reattach(project_dir)
