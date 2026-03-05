@@ -1,3 +1,10 @@
+## [1.16.2](https://github.com/hyperi-io/ai/compare/1.16.1...1.16.2) (2026-03-05)
+
+
+### Bug Fixes
+
+* --force no longer overwrites STATE.md and TODO.md ([aaa3ab5](https://github.com/hyperi-io/ai/commit/aaa3ab5178ec97caf238f098971e09af8f480705))
+
 ## [1.16.1](https://github.com/hyperi-io/ai/compare/1.16.0...1.16.1) (2026-03-05)
 
 
