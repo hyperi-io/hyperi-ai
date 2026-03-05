@@ -24,10 +24,10 @@ GITHUB_ORG="${GITHUB_ORG:-hyperi-io}"
 CI_REPO_URL="${CI_REPO_URL:-https://github.com/${GITHUB_ORG}/ci.git}"
 AI_REPO_URL="${AI_REPO_URL:-https://github.com/${GITHUB_ORG}/hyperi-ai.git}"
 
-# Global variables
+# Global variables (set by detect_paths)
 AI_ROOT=""
 PROJECT_ROOT=""
-AI_DIR="hyperi-ai"
+AI_DIR=""
 
 # Defaults
 DRY_RUN=false

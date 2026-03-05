@@ -33,8 +33,8 @@ def main() -> None:
         try:
             from migrate_submodule_name import main as migrate_main
             migrate_main()
-        except Exception:
-            pass  # best-effort — attach.sh will also try
+        except Exception as exc:
+            print(f"[migrate] auto-migration failed: {exc}", file=sys.stderr)
 
     # Auto-update: silently pull latest ai and ci submodules if behind remote
     common.auto_update_submodules(project_dir)

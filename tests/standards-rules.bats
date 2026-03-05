@@ -302,3 +302,51 @@ print(' '.join(names))
     cleanup_test_env
     clear_mocks
 }
+
+@test "TC-243: migrate_submodule_name.py renames ai/ to hyperi-ai/" {
+    setup_test_env
+
+    # Create a fake ai/ submodule structure
+    local test_dir="$TEST_ROOT/test-migrate"
+    mkdir -p "$test_dir/ai"
+    mkdir -p "$test_dir/ai/hooks"
+    mkdir -p "$test_dir/ai/standards/rules"
+    echo "gitdir: ../.git/modules/ai" > "$test_dir/ai/.git"
+    mkdir -p "$test_dir/.git/modules/ai"
+    echo "[core]" > "$test_dir/.git/modules/ai/config"
+    echo "	worktree = ../../../ai" >> "$test_dir/.git/modules/ai/config"
+    touch "$test_dir/.git/modules/ai/HEAD"
+    mkdir -p "$test_dir/.claude"
+    echo '{"hooks":{"command":"python3 \"$DIR/ai/hooks/foo.py\""}}' > "$test_dir/.claude/settings.json"
+
+    # Copy migration script
+    cp "$AI_SOURCE/hooks/migrate_submodule_name.py" "$test_dir/ai/hooks/"
+    chmod +x "$test_dir/ai/hooks/migrate_submodule_name.py"
+
+    # Run migration
+    run env CLAUDE_PROJECT_DIR="$test_dir" python3 "$test_dir/ai/hooks/migrate_submodule_name.py"
+    [ "$status" -eq 0 ]
+
+    # Verify directory renamed
+    [ -d "$test_dir/hyperi-ai" ]
+    [ ! -d "$test_dir/ai" ]
+
+    # Verify gitdir pointer updated
+    grep -q "modules/hyperi-ai" "$test_dir/hyperi-ai/.git"
+
+    # Verify .git/modules moved
+    [ -d "$test_dir/.git/modules/hyperi-ai" ]
+    [ ! -d "$test_dir/.git/modules/ai" ]
+
+    # Verify worktree path updated in module config
+    grep -q "worktree = ../../../hyperi-ai" "$test_dir/.git/modules/hyperi-ai/config"
+
+    # Verify settings.json updated
+    grep -q "hyperi-ai/hooks" "$test_dir/.claude/settings.json"
+
+    # Re-running should be idempotent (exit 0)
+    run env CLAUDE_PROJECT_DIR="$test_dir" python3 "$test_dir/hyperi-ai/hooks/migrate_submodule_name.py"
+    [ "$status" -eq 0 ]
+
+    cleanup_test_env
+}

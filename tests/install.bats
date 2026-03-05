@@ -67,9 +67,15 @@ teardown() {
     [ "$status" -eq 0 ]
     # --force should NOT overwrite STATE.md (requires --reset-state)
     grep -q "modified" STATE.md
+}
 
-    # --reset-state should overwrite STATE.md
+@test "TC-005b: Reset-state flag overwrites STATE.md" {
+    cd "$TEST_SUBMODULE"
+    ./hyperi-ai/attach.sh --no-agent
+
+    echo "modified" >> STATE.md
     run ./hyperi-ai/attach.sh --reset-state --no-agent
+
     [ "$status" -eq 0 ]
     ! grep -q "modified" STATE.md
 }
