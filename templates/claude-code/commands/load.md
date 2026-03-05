@@ -61,35 +61,29 @@ available as skills — invoke them explicitly when needed.
 
 ## Step 5: Update Submodules
 
-Update `ai` and `ci` submodules if they are attached and auto-update is enabled.
+Update the `hyperi-ai` submodule if it is attached and auto-update is enabled.
 
 The update mode is stored in `.gitmodules`:
 
 - `update = rebase` → auto-update from upstream (default)
 - `update = none` → pinned, skip update
 
-### For each submodule (`ai`, then `ci`)
-
-1. Check if `<name>/.git` exists — use `ls -d <name>/.git` (one call per submodule,
-   do NOT chain commands)
-2. If the submodule is not attached (file not found), skip it
-3. Read the update mode:
+1. Check if `hyperi-ai/.git` exists — if not, skip
+2. Read the update mode:
 
    ```bash
-   git config -f .gitmodules submodule.<name>.update
+   git config -f .gitmodules submodule.hyperi-ai.update
    ```
 
-4. **If `rebase` (or unset):** Update from upstream:
+3. **If `rebase` (or unset):** Update from upstream:
 
    ```bash
-   git submodule update --remote <name>
+   git submodule update --remote hyperi-ai
    ```
 
-5. **If `none`:** Skip — the project has pinned this submodule. Note it silently.
+4. **If `none`:** Skip — the project has pinned this submodule. Note it silently.
 
-Report what happened for each (e.g. "ai: updated", "ci: pinned, skipped").
-
-### After updating the `ai` submodule
+### After updating the `hyperi-ai` submodule
 
 If the `ai` submodule was updated (not skipped/pinned), check if deployment-relevant
 files changed. Run this from the **project root**:

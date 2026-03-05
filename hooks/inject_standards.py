@@ -36,7 +36,7 @@ def main() -> None:
         except Exception as exc:
             print(f"[migrate] auto-migration failed: {exc}", file=sys.stderr)
 
-    # Auto-update: silently pull latest ai and ci submodules if behind remote
+    # Auto-update: silently pull latest hyperi-ai submodule if behind remote
     common.auto_update_submodules(project_dir)
 
     # Auto-reattach: detect submodule updates and re-deploy if needed

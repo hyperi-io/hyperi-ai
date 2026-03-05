@@ -488,9 +488,8 @@ def auto_update_submodule(project_dir: Path, name: str = "hyperi-ai") -> bool:
 
 
 def auto_update_submodules(project_dir: Path) -> None:
-    """Silently update hyperi-ai and ci submodules if present and not pinned."""
+    """Silently update hyperi-ai submodule if present and not pinned."""
     auto_update_submodule(project_dir, "hyperi-ai")
-    auto_update_submodule(project_dir, "ci")
 
 
 def check_version_and_reattach(project_dir: Path) -> Optional[str]:

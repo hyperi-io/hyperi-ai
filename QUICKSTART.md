@@ -26,17 +26,6 @@ git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
 
 ## Step 1: Add AI Submodule
 
-**AI + CI (recommended):**
-
-```bash
-git submodule add https://github.com/hyperi-io/ci.git ci
-./ci/attach.sh --python-package
-git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
-./hyperi-ai/attach.sh --agent claude
-```
-
-**AI only:**
-
 ```bash
 git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
 ./hyperi-ai/attach.sh --agent claude
@@ -80,8 +69,8 @@ Editing `*.py` → python rules inject. Editing `*.sh` → bash rules inject.
 
 ## Auto-Update (Default)
 
-**Both `hyperi-ai/` and `ci/` submodules auto-update from upstream on every Claude
-Code session start.** No manual commands needed — the `SessionStart` hook
+**The `hyperi-ai/` submodule auto-updates from upstream on every Claude Code
+session start.** No manual commands needed — the `SessionStart` hook
 handles it silently, including re-deploying changed commands, rules, and skills.
 
 To force an immediate update outside of Claude Code:

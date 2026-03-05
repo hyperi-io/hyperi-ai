@@ -38,7 +38,7 @@ A standards library that attaches to any project to provide:
 - **Scripts:** Bash 3.2+ (macOS, Linux, WSL) — attach.sh, agent deployment
 - Path-agnostic (works anywhere, any directory name)
 - Idempotent (safe to run repeatedly)
-- Works standalone or alongside HyperI CI (`ci/` submodule)
+- Works standalone or alongside HyperI CI
 
 ---
 
@@ -202,38 +202,13 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 
 ---
 
-## Using with HyperI CI
-
-The `hyperi-ai/` and `ci/` submodules are designed to work together seamlessly:
-
-```bash
-# Attach both submodules
-git submodule add https://github.com/hyperi-io/ci.git ci
-git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
-
-# Run either attach script - both configure both submodules
-./ci/attach.sh --python-package
-./hyperi-ai/attach.sh --agent claude
-```
-
-**When both are present:**
-
-- **CI hooks take precedence** - CI's hooks are more comprehensive (Python validation, CI change detection)
-- **Both submodules are auto-configured** - Running either `attach.sh` configures both `ai` and `ci` submodules
-- **Same submodule settings** - Both use `update=rebase` in `.gitmodules` (propagates to clones)
-- **Same push protection** - Both block pushes via `post-checkout` hook
-
-**Order doesn't matter** - Attach in any order; the scripts detect and cooperate.
-
----
-
 ## Submodule Auto-Update
 
 ### Default behaviour (auto-update on every session)
 
-**Both `hyperi-ai/` and `ci/` submodules are automatically updated from upstream
-every time a Claude Code session starts.** This happens silently via the
-`SessionStart` hook — no manual `git submodule update` needed.
+**The `hyperi-ai/` submodule is automatically updated from upstream every time
+a Claude Code session starts.** This happens silently via the `SessionStart`
+hook — no manual `git submodule update` needed.
 
 The hook also auto-reattaches: if updated files include commands, rules, or
 agent config, it re-runs `claude.sh` to re-deploy them.
@@ -243,7 +218,7 @@ Settings stored in `.gitmodules` (propagates to all clones):
 - `update = rebase` — apply upstream changes (default)
 - `fetchRecurseSubmodules = true` — include in clone
 
-### Pinning a submodule (disable auto-update)
+### Pinning (disable auto-update)
 
 If you need a fixed version (e.g., for reproducible builds or auditing),
 pin the submodule. The auto-update hook respects this and will skip it.
@@ -254,9 +229,8 @@ pin the submodule. The auto-update hook respects this and will skip it.
 
 # Or set directly in .gitmodules
 git config -f .gitmodules submodule.hyperi-ai.update none
-git config -f .gitmodules submodule.ci.update none   # pin ci too
 git add .gitmodules
-git commit -m "chore: pin ai and ci submodules"
+git commit -m "chore: pin ai submodule"
 ```
 
 Update a pinned submodule to a specific version manually:
@@ -272,19 +246,18 @@ git commit -m "chore: pin ai to v2.0.0"
 
 ```bash
 git config -f .gitmodules submodule.hyperi-ai.update rebase
-git config -f .gitmodules submodule.ci.update rebase
 git add .gitmodules
-git commit -m "chore: unpin ai and ci submodules"
+git commit -m "chore: unpin ai submodule"
 ```
 
 ### How auto-update works
 
 On every Claude Code session start, the `inject_standards.py` hook:
 
-1. Checks `.gitmodules` for each submodule (`ai`, `ci`)
+1. Checks `.gitmodules` for `hyperi-ai` submodule
 2. If `update = none` → skip (pinned)
-3. If `update = rebase` or unset → run `git submodule update --remote <name>`
-4. After updating `hyperi-ai/`, checks if deployment files changed and re-deploys
+3. If `update = rebase` or unset → run `git submodule update --remote hyperi-ai`
+4. Checks if deployment files changed and re-deploys
 5. Writes a version stamp to `.claude/.ai-version` for change tracking
 
 This is fully silent — no output unless something actually changed.
@@ -355,7 +328,7 @@ chain that runs automatically — no manual setup per session.
 
 | When | Hook | What It Does |
 |------|------|-------------|
-| Session start | `inject_standards.py` | Auto-updates hyperi-ai/ci submodules, injects current date, detects project technologies, injects UNIVERSAL + matching rules, auto-reattaches if submodule changed |
+| Session start | `inject_standards.py` | Auto-updates hyperi-ai submodule, injects current date, detects project technologies, injects UNIVERSAL + matching rules, auto-reattaches if submodule changed |
 | Context compacted | `on_compact.py` | Re-injects date and standards (lost during compaction) |
 | File edited/written | `auto_format.py` | Runs formatter (ruff, rustfmt, gofmt, prettier, shfmt, clang-format) |
 | Subagent spawned | `subagent_context.py` | Injects standards into subagent context (they miss SessionStart) |
@@ -369,7 +342,7 @@ chain that runs automatically — no manual setup per session.
 │ 1. USER OPENS PROJECT IN CLAUDE CODE                            │
 │                                                                 │
 │    SessionStart(startup) fires automatically:                   │
-│    ├── Auto-update hyperi-ai/ and ci/ submodules (if not pinned)        │
+│    ├── Auto-update hyperi-ai/ submodule (if not pinned)                 │
 │    ├── Auto-reattach (re-deploy if submodule files changed)     │
 │    ├── Inject current date (overrides stale training data)      │
 │    ├── Detect project technologies (scans 3 levels deep)        │

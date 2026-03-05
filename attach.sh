@@ -9,19 +9,8 @@
 
 set -euo pipefail
 
-# Get script directory for loading config
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Try to load org config from CI submodule (if available)
-# This provides GITHUB_ORG, CI_REPO_URL, AI_REPO_URL, etc.
-if [ -f "${SCRIPT_DIR}/../ci/config/org.sh" ]; then
-    # shellcheck source=/dev/null
-    source "${SCRIPT_DIR}/../ci/config/org.sh"
-fi
-
-# Fallback defaults if org.sh not available
+# Configuration defaults
 GITHUB_ORG="${GITHUB_ORG:-hyperi-io}"
-CI_REPO_URL="${CI_REPO_URL:-https://github.com/${GITHUB_ORG}/ci.git}"
 AI_REPO_URL="${AI_REPO_URL:-https://github.com/${GITHUB_ORG}/hyperi-ai.git}"
 
 # Global variables (set by detect_paths)
@@ -274,11 +263,6 @@ detect_mode() {
 configure_submodule_settings() {
     # Configure AI submodule
     configure_single_submodule "hyperi-ai" "$AI_DIR"
-
-    # Also configure CI submodule if present
-    if git -C "$PROJECT_ROOT" config --file .gitmodules --get "submodule.ci.url" > /dev/null 2>&1; then
-        configure_single_submodule "ci" "ci"
-    fi
 }
 
 # Configure a single submodule's settings
@@ -332,18 +316,6 @@ migrate_submodule_settings() {
                 any_initialized=true
             fi
             if migrate_single_submodule "hyperi-ai" "$AI_DIR"; then
-                any_migrated=true
-            fi
-        fi
-
-        # CI submodule if present
-        if git -C "$PROJECT_ROOT" config --file .gitmodules --get "submodule.ci.url" > /dev/null 2>&1; then
-            if ! is_submodule_initialized "ci"; then
-                log_info "Initializing CI submodule..."
-                git -C "$PROJECT_ROOT" submodule update --init "ci"
-                any_initialized=true
-            fi
-            if migrate_single_submodule "ci" "ci"; then
                 any_migrated=true
             fi
         fi
@@ -494,15 +466,6 @@ check_submodule_url() {
 
     # Check for old/deprecated repo names and auto-fix
     case "$url" in
-        # CI repo deprecated names
-        *"${org}/hyperci.git"|*"${org}/hyperci")
-            new_url="${CI_REPO_URL}"
-            log_info "${submodule_name}: Updating deprecated 'hyperci' URL → ci.git"
-            ;;
-        *"${org}/hs-ci.git"|*"${org}/hs-ci")
-            new_url="${CI_REPO_URL}"
-            log_info "${submodule_name}: Updating deprecated 'hs-ci' URL → ci.git"
-            ;;
         # AI repo deprecated names
         *"${org}/hs-ai.git"|*"${org}/hs-ai")
             new_url="${AI_REPO_URL}"
