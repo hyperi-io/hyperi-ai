@@ -1,3 +1,19 @@
+## [1.15.0](https://github.com/hyperi-io/ai/compare/1.14.7...1.15.0) (2026-03-05)
+
+
+### Features
+
+* auto-inject standards via SessionStart hook ([c0d8606](https://github.com/hyperi-io/ai/commit/c0d86061a3b7942eb5368dd9b5786821d6aa1636))
+* migrate hooks to Python 3, add quality hooks, date injection, web-search mandate ([e0a5578](https://github.com/hyperi-io/ai/commit/e0a55780a9b92aa7a55585652a1b1a83be301fd8))
+* proactive standards loading in /load and /standards command ([2f48490](https://github.com/hyperi-io/ai/commit/2f484901fe864df1ab562d48e9522b708d11ea8f))
+
+
+### Bug Fixes
+
+* add summary line to inject-standards.sh hook output ([4cd6fc9](https://github.com/hyperi-io/ai/commit/4cd6fc988efc79f25fdfe1e9c2252ca618a3bbae))
+* correct sales email to sales@hyperi.io in LICENSE ([dd36dd4](https://github.com/hyperi-io/ai/commit/dd36dd45442d5c0daeb03b1c0e392dd38b6f2536))
+* write_version_stamp handles submodule .git file (not only directory) ([d7caef4](https://github.com/hyperi-io/ai/commit/d7caef41ea66ff5c635d23d506ca77476930ffbd))
+
 ## [1.14.7](https://github.com/hyperi-io/ai/compare/1.14.6...1.14.7) (2026-03-04)
 
 ## [1.14.6](https://github.com/hyperi-io/ai/compare/1.14.5...1.14.6) (2026-03-04)
