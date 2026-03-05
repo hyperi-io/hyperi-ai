@@ -447,6 +447,45 @@ def git_diff_names(repo_dir: Path, old_rev: str, new_rev: str) -> List[str]:
     return []
 
 
+def auto_update_submodule(project_dir: Path) -> bool:
+    """Silently update the ai submodule if it's behind remote.
+
+    Checks .gitmodules update mode — only updates if 'rebase' or unset (default).
+    Skips if update = 'none' (pinned).
+
+    Returns True if the submodule was updated, False otherwise.
+    """
+    ai_dir = get_ai_dir(project_dir)
+    if not (ai_dir / ".git").exists():
+        return False  # not a submodule/repo
+
+    # Check update mode from .gitmodules
+    gitmodules = project_dir / ".gitmodules"
+    if gitmodules.is_file():
+        try:
+            result = subprocess.run(
+                ["git", "config", "-f", str(gitmodules), "submodule.ai.update"],
+                capture_output=True, text=True, timeout=5,
+                cwd=str(project_dir),
+            )
+            mode = result.stdout.strip()
+            if mode == "none":
+                return False  # pinned, skip
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+    # Fetch + update silently
+    try:
+        subprocess.run(
+            ["git", "submodule", "update", "--remote", "ai"],
+            capture_output=True, timeout=30,
+            cwd=str(project_dir),
+        )
+        return True
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
+
 def check_version_and_reattach(project_dir: Path) -> Optional[str]:
     """Detect ai submodule changes and auto-remediate.
 
