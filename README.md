@@ -4,7 +4,7 @@ Standards, templates, and setup scripts for AI-assisted development.
 
 **[QUICKSTART.md](QUICKSTART.md)** - Get started in 5 minutes
 
-**License:** FSL-1.1-ALv2 (Functional Source License)
+**License:** Proprietary — HYPERI PTY LIMITED internal use only
 
 ---
 
@@ -381,8 +381,6 @@ Documentation uses these variables:
 
 ## License
 
-FSL-1.1-ALv2 (Functional Source License) - See [LICENSE](LICENSE)
-
-Each version becomes Apache 2.0 licensed on the second anniversary of its release.
+Proprietary — HYPERI PTY LIMITED internal use only. See [LICENSE](LICENSE).
 
 Copyright (c) 2025-2026 HYPERI PTY LIMITED (ABN 31 622 581 748)

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Project:   HyperI AI
 # File:      hooks/on-compact.sh
-# Purpose:   Re-inject coding standards and git state after context compaction
+# Purpose:   Re-inject coding standards after context compaction
 #
-# License:   FSL-1.1-ALv2
+# License:   Proprietary
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 #
 # This script runs as a Claude Code SessionStart hook (matcher: compact).
@@ -43,26 +43,5 @@ else
     fi
 fi
 
-# Dynamic git context
-echo ""
-echo "---"
-echo ""
-echo "## Current Git State"
-echo ""
-
-if command -v git >/dev/null 2>&1 && [ -d "${PROJECT_DIR}/.git" ]; then
-    BRANCH="$(git -C "$PROJECT_DIR" branch --show-current 2>/dev/null || echo 'unknown')"
-    echo "Branch: \`${BRANCH}\`"
-    echo ""
-    echo "Recent commits:"
-    echo '```'
-    git -C "$PROJECT_DIR" log --oneline -5 2>/dev/null || echo "(unable to read git log)"
-    echo '```'
-else
-    echo "(git state unavailable)"
-fi
-
-echo ""
-echo "---"
 echo ""
 echo "**Run \`/load\` now** to restore full project context (STATE.md, TODO.md, submodule updates)."

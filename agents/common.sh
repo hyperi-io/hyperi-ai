@@ -3,7 +3,7 @@
 # File:      agents/common.sh
 # Purpose:   Shared functions for agent setup scripts
 #
-# License:   FSL-1.1-ALv2
+# License:   Proprietary
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 #
 # Bash 3.2 compatible (macOS default)

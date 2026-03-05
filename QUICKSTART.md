@@ -4,7 +4,7 @@
   Purpose:      5-minute guide to adding HyperI AI to your project
   Language:     Markdown
 
-  License:      FSL-1.1-ALv2
+  License:      Proprietary
   Copyright:    (c) 2026 HYPERI PTY LIMITED
 -->
 

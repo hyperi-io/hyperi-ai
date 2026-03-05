@@ -331,11 +331,8 @@ Include:
 
 ## License
 
-This project is licensed under the Functional Source License, Version 1.1,
-ALv2 Future License (FSL-1.1-ALv2). See [LICENSE](LICENSE).
+This project is proprietary software owned by HYPERI PTY LIMITED. See [LICENSE](LICENSE).
 
-All contributions are licensed under the same terms. Each version automatically
-becomes available under Apache License, Version 2.0 on the second anniversary
-of its release.
+All contributions become the property of HYPERI PTY LIMITED under the same terms.
 
 Copyright (c) 2025-2026 HYPERI PTY LIMITED (ABN 31 622 581 748)

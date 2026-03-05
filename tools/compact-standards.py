@@ -4,7 +4,7 @@
 # Purpose:   Generate compact rule versions of standards for Claude Code .claude/rules/
 # Language:  Python
 #
-# License:   FSL-1.1-ALv2
+# License:   Proprietary
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 
 """

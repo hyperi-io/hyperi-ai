@@ -3,7 +3,7 @@
 # File:      agents/cursor.sh
 # Purpose:   Setup Cursor IDE configuration for a project
 #
-# License:   FSL-1.1-ALv2
+# License:   Proprietary
 # Copyright: (c) 2026 HYPERI PTY LIMITED
 #
 # Usage: ./agents/cursor.sh [--help] [--dry-run] [--force] [--path PATH] [--verbose]
