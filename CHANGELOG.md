@@ -1,3 +1,10 @@
+## [1.16.1](https://github.com/hyperi-io/ai/compare/1.16.0...1.16.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* auto-update both ai and ci submodules on session start ([a1cb5bb](https://github.com/hyperi-io/ai/commit/a1cb5bb27bc3c85ba9d817599624937912ba1d2b))
+
 ## [1.16.0](https://github.com/hyperi-io/ai/compare/1.15.2...1.16.0) (2026-03-05)
 
 
