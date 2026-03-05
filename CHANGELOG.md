@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/hyperi-io/hyperi-ai/compare/2.0.0...2.0.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* address code review findings for submodule rename ([7157f86](https://github.com/hyperi-io/hyperi-ai/commit/7157f8679bb68666ee52e7eb1bc7f1e5a39da436))
+
 ## [2.0.0](https://github.com/hyperi-io/hyperi-ai/compare/1.16.2...2.0.0) (2026-03-05)
 
 
