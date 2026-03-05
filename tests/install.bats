@@ -16,7 +16,7 @@ teardown() {
 
 @test "TC-001: Detects submodule mode" {
     cd "$TEST_SUBMODULE"
-    run ./ai/attach.sh --verbose --no-agent
+    run ./hyperi-ai/attach.sh --verbose --no-agent
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "submodule" ]]
@@ -26,7 +26,7 @@ teardown() {
 
 @test "TC-002: Detects clone mode" {
     cd "$TEST_CLONE"
-    run ./ai/attach.sh --verbose --no-agent
+    run ./hyperi-ai/attach.sh --verbose --no-agent
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "clone" ]]
@@ -36,7 +36,7 @@ teardown() {
 
 @test "TC-003: Detects standalone mode" {
     cd "$TEST_STANDALONE"
-    run ./ai/attach.sh --verbose --no-agent
+    run ./hyperi-ai/attach.sh --verbose --no-agent
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "standalone" ]]
@@ -48,29 +48,35 @@ teardown() {
     cd "$TEST_SUBMODULE"
 
     # First run
-    run ./ai/attach.sh --no-agent
+    run ./hyperi-ai/attach.sh --no-agent
     [ "$status" -eq 0 ]
 
     # Second run
-    run ./ai/attach.sh --no-agent
+    run ./hyperi-ai/attach.sh --no-agent
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Skipped" ]]
 }
 
-@test "TC-005: Force flag overwrites files" {
+@test "TC-005: Force flag overwrites config but not STATE.md" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
 
     echo "modified" >> STATE.md
-    run ./ai/attach.sh --force --no-agent
+    run ./hyperi-ai/attach.sh --force --no-agent
 
+    [ "$status" -eq 0 ]
+    # --force should NOT overwrite STATE.md (requires --reset-state)
+    grep -q "modified" STATE.md
+
+    # --reset-state should overwrite STATE.md
+    run ./hyperi-ai/attach.sh --reset-state --no-agent
     [ "$status" -eq 0 ]
     ! grep -q "modified" STATE.md
 }
 
 @test "TC-006: Dry run shows actions without executing" {
     cd "$TEST_SUBMODULE"
-    run ./ai/attach.sh --dry-run --no-agent
+    run ./hyperi-ai/attach.sh --dry-run --no-agent
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Would deploy" ]]
@@ -106,13 +112,13 @@ teardown() {
     cd "$TEST_SUBMODULE"
 
     # First install
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
 
     # Modify file
     echo "CUSTOM CONTENT" >> STATE.md
 
     # Second install (should skip)
-    run ./ai/attach.sh --no-agent
+    run ./hyperi-ai/attach.sh --no-agent
 
     [ "$status" -eq 0 ]
     grep -q "CUSTOM CONTENT" STATE.md
@@ -123,9 +129,9 @@ teardown() {
 
 @test "TC-011: Auto-detection finds agent or warns if none" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent  # First deploy STATE.md
+    ./hyperi-ai/attach.sh --no-agent  # First deploy STATE.md
 
-    run ./ai/attach.sh
+    run ./hyperi-ai/attach.sh
 
     # Should succeed whether agents are found or not
     [ "$status" -eq 0 ]
@@ -135,10 +141,10 @@ teardown() {
 
 @test "TC-012: --agent flag runs specific agent" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
     mock_cli "claude"
 
-    run ./ai/attach.sh --agent claude
+    run ./hyperi-ai/attach.sh --agent claude
 
     [ "$status" -eq 0 ]
     [ -d ".claude" ]
@@ -148,7 +154,7 @@ teardown() {
     cd "$TEST_SUBMODULE"
     mock_cli "claude"
 
-    run ./ai/attach.sh --no-agent
+    run ./hyperi-ai/attach.sh --no-agent
 
     [ "$status" -eq 0 ]
     [ ! -d ".claude" ]
@@ -156,10 +162,10 @@ teardown() {
 
 @test "TC-014: Deprecated --claude flag shows warning" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
     mock_cli "claude"
 
-    run ./ai/attach.sh --claude
+    run ./hyperi-ai/attach.sh --claude
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "deprecated" ]] || [[ "$output" =~ "DEPRECATED" ]]
@@ -169,7 +175,7 @@ teardown() {
 @test "TC-015: --copilot flag errors with migration message" {
     cd "$TEST_SUBMODULE"
 
-    run ./ai/attach.sh --copilot
+    run ./hyperi-ai/attach.sh --copilot
 
     [ "$status" -eq 1 ]
     [[ "$output" =~ "codex" ]]

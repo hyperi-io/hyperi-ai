@@ -10,16 +10,16 @@ Standards, templates, and setup scripts for AI-assisted development.
 
 ## Important: This Is Not a Code Dependency
 
-**The `ai/` submodule provides standards and configuration - not code to import.**
+**The `hyperi-ai/` submodule provides standards and configuration - not code to import.**
 Your project should never import, require, or link to anything in this directory.
 
-- ✅ Humans and AI assistants read standards from `ai/standards/`
+- ✅ Humans and AI assistants read standards from `hyperi-ai/standards/`
 - ✅ Setup scripts create config files (`.claude/`, `STATE.md`, etc.)
-- ❌ No `import ai`, `require('ai')`, or build dependencies
-- ❌ No runtime code paths into `ai/`
+- ❌ No `import hyperi_ai`, `require('hyperi-ai')`, or build dependencies
+- ❌ No runtime code paths into `hyperi-ai/`
 
-If you find yourself writing code that references `ai/`, stop - that's not how
-this works. The `ai/` directory provides coding standards for humans and AI
+If you find yourself writing code that references `hyperi-ai/`, stop - that's not how
+this works. The `hyperi-ai/` directory provides coding standards for humans and AI
 assistants to follow, plus configuration for AI tools. It's not a library.
 
 ---
@@ -53,10 +53,10 @@ There are **two attach modes** depending on whether your repository is internal 
 
 ### Internal Repos (attach.sh)
 
-Use for internal/private repositories where `ai/` can be a visible submodule:
+Use for internal/private repositories where `hyperi-ai/` can be a visible submodule:
 
 ```bash
-./ai/attach.sh [OPTIONS]
+./hyperi-ai/attach.sh [OPTIONS]
 
 OPTIONS:
   --agent NAME       Setup specific agent (claude, cursor, gemini, codex)
@@ -70,11 +70,11 @@ OPTIONS:
   --verbose          Detailed output
 
 EXAMPLES:
-  ./ai/attach.sh                    # Auto-detect and configure first found agent
-  ./ai/attach.sh --agent claude     # Attach + Claude Code
-  ./ai/attach.sh --all-agents       # Configure all installed agents
-  ./ai/attach.sh --no-agent         # Attach without agent setup
-  ./ai/attach.sh --force            # Overwrite existing files
+  ./hyperi-ai/attach.sh                    # Auto-detect and configure first found agent
+  ./hyperi-ai/attach.sh --agent claude     # Attach + Claude Code
+  ./hyperi-ai/attach.sh --all-agents       # Configure all installed agents
+  ./hyperi-ai/attach.sh --no-agent         # Attach without agent setup
+  ./hyperi-ai/attach.sh --force            # Overwrite existing files
 ```
 
 **Agent auto-detection:** When no agent flag specified, attach.sh detects installed
@@ -88,7 +88,7 @@ Use `--agent NAME` instead.
 Use for public/open-source repositories where you don't want internal tooling exposed:
 
 ```bash
-./ai/attach-public.sh [OPTIONS]
+./hyperi-ai/attach-public.sh [OPTIONS]
 
 OPTIONS:
   --agent NAME       Setup specific agent (claude, cursor, gemini, codex)
@@ -101,32 +101,32 @@ OPTIONS:
   --verbose          Detailed output
 
 EXAMPLES:
-  # First time - run from ai/ repo or with --path
+  # First time - run from hyperi-ai/ repo or with --path
   /projects/ai/attach-public.sh --path /path/to/public-repo
 
-  # Or clone ai/ manually, then run
-  git clone --depth 1 https://github.com/hyperi-io/ai.git ai
-  ./ai/attach-public.sh
+  # Or clone hyperi-ai/ manually, then run
+  git clone --depth 1 https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
+  ./hyperi-ai/attach-public.sh
 ```
 
 **What's different:**
 
 | Aspect | attach.sh (internal) | attach-public.sh (public) |
 |--------|---------------------|---------------------------|
-| `ai/` visibility | Git submodule (committed) | Gitignored (local only) |
-| Updates | `git submodule update --remote` | `git -C ai pull` or `/load` auto-syncs |
+| `hyperi-ai/` visibility | Git submodule (committed) | Gitignored (local only) |
+| Updates | `git submodule update --remote` | `git -C hyperi-ai pull` or `/load` auto-syncs |
 | Cloning | Automatic via submodule | Manual clone or via `/load` |
 | `.gitmodules` | Updated | Not touched |
 
 **How it works:**
 
-1. Clones `ai/` locally (keeps `.git/` for manual updates via `git -C ai pull`)
-2. Adds `ai/` to `.gitignore` (never committed to public repo)
-3. Creates `.claude/commands/load.md` that auto-updates `ai/` on each `/load`
+1. Clones `hyperi-ai/` locally (keeps `.git/` for manual updates via `git -C hyperi-ai pull`)
+2. Adds `hyperi-ai/` to `.gitignore` (never committed to public repo)
+3. Creates `.claude/commands/load.md` that auto-updates `hyperi-ai/` on each `/load`
 4. Deploys the same templates as `attach.sh`
 
 **For public repo contributors:** Run `attach-public.sh` once, or just use `/load`
-which will clone `ai/` automatically if missing. To manually update: `git -C ai pull`
+which will clone `hyperi-ai/` automatically if missing. To manually update: `git -C hyperi-ai pull`
 
 ---
 
@@ -153,7 +153,7 @@ which will clone `ai/` automatically if missing. To manually update: `git -C ai 
 ## Repository Structure
 
 ```text
-ai/                              # This repository ($AI_ROOT)
+hyperi-ai/                       # This repository ($AI_ROOT)
 ├── attach.sh                    # Attach AI to project (submodule mode)
 ├── attach-public.sh             # Attach AI to public repo (gitignored mode)
 │
@@ -204,16 +204,16 @@ ai/                              # This repository ($AI_ROOT)
 
 ## Using with HyperI CI
 
-The `ai/` and `ci/` submodules are designed to work together seamlessly:
+The `hyperi-ai/` and `ci/` submodules are designed to work together seamlessly:
 
 ```bash
 # Attach both submodules
 git submodule add https://github.com/hyperi-io/ci.git ci
-git submodule add https://github.com/hyperi-io/ai.git ai
+git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
 
 # Run either attach script - both configure both submodules
 ./ci/attach.sh --python-package
-./ai/attach.sh --agent claude
+./hyperi-ai/attach.sh --agent claude
 ```
 
 **When both are present:**
@@ -231,7 +231,7 @@ git submodule add https://github.com/hyperi-io/ai.git ai
 
 ### Default behaviour (auto-update on every session)
 
-**Both `ai/` and `ci/` submodules are automatically updated from upstream
+**Both `hyperi-ai/` and `ci/` submodules are automatically updated from upstream
 every time a Claude Code session starts.** This happens silently via the
 `SessionStart` hook — no manual `git submodule update` needed.
 
@@ -250,10 +250,10 @@ pin the submodule. The auto-update hook respects this and will skip it.
 
 ```bash
 # Pin via attach
-./ai/attach.sh --pin
+./hyperi-ai/attach.sh --pin
 
 # Or set directly in .gitmodules
-git config -f .gitmodules submodule.ai.update none
+git config -f .gitmodules submodule.hyperi-ai.update none
 git config -f .gitmodules submodule.ci.update none   # pin ci too
 git add .gitmodules
 git commit -m "chore: pin ai and ci submodules"
@@ -262,16 +262,16 @@ git commit -m "chore: pin ai and ci submodules"
 Update a pinned submodule to a specific version manually:
 
 ```bash
-git -C ai fetch
-git -C ai checkout v2.0.0
-git add ai
+git -C hyperi-ai fetch
+git -C hyperi-ai checkout v2.0.0
+git add hyperi-ai
 git commit -m "chore: pin ai to v2.0.0"
 ```
 
 ### Unpinning (re-enable auto-update)
 
 ```bash
-git config -f .gitmodules submodule.ai.update rebase
+git config -f .gitmodules submodule.hyperi-ai.update rebase
 git config -f .gitmodules submodule.ci.update rebase
 git add .gitmodules
 git commit -m "chore: unpin ai and ci submodules"
@@ -284,7 +284,7 @@ On every Claude Code session start, the `inject_standards.py` hook:
 1. Checks `.gitmodules` for each submodule (`ai`, `ci`)
 2. If `update = none` → skip (pinned)
 3. If `update = rebase` or unset → run `git submodule update --remote <name>`
-4. After updating `ai/`, checks if deployment files changed and re-deploys
+4. After updating `hyperi-ai/`, checks if deployment files changed and re-deploys
 5. Writes a version stamp to `.claude/.ai-version` for change tracking
 
 This is fully silent — no output unless something actually changed.
@@ -348,14 +348,14 @@ Skills are YAML-frontmatter markdown files automatically loaded based on project
 
 ## Claude Code Integration
 
-After running `./ai/attach.sh --agent claude`, Claude Code gets a full hook
+After running `./hyperi-ai/attach.sh --agent claude`, Claude Code gets a full hook
 chain that runs automatically — no manual setup per session.
 
 ### What happens automatically (no user action needed)
 
 | When | Hook | What It Does |
 |------|------|-------------|
-| Session start | `inject_standards.py` | Auto-updates ai/ci submodules, injects current date, detects project technologies, injects UNIVERSAL + matching rules, auto-reattaches if submodule changed |
+| Session start | `inject_standards.py` | Auto-updates hyperi-ai/ci submodules, injects current date, detects project technologies, injects UNIVERSAL + matching rules, auto-reattaches if submodule changed |
 | Context compacted | `on_compact.py` | Re-injects date and standards (lost during compaction) |
 | File edited/written | `auto_format.py` | Runs formatter (ruff, rustfmt, gofmt, prettier, shfmt, clang-format) |
 | Subagent spawned | `subagent_context.py` | Injects standards into subagent context (they miss SessionStart) |
@@ -369,7 +369,7 @@ chain that runs automatically — no manual setup per session.
 │ 1. USER OPENS PROJECT IN CLAUDE CODE                            │
 │                                                                 │
 │    SessionStart(startup) fires automatically:                   │
-│    ├── Auto-update ai/ and ci/ submodules (if not pinned)       │
+│    ├── Auto-update hyperi-ai/ and ci/ submodules (if not pinned)        │
 │    ├── Auto-reattach (re-deploy if submodule files changed)     │
 │    ├── Inject current date (overrides stale training data)      │
 │    ├── Detect project technologies (scans 3 levels deep)        │
@@ -458,7 +458,7 @@ Tests cover all scripts across submodule, clone, and standalone modes.
 
 Documentation uses these variables:
 
-- `$AI_ROOT` - Where this repo is attached (e.g., `ai/`, `standards/`, `.ai/`)
+- `$AI_ROOT` - Where this repo is attached (e.g., `hyperi-ai/`, `standards/`, `.ai/`)
 - `$PROJECT_ROOT` - Parent project root (where STATE.md lives)
 
 ---

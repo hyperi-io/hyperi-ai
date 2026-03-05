@@ -14,7 +14,7 @@ teardown() {
 
 @test "TC-201: Requires STATE.md (prerequisite check)" {
     cd "$TEST_SUBMODULE"
-    run ./ai/agents/cursor.sh
+    run ./hyperi-ai/agents/cursor.sh
 
     [ "$status" -eq 1 ]
     [[ "$output" =~ "attach.sh first" ]]
@@ -23,9 +23,9 @@ teardown() {
 
 @test "TC-202: Full Cursor IDE setup" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
 
-    run ./ai/agents/cursor.sh --verbose
+    run ./hyperi-ai/agents/cursor.sh --verbose
 
     [ "$status" -eq 0 ]
     [ -d ".cursor" ]
@@ -39,14 +39,14 @@ teardown() {
 
 @test "TC-203: Idempotent - preserves cli.json" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
-    ./ai/agents/cursor.sh
+    ./hyperi-ai/attach.sh --no-agent
+    ./hyperi-ai/agents/cursor.sh
 
     # Modify cli.json
     echo '/* custom */' >> .cursor/cli.json
 
     # Run again
-    run ./ai/agents/cursor.sh
+    run ./hyperi-ai/agents/cursor.sh
 
     [ "$status" -eq 0 ]
     grep -q "custom" .cursor/cli.json
@@ -54,11 +54,11 @@ teardown() {
 
 @test "TC-204: Force flag overwrites cli.json" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
-    ./ai/agents/cursor.sh
+    ./hyperi-ai/attach.sh --no-agent
+    ./hyperi-ai/agents/cursor.sh
 
     echo '/* custom */' >> .cursor/cli.json
-    run ./ai/agents/cursor.sh --force
+    run ./hyperi-ai/agents/cursor.sh --force
 
     [ "$status" -eq 0 ]
     ! grep -q "custom" .cursor/cli.json
@@ -66,13 +66,13 @@ teardown() {
 
 @test "TC-205: Rules always updated (versioned)" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
-    ./ai/agents/cursor.sh
+    ./hyperi-ai/attach.sh --no-agent
+    ./hyperi-ai/agents/cursor.sh
 
     # Modify rule
     echo "OLD VERSION" > .cursor/rules/UNIVERSAL.mdc
 
-    run ./ai/agents/cursor.sh
+    run ./hyperi-ai/agents/cursor.sh
 
     [ "$status" -eq 0 ]
     ! grep -q "OLD VERSION" .cursor/rules/UNIVERSAL.mdc
@@ -81,9 +81,9 @@ teardown() {
 
 @test "TC-206: Dry run preview" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
 
-    run ./ai/agents/cursor.sh --dry-run
+    run ./hyperi-ai/agents/cursor.sh --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Would" ]]
@@ -111,10 +111,10 @@ teardown() {
 
 @test "TC-209: Exit code 2 when CLI not installed" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
     unmock_cli "agent"
 
-    run ./ai/agents/cursor.sh
+    run ./hyperi-ai/agents/cursor.sh
 
     [ "$status" -eq $EXIT_NOT_INSTALLED ]
     [[ "$output" =~ "not installed" ]]

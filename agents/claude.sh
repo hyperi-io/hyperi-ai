@@ -59,7 +59,7 @@ check_agent_cli() {
 check_prerequisites() {
     if [ ! -f "$PROJECT_ROOT/STATE.md" ]; then
         agent_log_error "STATE.md not found in project root"
-        agent_log_info "Run attach.sh first: ./ai/attach.sh"
+        agent_log_info "Run attach.sh first: ./hyperi-ai/attach.sh"
         exit "$EXIT_ERROR"
     fi
 
@@ -235,7 +235,7 @@ deploy_rules() {
     fi
 
     # Also deploy user standards if present
-    local user_standards="${XDG_CONFIG_HOME:-$HOME/.config}/ai/USER-CODING-STANDARDS.md"
+    local user_standards="${XDG_CONFIG_HOME:-$HOME/.config}/hyperi-ai/USER-CODING-STANDARDS.md"
     if [ -f "$user_standards" ]; then
         local dst_file="$rules_dst/user-standards.md"
         local rel

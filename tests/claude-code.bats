@@ -14,7 +14,7 @@ teardown() {
 
 @test "TC-101: Requires STATE.md (prerequisite check)" {
     cd "$TEST_SUBMODULE"
-    run ./ai/agents/claude.sh
+    run ./hyperi-ai/agents/claude.sh
 
     [ "$status" -eq 1 ]
     [[ "$output" =~ "attach.sh first" ]]
@@ -23,9 +23,9 @@ teardown() {
 
 @test "TC-102: Full Claude Code setup" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
 
-    run ./ai/agents/claude.sh --verbose
+    run ./hyperi-ai/agents/claude.sh --verbose
 
     [ "$status" -eq 0 ]
     [ -d ".claude" ]
@@ -39,14 +39,14 @@ teardown() {
 
 @test "TC-103: Idempotent - preserves settings" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
-    ./ai/agents/claude.sh
+    ./hyperi-ai/attach.sh --no-agent
+    ./hyperi-ai/agents/claude.sh
 
     # Modify settings
     echo '/* custom */' >> .claude/settings.json
 
     # Run again
-    run ./ai/agents/claude.sh
+    run ./hyperi-ai/agents/claude.sh
 
     [ "$status" -eq 0 ]
     grep -q "custom" .claude/settings.json
@@ -54,13 +54,13 @@ teardown() {
 
 @test "TC-104: Force flag overwrites settings" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
-    ./ai/agents/claude.sh
+    ./hyperi-ai/attach.sh --no-agent
+    ./hyperi-ai/agents/claude.sh
 
     # Break the symlink and replace with a modified real file
     rm .claude/settings.json
     echo '/* custom */' > .claude/settings.json
-    run ./ai/agents/claude.sh --force
+    run ./hyperi-ai/agents/claude.sh --force
 
     [ "$status" -eq 0 ]
     ! grep -q "custom" .claude/settings.json
@@ -68,14 +68,14 @@ teardown() {
 
 @test "TC-105: Commands always updated (versioned)" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
-    ./ai/agents/claude.sh
+    ./hyperi-ai/attach.sh --no-agent
+    ./hyperi-ai/agents/claude.sh
 
     # Break the symlink and replace with stale content
     rm .claude/commands/load.md
     echo "OLD VERSION" > .claude/commands/load.md
 
-    run ./ai/agents/claude.sh
+    run ./hyperi-ai/agents/claude.sh
 
     [ "$status" -eq 0 ]
     ! grep -q "OLD VERSION" .claude/commands/load.md
@@ -84,9 +84,9 @@ teardown() {
 
 @test "TC-106: Dry run preview" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
 
-    run ./ai/agents/claude.sh --dry-run
+    run ./hyperi-ai/agents/claude.sh --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Would" ]]
@@ -114,8 +114,8 @@ teardown() {
 
 @test "TC-110: standards.md command is deployed" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
-    run ./ai/agents/claude.sh --verbose
+    ./hyperi-ai/attach.sh --no-agent
+    run ./hyperi-ai/agents/claude.sh --verbose
 
     [ "$status" -eq 0 ]
     [ -f ".claude/commands/standards.md" ]
@@ -177,12 +177,12 @@ teardown() {
 
 @test "TC-109: Exit code 2 when CLI not installed" {
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
     unmock_cli "claude"
 
     # Use a restricted PATH so a system-installed claude is not found
     run env PATH="$TEST_ROOT/mock-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-        ./ai/agents/claude.sh
+        ./hyperi-ai/agents/claude.sh
 
     [ "$status" -eq $EXIT_NOT_INSTALLED ]
     [[ "$output" =~ "not installed" ]]

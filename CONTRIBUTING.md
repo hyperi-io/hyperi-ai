@@ -7,7 +7,7 @@ How to work with and contribute to this repository.
 ## Repository Overview
 
 ```text
-ai/
+hyperi-ai/
 ├── attach.sh            # Deploy STATE.md, TODO.md (internal repos)
 ├── attach-public.sh     # Deploy for public repos (gitignored mode)
 ├── agents/              # Agent setup scripts (bash)
@@ -64,7 +64,7 @@ Each agent's deploy script converts `standards/rules/*.md` into its platform's f
 ### Setup
 
 ```bash
-git clone https://github.com/hyperi-io/ai.git
+git clone https://github.com/hyperi-io/hyperi-ai.git
 cd ai
 ```
 
@@ -380,7 +380,7 @@ Include:
 
 ## Getting Help
 
-- GitHub Issues: <https://github.com/hyperi-io/ai/issues>
+- GitHub Issues: <https://github.com/hyperi-io/hyperi-ai/issues>
 - Slack: #standards (HyperI internal)
 
 ---

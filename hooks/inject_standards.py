@@ -26,6 +26,16 @@ import common  # noqa: E402
 def main() -> None:
     project_dir = common.get_project_dir()
 
+    # Migrate ai/ → hyperi-ai/ if old name detected
+    old_ai = project_dir / "ai"
+    new_ai = project_dir / "hyperi-ai"
+    if old_ai.exists() and not new_ai.exists():
+        try:
+            from migrate_submodule_name import main as migrate_main
+            migrate_main()
+        except Exception:
+            pass  # best-effort — attach.sh will also try
+
     # Auto-update: silently pull latest ai and ci submodules if behind remote
     common.auto_update_submodules(project_dir)
 

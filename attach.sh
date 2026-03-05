@@ -22,12 +22,12 @@ fi
 # Fallback defaults if org.sh not available
 GITHUB_ORG="${GITHUB_ORG:-hyperi-io}"
 CI_REPO_URL="${CI_REPO_URL:-https://github.com/${GITHUB_ORG}/ci.git}"
-AI_REPO_URL="${AI_REPO_URL:-https://github.com/${GITHUB_ORG}/ai.git}"
+AI_REPO_URL="${AI_REPO_URL:-https://github.com/${GITHUB_ORG}/hyperi-ai.git}"
 
 # Global variables
 AI_ROOT=""
 PROJECT_ROOT=""
-AI_DIR="ai"
+AI_DIR="hyperi-ai"
 
 # Defaults
 DRY_RUN=false
@@ -99,28 +99,28 @@ AGENT SETUP (default: auto-detect first installed agent):
 
 EXAMPLES:
   # Basic usage (deploy + auto-detect agent)
-  ./ai/attach.sh
+  ./hyperi-ai/attach.sh
 
   # Skip agent detection
-  ./ai/attach.sh --no-agent
+  ./hyperi-ai/attach.sh --no-agent
 
   # Setup specific agent
-  ./ai/attach.sh --agent claude
+  ./hyperi-ai/attach.sh --agent claude
 
   # Setup all installed agents
-  ./ai/attach.sh --all-agents
+  ./hyperi-ai/attach.sh --all-agents
 
   # Preview changes without modifying files
-  ./ai/attach.sh --dry-run
+  ./hyperi-ai/attach.sh --dry-run
 
   # Force overwrite config files (keeps STATE.md/TODO.md)
-  ./ai/attach.sh --force
+  ./hyperi-ai/attach.sh --force
 
   # Reset everything including STATE.md/TODO.md
-  ./ai/attach.sh --force --reset-state
+  ./hyperi-ai/attach.sh --force --reset-state
 
   # Pin submodule version (no auto-update)
-  ./ai/attach.sh --pin
+  ./hyperi-ai/attach.sh --pin
 
 EOF
 }
@@ -273,7 +273,7 @@ detect_mode() {
 # All settings stored in .gitmodules so they propagate to clones
 configure_submodule_settings() {
     # Configure AI submodule
-    configure_single_submodule "ai" "$AI_DIR"
+    configure_single_submodule "hyperi-ai" "$AI_DIR"
 
     # Also configure CI submodule if present
     if git -C "$PROJECT_ROOT" config --file .gitmodules --get "submodule.ci.url" > /dev/null 2>&1; then
@@ -331,7 +331,7 @@ migrate_submodule_settings() {
                 git -C "$PROJECT_ROOT" submodule update --init "$AI_DIR"
                 any_initialized=true
             fi
-            if migrate_single_submodule "ai" "$AI_DIR"; then
+            if migrate_single_submodule "hyperi-ai" "$AI_DIR"; then
                 any_migrated=true
             fi
         fi
@@ -788,10 +788,10 @@ print_summary() {
     echo "  1. Review STATE.md and TODO.md in your project root"
     if [ "$NO_AGENT" = true ]; then
         echo "  2. Setup your AI assistant manually:"
-        echo "       ./ai/agents/claude.sh   # Claude Code"
-        echo "       ./ai/agents/cursor.sh   # Cursor IDE"
-        echo "       ./ai/agents/gemini.sh   # Gemini Code"
-        echo "       ./ai/agents/codex.sh    # OpenAI Codex"
+        echo "       ./hyperi-ai/agents/claude.sh   # Claude Code"
+        echo "       ./hyperi-ai/agents/cursor.sh   # Cursor IDE"
+        echo "       ./hyperi-ai/agents/gemini.sh   # Gemini Code"
+        echo "       ./hyperi-ai/agents/codex.sh    # OpenAI Codex"
     fi
     echo ""
 
@@ -803,7 +803,7 @@ print_summary() {
         else
             echo "AI submodule configured:"
             echo "  - Auto-updates from upstream"
-            echo "  - To update: git submodule update --remote ai"
+            echo "  - To update: git submodule update --remote hyperi-ai"
         fi
         echo "  - Read-only (pushes blocked)"
         echo ""
@@ -824,6 +824,20 @@ main() {
     parse_args "$@"
     detect_paths
     validate_environment
+
+    # Migrate ai/ → hyperi-ai/ if old name detected
+    if [ "$AI_DIR" = "ai" ] && [ -d "$PROJECT_ROOT/ai" ]; then
+        if command -v python3 >/dev/null 2>&1; then
+            log_info "Migrating submodule: ai/ → hyperi-ai/"
+            CLAUDE_PROJECT_DIR="$PROJECT_ROOT" python3 "$AI_ROOT/hooks/migrate_submodule_name.py"
+            # Re-detect paths after rename
+            AI_ROOT="$PROJECT_ROOT/hyperi-ai"
+            AI_DIR="hyperi-ai"
+        else
+            log_warn "Python 3 not found — cannot auto-migrate ai/ to hyperi-ai/"
+            log_warn "  Rename manually: mv ai hyperi-ai"
+        fi
+    fi
 
     # Configure/migrate submodule if in submodule mode
     local mode

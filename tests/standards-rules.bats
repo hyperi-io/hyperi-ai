@@ -8,7 +8,7 @@ load test_helper
 # if the paths: key is present.
 #
 # T2 — Path references in command files
-# The standards.md command references ../../ai/standards/rules/ from its
+# The standards.md command references ../../hyperi-ai/standards/rules/ from its
 # deployed location (.claude/commands/standards.md -> templates/claude-code/commands/).
 # Verify rule file paths resolve correctly from a consumer project structure.
 
@@ -75,7 +75,7 @@ load test_helper
 
 @test "TC-215: Path references in standards.md resolve from TEST_SUBMODULE structure" {
     setup_test_env
-    local rules_path="$TEST_SUBMODULE/ai/standards/rules"
+    local rules_path="$TEST_SUBMODULE/hyperi-ai/standards/rules"
     [ -d "$rules_path" ] || {
         echo "FAIL: resolved path $rules_path does not exist"
         return 1
@@ -278,11 +278,11 @@ print(' '.join(names))
     setup_test_env
     cd "$TEST_SUBMODULE"
     mock_cli "claude"
-    ./ai/attach.sh --no-agent
+    ./hyperi-ai/attach.sh --no-agent
 
-    # Create a real git repo in ai/ so rev-parse works
-    rm -f ai/.git
-    cd ai
+    # Create a real git repo in hyperi-ai/ so rev-parse works
+    rm -f hyperi-ai/.git
+    cd hyperi-ai
     git init -q
     git config user.email "test@example.com"
     git config user.name "Test User"
@@ -291,7 +291,7 @@ print(' '.join(names))
     git commit -q -m "init"
     cd "$TEST_SUBMODULE"
 
-    run ./ai/agents/claude.sh
+    run ./hyperi-ai/agents/claude.sh
 
     [ "$status" -eq 0 ]
     [ -f ".claude/.ai-version" ]

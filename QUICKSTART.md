@@ -12,7 +12,7 @@
 
 Get AI-assisted development running in under 5 minutes.
 
-> **Note:** The `ai/` submodule provides standards and configuration - not code
+> **Note:** The `hyperi-ai/` submodule provides standards and configuration - not code
 > to import. Your project never imports or links to it. Humans and AI assistants
 > read the standards; your code ignores this directory.
 
@@ -20,8 +20,8 @@ Get AI-assisted development running in under 5 minutes.
 
 ```bash
 # Add submodule then attach (run commands separately — do not chain with &&)
-git submodule add https://github.com/hyperi-io/ai.git ai
-./ai/attach.sh --agent claude
+git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
+./hyperi-ai/attach.sh --agent claude
 ```
 
 ## Step 1: Add AI Submodule
@@ -31,15 +31,15 @@ git submodule add https://github.com/hyperi-io/ai.git ai
 ```bash
 git submodule add https://github.com/hyperi-io/ci.git ci
 ./ci/attach.sh --python-package
-git submodule add https://github.com/hyperi-io/ai.git ai
-./ai/attach.sh --agent claude
+git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
+./hyperi-ai/attach.sh --agent claude
 ```
 
 **AI only:**
 
 ```bash
-git submodule add https://github.com/hyperi-io/ai.git ai
-./ai/attach.sh --agent claude
+git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
+./hyperi-ai/attach.sh --agent claude
 ```
 
 **Assistant options:** `--agent claude`, `--agent codex`, `--agent cursor`, `--agent gemini`
@@ -49,8 +49,8 @@ git submodule add https://github.com/hyperi-io/ai.git ai
 ```bash
 git init
 git branch -m main
-git submodule add https://github.com/hyperi-io/ai.git ai
-./ai/attach.sh --agent claude
+git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
+./hyperi-ai/attach.sh --agent claude
 ```
 
 ## Step 2: Start Using
@@ -80,15 +80,15 @@ Editing `*.py` → python rules inject. Editing `*.sh` → bash rules inject.
 
 ## Auto-Update (Default)
 
-**Both `ai/` and `ci/` submodules auto-update from upstream on every Claude
+**Both `hyperi-ai/` and `ci/` submodules auto-update from upstream on every Claude
 Code session start.** No manual commands needed — the `SessionStart` hook
 handles it silently, including re-deploying changed commands, rules, and skills.
 
 To force an immediate update outside of Claude Code:
 
 ```bash
-git submodule update --remote ai
-./ai/attach.sh --agent claude
+git submodule update --remote hyperi-ai
+./hyperi-ai/attach.sh --agent claude
 ```
 
 ## Pinning (Disable Auto-Update)
@@ -97,20 +97,20 @@ To lock a submodule to a specific version:
 
 ```bash
 # Pin via .gitmodules (auto-update hook will skip pinned submodules)
-git config -f .gitmodules submodule.ai.update none
+git config -f .gitmodules submodule.hyperi-ai.update none
 git add .gitmodules
 git commit -m "chore: pin ai submodule"
 ```
 
-To unpin: `git config -f .gitmodules submodule.ai.update rebase`
+To unpin: `git config -f .gitmodules submodule.hyperi-ai.update rebase`
 
 ## Upgrading Existing Projects
 
 If your project has outdated AI config:
 
 ```bash
-git submodule update --remote ai
-./ai/attach.sh --agent claude --force
+git submodule update --remote hyperi-ai
+./hyperi-ai/attach.sh --agent claude --force
 ```
 
 ## More Information

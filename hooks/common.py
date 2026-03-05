@@ -40,8 +40,8 @@ def get_project_dir() -> Path:
 
 
 def get_ai_dir(project_dir: Path) -> Path:
-    """Return the ai/ submodule directory within the project."""
-    return project_dir / "ai"
+    """Return the hyperi-ai/ submodule directory within the project."""
+    return project_dir / "hyperi-ai"
 
 
 def get_rules_dir(project_dir: Path) -> Path:
@@ -447,7 +447,7 @@ def git_diff_names(repo_dir: Path, old_rev: str, new_rev: str) -> List[str]:
     return []
 
 
-def auto_update_submodule(project_dir: Path, name: str = "ai") -> bool:
+def auto_update_submodule(project_dir: Path, name: str = "hyperi-ai") -> bool:
     """Silently update a submodule if it's behind remote.
 
     Checks .gitmodules update mode — only updates if 'rebase' or unset (default).
@@ -488,13 +488,13 @@ def auto_update_submodule(project_dir: Path, name: str = "ai") -> bool:
 
 
 def auto_update_submodules(project_dir: Path) -> None:
-    """Silently update ai and ci submodules if present and not pinned."""
-    auto_update_submodule(project_dir, "ai")
+    """Silently update hyperi-ai and ci submodules if present and not pinned."""
+    auto_update_submodule(project_dir, "hyperi-ai")
     auto_update_submodule(project_dir, "ci")
 
 
 def check_version_and_reattach(project_dir: Path) -> Optional[str]:
-    """Detect ai submodule changes and auto-remediate.
+    """Detect hyperi-ai submodule changes and auto-remediate.
 
     Returns message describing what was done, or None if up-to-date.
     """

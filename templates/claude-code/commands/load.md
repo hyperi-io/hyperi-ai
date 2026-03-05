@@ -106,8 +106,8 @@ If the output includes ANY of these paths, the user needs to re-run attach:
 
 **If matches found**, tell the user:
 
-> The ai submodule update includes changes to deployment files (commands, rules,
-> or agent config). Run `./ai/agents/claude.sh` to re-deploy, then restart this
+> The hyperi-ai submodule update includes changes to deployment files (commands, rules,
+> or agent config). Run `./hyperi-ai/agents/claude.sh` to re-deploy, then restart this
 > session for the changes to take effect.
 
 **If no matches** or the diff is empty, continue silently.

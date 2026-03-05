@@ -9,7 +9,7 @@ setup() {
     mock_cli "gemini"  # Mock Gemini CLI for all tests
     # gemini.sh requires templates from attach.sh
     cd "$TEST_SUBMODULE"
-    ./ai/attach.sh --no-agent > /dev/null
+    ./hyperi-ai/attach.sh --no-agent > /dev/null
 }
 
 teardown() {
@@ -19,7 +19,7 @@ teardown() {
 }
 
 @test "TC-G01: Basic setup creates .gemini dir and symlink" {
-    run ./ai/agents/gemini.sh
+    run ./hyperi-ai/agents/gemini.sh
 
     [ "$status" -eq 0 ]
     [ -d ".gemini" ]
@@ -32,7 +32,7 @@ teardown() {
 
 @test "TC-G02: Fails if STATE.md is missing" {
     rm STATE.md
-    run ./ai/agents/gemini.sh
+    run ./hyperi-ai/agents/gemini.sh
 
     [ "$status" -eq 1 ]
     [[ "$output" =~ "attach.sh first" ]]
@@ -40,21 +40,21 @@ teardown() {
 
 @test "TC-G03: Idempotent - safe to run twice" {
     # First run
-    run ./ai/agents/gemini.sh
+    run ./hyperi-ai/agents/gemini.sh
     [ "$status" -eq 0 ]
 
     # Second run
-    run ./ai/agents/gemini.sh
+    run ./hyperi-ai/agents/gemini.sh
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Skipped (preserving existing):" ]]
     [[ "$output" =~ "Skipped (exists): ".*"GEMINI.md -> STATE.md" ]]
 }
 
 @test "TC-G04: Force flag overwrites settings.json" {
-    ./ai/agents/gemini.sh
+    ./hyperi-ai/agents/gemini.sh
 
     echo '{"model": "test"}' > .gemini/settings.json
-    run ./ai/agents/gemini.sh --force
+    run ./hyperi-ai/agents/gemini.sh --force
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Deployed:" ]]
@@ -62,7 +62,7 @@ teardown() {
 }
 
 @test "TC-G05: Dry run shows actions without executing" {
-    run ./ai/agents/gemini.sh --dry-run
+    run ./hyperi-ai/agents/gemini.sh --dry-run
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Would create:" ]]
@@ -85,7 +85,7 @@ teardown() {
 }
 
 @test "TC-G07: Help flag shows usage" {
-    run ./ai/agents/gemini.sh --help
+    run ./hyperi-ai/agents/gemini.sh --help
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Usage:" ]]
@@ -93,7 +93,7 @@ teardown() {
 
 @test "TC-G08: Exit code 2 when CLI not installed" {
     unmock_cli "gemini"
-    run ./ai/agents/gemini.sh
+    run ./hyperi-ai/agents/gemini.sh
 
     [ "$status" -eq $EXIT_NOT_INSTALLED ]
     [[ "$output" =~ "not installed" ]]

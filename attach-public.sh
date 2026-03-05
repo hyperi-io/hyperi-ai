@@ -21,7 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Configuration
 GITHUB_ORG="${GITHUB_ORG:-hyperi-io}"
-AI_REPO_URL="${AI_REPO_URL:-https://github.com/${GITHUB_ORG}/ai.git}"
+AI_REPO_URL="${AI_REPO_URL:-https://github.com/${GITHUB_ORG}/hyperi-ai.git}"
 
 # Global variables
 PROJECT_ROOT=""
@@ -91,16 +91,16 @@ AGENT SETUP:
 
 EXAMPLES:
   # Run from project root (downloads ai/ first time)
-  curl -sL https://raw.githubusercontent.com/hyperi-io/ai/main/attach-public.sh | bash
+  curl -sL https://raw.githubusercontent.com/hyperi-io/hyperi-ai/main/attach-public.sh | bash
 
-  # Or if ai/ already exists locally
-  ./ai/attach-public.sh
+  # Or if hyperi-ai/ already exists locally
+  ./hyperi-ai/attach-public.sh
 
   # Setup specific agent
-  ./ai/attach-public.sh --agent claude
+  ./hyperi-ai/attach-public.sh --agent claude
 
   # Preview changes
-  ./ai/attach-public.sh --dry-run
+  ./hyperi-ai/attach-public.sh --dry-run
 
 EOF
 }
@@ -346,14 +346,14 @@ You are loading project context for a new work session or refreshing my memory.
 
 ## Step 1: Check AI Standards Directory (Silent)
 
-**This project uses a gitignored `ai/` directory for standards.**
+**This project uses a gitignored `hyperi-ai/` directory for standards.**
 
-Use the Glob tool to check if `ai/standards/rules/UNIVERSAL.md` exists.
+Use the Glob tool to check if `hyperi-ai/standards/rules/UNIVERSAL.md` exists.
 
 - If it exists: proceed to Step 2 (no action needed)
-- If missing: tell the user to run `git clone --depth 1 https://github.com/hyperi-io/ai.git ai`
+- If missing: tell the user to run `git clone --depth 1 https://github.com/hyperi-io/hyperi-ai.git hyperi-ai`
 
-**Do NOT mention this check to the user unless ai/ is missing.**
+**Do NOT mention this check to the user unless hyperi-ai/ is missing.**
 
 ---
 
@@ -370,7 +370,7 @@ Read in this order:
 
 Read the universal standards (cross-cutting rules for all code):
 
-- [UNIVERSAL.md](../../ai/standards/rules/UNIVERSAL.md)
+- [UNIVERSAL.md](../../hyperi-ai/standards/rules/UNIVERSAL.md)
 
 ---
 
@@ -488,7 +488,7 @@ deploy_templates() {
 # Run agent setup script
 run_single_agent() {
     local agent="$1"
-    local script="$PROJECT_ROOT/ai/agents/${agent}.sh"
+    local script="$PROJECT_ROOT/hyperi-ai/agents/${agent}.sh"
     local force_flag=""
     local verbose_flag=""
 

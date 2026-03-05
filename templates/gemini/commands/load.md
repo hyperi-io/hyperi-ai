@@ -11,12 +11,12 @@ You are loading project context for a new work session or refreshing my memory.
 
 **Step 2: Load universal standards:**
 
-- [UNIVERSAL.md](../../ai/standards/rules/UNIVERSAL.md) - Cross-cutting coding rules
+- [UNIVERSAL.md](../../hyperi-ai/standards/rules/UNIVERSAL.md) - Cross-cutting coding rules
 
 **Step 3: Load language and infrastructure rules:**
 
 Check which languages/infra are in use based on project files, then read the
-matching compact rule from [ai/standards/rules/](../../ai/standards/rules/):
+matching compact rule from [hyperi-ai/standards/rules/](../../hyperi-ai/standards/rules/):
 
 | Marker Files | Rule File |
 |--------------|-----------|
@@ -36,8 +36,8 @@ Also read these universal rules: testing.md, error-handling.md, security.md,
 design-principles.md, mocks-policy.md
 
 For full detail during review or complex decisions, see
-[ai/standards/languages/](../../ai/standards/languages/) and
-[ai/standards/infrastructure/](../../ai/standards/infrastructure/).
+[hyperi-ai/standards/languages/](../../hyperi-ai/standards/languages/) and
+[hyperi-ai/standards/infrastructure/](../../hyperi-ai/standards/infrastructure/).
 
 ---
 

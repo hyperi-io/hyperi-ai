@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Test environment paths
-# Use TMPDIR for CI compatibility, /projects/ai-test for local development
+# Use TMPDIR for CI compatibility, /projects/ai for local development
 if [ -d "/projects/ai" ]; then
     # Local development
     export TEST_ROOT="/projects/ai-test"
@@ -33,29 +33,29 @@ setup_test_env() {
     git config user.email "test@example.com"
     git config user.name "Test User"
 
-    # Create ai/ directory first, then .git file (simulates submodule)
-    mkdir -p "$TEST_SUBMODULE/ai"
-    mkdir -p "$TEST_SUBMODULE/ai/agents"
-    echo "gitdir: ../.git/modules/ai" > "$TEST_SUBMODULE/ai/.git" 2>/dev/null || true
-    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_SUBMODULE/ai/" 2>/dev/null || true
-    cp -r "$AI_SOURCE"/agents/*.sh "$TEST_SUBMODULE/ai/agents/" 2>/dev/null || true
-    chmod +x "$TEST_SUBMODULE/ai/attach.sh" "$TEST_SUBMODULE/ai/agents/"*.sh "$TEST_SUBMODULE/ai/hooks/"*.py 2>/dev/null || true
+    # Create hyperi-ai/ directory first, then .git file (simulates submodule)
+    mkdir -p "$TEST_SUBMODULE/hyperi-ai"
+    mkdir -p "$TEST_SUBMODULE/hyperi-ai/agents"
+    echo "gitdir: ../.git/modules/hyperi-ai" > "$TEST_SUBMODULE/hyperi-ai/.git" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_SUBMODULE/hyperi-ai/" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/agents/*.sh "$TEST_SUBMODULE/hyperi-ai/agents/" 2>/dev/null || true
+    chmod +x "$TEST_SUBMODULE/hyperi-ai/attach.sh" "$TEST_SUBMODULE/hyperi-ai/agents/"*.sh "$TEST_SUBMODULE/hyperi-ai/hooks/"*.py 2>/dev/null || true
 
     # Setup clone test
-    mkdir -p "$TEST_CLONE/ai"
-    mkdir -p "$TEST_CLONE/ai/agents"
-    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_CLONE/ai/"
-    cp -r "$AI_SOURCE"/agents/*.sh "$TEST_CLONE/ai/agents/" 2>/dev/null || true
-    chmod +x "$TEST_CLONE/ai/attach.sh" "$TEST_CLONE/ai/agents/"*.sh "$TEST_CLONE/ai/hooks/"*.py 2>/dev/null || true
+    mkdir -p "$TEST_CLONE/hyperi-ai"
+    mkdir -p "$TEST_CLONE/hyperi-ai/agents"
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_CLONE/hyperi-ai/"
+    cp -r "$AI_SOURCE"/agents/*.sh "$TEST_CLONE/hyperi-ai/agents/" 2>/dev/null || true
+    chmod +x "$TEST_CLONE/hyperi-ai/attach.sh" "$TEST_CLONE/hyperi-ai/agents/"*.sh "$TEST_CLONE/hyperi-ai/hooks/"*.py 2>/dev/null || true
     # Create .git directory (simulates clone)
-    mkdir -p "$TEST_CLONE/ai/.git"
+    mkdir -p "$TEST_CLONE/hyperi-ai/.git"
 
     # Setup standalone test
-    mkdir -p "$TEST_STANDALONE/ai"
-    mkdir -p "$TEST_STANDALONE/ai/agents"
-    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_STANDALONE/ai/" 2>/dev/null || true
-    cp -r "$AI_SOURCE"/agents/*.sh "$TEST_STANDALONE/ai/agents/" 2>/dev/null || true
-    chmod +x "$TEST_STANDALONE/ai/attach.sh" "$TEST_STANDALONE/ai/agents/"*.sh "$TEST_STANDALONE/ai/hooks/"*.py 2>/dev/null || true
+    mkdir -p "$TEST_STANDALONE/hyperi-ai"
+    mkdir -p "$TEST_STANDALONE/hyperi-ai/agents"
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_STANDALONE/hyperi-ai/" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/agents/*.sh "$TEST_STANDALONE/hyperi-ai/agents/" 2>/dev/null || true
+    chmod +x "$TEST_STANDALONE/hyperi-ai/attach.sh" "$TEST_STANDALONE/hyperi-ai/agents/"*.sh "$TEST_STANDALONE/hyperi-ai/hooks/"*.py 2>/dev/null || true
     # No .git (simulates unzipped)
 }
 

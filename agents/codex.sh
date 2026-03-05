@@ -63,7 +63,7 @@ check_agent_cli() {
 check_prerequisites() {
     if [ ! -f "$PROJECT_ROOT/STATE.md" ]; then
         agent_log_error "STATE.md not found in project root"
-        agent_log_info "Run attach.sh first: ./ai/attach.sh"
+        agent_log_info "Run attach.sh first: ./hyperi-ai/attach.sh"
         exit $EXIT_ERROR
     fi
 

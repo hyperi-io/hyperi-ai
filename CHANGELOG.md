@@ -1,85 +1,78 @@
-## [1.16.2](https://github.com/hyperi-io/ai/compare/1.16.1...1.16.2) (2026-03-05)
+## [1.16.1](https://github.com/hyperi-io/hyperi-ai/compare/1.16.0...1.16.1) (2026-03-05)
 
 
 ### Bug Fixes
 
-* --force no longer overwrites STATE.md and TODO.md ([aaa3ab5](https://github.com/hyperi-io/ai/commit/aaa3ab5178ec97caf238f098971e09af8f480705))
+* auto-update both ai and ci submodules on session start ([a1cb5bb](https://github.com/hyperi-io/hyperi-ai/commit/a1cb5bb27bc3c85ba9d817599624937912ba1d2b))
 
-## [1.16.1](https://github.com/hyperi-io/ai/compare/1.16.0...1.16.1) (2026-03-05)
-
-
-### Bug Fixes
-
-* auto-update both ai and ci submodules on session start ([a1cb5bb](https://github.com/hyperi-io/ai/commit/a1cb5bb27bc3c85ba9d817599624937912ba1d2b))
-
-## [1.16.0](https://github.com/hyperi-io/ai/compare/1.15.2...1.16.0) (2026-03-05)
+## [1.16.0](https://github.com/hyperi-io/hyperi-ai/compare/1.15.2...1.16.0) (2026-03-05)
 
 
 ### Features
 
-* auto-update ai submodule on session start if behind remote ([814ac60](https://github.com/hyperi-io/ai/commit/814ac606c30f7f3c67f2ec9f2528c105603d871c))
+* auto-update ai submodule on session start if behind remote ([814ac60](https://github.com/hyperi-io/hyperi-ai/commit/814ac606c30f7f3c67f2ec9f2528c105603d871c))
 
-## [1.15.2](https://github.com/hyperi-io/ai/compare/1.15.1...1.15.2) (2026-03-05)
-
-
-### Bug Fixes
-
-* remove overly restrictive deny patterns from settings.json ([4d02278](https://github.com/hyperi-io/ai/commit/4d022782a0c24d107166c4bf1668d2a99970d164))
-
-## [1.15.1](https://github.com/hyperi-io/ai/compare/1.15.0...1.15.1) (2026-03-05)
+## [1.15.2](https://github.com/hyperi-io/hyperi-ai/compare/1.15.1...1.15.2) (2026-03-05)
 
 
 ### Bug Fixes
 
-* simplify sleep permissions and allow ci/scripts/claude in settings.json ([2a1b8ce](https://github.com/hyperi-io/ai/commit/2a1b8ce046dd9e9a9e07e7a3fe32c843034c5398))
+* remove overly restrictive deny patterns from settings.json ([4d02278](https://github.com/hyperi-io/hyperi-ai/commit/4d022782a0c24d107166c4bf1668d2a99970d164))
 
-## [1.15.0](https://github.com/hyperi-io/ai/compare/1.14.7...1.15.0) (2026-03-05)
+## [1.15.1](https://github.com/hyperi-io/hyperi-ai/compare/1.15.0...1.15.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* simplify sleep permissions and allow ci/scripts/claude in settings.json ([2a1b8ce](https://github.com/hyperi-io/hyperi-ai/commit/2a1b8ce046dd9e9a9e07e7a3fe32c843034c5398))
+
+## [1.15.0](https://github.com/hyperi-io/hyperi-ai/compare/1.14.7...1.15.0) (2026-03-05)
 
 
 ### Features
 
-* auto-inject standards via SessionStart hook ([c0d8606](https://github.com/hyperi-io/ai/commit/c0d86061a3b7942eb5368dd9b5786821d6aa1636))
-* migrate hooks to Python 3, add quality hooks, date injection, web-search mandate ([e0a5578](https://github.com/hyperi-io/ai/commit/e0a55780a9b92aa7a55585652a1b1a83be301fd8))
-* proactive standards loading in /load and /standards command ([2f48490](https://github.com/hyperi-io/ai/commit/2f484901fe864df1ab562d48e9522b708d11ea8f))
+* auto-inject standards via SessionStart hook ([c0d8606](https://github.com/hyperi-io/hyperi-ai/commit/c0d86061a3b7942eb5368dd9b5786821d6aa1636))
+* migrate hooks to Python 3, add quality hooks, date injection, web-search mandate ([e0a5578](https://github.com/hyperi-io/hyperi-ai/commit/e0a55780a9b92aa7a55585652a1b1a83be301fd8))
+* proactive standards loading in /load and /standards command ([2f48490](https://github.com/hyperi-io/hyperi-ai/commit/2f484901fe864df1ab562d48e9522b708d11ea8f))
 
 
 ### Bug Fixes
 
-* add summary line to inject-standards.sh hook output ([4cd6fc9](https://github.com/hyperi-io/ai/commit/4cd6fc988efc79f25fdfe1e9c2252ca618a3bbae))
-* correct sales email to sales@hyperi.io in LICENSE ([dd36dd4](https://github.com/hyperi-io/ai/commit/dd36dd45442d5c0daeb03b1c0e392dd38b6f2536))
-* write_version_stamp handles submodule .git file (not only directory) ([d7caef4](https://github.com/hyperi-io/ai/commit/d7caef41ea66ff5c635d23d506ca77476930ffbd))
+* add summary line to inject-standards.sh hook output ([4cd6fc9](https://github.com/hyperi-io/hyperi-ai/commit/4cd6fc988efc79f25fdfe1e9c2252ca618a3bbae))
+* correct sales email to sales@hyperi.io in LICENSE ([dd36dd4](https://github.com/hyperi-io/hyperi-ai/commit/dd36dd45442d5c0daeb03b1c0e392dd38b6f2536))
+* write_version_stamp handles submodule .git file (not only directory) ([d7caef4](https://github.com/hyperi-io/hyperi-ai/commit/d7caef41ea66ff5c635d23d506ca77476930ffbd))
 
-## [1.14.7](https://github.com/hyperi-io/ai/compare/1.14.6...1.14.7) (2026-03-04)
+## [1.14.7](https://github.com/hyperi-io/hyperi-ai/compare/1.14.6...1.14.7) (2026-03-04)
 
-## [1.14.6](https://github.com/hyperi-io/ai/compare/1.14.5...1.14.6) (2026-03-04)
-
-
-### Bug Fixes
-
-* require ci local-build gate before every push ([4e9ea9f](https://github.com/hyperi-io/ai/commit/4e9ea9f8b2640dfad0c2ec714fa3b631fadb019b))
-
-## [1.14.5](https://github.com/hyperi-io/ai/compare/1.14.4...1.14.5) (2026-03-04)
+## [1.14.6](https://github.com/hyperi-io/hyperi-ai/compare/1.14.5...1.14.6) (2026-03-04)
 
 
 ### Bug Fixes
 
-* MEMORY dir, test fixes, shellcheck clean, docs and release config ([e530a77](https://github.com/hyperi-io/ai/commit/e530a771fcb69cf43d860589ce50af5c4b118836))
+* require ci local-build gate before every push ([4e9ea9f](https://github.com/hyperi-io/hyperi-ai/commit/4e9ea9f8b2640dfad0c2ec714fa3b631fadb019b))
 
-## [1.14.4](https://github.com/hyperi-io/ai/compare/1.14.3...1.14.4) (2026-03-04)
-
-
-### Bug Fixes
-
-* add self-use /load command and Claude Code commands for ai repo ([01b553f](https://github.com/hyperi-io/ai/commit/01b553f837c7d19e905367e06aafc874a504ceb3))
-
-## [1.14.3](https://github.com/hyperi-io/ai/compare/1.14.2...1.14.3) (2026-03-04)
+## [1.14.5](https://github.com/hyperi-io/hyperi-ai/compare/1.14.4...1.14.5) (2026-03-04)
 
 
 ### Bug Fixes
 
-* prevent set -e from aborting agent detection on EXIT_NOT_INSTALLED ([95700b5](https://github.com/hyperi-io/ai/commit/95700b53d76db28d30bef54c204cc944fed905ca))
+* MEMORY dir, test fixes, shellcheck clean, docs and release config ([e530a77](https://github.com/hyperi-io/hyperi-ai/commit/e530a771fcb69cf43d860589ce50af5c4b118836))
 
-## [1.14.2](https://github.com/hyperi-io/ai/compare/1.14.1...1.14.2) (2026-03-04)
+## [1.14.4](https://github.com/hyperi-io/hyperi-ai/compare/1.14.3...1.14.4) (2026-03-04)
+
+
+### Bug Fixes
+
+* add self-use /load command and Claude Code commands for ai repo ([01b553f](https://github.com/hyperi-io/hyperi-ai/commit/01b553f837c7d19e905367e06aafc874a504ceb3))
+
+## [1.14.3](https://github.com/hyperi-io/hyperi-ai/compare/1.14.2...1.14.3) (2026-03-04)
+
+
+### Bug Fixes
+
+* prevent set -e from aborting agent detection on EXIT_NOT_INSTALLED ([95700b5](https://github.com/hyperi-io/hyperi-ai/commit/95700b53d76db28d30bef54c204cc944fed905ca))
+
+## [1.14.2](https://github.com/hyperi-io/hyperi-ai/compare/1.14.1...1.14.2) (2026-03-04)
 
 
 ### ⚠ BREAKING CHANGES
@@ -93,83 +86,83 @@ monolithic standards reference — use standards/rules/UNIVERSAL.md instead.
 
 ### Refactoring
 
-* mark v2 — multi-agent standards delivery restructure ([71dc561](https://github.com/hyperi-io/ai/commit/71dc561fb021e1ddec6fcad863b0602b20f60cc1))
+* mark v2 — multi-agent standards delivery restructure ([71dc561](https://github.com/hyperi-io/hyperi-ai/commit/71dc561fb021e1ddec6fcad863b0602b20f60cc1))
 
-## [1.14.1](https://github.com/hyperi-io/ai/compare/1.14.0...1.14.1) (2026-03-04)
+## [1.14.1](https://github.com/hyperi-io/hyperi-ai/compare/1.14.0...1.14.1) (2026-03-04)
 
 
 ### Refactoring
 
-* unified multi-agent standards delivery from standards/rules/ ([99deefe](https://github.com/hyperi-io/ai/commit/99deefe28b229138ff999c9ed1c03df9ca1e248f))
+* unified multi-agent standards delivery from standards/rules/ ([99deefe](https://github.com/hyperi-io/hyperi-ai/commit/99deefe28b229138ff999c9ed1c03df9ca1e248f))
 
-## [1.14.0](https://github.com/hyperi-io/ai/compare/1.13.0...1.14.0) (2026-03-03)
-
-
-### Features
-
-* add /simplify command wrapping marketplace plugin with project standards ([8eb67f8](https://github.com/hyperi-io/ai/commit/8eb67f891f61f68dac3501e2b5dddf63ca58f4e1))
-
-
-### Bug Fixes
-
-* add [skip ci] to automated session state commit message ([6096cb6](https://github.com/hyperi-io/ai/commit/6096cb6456aa96c421a08acce64dd8d68ec19a34))
-
-## [1.13.0](https://github.com/hyperi-io/ai/compare/1.12.1...1.13.0) (2026-03-03)
+## [1.14.0](https://github.com/hyperi-io/hyperi-ai/compare/1.13.0...1.14.0) (2026-03-03)
 
 
 ### Features
 
-* add end-of-day housekeeping operations to /save command ([8409180](https://github.com/hyperi-io/ai/commit/84091803cd76f8191080b7e023aac80430eb2bcb))
-
-## [1.12.1](https://github.com/hyperi-io/ai/compare/1.12.0...1.12.1) (2026-02-27)
+* add /simplify command wrapping marketplace plugin with project standards ([8eb67f8](https://github.com/hyperi-io/hyperi-ai/commit/8eb67f891f61f68dac3501e2b5dddf63ca58f4e1))
 
 
 ### Bug Fixes
 
-* DT nag lines ([0de69a9](https://github.com/hyperi-io/ai/commit/0de69a9eea6366ffaec21a170ab271eb01872642))
+* add [skip ci] to automated session state commit message ([6096cb6](https://github.com/hyperi-io/hyperi-ai/commit/6096cb6456aa96c421a08acce64dd8d68ec19a34))
 
-## [1.12.0](https://github.com/hyperi-io/ai/compare/1.11.8...1.12.0) (2026-02-27)
+## [1.13.0](https://github.com/hyperi-io/hyperi-ai/compare/1.12.1...1.13.0) (2026-03-03)
 
 
 ### Features
 
-* add ClickHouse SQL standards with 35 AI mistake rules ([5ef18b7](https://github.com/hyperi-io/ai/commit/5ef18b7099f36141158b821f1a98f2eda467e19b))
+* add end-of-day housekeeping operations to /save command ([8409180](https://github.com/hyperi-io/hyperi-ai/commit/84091803cd76f8191080b7e023aac80430eb2bcb))
 
-## [1.11.8](https://github.com/hyperi-io/ai/compare/1.11.7...1.11.8) (2026-02-25)
-
-
-### Bug Fixes
-
-* add session state commit and push step to /save command ([e666fc9](https://github.com/hyperi-io/ai/commit/e666fc9df7259aea8bf1f2d33ce828408b7572a8))
-* skip session state commit when TODO.md/STATE.md are gitignored ([6c94a70](https://github.com/hyperi-io/ai/commit/6c94a7029aee5bdb5423868d8bcf9a4d4f11f156))
-
-## [1.11.7](https://github.com/hyperi-io/ai/compare/1.11.6...1.11.7) (2026-02-18)
+## [1.12.1](https://github.com/hyperi-io/hyperi-ai/compare/1.12.0...1.12.1) (2026-02-27)
 
 
 ### Bug Fixes
 
-* allow git submodule update without permission prompt ([191221b](https://github.com/hyperi-io/ai/commit/191221b077e203600b2bcae31ce7961dfe7837cb))
+* DT nag lines ([0de69a9](https://github.com/hyperi-io/hyperi-ai/commit/0de69a9eea6366ffaec21a170ab271eb01872642))
 
-## [1.11.6](https://github.com/hyperi-io/ai/compare/1.11.5...1.11.6) (2026-02-17)
-
-
-### Bug Fixes
-
-* avoid chained bash commands in /load to prevent permission prompts ([bf181d7](https://github.com/hyperi-io/ai/commit/bf181d721259e6af54ed6e43380aba231f9776fd))
-
-## [1.11.5](https://github.com/hyperi-io/ai/compare/1.11.4...1.11.5) (2026-02-16)
+## [1.12.0](https://github.com/hyperi-io/hyperi-ai/compare/1.11.8...1.12.0) (2026-02-27)
 
 
-### Bug Fixes
+### Features
 
-* auto-update ai and ci submodules on /load, respect pinned mode ([27ce27a](https://github.com/hyperi-io/ai/commit/27ce27aa20bb7fa4d1946efa32bb337c4e443063))
+* add ClickHouse SQL standards with 35 AI mistake rules ([5ef18b7](https://github.com/hyperi-io/hyperi-ai/commit/5ef18b7099f36141158b821f1a98f2eda467e19b))
 
-## [1.11.4](https://github.com/hyperi-io/ai/compare/1.11.3...1.11.4) (2026-02-10)
+## [1.11.8](https://github.com/hyperi-io/hyperi-ai/compare/1.11.7...1.11.8) (2026-02-25)
 
 
 ### Bug Fixes
 
-* update GitHub org from hypersec-io to hyperi-io across all URLs and scripts ([4560f40](https://github.com/hyperi-io/ai/commit/4560f400b1e8be92856bb68cf06bcc2f92874d94))
+* add session state commit and push step to /save command ([e666fc9](https://github.com/hyperi-io/hyperi-ai/commit/e666fc9df7259aea8bf1f2d33ce828408b7572a8))
+* skip session state commit when TODO.md/STATE.md are gitignored ([6c94a70](https://github.com/hyperi-io/hyperi-ai/commit/6c94a7029aee5bdb5423868d8bcf9a4d4f11f156))
+
+## [1.11.7](https://github.com/hyperi-io/hyperi-ai/compare/1.11.6...1.11.7) (2026-02-18)
+
+
+### Bug Fixes
+
+* allow git submodule update without permission prompt ([191221b](https://github.com/hyperi-io/hyperi-ai/commit/191221b077e203600b2bcae31ce7961dfe7837cb))
+
+## [1.11.6](https://github.com/hyperi-io/hyperi-ai/compare/1.11.5...1.11.6) (2026-02-17)
+
+
+### Bug Fixes
+
+* avoid chained bash commands in /load to prevent permission prompts ([bf181d7](https://github.com/hyperi-io/hyperi-ai/commit/bf181d721259e6af54ed6e43380aba231f9776fd))
+
+## [1.11.5](https://github.com/hyperi-io/hyperi-ai/compare/1.11.4...1.11.5) (2026-02-16)
+
+
+### Bug Fixes
+
+* auto-update ai and ci submodules on /load, respect pinned mode ([27ce27a](https://github.com/hyperi-io/hyperi-ai/commit/27ce27aa20bb7fa4d1946efa32bb337c4e443063))
+
+## [1.11.4](https://github.com/hyperi-io/hyperi-ai/compare/1.11.3...1.11.4) (2026-02-10)
+
+
+### Bug Fixes
+
+* update GitHub org from hypersec-io to hyperi-io across all URLs and scripts ([4560f40](https://github.com/hyperi-io/hyperi-ai/commit/4560f400b1e8be92856bb68cf06bcc2f92874d94))
 
 ## [1.11.3](https://github.com/hypersec-io/ai/compare/1.11.2...1.11.3) (2026-02-09)
 

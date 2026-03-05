@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/inject_standards.py\"",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/inject_standards.py\"",
             "statusMessage": "Loading coding standards..."
           }
         ]
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/on_compact.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/on_compact.py\""
           }
         ]
       }
@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/auto_format.py\"",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/auto_format.py\"",
             "statusMessage": "Formatting..."
           }
         ]
@@ -52,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/subagent_context.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/subagent_context.py\""
           }
         ]
       }
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/safety_guard.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/safety_guard.py\""
           }
         ]
       }
@@ -73,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/ai/hooks/lint_check.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/lint_check.py\""
           }
         ]
       }
