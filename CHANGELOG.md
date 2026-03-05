@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/hyperi-io/hyperi-ai/compare/2.0.1...2.0.2) (2026-03-05)
+
+
+### Refactoring
+
+* remove ci submodule management from hyperi-ai ([46db7ae](https://github.com/hyperi-io/hyperi-ai/commit/46db7ae475d61ab1f7cc023d5dbaafe76f5be8cc))
+
 ## [2.0.1](https://github.com/hyperi-io/hyperi-ai/compare/2.0.0...2.0.1) (2026-03-05)
 
 
