@@ -3,8 +3,8 @@
 **Project:** [Project Name]
 **Purpose:** [Brief description of project purpose]
 
-> **Note:** The `ai/` submodule provides standards and configuration - not code
-> to import. Your project never imports or links to it.
+> **Note:** The `hyperi-ai/` submodule provides standards and configuration — not
+> code to import. Your project never imports or links to it.
 
 ---
 
@@ -76,7 +76,9 @@
 
 ## Notes for AI Assistants
 
-This file contains **static project context only**.
+This file is **STATE.md**, symlinked as **CLAUDE.md**. It contains shared
+project context visible to the whole team. Do not duplicate its contents
+into auto-memory — read this file directly instead.
 
 **DO NOT add:**
 
@@ -84,6 +86,7 @@ This file contains **static project context only**.
 - Progress/tasks (use `TODO.md`)
 - Dates or session history (use `git log`)
 - "Current Session" or "Last Session" sections
+- Personal preferences (use auto-memory)
 
 **DO add:**
 

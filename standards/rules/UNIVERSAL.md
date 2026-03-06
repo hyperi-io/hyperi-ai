@@ -78,8 +78,8 @@ Always quote values in `.env` files.
 
 - 80% minimum coverage (90%+ for AI code)
 - Test structure: `tests/unit/`, `tests/integration/`, `tests/e2e/`
-- No mocking internal code — only mock external APIs, databases, network
-- Fix root causes over mocking around problems
+- No mocks — test against real dependencies (testcontainers, sandboxes, kind)
+- If a test cannot run against the real thing, skip it — do not mock it
 
 ## Communication Style
 
@@ -167,11 +167,27 @@ Revert if: 3+ iterations with no progress, code more complex than start, tests f
 
 | Data | Source | NOT From |
 |------|--------|----------|
-| Version | `git describe --tags` or `VERSION` | STATE.md |
-| Tasks | `TODO.md` | STATE.md |
-| History | `git log` | STATE.md |
-| Changelog | `CHANGELOG.md` (semantic-release) | STATE.md |
-| Static context | `STATE.md` | — |
+| Version | `git describe --tags` or `VERSION` | STATE.md, memory |
+| Tasks | `TODO.md` | STATE.md, memory |
+| History | `git log` | STATE.md, memory |
+| Changelog | `CHANGELOG.md` (semantic-release) | STATE.md, memory |
+| Static context | `STATE.md` (CLAUDE.md symlink) | memory |
+| Personal prefs | auto-memory | STATE.md |
+
+### STATE.md vs Auto-Memory
+
+These are two separate persistence layers. Do not blur them.
+
+**STATE.md** (shared, committed, loaded via CLAUDE.md symlink):
+- Project architecture, decisions, tech stack, external deps
+- Visible to the whole team — authoritative source of project context
+- If memory contradicts STATE.md, **STATE.md wins**
+
+**Auto-memory** (`~/.claude/projects/.../memory/`):
+- Personal preferences, debugging insights, workflow patterns
+- Per-developer, local only, never committed
+- Do NOT duplicate STATE.md content into memory — read STATE.md directly
+- Good for: "user prefers X", "learned that Y causes Z", "avoid pattern W"
 
 ## Licensing
 
