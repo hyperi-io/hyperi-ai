@@ -1,3 +1,10 @@
+## [2.3.0](https://github.com/hyperi-io/hyperi-ai/compare/2.2.5...2.3.0) (2026-03-06)
+
+
+### Features
+
+* detect test integrity violations in Stop hook ([8634caa](https://github.com/hyperi-io/hyperi-ai/commit/8634caaade83a5d1782823cf63e1488de2a5984a))
+
 ## [2.2.5](https://github.com/hyperi-io/hyperi-ai/compare/2.2.4...2.2.5) (2026-03-06)
 
 
