@@ -36,7 +36,10 @@ Follow the project's commit conventions (see UNIVERSAL.md). Key points:
 
 - `fix:` → PATCH bump (default — use this most of the time)
 - `feat:` → MINOR bump (genuinely new user-facing features only)
-- `BREAKING CHANGE:` in body → MAJOR bump
+- `BREAKING CHANGE:` in body → MAJOR bump — **NEVER write this
+  automatically.** Always ask the user for explicit confirmation
+  before committing any breaking change. This triggers a major
+  version bump and must be a deliberate human decision.
 - `chore:`, `docs:`, `ci:`, `test:` → no release
 
 Write commits for humans first, changelog second. Keep them short and

@@ -1,97 +1,69 @@
-# Mock-Aware Testing Policy
+# No Mocks Policy
 
-**Mocks are scaffolding, not testing. A test suite with only mocked tests is untested.**
+**Do not use mocks, patches, fakes, stubs, or test doubles. Period.**
 
-## Core Rule
+A mocked test proves nothing — it tests your assumptions about the
+dependency, not the dependency itself. Mocked test suites pass while
+production burns.
 
-Every mocked boundary must have a corresponding integration test that exercises the real thing (or a realistic substitute).
+## The Rule
 
-## Mock Usage: Permitted, Not Sufficient
+- **No `unittest.mock`**, `patch()`, `MagicMock`, `Mock()`
+- **No `jest.mock()`**, `jest.fn()`, `jest.spyOn()` with fake returns
+- **No `gomock`**, `testify/mock`, `mockgen`
+- **No `mockall`**, `mockito`, or any mock framework in any language
+- **No hand-rolled fakes** that simulate dependency behaviour
 
-- **Internal functions/classes** — NEVER mock; test the real code
-- **External APIs (Stripe, AWS, GCP)** — mock in unit tests; integration test against sandbox/staging REQUIRED
-- **Databases (PostgreSQL, Redis)** — mock in unit tests; integration test with testcontainers REQUIRED
-- **Kubernetes API** — mock in unit tests; integration test against kind/k3s REQUIRED
-- **File systems, network calls** — mock in unit tests; integration test against real FS/network in CI REQUIRED
-- **Time/clock** — mock allowed; integration test optional
+If a test cannot run against the real dependency, it is not a test —
+it is a wish. Delete it or fix it.
 
-```python
-# ❌ Mocking internal code (tests nothing real)
-with patch('myapp.services.calculate_total') as mock_calc:
-    mock_calc.return_value = 100.0  # Circular — tests the mock
+## What To Use Instead
 
-# ✅ Mock external boundary, test real internal logic
-with patch('myapp.clients.stripe.charge') as mock_stripe:
-    mock_stripe.return_value = ChargeResult(success=True)
-    result = process_order(order)
-    assert result.total == 85.0  # Real calculation tested
-```
+### Databases
+Use real instances — testcontainers, Docker Compose, or an in-process
+equivalent (SQLite for simple cases, actual PostgreSQL/Redis for real
+ones). Tests must hit real SQL, real connections, real transactions.
 
-## Two-Layer Testing Requirement
+### External APIs
+Use sandbox/staging endpoints provided by the service (Stripe test
+mode, AWS LocalStack, GCP emulators). If no sandbox exists, write a
+thin adapter and test the adapter against the real API in CI with
+rate limiting. Skip in local dev if needed (`@pytest.mark.integration`).
 
-**A feature is not tested until both layers exist.**
+### Kubernetes
+Use kind or k3s in CI. Real cluster, real API, real manifests.
 
-### Layer 1: Unit Tests (Mocks Allowed)
+### File System and Network
+Use real files in a temp directory. Use real HTTP calls to a local
+test server or the actual endpoint.
 
-- Fast, isolated, run on every commit
-- Mock external boundaries ONLY — never internal code
-- 80% coverage minimum — but this alone is NOT "tested"
-
-### Layer 2: Integration Tests (No Mocks)
-
-- Use testcontainers for databases
-- Use sandbox/staging endpoints for external APIs
-- Use kind/k3s for Kubernetes
-- Use real filesystem and network in CI
-- Mark with `@pytest.mark.integration` or equivalent
-
-### Coverage Accounting
-
-- "Unit tests pass (mocked)" = fast feedback, not proof
-- "Integration tests pass" = proof that boundaries work
-- "Both pass" = actually tested
+### Time
+The one exception — freezing/controlling time is acceptable
+(`freezegun`, `tokio::time::pause`, `jest.useFakeTimers`). This is
+not mocking a dependency, it is controlling the environment.
 
 ## For AI Code Assistants
 
-### When You Write Tests
+### When Writing Tests
 
-1. Write unit tests with mocks for fast feedback
-2. **You are NOT done.** Write at least one integration test per mocked boundary
-3. If you cannot write integration tests (no testcontainers config, no sandbox), explicitly state: "Integration tests needed for: [list boundaries]"
-4. Never report "all tests pass, production ready" when only mocked tests exist
+1. Write tests that exercise real code against real dependencies
+2. Use testcontainers or Docker for databases and message queues
+3. Use sandbox endpoints for external APIs
+4. If you cannot test against real dependencies, say so explicitly:
+   "Cannot test [boundary] — needs [setup]. Skipping, not mocking."
+5. **Never** create a mock to make a test pass — that is not testing
 
-### Completion Criteria
+### NEVER Do
 
-A feature is complete when:
+- Import any mock library
+- Patch or monkey-patch any function, method, or module
+- Create fake objects that simulate real dependency behaviour
+- Write `mock_*.py` or `*_mock.py` files
+- Claim "tests pass" when tests use mocks — they do not pass, they
+  pretend to pass
 
-- Unit tests pass with mocked external boundaries
-- Integration tests pass against real (or realistic) dependencies
-- No TODO/FIXME/HACK in production code
-- No placeholder returns (`return True`, `return {}`, `return None`)
-- No hardcoded example data ("John Doe", "test@example.com")
-- Error handling covers failure paths, not just happy path
-- Input validation is complete
+### If You See Existing Mocks
 
-### Red Flags — REJECT and Redo
-
-Stop and complete the implementation if you catch yourself writing:
-
-- "Here's a simple example..." / "This is a basic implementation..."
-- "For demonstration purposes..." / "This should work for most cases..."
-- "TODO: Add error handling" / "TODO: Connect to database"
-
-## Production Code Requirements
-
-- Never commit TODO/FIXME/HACK/XXX in `src/`
-- Never commit placeholder returns or hardcoded example data
-- Never commit "proof of concept" code as production features
-- Always implement complete functionality with error handling
-- Always validate inputs at system boundaries
-- Always include both unit and integration tests
-
-## CI Enforcement
-
-- 80%+ line coverage (unit + integration combined)
-- Integration test suite must exist and pass
-- Pre-commit hooks must block TODO/FIXME/HACK/XXX in `src/`
-- Reviewer must verify both test layers exist for new features
+Do not add more. If modifying a test file that uses mocks, flag it:
+"This test uses mocks — results are unreliable. Needs migration to
+real dependencies." Do not extend mock-based tests.
