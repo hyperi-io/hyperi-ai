@@ -321,7 +321,11 @@
       "Bash(systemctl:*)",
       "Bash(service:*)",
       "Bash(git push:*)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(git commit --amend:*)",
+      "Bash(git commit --amend)",
+      "Bash(git clean:*)",
+      "Bash(git reset:*)"
     ]
   }
 }
