@@ -271,6 +271,21 @@ def inject_rules(project_dir: Path) -> Tuple[str, List[str]]:
             parts.append("")
             loaded.append(tech_name)
 
+    # User personal overrides (highest priority — loaded last so they win)
+    user_standards = Path(
+        os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"),
+        "hyperi-ai",
+        "USER-CODING-STANDARDS.md",
+    )
+    if user_standards.is_file():
+        parts.append("---")
+        parts.append("")
+        parts.append("# User Coding Standards (OVERRIDE — these take priority)")
+        parts.append("")
+        parts.append(user_standards.read_text())
+        parts.append("")
+        loaded.append("USER")
+
     # Summary
     parts.append("---")
     parts.append("")
