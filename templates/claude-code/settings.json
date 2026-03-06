@@ -319,7 +319,9 @@
       "Bash(shutdown:*)",
       "Bash(reboot:*)",
       "Bash(systemctl:*)",
-      "Bash(service:*)"
+      "Bash(service:*)",
+      "Bash(git push:*)",
+      "Bash(git push)"
     ]
   }
 }
