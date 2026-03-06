@@ -1,3 +1,10 @@
+## [2.2.1](https://github.com/hyperi-io/hyperi-ai/compare/2.2.0...2.2.1) (2026-03-06)
+
+
+### Bug Fixes
+
+* stricter no-mocks policy, require approval for breaking changes ([12984f3](https://github.com/hyperi-io/hyperi-ai/commit/12984f32a8e5523aa992ef62038c2f6d854001ef))
+
 ## [2.2.0](https://github.com/hyperi-io/hyperi-ai/compare/2.1.1...2.2.0) (2026-03-06)
 
 
