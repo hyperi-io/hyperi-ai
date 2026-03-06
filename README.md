@@ -280,6 +280,27 @@ git commit -m "chore: migrate ai submodule to hyperi-ai"
 
 Standards are delivered in three layers, each with different persistence:
 
+### Layer 0 — User overrides (highest priority)
+
+If `~/.config/hyperi-ai/USER-CODING-STANDARDS.md` exists, it is injected **last** at
+session start — after all other standards. Rules in this file override everything else.
+
+Use this for personal coding preferences that apply across all projects (naming
+conventions, comment style, preferred patterns, etc.). The file is never committed
+to any project — it lives in your home directory.
+
+```bash
+# Create your personal overrides
+mkdir -p ~/.config/hyperi-ai
+cat > ~/.config/hyperi-ai/USER-CODING-STANDARDS.md << 'EOF'
+# My Coding Preferences
+- Always use snake_case for variables
+- Prefer early returns over nested conditionals
+EOF
+```
+
+Respects `XDG_CONFIG_HOME` if set (defaults to `~/.config`).
+
 ### Layer 1 — CAG: Auto-injected at session start
 
 `standards/rules/UNIVERSAL.md` plus all detected technology rules are automatically
@@ -341,7 +362,7 @@ chain that runs automatically — no manual setup per session.
 
 | When | Hook | What It Does |
 |------|------|-------------|
-| Session start | `inject_standards.py` | Auto-updates hyperi-ai submodule, injects current date, detects project technologies, injects UNIVERSAL + matching rules, auto-reattaches if submodule changed |
+| Session start | `inject_standards.py` | Auto-updates hyperi-ai submodule, injects current date, detects project technologies, injects UNIVERSAL + matching rules + user overrides, auto-reattaches if submodule changed |
 | Context compacted | `on_compact.py` | Re-injects date and standards (lost during compaction) |
 | File edited/written | `auto_format.py` | Runs formatter (ruff, rustfmt, gofmt, prettier, shfmt, clang-format) |
 | Subagent spawned | `subagent_context.py` | Injects standards into subagent context (they miss SessionStart) |
@@ -359,7 +380,8 @@ chain that runs automatically — no manual setup per session.
 │    ├── Auto-reattach (re-deploy if submodule files changed)     │
 │    ├── Inject current date (overrides stale training data)      │
 │    ├── Detect project technologies (scans 3 levels deep)        │
-│    └── Inject UNIVERSAL.md + all matching tech rules            │
+│    ├── Inject UNIVERSAL.md + all matching tech rules            │
+│    └── Inject USER-CODING-STANDARDS.md override (if present)    │
 │                                                                 │
 │    Standards are now in context. No /load needed for standards.  │
 ├─────────────────────────────────────────────────────────────────┤

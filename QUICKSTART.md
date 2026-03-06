@@ -102,6 +102,34 @@ git submodule update --remote hyperi-ai
 ./hyperi-ai/attach.sh --agent claude --force
 ```
 
+## Personal Overrides (Optional)
+
+Add a personal standards file that overrides all project rules across every repo:
+
+```bash
+mkdir -p ~/.config/hyperi-ai
+cat > ~/.config/hyperi-ai/USER-CODING-STANDARDS.md << 'EOF'
+# Personal Coding Standards
+
+These override all project and team standards. Keep it short — only
+preferences that matter to you personally across every project.
+
+## Style
+- <your style preferences here>
+
+## Patterns
+- <your preferred patterns here>
+
+## Communication
+- <how you want the AI to communicate>
+EOF
+```
+
+This file is injected **last** at session start — your preferences win over everything
+else. It applies to every project that uses hyperi-ai, so keep it personal and concise.
+
+Respects `XDG_CONFIG_HOME` if set (defaults to `~/.config`).
+
 ## More Information
 
 - [README.md](README.md) - Full documentation
