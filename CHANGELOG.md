@@ -1,3 +1,10 @@
+## [2.2.5](https://github.com/hyperi-io/hyperi-ai/compare/2.2.4...2.2.5) (2026-03-06)
+
+
+### Bug Fixes
+
+* harden git safety guards against common destructive operations ([f42efd5](https://github.com/hyperi-io/hyperi-ai/commit/f42efd51d72589d78503797bbfa08ce262c625ca))
+
 ## [2.2.4](https://github.com/hyperi-io/hyperi-ai/compare/2.2.3...2.2.4) (2026-03-06)
 
 
