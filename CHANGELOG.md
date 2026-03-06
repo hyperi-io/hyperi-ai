@@ -1,3 +1,10 @@
+## [2.2.0](https://github.com/hyperi-io/hyperi-ai/compare/2.1.1...2.2.0) (2026-03-06)
+
+
+### Features
+
+* add CI/semantic-release detection and rules ([64ee2be](https://github.com/hyperi-io/hyperi-ai/commit/64ee2be2d1326e2b47e9dad77b724df66e28039f))
+
 ## [2.1.1](https://github.com/hyperi-io/hyperi-ai/compare/2.1.0...2.1.1) (2026-03-06)
 
 
