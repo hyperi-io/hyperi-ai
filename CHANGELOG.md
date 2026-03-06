@@ -1,3 +1,10 @@
+## [2.2.4](https://github.com/hyperi-io/hyperi-ai/compare/2.2.3...2.2.4) (2026-03-06)
+
+
+### Bug Fixes
+
+* require confirmation for git push in settings template ([c3b391e](https://github.com/hyperi-io/hyperi-ai/commit/c3b391e313fece0a837e2f6b5d5b49b1fa47c359))
+
 ## [2.2.3](https://github.com/hyperi-io/hyperi-ai/compare/2.2.2...2.2.3) (2026-03-06)
 
 
