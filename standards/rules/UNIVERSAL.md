@@ -167,27 +167,24 @@ Revert if: 3+ iterations with no progress, code more complex than start, tests f
 
 | Data | Source | NOT From |
 |------|--------|----------|
-| Version | `git describe --tags` or `VERSION` | STATE.md, memory |
-| Tasks | `TODO.md` | STATE.md, memory |
-| History | `git log` | STATE.md, memory |
-| Changelog | `CHANGELOG.md` (semantic-release) | STATE.md, memory |
-| Static context | `STATE.md` (CLAUDE.md symlink) | memory |
-| Personal prefs | auto-memory | STATE.md |
+| Version | `git describe --tags` or `VERSION` | STATE.md, agent memory |
+| Tasks | `TODO.md` | STATE.md, agent memory |
+| History | `git log` | STATE.md, agent memory |
+| Changelog | `CHANGELOG.md` (semantic-release) | STATE.md, agent memory |
+| Static context | `STATE.md` (symlinked as CLAUDE.md, CURSOR.md, etc.) | agent memory |
+| Personal prefs | agent memory (if available) | STATE.md |
 
-### STATE.md vs Auto-Memory
+### STATE.md vs Agent Memory
 
-These are two separate persistence layers. Do not blur them.
+STATE.md is the shared, committed, authoritative project context. Every
+agent reads it (via its own symlink: CLAUDE.md, CURSOR.md, GEMINI.md, etc.).
 
-**STATE.md** (shared, committed, loaded via CLAUDE.md symlink):
-- Project architecture, decisions, tech stack, external deps
-- Visible to the whole team — authoritative source of project context
-- If memory contradicts STATE.md, **STATE.md wins**
+If your agent has persistent memory across sessions, keep it separate:
 
-**Auto-memory** (`~/.claude/projects/.../memory/`):
-- Personal preferences, debugging insights, workflow patterns
-- Per-developer, local only, never committed
-- Do NOT duplicate STATE.md content into memory — read STATE.md directly
-- Good for: "user prefers X", "learned that Y causes Z", "avoid pattern W"
+- **STATE.md** — shared team knowledge: architecture, decisions, tech stack
+- **Agent memory** — personal learning: user preferences, debugging insights
+- Do NOT duplicate STATE.md content into agent memory — read STATE.md directly
+- If agent memory contradicts STATE.md, **STATE.md wins**
 
 ## Licensing
 
@@ -201,3 +198,25 @@ These are two separate persistence layers. Do not blur them.
 - Dev/CI: `./.tmp/` (project-scoped, gitignored)
 - Production: use language tempfile libraries with auto-cleanup
 - Never hardcode `/tmp`, never use predictable names
+
+---
+
+## Claude Code
+
+Auto-memory lives at `~/.claude/projects/<hash>/memory/`. It persists
+across sessions but is local and per-developer — never committed.
+
+- Do NOT copy STATE.md content into memory — just read STATE.md
+- Good memory entries: "user prefers X", "learned Y causes Z", "avoid W"
+- Bad memory entries: project architecture, key files, tech stack (that's STATE.md)
+- MEMORY.md is capped at 200 lines — keep it concise, link to topic files
+
+## Cursor IDE
+
+Cursor rules live in `.cursor/rules/*.mdc` (converted from standards/rules/).
+Notepads are per-user and ephemeral — do not rely on them for shared context.
+
+## Gemini Code
+
+Gemini settings live in `.gemini/`. Memory features may vary by version —
+same principle applies: do not duplicate STATE.md into agent-local storage.
