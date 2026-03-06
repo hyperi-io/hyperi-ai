@@ -1,3 +1,15 @@
+## [2.1.0](https://github.com/hyperi-io/hyperi-ai/compare/2.0.2...2.1.0) (2026-03-06)
+
+
+### Features
+
+* auto-migrate CLAUDE.md to STATE.md on attach ([81010ad](https://github.com/hyperi-io/hyperi-ai/commit/81010ad23e7fe4a95465a299c30c9d478648a3c3))
+
+
+### Documentation
+
+* add migration guide for ai/ to hyperi-ai/ rename ([1329524](https://github.com/hyperi-io/hyperi-ai/commit/13295241806f087986a1a60aa7549abf45c77a1e))
+
 ## [2.0.2](https://github.com/hyperi-io/hyperi-ai/compare/2.0.1...2.0.2) (2026-03-05)
 
 
