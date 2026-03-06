@@ -567,8 +567,18 @@ migrate_state_files() {
         migrated=true
     fi
 
+    # Migrate CLAUDE.md → STATE.md if STATE.md doesn't exist
+    # (project was using CLAUDE.md as its state file before adopting STATE.md convention)
+    if [ -f "$claude_file" ] && [ ! -L "$claude_file" ] && [ ! -f "$state_file" ]; then
+        if [ "$DRY_RUN" = true ]; then
+            log_info "Would rename CLAUDE.md → STATE.md and create symlink"
+        else
+            mv "$claude_file" "$state_file"
+            ln -s STATE.md "$claude_file"
+            log_success "Migrated CLAUDE.md → STATE.md (symlink created)"
+        fi
     # Check CLAUDE.md (if not a symlink to STATE.md)
-    if [ -f "$claude_file" ] && [ ! -L "$claude_file" ]; then
+    elif [ -f "$claude_file" ] && [ ! -L "$claude_file" ]; then
         if ! check_state_md_forbidden "$claude_file"; then
             log_warn "CLAUDE.md contains forbidden content"
             log_info "  Should be symlink to STATE.md or removed"
