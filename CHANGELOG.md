@@ -1,3 +1,10 @@
+## [2.4.0](https://github.com/hyperi-io/hyperi-ai/compare/2.3.0...2.4.0) (2026-03-06)
+
+
+### Features
+
+* inject USER-CODING-STANDARDS.md at session start as override ([ae801c1](https://github.com/hyperi-io/hyperi-ai/commit/ae801c1401847f7a3b27ade1804db8d031c4de14))
+
 ## [2.3.0](https://github.com/hyperi-io/hyperi-ai/compare/2.2.5...2.3.0) (2026-03-06)
 
 
