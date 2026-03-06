@@ -240,8 +240,9 @@ def inject_rules(project_dir: Path) -> Tuple[str, List[str]]:
     rules_dir = get_rules_dir(project_dir)
     if not rules_dir.is_dir():
         return (
-            "WARNING: ai/standards/rules/ not found. "
-            "The ai submodule may not be initialised.\n",
+            "NOTE: hyperi-ai/standards/rules/ not found — "
+            "coding standards not loaded. "
+            "If you have access, run: git submodule update --init hyperi-ai\n",
             [],
         )
 

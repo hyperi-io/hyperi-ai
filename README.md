@@ -42,18 +42,7 @@ A standards library that attaches to any project to provide:
 
 ---
 
-## Attach Options
-
-There are **two attach modes** depending on whether your repository is internal or public:
-
-| Repository Type | Script | Approach |
-|-----------------|--------|----------|
-| Internal/private | `attach.sh` | Git submodule (versioned, auto-updates) |
-| Public/open-source | `attach-public.sh` | Gitignored directory (local only, never committed) |
-
-### Internal Repos (attach.sh)
-
-Use for internal/private repositories where `hyperi-ai/` can be a visible submodule:
+## Attach
 
 ```bash
 ./hyperi-ai/attach.sh [OPTIONS]
@@ -65,7 +54,6 @@ OPTIONS:
 
   --pin              Pin submodule version (disable auto-update)
   --force            Overwrite existing files
-  --no-hooks         Skip git hook installation
   --dry-run          Preview changes without modifying
   --verbose          Detailed output
 
@@ -83,50 +71,20 @@ CLIs in priority order: `claude` → `agent` (Cursor) → `gemini` → `codex`
 **Deprecated flags:** `--claude`, `--cursor`, `--gemini` still work but show warnings.
 Use `--agent NAME` instead.
 
-### Public Repos (attach-public.sh)
+### Open-Source Repos
 
-Use for public/open-source repositories where you don't want internal tooling exposed:
+For public/open-source repositories, use the same `attach.sh` with the submodule.
+The `hyperi-ai/` submodule references a private repository — this is intentional:
 
-```bash
-./hyperi-ai/attach-public.sh [OPTIONS]
+- **Internal developers** have access and get auto-updating standards
+- **External contributors** clone normally (`git clone` without `--recursive`) and get
+  all committed config files (STATE.md, TODO.md, .claude/, etc.) without the submodule
+- **Hooks degrade gracefully** — if `hyperi-ai/` is missing, standards injection is
+  skipped with a note; formatting, linting, and safety hooks work independently
+- **No crashes** — the submodule is a dev tool, not a runtime dependency
 
-OPTIONS:
-  --agent NAME       Setup specific agent (claude, cursor, gemini, codex)
-  --all-agents       Setup all installed agents
-  --no-agent         Skip agent detection entirely
-
-  --path PATH        Specify project root (default: current directory)
-  --force            Overwrite existing files
-  --dry-run          Preview changes without modifying
-  --verbose          Detailed output
-
-EXAMPLES:
-  # First time - run from hyperi-ai/ repo or with --path
-  /projects/ai/attach-public.sh --path /path/to/public-repo
-
-  # Or clone hyperi-ai/ manually, then run
-  git clone --depth 1 https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
-  ./hyperi-ai/attach-public.sh
-```
-
-**What's different:**
-
-| Aspect | attach.sh (internal) | attach-public.sh (public) |
-|--------|---------------------|---------------------------|
-| `hyperi-ai/` visibility | Git submodule (committed) | Gitignored (local only) |
-| Updates | `git submodule update --remote` | `git -C hyperi-ai pull` or `/load` auto-syncs |
-| Cloning | Automatic via submodule | Manual clone or via `/load` |
-| `.gitmodules` | Updated | Not touched |
-
-**How it works:**
-
-1. Clones `hyperi-ai/` locally (keeps `.git/` for manual updates via `git -C hyperi-ai pull`)
-2. Adds `hyperi-ai/` to `.gitignore` (never committed to public repo)
-3. Creates `.claude/commands/load.md` that auto-updates `hyperi-ai/` on each `/load`
-4. Deploys the same templates as `attach.sh`
-
-**For public repo contributors:** Run `attach-public.sh` once, or just use `/load`
-which will clone `hyperi-ai/` automatically if missing. To manually update: `git -C hyperi-ai pull`
+External contributors never need `hyperi-ai/` — the outputs of `attach.sh` are
+committed to your project repo and work without it
 
 ---
 
@@ -155,7 +113,6 @@ which will clone `hyperi-ai/` automatically if missing. To manually update: `git
 ```text
 hyperi-ai/                       # This repository ($AI_ROOT)
 ├── attach.sh                    # Attach AI to project (submodule mode)
-├── attach-public.sh             # Attach AI to public repo (gitignored mode)
 │
 ├── agents/                      # Agent setup scripts (bash)
 │   ├── common.sh               # Shared functions (CLI detection, logging)

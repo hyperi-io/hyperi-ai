@@ -8,8 +8,7 @@ How to work with and contribute to this repository.
 
 ```text
 hyperi-ai/
-├── attach.sh            # Deploy STATE.md, TODO.md (internal repos)
-├── attach-public.sh     # Deploy for public repos (gitignored mode)
+├── attach.sh            # Deploy STATE.md, TODO.md, agent configs
 ├── agents/              # Agent setup scripts (bash)
 │   ├── common.sh        # Shared functions (CLI detection, logging)
 │   ├── claude.sh        # Claude Code setup + version stamp
@@ -288,7 +287,7 @@ All Claude Code hooks live in `hooks/` and use Python 3 stdlib only (no pip).
 1. Copy structure from an existing agent script (e.g., `agents/claude.sh`)
 2. Create templates in `templates/<assistant>/`
 3. Add BATS tests in `tests/<assistant>.bats`
-4. Update `attach.sh` and `attach-public.sh` `run_agent_detection()`
+4. Update `attach.sh` `run_agent_detection()`
 5. Update README.md
 6. Commit with `feat:` type
 

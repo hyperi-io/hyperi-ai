@@ -24,6 +24,6 @@ jobs:
 
       - name: Test scripts help
         run: |
-          ./install.sh --help
-          ./claude-code.sh --help
-          ./gemini.sh --help
+          ./attach.sh --help
+          ./agents/claude.sh --help
+          ./agents/gemini.sh --help
