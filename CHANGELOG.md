@@ -1,3 +1,10 @@
+## [2.2.3](https://github.com/hyperi-io/hyperi-ai/compare/2.2.2...2.2.3) (2026-03-06)
+
+
+### Bug Fixes
+
+* make UNIVERSAL.md multi-agent friendly ([2a18ed3](https://github.com/hyperi-io/hyperi-ai/commit/2a18ed3f2108e82542cb98d0e3c5637848e1b799))
+
 ## [2.2.2](https://github.com/hyperi-io/hyperi-ai/compare/2.2.1...2.2.2) (2026-03-06)
 
 
