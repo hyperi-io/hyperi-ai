@@ -302,6 +302,7 @@ Technology detection scans up to 3 levels deep (handles monorepos and workspaces
 | `ansible.cfg`, `playbook*.yml` | `ansible.md` |
 | `*.sql` | `clickhouse-sql.md` |
 | `certs/`, `ssl/`, `pki/` | `pki.md` |
+| `.releaserc`, `release.config.*`, `.github/`, `VERSION` | `ci.md` |
 
 ### Layer 2 — RAG: Auto-injected by file type (survives context compaction)
 

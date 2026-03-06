@@ -155,6 +155,11 @@ TECH_DETECTIONS: List[Tuple[str, str, List[Tuple[str, str]]]] = [
     ("pki", "pki.md", [
         ("dir", "certs"), ("dir", "ssl"), ("dir", "pki"),
     ]),
+    ("ci", "ci.md", [
+        ("file", ".releaserc"), ("glob", ".releaserc.*"),
+        ("glob", "release.config.*"), ("file", "VERSION"),
+        ("dir", ".github"),
+    ]),
 ]
 
 # Directories to skip during deep scans (performance + false positive avoidance)
