@@ -1,3 +1,10 @@
+## [2.2.2](https://github.com/hyperi-io/hyperi-ai/compare/2.2.1...2.2.2) (2026-03-06)
+
+
+### Bug Fixes
+
+* add STATE.md vs auto-memory boundary, align no-mocks in UNIVERSAL ([8a87780](https://github.com/hyperi-io/hyperi-ai/commit/8a8778059f30100eb7e679598c4894b37bc2ac8c))
+
 ## [2.2.1](https://github.com/hyperi-io/hyperi-ai/compare/2.2.0...2.2.1) (2026-03-06)
 
 
