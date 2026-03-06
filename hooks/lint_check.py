@@ -34,12 +34,14 @@ def main() -> None:
 
     project_dir = common.get_project_dir()
     errors = common.lint_modified_files(project_dir)
+    test_warnings = common.check_test_integrity(project_dir)
 
-    if errors:
+    all_issues = errors + test_warnings
+    if all_issues:
         # Exit 2 = blocking error. stderr is fed back to Claude.
-        error_text = "\n\n".join(errors)
+        issue_text = "\n\n".join(all_issues)
         print(
-            f"Lint errors found in modified files. Please fix before continuing:\n\n{error_text}",
+            f"Issues found in modified files. Please fix before continuing:\n\n{issue_text}",
             file=sys.stderr,
         )
         sys.exit(2)

@@ -391,6 +391,99 @@ def lint_modified_files(project_dir: Path) -> List[str]:
 
 
 # ---------------------------------------------------------------------------
+# Test integrity check
+# ---------------------------------------------------------------------------
+
+# Patterns that indicate an assertion was present (one per line)
+_ASSERT_PATTERNS = re.compile(
+    r"(?:assert\b|self\.assert|expect\(|\.should|\.to_eq|\.to_be|"
+    r"\.to_equal|\.to_have|\.toEqual|\.toBe|\.toHave|EXPECT_|ASSERT_)",
+    re.IGNORECASE,
+)
+
+# Patterns that indicate a test was skipped/disabled
+_SKIP_PATTERNS = re.compile(
+    r"(?:@pytest\.mark\.skip|@pytest\.mark\.xfail|\.skip\(|"
+    r"@unittest\.skip|@ignore|@disabled|pending\(|xit\(|xdescribe\(|"
+    r"#\s*NOQA|#\s*pragma:\s*no\s*cover)",
+    re.IGNORECASE,
+)
+
+# File patterns that look like test files
+_TEST_FILE_PATTERNS = re.compile(
+    r"(?:^test_|_test\.py$|\.test\.[jt]sx?$|\.spec\.[jt]sx?$|"
+    r"_test\.go$|_test\.rs$|\.bats$)",
+)
+
+
+def check_test_integrity(project_dir: Path) -> List[str]:
+    """Check git-modified test files for removed assertions or added skips.
+
+    Returns list of warning messages (empty if all clean).
+    """
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only"],
+            capture_output=True, text=True, timeout=10,
+            cwd=str(project_dir),
+        )
+        if result.returncode != 0:
+            return []
+        files = [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return []
+
+    # Filter to test files only
+    test_files = [f for f in files if _TEST_FILE_PATTERNS.search(Path(f).name)]
+    if not test_files:
+        return []
+
+    warnings: List[str] = []
+    for f in test_files:
+        try:
+            diff_result = subprocess.run(
+                ["git", "diff", "-U0", "--", f],
+                capture_output=True, text=True, timeout=10,
+                cwd=str(project_dir),
+            )
+            if diff_result.returncode != 0:
+                continue
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            continue
+
+        removed_asserts = 0
+        added_asserts = 0
+        added_skips = 0
+
+        for line in diff_result.stdout.split("\n"):
+            if line.startswith("-") and not line.startswith("---"):
+                if _ASSERT_PATTERNS.search(line):
+                    removed_asserts += 1
+            elif line.startswith("+") and not line.startswith("+++"):
+                if _ASSERT_PATTERNS.search(line):
+                    added_asserts += 1
+                if _SKIP_PATTERNS.search(line):
+                    added_skips += 1
+
+        issues = []
+        net_removed = removed_asserts - added_asserts
+        if net_removed > 0:
+            issues.append(f"{net_removed} assertion(s) removed")
+        if added_skips > 0:
+            issues.append(f"{added_skips} skip/xfail marker(s) added")
+
+        if issues:
+            warnings.append(
+                f"## {f}\n"
+                f"TEST INTEGRITY WARNING: {', '.join(issues)}.\n"
+                f"If you weakened tests to make them pass, STOP — "
+                f"fix the implementation instead."
+            )
+
+    return warnings
+
+
+# ---------------------------------------------------------------------------
 # Safety guard
 # ---------------------------------------------------------------------------
 
