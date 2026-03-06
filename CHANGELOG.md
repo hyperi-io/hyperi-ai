@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/hyperi-io/hyperi-ai/compare/2.1.0...2.1.1) (2026-03-06)
+
+
+### Refactoring
+
+* remove attach-public.sh, consolidate to single attach.sh ([e3e58d3](https://github.com/hyperi-io/hyperi-ai/commit/e3e58d356b44b7de6684896eb2cffd0b75a82fb5))
+
 ## [2.1.0](https://github.com/hyperi-io/hyperi-ai/compare/2.0.2...2.1.0) (2026-03-06)
 
 
