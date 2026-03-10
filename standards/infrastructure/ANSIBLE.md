@@ -1,6 +1,17 @@
 ---
 name: ansible-standards
 description: Ansible standards for playbooks, roles, and configuration management. Use when writing Ansible playbooks, reviewing automation, or managing server configurations.
+rule_paths:
+  - "**/playbook*.yml"
+  - "**/tasks/*.yml"
+  - "**/handlers/*.yml"
+  - "**/roles/**/*.yml"
+detect_markers:
+  - "file:ansible.cfg"
+  - "glob:playbook*.yml"
+  - "dir:playbooks"
+  - "deep_file:ansible.cfg"
+  - "deep_glob:playbook*.yml"
 ---
 
 # Ansible Standards for HyperI Projects

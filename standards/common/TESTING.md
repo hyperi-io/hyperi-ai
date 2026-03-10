@@ -1,3 +1,18 @@
+---
+name: testing-standards
+description: Test-first development standards for all HyperI projects. 80% minimum coverage, real dependencies over mocks, unit/integration/e2e pyramid.
+rule_paths:
+  - "**/*.py"
+  - "**/*.rs"
+  - "**/*.go"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/tests/**"
+  - "**/*_test.*"
+  - "**/*.test.*"
+  - "**/*.spec.*"
+---
+
 # Testing Standards
 
 **Comprehensive testing guide with test-first development patterns**

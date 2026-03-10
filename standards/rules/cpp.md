@@ -4,8 +4,16 @@ paths:
   - "**/*.hpp"
   - "**/*.cc"
   - "**/*.h"
+  - "**/*.cxx"
+detect_markers:
+  - "file:CMakeLists.txt"
+  - "deep_file:CMakeLists.txt"
+  - "deep_glob:*.cpp"
+  - "deep_glob:*.hpp"
+source: languages/CPP.md
 ---
 
+<!-- override: manual -->
 ## Target: C++20 (C++23 where clang supports)
 
 ## Build & Tools

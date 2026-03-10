@@ -4,8 +4,16 @@ paths:
   - "**/ansible.cfg"
   - "**/roles/**/*.yml"
   - "**/inventory/**/*"
+detect_markers:
+  - "file:ansible.cfg"
+  - "glob:playbook*.yml"
+  - "dir:playbooks"
+  - "deep_file:ansible.cfg"
+  - "deep_glob:playbook*.yml"
+source: infrastructure/ANSIBLE.md
 ---
 
+<!-- override: manual -->
 ## Quick Reference
 
 - **Lint:** `ansible-lint playbook.yml`

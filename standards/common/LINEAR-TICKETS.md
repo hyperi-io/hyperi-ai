@@ -1,3 +1,9 @@
+---
+name: linear-tickets-standards
+description: Standards for creating, updating, and managing Linear tickets at HyperI. Includes format, labels, and AI assistant guidance.
+universal: true
+---
+
 # Linear Ticket Standard
 
 Standards for creating, updating, and managing Linear tickets at HyperI.

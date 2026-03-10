@@ -1,3 +1,12 @@
+---
+name: git-standards
+description: Branch naming, commit message conventions, and git workflow for all HyperI projects. Conventional Commits, semantic-release compatible.
+rule_paths:
+  - "**/.github/**"
+  - "**/.gitignore"
+  - "**/CHANGELOG.md"
+---
+
 # Git Standards
 
 Branch naming and commit message conventions for all HyperI projects.

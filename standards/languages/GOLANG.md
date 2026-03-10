@@ -1,6 +1,11 @@
 ---
 name: golang-standards
 description: Go coding standards using standard library patterns, error handling, and testing conventions. Use when writing Go code, reviewing Go, or setting up Go projects.
+rule_paths:
+  - "**/*.go"
+detect_markers:
+  - "file:go.mod"
+  - "deep_file:go.mod"
 ---
 
 # Go Standards for HyperI Projects

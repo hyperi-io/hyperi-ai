@@ -1,6 +1,13 @@
 ---
 name: bash-standards
 description: Bash scripting standards using shellcheck, strict mode, and portable patterns. Use when writing shell scripts, reviewing bash, or automating with shell.
+rule_paths:
+  - "**/*.sh"
+  - "**/*.bats"
+detect_markers:
+  - "glob:*.sh"
+  - "glob:*.bats"
+  - "deep_glob:*.sh"
 ---
 
 # Bash Standards for HyperI Projects

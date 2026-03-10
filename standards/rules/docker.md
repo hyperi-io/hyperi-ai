@@ -4,8 +4,17 @@ paths:
   - "**/Dockerfile.*"
   - "**/docker-compose*.yml"
   - "**/docker-compose*.yaml"
+detect_markers:
+  - "file:Dockerfile"
+  - "file:docker-compose.yml"
+  - "file:docker-compose.yaml"
+  - "deep_file:Dockerfile"
+  - "deep_file:docker-compose.yml"
+  - "deep_file:docker-compose.yaml"
+source: infrastructure/DOCKER.md
 ---
 
+<!-- override: manual -->
 ## Base Images
 
 - Use minimal bases: Python → `python:3.12-slim`, Node → `node:22-alpine`, Go → `golang:1.23-alpine` (build) / `scratch` (runtime), Rust → `rust:1.83-alpine` (build) / `scratch` (runtime)

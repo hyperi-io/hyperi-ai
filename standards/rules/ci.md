@@ -10,7 +10,14 @@ paths:
   - "**/package.json"
   - "**/pyproject.toml"
   - "**/Cargo.toml"
+detect_markers:
+  - "file:.releaserc"
+  - "glob:.releaserc.*"
+  - "glob:release.config.*"
+  - "file:VERSION"
+  - "dir:.github"
 ---
+<!-- override: manual -->
 
 ## Semantic Release
 

@@ -1,3 +1,18 @@
+---
+name: code-style-standards
+description: Language-agnostic code style for clarity, maintainability, and consistency across all HyperI projects.
+rule_paths:
+  - "**/*.py"
+  - "**/*.rs"
+  - "**/*.go"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.cpp"
+  - "**/*.cc"
+  - "**/*.sh"
+  - "**/*.sql"
+---
+
 # Code Style Standards
 
 **Language-agnostic code style for clarity, maintainability, and consistency**

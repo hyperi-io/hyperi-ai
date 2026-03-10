@@ -1,3 +1,15 @@
+---
+name: design-principles-standards
+description: SOLID, DRY, KISS, and YAGNI principles for HyperI projects. Guides architecture decisions and code review.
+rule_paths:
+  - "**/*.py"
+  - "**/*.rs"
+  - "**/*.go"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.cpp"
+---
+
 # Design Principles
 
 **Detailed guide for SOLID, DRY, KISS, and YAGNI principles**

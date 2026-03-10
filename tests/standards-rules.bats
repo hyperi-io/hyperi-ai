@@ -88,14 +88,14 @@ load test_helper
     [ "$status" -eq 0 ]
 }
 
-@test "TC-217: common.py has detection for all major languages" {
-    local hook="$AI_SOURCE/hooks/common.py"
-    [ -f "$hook" ]
+@test "TC-217: rule files have detection markers for all major languages" {
+    local rules_dir="$AI_SOURCE/standards/rules"
+    [ -d "$rules_dir" ]
 
     local markers="Cargo.toml pyproject.toml go.mod Dockerfile tsconfig.json ansible.cfg Chart.yaml CMakeLists.txt"
     for marker in $markers; do
-        grep -q "$marker" "$hook" || {
-            echo "FAIL: common.py missing detection for: $marker"
+        grep -rl "$marker" "$rules_dir" | grep -q "." || {
+            echo "FAIL: no rule file has detect_markers for: $marker"
             return 1
         }
     done

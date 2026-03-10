@@ -1,6 +1,16 @@
 ---
 name: typescript-standards
 description: TypeScript coding standards using strict mode, ESLint, and modern patterns. Use when writing TypeScript or JavaScript code, reviewing TS/JS, or setting up Node.js projects.
+rule_paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+detect_markers:
+  - "file:tsconfig.json"
+  - "file:package.json"
+  - "deep_file:tsconfig.json"
+  - "deep_file:package.json"
 ---
 
 # TypeScript Standards for HyperI Projects

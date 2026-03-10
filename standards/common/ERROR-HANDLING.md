@@ -1,3 +1,16 @@
+---
+name: error-handling-standards
+description: Security-first error handling standards for all HyperI projects. Never expose internals to users; always log with context server-side.
+rule_paths:
+  - "**/*.py"
+  - "**/*.rs"
+  - "**/*.go"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.cpp"
+  - "**/*.cc"
+---
+
 # Error Handling Standards
 
 **Comprehensive guide for security-first error handling**

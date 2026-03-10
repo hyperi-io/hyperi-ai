@@ -86,81 +86,75 @@ def hook_response(
 
 
 # ---------------------------------------------------------------------------
-# Technology detection
+# Technology detection — frontmatter-driven
 # ---------------------------------------------------------------------------
-
-# (tech_name, rule_filename, list_of_marker_checks)
-# Marker check types:
-#   ("file", "name")       — exact file in root
-#   ("dir", "name")        — exact dir in root
-#   ("glob", "pattern")    — glob in root only
-#   ("deep_file", "name")  — file anywhere up to 3 levels deep
-#   ("deep_glob", "pat")   — glob up to 3 levels deep
 #
-# "deep_" variants handle monorepos, workspaces, and nested project structures
-# where marker files are not in the project root (e.g., Cargo.toml in a workspace
-# member, pyproject.toml in src/backend/, Dockerfile in deploy/).
-TECH_DETECTIONS: List[Tuple[str, str, List[Tuple[str, str]]]] = [
-    ("python", "python.md", [
-        ("file", "pyproject.toml"), ("file", "setup.py"),
-        ("file", "requirements.txt"), ("file", "uv.lock"),
-        ("deep_file", "pyproject.toml"), ("deep_file", "setup.py"),
-    ]),
-    ("bash", "bash.md", [
-        ("glob", "*.sh"), ("glob", "*.bats"),
-        ("deep_glob", "*.sh"),
-    ]),
-    ("typescript", "typescript.md", [
-        ("file", "tsconfig.json"), ("file", "package.json"),
-        ("deep_file", "tsconfig.json"), ("deep_file", "package.json"),
-    ]),
-    ("rust", "rust.md", [
-        ("file", "Cargo.toml"),
-        ("deep_file", "Cargo.toml"),
-    ]),
-    ("golang", "golang.md", [
-        ("file", "go.mod"),
-        ("deep_file", "go.mod"),
-    ]),
-    ("cpp", "cpp.md", [
-        ("file", "CMakeLists.txt"),
-        ("deep_file", "CMakeLists.txt"),
-        ("deep_glob", "*.cpp"), ("deep_glob", "*.hpp"),
-        ("deep_glob", "*.cc"), ("deep_glob", "*.h"),
-    ]),
-    ("docker", "docker.md", [
-        ("file", "Dockerfile"), ("file", "docker-compose.yml"),
-        ("file", "docker-compose.yaml"),
-        ("deep_file", "Dockerfile"), ("deep_file", "docker-compose.yml"),
-        ("deep_file", "docker-compose.yaml"),
-    ]),
-    ("ansible", "ansible.md", [
-        ("file", "ansible.cfg"), ("glob", "playbook*.yml"),
-        ("dir", "playbooks"),
-        ("deep_file", "ansible.cfg"), ("deep_glob", "playbook*.yml"),
-    ]),
-    ("k8s", "k8s.md", [
-        ("file", "Chart.yaml"), ("file", "values.yaml"),
-        ("dir", "charts"),
-        ("deep_file", "Chart.yaml"), ("deep_file", "values.yaml"),
-    ]),
-    ("terraform", "terraform.md", [
-        ("glob", "*.tf"),
-        ("deep_glob", "*.tf"),
-    ]),
-    ("clickhouse-sql", "clickhouse-sql.md", [
-        ("glob", "*.sql"),
-        ("deep_glob", "*.sql"),
-    ]),
-    ("pki", "pki.md", [
-        ("dir", "certs"), ("dir", "ssl"), ("dir", "pki"),
-    ]),
-    ("ci", "ci.md", [
-        ("file", ".releaserc"), ("glob", ".releaserc.*"),
-        ("glob", "release.config.*"), ("file", "VERSION"),
-        ("dir", ".github"),
-    ]),
-]
+# Marker types (from detect_markers: in each rules/*.md file):
+#   "file:<name>"       — exact file in project root
+#   "dir:<name>"        — exact directory in project root
+#   "glob:<pattern>"    — glob pattern in project root only
+#   "deep_file:<name>"  — file anywhere up to 3 levels deep
+#   "deep_glob:<pat>"   — glob pattern up to 3 levels deep
+
+
+def _parse_rules_frontmatter(rules_path: Path) -> dict:
+    """Parse YAML-ish frontmatter from a rules/*.md file (stdlib only)."""
+    text = rules_path.read_text(encoding="utf-8", errors="replace")
+    if not text.startswith("---"):
+        return {}
+    end = text.find("\n---", 3)
+    if end == -1:
+        return {}
+    fm = text[3:end]
+
+    result: dict = {}
+    current_key: Optional[str] = None
+    current_list: Optional[List] = None
+
+    for line in fm.splitlines():
+        list_m = re.match(r"^  - (.+)$", line)
+        kv_m = re.match(r"^(\w[\w_-]*):\s*(.*)$", line)
+        if list_m and current_key and current_list is not None:
+            current_list.append(list_m.group(1).strip().strip('"').strip("'"))
+        elif kv_m:
+            key, val = kv_m.group(1), kv_m.group(2).strip().strip('"').strip("'")
+            if val == "":
+                current_key = key
+                current_list = []
+                result[key] = current_list
+            else:
+                result[key] = val
+                current_key = None
+                current_list = None
+
+    result.setdefault("detect_markers", [])
+    return result
+
+
+def _load_tech_detections(
+    rules_dir: Path,
+) -> List[Tuple[str, str, List[Tuple[str, str]]]]:
+    """Build tech detections dynamically from detect_markers in rules files.
+
+    Returns list of (tech_name, rule_filename, markers) — same structure as
+    the old hardcoded TECH_DETECTIONS. Skips UNIVERSAL.md.
+    """
+    detections: List[Tuple[str, str, List[Tuple[str, str]]]] = []
+    for rules_path in sorted(rules_dir.glob("*.md")):
+        if rules_path.name == "UNIVERSAL.md":
+            continue
+        meta = _parse_rules_frontmatter(rules_path)
+        raw_markers: List[str] = meta.get("detect_markers", [])
+        if not raw_markers:
+            continue
+        markers: List[Tuple[str, str]] = []
+        for m in raw_markers:
+            if ":" in m:
+                kind, value = m.split(":", 1)
+                markers.append((kind.strip(), value.strip()))
+        if markers:
+            detections.append((rules_path.stem, rules_path.name, markers))
+    return detections
 
 # Directories to skip during deep scans (performance + false positive avoidance)
 _SKIP_DIRS = frozenset({
@@ -225,8 +219,11 @@ def detect_technologies(project_dir: Path) -> List[Tuple[str, str]]:
 
     Returns list of (tech_name, rule_filename) tuples.
     """
+    rules_dir = get_rules_dir(project_dir)
+    if not rules_dir.is_dir():
+        return []
     detected = []
-    for tech_name, rule_file, markers in TECH_DETECTIONS:
+    for tech_name, rule_file, markers in _load_tech_detections(rules_dir):
         if _any_marker_present(project_dir, markers):
             detected.append((tech_name, rule_file))
     return detected

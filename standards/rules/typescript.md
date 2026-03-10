@@ -4,8 +4,15 @@ paths:
   - "**/*.tsx"
   - "**/*.js"
   - "**/*.jsx"
+detect_markers:
+  - "file:tsconfig.json"
+  - "file:package.json"
+  - "deep_file:tsconfig.json"
+  - "deep_file:package.json"
+source: languages/TYPESCRIPT.md
 ---
 
+<!-- override: manual -->
 ## Commands
 
 ```bash

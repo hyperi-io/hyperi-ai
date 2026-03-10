@@ -93,6 +93,7 @@ standards/
 │   ├── ERROR-HANDLING.md (security-first errors)
 │   ├── GIT.md (git conventions)
 │   ├── LICENSING.md (FSL-1.1-ALv2)
+│   ├── REPO-NAMING.md (repository naming conventions)
 │   ├── MOCKS-POLICY.md (mock-aware testing policy)
 │   ├── PKI.md (TLS, SSH, certificates, CNSA 2.0)
 │   ├── SECURITY.md (input validation, secrets)
