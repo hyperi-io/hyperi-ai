@@ -1,3 +1,20 @@
+## [2.5.0](https://github.com/hyperi-io/hyperi-ai/compare/2.4.0...2.5.0) (2026-03-10)
+
+
+### Features
+
+* auto-generate rules from structured source standards ([658bdc6](https://github.com/hyperi-io/hyperi-ai/commit/658bdc6eddcc119262d36ef91aa905b281346de1))
+
+
+### Documentation
+
+* add USER-CODING-STANDARDS.md personal override feature ([176f380](https://github.com/hyperi-io/hyperi-ai/commit/176f3803f5c539a691b42b25b040fb7b0824b02d))
+
+
+### Tests
+
+* update TC-111 and TC-217 for frontmatter-driven tech detection ([6520d6e](https://github.com/hyperi-io/hyperi-ai/commit/6520d6ea651b79c2efb49cea4648793cc97ca6b2))
+
 ## [2.4.0](https://github.com/hyperi-io/hyperi-ai/compare/2.3.0...2.4.0) (2026-03-06)
 
 
