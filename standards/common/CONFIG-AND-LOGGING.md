@@ -1,3 +1,18 @@
+---
+name: config-and-logging-standards
+description: HyperI 7-layer configuration cascade and structured logging standards. RFC 3339 timestamps, JSON in containers, environment-driven config.
+rule_paths:
+  - "**/*.py"
+  - "**/*.rs"
+  - "**/*.go"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/settings*.yaml"
+  - "**/settings*.yml"
+  - "**/*.env"
+  - "**/.env*"
+---
+
 # Configuration and Logging Standards
 
 **HyperI standard patterns for configuration cascade and structured logging**

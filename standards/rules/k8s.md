@@ -3,8 +3,16 @@ paths:
   - "**/Chart.yaml"
   - "**/values.yaml"
   - "**/templates/**/*.yaml"
+detect_markers:
+  - "file:Chart.yaml"
+  - "file:values.yaml"
+  - "dir:charts"
+  - "deep_file:Chart.yaml"
+  - "deep_file:values.yaml"
+source: infrastructure/K8S.md
 ---
 
+<!-- override: manual -->
 ## Chart.yaml
 
 - `apiVersion: v2`, `type: application`

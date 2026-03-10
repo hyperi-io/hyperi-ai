@@ -1,7 +1,20 @@
 ---
 paths:
   - "**/*.rs"
+detect_markers:
+  - "file:Cargo.toml"
+  - "deep_file:Cargo.toml"
+source: languages/RUST.md
 ---
+
+<!-- override: manual -->
+## Rust Version Policy
+
+- Always use the latest stable Rust edition and compiler. **Never base version choices on LLM knowledge — always web-check.**
+- Check current stable: `rustup check` or <https://releases.rs/>
+- Minimum floor as of March 2026: **Edition 2024**, **rustc 1.94.0**
+- Set `edition` in `Cargo.toml` and `rustfmt.toml` to the latest stable edition
+- Pin `rust-toolchain.toml` to current stable — update regularly
 
 ## Code Style
 
@@ -20,7 +33,7 @@ paths:
 ## Required Tooling
 
 - Every project: `Cargo.toml`, `Cargo.lock` (committed), `rustfmt.toml`, `clippy.toml`, `deny.toml`, `rust-toolchain.toml`, `.cargo/config.toml`
-- rustfmt.toml: `edition="2021"`, `max_width=100`, `imports_granularity="Module"`, `group_imports="StdExternalCrate"`
+- rustfmt.toml: `edition="2024"`, `max_width=100`, `imports_granularity="Module"`, `group_imports="StdExternalCrate"`
 - Pin toolchain in `rust-toolchain.toml` with components `rustfmt, clippy, llvm-tools-preview`
 - Required tools: `cargo-nextest` (tests), `cargo-deny` (licenses/advisories), `cargo-tarpaulin` (coverage), `bacon` (continuous check), `cargo-chef` (Docker layer caching)
 - Use `cargo nextest run` instead of `cargo test`
@@ -109,7 +122,7 @@ paths:
 
 ## Cargo.toml
 
-- Set `rust-version`, `edition = "2021"`, `license`
+- Set `rust-version`, `edition = "2024"`, `license`
 - `[profile.release]`: `lto = "thin"`, `codegen-units = 1`, `strip = true`, `panic = "abort"`, `opt-level = 3`
 - `[profile.bench]`: `lto = "thin"`, `codegen-units = 1`
 - Use `[lints.clippy]` table for project-wide lint config

@@ -1,3 +1,4 @@
+<!-- override: manual -->
 # HyperI Universal Coding Rules
 
 Rules that apply to ALL code regardless of language. Language-specific
@@ -192,6 +193,21 @@ If your agent has persistent memory across sessions, keep it separate:
 - Repos: always `--private` unless explicitly requested public
 - No GPL/AGPL/SSPL dependencies permitted
 - Never create custom LICENSE files — use the template
+
+## Repository Naming
+
+| Prefix | Scope |
+|---|---|
+| `hyperi-*` | Company-wide / product-agnostic |
+| `dfe-*` | DFE product |
+| `edge-*` | Edge Stream Hub |
+
+- `hyperi-*` for shared libs and tooling that serve the whole company
+- `dfe-*` for DFE-specific; `edge-*` for Edge Stream Hub
+- When scope spans products, use `hyperi-*`
+- External forks: retain upstream name (e.g. `ClickHouse`)
+- Format: lowercase, hyphen-separated — no underscores, no camelCase
+- 1–3 words after prefix; avoid redundant suffixes (`-service`, `-app`, `-repo`)
 
 ## Temporary Files
 

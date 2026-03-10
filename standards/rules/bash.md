@@ -1,8 +1,15 @@
 ---
 paths:
   - "**/*.sh"
+  - "**/*.bats"
+detect_markers:
+  - "glob:*.sh"
+  - "glob:*.bats"
+  - "deep_glob:*.sh"
+source: languages/BASH.md
 ---
 
+<!-- override: manual -->
 ## Quick Reference
 
 - **Lint:** `shellcheck script.sh`

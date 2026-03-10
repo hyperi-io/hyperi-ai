@@ -1,6 +1,15 @@
 ---
 name: python-standards
 description: Python coding standards using uv, ruff, mypy, and pytest. Use when writing Python code, reviewing Python, or setting up Python projects. Covers project structure, typing, testing, and tooling.
+rule_paths:
+  - "**/*.py"
+detect_markers:
+  - "file:pyproject.toml"
+  - "file:setup.py"
+  - "file:requirements.txt"
+  - "file:uv.lock"
+  - "deep_file:pyproject.toml"
+  - "deep_file:setup.py"
 ---
 
 # Python Standards for HyperI Projects

@@ -44,6 +44,21 @@ This doc covers HyperI-specific patterns and hard-won lessons from production sy
 
 ---
 
+## Rust Version Policy
+
+> **Always use the latest stable Rust edition and compiler version.**
+>
+> **NEVER rely on LLM/AI model knowledge for the current Rust version — it is always out of date.**
+> Always web-check the current stable release at <https://releases.rs/> or run `rustup check`.
+
+- Use the latest stable edition. Edition 2024 is the minimum as of March 2026.
+- Set `edition` in `Cargo.toml` and `rustfmt.toml` to the latest stable edition.
+- Pin `rust-toolchain.toml` to the current stable version (check `rustup check` or <https://releases.rs/>).
+- Minimum acceptable floor as of March 2026: **Edition 2024**, **rustc 1.94.0**.
+- There is no valid reason to use an older edition in new projects. Existing projects should migrate.
+
+---
+
 ## Code Style Rules
 
 These apply to all Rust code. No exceptions.
@@ -372,7 +387,7 @@ myproject/
 
 ```toml
 # Rust formatter configuration
-edition = "2021"
+edition = "2024"
 max_width = 100
 tab_spaces = 4
 use_small_heuristics = "Default"
@@ -385,8 +400,9 @@ reorder_imports = true
 
 ```toml
 # Pin Rust toolchain for reproducible builds
+# Always check current stable: rustup check or https://releases.rs/
 [toolchain]
-channel = "1.83"
+channel = "stable"
 components = ["rustfmt", "clippy", "llvm-tools-preview"]
 targets = ["x86_64-unknown-linux-gnu"]
 ```
@@ -2858,8 +2874,8 @@ cargo clippy --all-targets --all-features -- -D warnings
 [package]
 name = "data-pipeline"
 version = "0.1.0"
-edition = "2021"
-rust-version = "1.75"
+edition = "2024"
+rust-version = "1.94.0"  # Current stable as of March 2026; always use latest stable
 description = "High-performance data processing pipeline"
 license = "Apache-2.0"
 

@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: generate-rules
+        name: Validate standards rules files
+        language: python
+        entry: python tools/generate-rules.py --check
+        pass_filenames: false
+        files: ^standards/
+        types: [markdown]

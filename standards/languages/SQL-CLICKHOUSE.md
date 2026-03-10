@@ -1,6 +1,11 @@
 ---
 name: clickhouse-sql-standards
 description: ClickHouse SQL standards for schema design, query optimisation, and at-scale analytics. Use when writing ClickHouse SQL, designing schemas, or reviewing ClickHouse queries. LLMs default to PostgreSQL patterns that fail in ClickHouse - this document corrects that.
+rule_paths:
+  - "**/*.sql"
+detect_markers:
+  - "glob:*.sql"
+  - "deep_glob:*.sql"
 ---
 
 > **📌 ClickHouse Is Not PostgreSQL**

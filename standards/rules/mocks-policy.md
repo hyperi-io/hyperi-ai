@@ -1,3 +1,4 @@
+<!-- override: manual -->
 # No Mocks Policy
 
 **Do not use mocks, patches, fakes, stubs, or test doubles. Period.**

@@ -1,8 +1,17 @@
 ---
 paths:
   - "**/*.py"
+detect_markers:
+  - "file:pyproject.toml"
+  - "file:setup.py"
+  - "file:requirements.txt"
+  - "file:uv.lock"
+  - "deep_file:pyproject.toml"
+  - "deep_file:setup.py"
+source: languages/PYTHON.md
 ---
 
+<!-- override: manual -->
 ## Python Standards
 
 **Minimum Python: 3.12+**

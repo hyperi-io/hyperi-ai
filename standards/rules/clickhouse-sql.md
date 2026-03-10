@@ -1,8 +1,13 @@
 ---
 paths:
   - "**/*.sql"
+detect_markers:
+  - "glob:*.sql"
+  - "deep_glob:*.sql"
+source: languages/SQL-CLICKHOUSE.md
 ---
 
+<!-- override: manual -->
 ## Schema Design
 
 - ENGINE: Use `ReplicatedMergeTree` (self-hosted) or `SharedMergeTree` (Cloud) as default. Plain `MergeTree` for dev only.

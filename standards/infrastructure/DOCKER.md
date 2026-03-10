@@ -1,6 +1,18 @@
 ---
 name: docker-standards
 description: Docker and container standards using multi-stage builds, security hardening, and health checks. Use when writing Dockerfiles, docker-compose, or containerising applications.
+rule_paths:
+  - "**/Dockerfile"
+  - "**/Dockerfile.*"
+  - "**/docker-compose*.yml"
+  - "**/docker-compose*.yaml"
+detect_markers:
+  - "file:Dockerfile"
+  - "file:docker-compose.yml"
+  - "file:docker-compose.yaml"
+  - "deep_file:Dockerfile"
+  - "deep_file:docker-compose.yml"
+  - "deep_file:docker-compose.yaml"
 ---
 
 # Docker Standards

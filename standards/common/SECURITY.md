@@ -1,3 +1,16 @@
+---
+name: security-standards
+description: Security-first development practices for all HyperI projects. Input validation, secrets management, dependency scanning, and secure coding patterns.
+rule_paths:
+  - "**/*.py"
+  - "**/*.rs"
+  - "**/*.go"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.cpp"
+  - "**/*.cc"
+---
+
 # Security Standards
 
 **Security-first development practices for all HyperI projects**

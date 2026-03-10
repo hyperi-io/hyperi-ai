@@ -1,3 +1,4 @@
+<!-- override: manual -->
 # Design Principles
 
 ## SOLID Principles

@@ -1,6 +1,17 @@
 ---
 name: pki-standards
 description: PKI, TLS, SSH, and cryptographic standards based on CNSA 2.0. Use when configuring certificates, SSH keys, TLS, or any cryptographic settings.
+rule_paths:
+  - "**/certs/**"
+  - "**/ssl/**"
+  - "**/pki/**"
+  - "**/*.pem"
+  - "**/*.crt"
+  - "**/*.key"
+detect_markers:
+  - "dir:certs"
+  - "dir:ssl"
+  - "dir:pki"
 ---
 
 # PKI and Cryptographic Standards

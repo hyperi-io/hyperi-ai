@@ -2,8 +2,13 @@
 paths:
   - "**/*.tf"
   - "**/*.tfvars"
+detect_markers:
+  - "glob:*.tf"
+  - "deep_glob:*.tf"
+source: infrastructure/TERRAFORM.md
 ---
 
+<!-- override: manual -->
 ## Project Structure
 
 - Use `environments/{dev,staging,prod}/` with `main.tf`, `variables.tf`, `terraform.tfvars` each

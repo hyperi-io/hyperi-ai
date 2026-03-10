@@ -1,3 +1,9 @@
+---
+name: chars-policy-standards
+description: Permitted non-ASCII characters and emojis for all HyperI code, docs, and LLM output. Restricted to a defined set only.
+universal: true
+---
+
 # Character & Emoji Policy
 
 This document defines the **only permitted non-ASCII characters and emojis** for all code, documentation, console output, and LLM usage.

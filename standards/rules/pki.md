@@ -4,8 +4,14 @@ paths:
   - "**/ssl/**/*"
   - "**/pki/**/*"
   - "**/tls/**/*"
+detect_markers:
+  - "dir:certs"
+  - "dir:ssl"
+  - "dir:pki"
+source: common/PKI.md
 ---
 
+<!-- override: manual -->
 ## Security Profiles
 
 - **Corporate default is `prod`** — use unless you have a specific reason not to

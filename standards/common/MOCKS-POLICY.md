@@ -1,3 +1,18 @@
+---
+name: mocks-policy-standards
+description: Mock-aware testing policy for HyperI projects. Test against real dependencies; mocks are scaffolding not testing. No placeholder code in production.
+rule_paths:
+  - "**/*.py"
+  - "**/*.rs"
+  - "**/*.go"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/tests/**"
+  - "**/*_test.*"
+  - "**/*.test.*"
+  - "**/*.spec.*"
+---
+
 # Mock-Aware Testing Policy
 
 **Mocks are scaffolding, not testing. A test suite with only mocked tests is untested.**

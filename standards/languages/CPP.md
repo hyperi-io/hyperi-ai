@@ -1,6 +1,17 @@
 ---
 name: cpp-standards
 description: C++ coding standards for high-performance data systems. Use when writing C++ code, reviewing C++, or working on systems like ClickHouse. Covers memory safety, zero-copy patterns, SIMD, concurrency, and performance optimisation.
+rule_paths:
+  - "**/*.cpp"
+  - "**/*.hpp"
+  - "**/*.cc"
+  - "**/*.cxx"
+  - "**/*.h"
+detect_markers:
+  - "file:CMakeLists.txt"
+  - "deep_file:CMakeLists.txt"
+  - "deep_glob:*.cpp"
+  - "deep_glob:*.hpp"
 ---
 
 # C++ Standards for HyperI Projects

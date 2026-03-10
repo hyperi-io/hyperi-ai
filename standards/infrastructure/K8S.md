@@ -1,6 +1,17 @@
 ---
 name: kubernetes-standards
 description: Kubernetes and Helm standards for deployments, services, and health probes. Use when writing K8s manifests, Helm charts, or deploying to Kubernetes.
+rule_paths:
+  - "**/Chart.yaml"
+  - "**/values.yaml"
+  - "**/templates/*.yaml"
+  - "**/templates/*.yml"
+detect_markers:
+  - "file:Chart.yaml"
+  - "file:values.yaml"
+  - "dir:charts"
+  - "deep_file:Chart.yaml"
+  - "deep_file:values.yaml"
 ---
 
 # Kubernetes Standards for HyperI Projects

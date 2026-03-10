@@ -1,3 +1,9 @@
+---
+name: code-header-standards
+description: Standard file header format for all HyperI projects, all languages.
+universal: true
+---
+
 # Code Header Standards (All Languages)
 
 Standard file headers for all HyperI projects.

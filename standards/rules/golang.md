@@ -1,8 +1,13 @@
 ---
 paths:
   - "**/*.go"
+detect_markers:
+  - "file:go.mod"
+  - "deep_file:go.mod"
+source: languages/GOLANG.md
 ---
 
+<!-- override: manual -->
 ## Commands
 
 - `go build ./...` / `go test ./...` / `go test -race ./...`
