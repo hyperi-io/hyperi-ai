@@ -121,20 +121,11 @@ teardown() {
     [ -f ".claude/commands/standards.md" ]
 }
 
-@test "TC-111: common.py contains tech detection markers" {
-    run grep -q "Cargo.toml" "$AI_SOURCE/hooks/common.py"
+@test "TC-111: common.py uses frontmatter-driven tech detection" {
+    run grep -q "_load_tech_detections" "$AI_SOURCE/hooks/common.py"
     [ "$status" -eq 0 ]
 
-    run grep -q "pyproject.toml" "$AI_SOURCE/hooks/common.py"
-    [ "$status" -eq 0 ]
-
-    run grep -q "go.mod" "$AI_SOURCE/hooks/common.py"
-    [ "$status" -eq 0 ]
-
-    run grep -q "Dockerfile" "$AI_SOURCE/hooks/common.py"
-    [ "$status" -eq 0 ]
-
-    run grep -q "tsconfig.json" "$AI_SOURCE/hooks/common.py"
+    run grep -q "detect_markers" "$AI_SOURCE/hooks/common.py"
     [ "$status" -eq 0 ]
 }
 
