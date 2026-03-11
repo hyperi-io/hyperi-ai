@@ -202,9 +202,10 @@ deploy_skills() {
             mkdir -p "$skill_dir"
 
             # Create SKILL.md with YAML frontmatter (VS Code format)
-            # Capitalise first letter (bash 3.2 / BSD compatible)
-            local name_cap
-            name_cap="$(echo "$name" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')"
+            # Capitalise first letter (portable — works on macOS BSD awk)
+            local name_cap first_char
+            first_char="$(printf '%s' "$name" | cut -c1 | tr '[:lower:]' '[:upper:]')"
+            name_cap="${first_char}$(printf '%s' "$name" | cut -c2-)"
             cat > "$skill_md" << EOF
 ---
 name: ${name}

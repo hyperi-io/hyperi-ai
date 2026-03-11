@@ -78,9 +78,9 @@ def main() -> None:
     print("")
 
     # Survey available tools and report what CC can use
-    available, missing = common.survey_tools()
+    available, missing_installable, missing_unknown = common.survey_tools()
     print("")
-    print(common.format_tool_survey(available, missing))
+    print(common.format_tool_survey(available, missing_installable, missing_unknown))
     print("")
 
 

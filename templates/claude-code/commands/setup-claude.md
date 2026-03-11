@@ -24,43 +24,51 @@ intermediate files between commands.
 
 ## Step 2: Survey Available Tools
 
-Run each check as a **separate** Bash call (never chain):
+Run the tool survey via the Python helper (this checks both PATH and package
+repos in one call):
 
-### Core (should be installed)
+```bash
+python3 "$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/survey_tools_cli.py"
+```
 
-1. `which sponge` — in-place filter (moreutils)
-2. `which fdfind fd` — fast find replacement
-3. `which rg` — ripgrep (fast recursive grep)
-4. `which jq` — JSON processor
-5. `which sd` — sed replacement (simpler regex)
-6. `which mlr` — miller (CSV/JSON/tabular processor)
-7. `which yq` — YAML processor
+This outputs a structured report showing:
+- **Installed** tools (with binary path)
+- **Not installed but available** in apt/dnf repos (with package name)
+- **Not available** in repos (may need manual install)
 
-### Productivity (recommended)
+### Install missing tools
 
-8. `which parallel` — GNU parallel (replace for loops)
-9. `which batcat bat` — syntax-highlighted cat
-10. `which macbash` — multi-line to single-line converter
-11. `which ifne` — run only if stdin non-empty (moreutils)
-12. `which chronic` — silence unless failure (moreutils)
-13. `which gron` — flatten JSON for grep
-14. `which entr` — file watcher (replace polling loops)
-
-### Package install suggestions
-
-Detect the package manager and suggest installing missing tools:
+For any tools listed as "available in repos", suggest the install command.
+**Ask the user before installing.** Do NOT install without confirmation.
 
 **Debian/Ubuntu:**
 ```
-sudo apt install moreutils fd-find bat ripgrep sd miller jq
+sudo apt install <package-names>
 ```
 
-**Fedora:**
+**Fedora/RHEL:**
 ```
-sudo dnf install moreutils fd-find bat ripgrep sd miller jq
+sudo dnf install <package-names>
 ```
 
-**Ask the user before installing.** Do NOT install without confirmation.
+**macOS (Homebrew):**
+```
+brew install <formula-names>
+```
+
+Use the package names shown in the survey output (e.g. `apt: moreutils` → `sudo apt install moreutils`).
+
+### Tools not in package repos
+
+Some tools require manual installation:
+
+- **macbash** — checks bash scripts for macOS (BSD) compatibility and converts
+  multi-line scripts to single-line. Install from the project repo:
+  ```
+  sudo cp /path/to/macbash /usr/local/bin/macbash
+  sudo chmod +x /usr/local/bin/macbash
+  ```
+  Essential for projects targeting both Linux and macOS.
 
 ---
 

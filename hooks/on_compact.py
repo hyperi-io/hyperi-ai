@@ -50,9 +50,9 @@ Context was compacted. Coding standards have been re-injected below.
     print("")
 
     # Re-survey available tools
-    available, missing = common.survey_tools()
+    available, missing_installable, missing_unknown = common.survey_tools()
     print("")
-    print(common.format_tool_survey(available, missing))
+    print(common.format_tool_survey(available, missing_installable, missing_unknown))
     print("")
 
     print("")

@@ -704,14 +704,17 @@ _TOOL_SURVEY: List[Tuple[str, List[str], str]] = [
     # Display
     ("bat", ["batcat", "bat"], "syntax-highlighted cat"),
     # Shell scripting
-    ("macbash", ["macbash"], "convert multi-line scripts to single-line"),
+    ("macbash", ["macbash"], "check bash scripts for macOS/BSD compat issues and convert multi-line to single-line"),
 ]
 
 
-def survey_tools() -> Tuple[List[str], List[str]]:
+def survey_tools() -> Tuple[List[str], List[str], List[str]]:
     """Survey host for available single-line-friendly tools.
 
-    Returns (available, missing) — lists of tool display names.
+    Returns (available, missing_installable, missing_unknown) where:
+    - available: tools found on PATH
+    - missing_installable: not installed but available in apt/dnf repos
+    - missing_unknown: not installed and not found in repos (may need manual install)
     """
     available: List[str] = []
     missing: List[str] = []
@@ -721,10 +724,120 @@ def survey_tools() -> Tuple[List[str], List[str]]:
             available.append(name)
         else:
             missing.append(name)
-    return available, missing
+
+    if not missing:
+        return available, [], []
+
+    # Check which missing tools are available in package repos
+    missing_installable: List[str] = []
+    missing_unknown: List[str] = []
+    for name in missing:
+        pkg = _check_package_available(name)
+        if pkg:
+            missing_installable.append(f"{name} ({pkg})")
+        else:
+            missing_unknown.append(name)
+
+    return available, missing_installable, missing_unknown
 
 
-def format_tool_survey(available: List[str], missing: List[str]) -> str:
+# Map tool names to likely package names for apt/dnf lookup
+# apt/dnf package names
+_APT_PACKAGE_NAMES: Dict[str, List[str]] = {
+    "sd": ["sd"],
+    "awk": ["gawk", "mawk"],
+    "miller": ["miller"],
+    "jq": ["jq"],
+    "yq": ["yq"],
+    "gron": ["gron"],
+    "fd": ["fd-find"],
+    "ripgrep": ["ripgrep"],
+    "sponge": ["moreutils"],
+    "ifne": ["moreutils"],
+    "pee": ["moreutils"],
+    "ts": ["moreutils"],
+    "chronic": ["moreutils"],
+    "parallel": ["parallel"],
+    "bat": ["bat"],
+    "macbash": ["macbash"],
+    "entr": ["entr"],
+}
+
+# Homebrew formula names (where different from apt)
+_BREW_PACKAGE_NAMES: Dict[str, List[str]] = {
+    "sd": ["sd"],
+    "awk": ["gawk"],
+    "miller": ["miller"],
+    "jq": ["jq"],
+    "yq": ["yq"],
+    "gron": ["gron"],
+    "fd": ["fd"],
+    "ripgrep": ["ripgrep"],
+    "sponge": ["moreutils"],
+    "ifne": ["moreutils"],
+    "pee": ["moreutils"],
+    "ts": ["moreutils"],
+    "chronic": ["moreutils"],
+    "parallel": ["parallel"],
+    "bat": ["bat"],
+    "macbash": ["macbash"],
+    "entr": ["entr"],
+}
+
+
+def _check_package_available(tool_name: str) -> Optional[str]:
+    """Check if a tool's package is available in system repos.
+
+    Supports apt (Debian/Ubuntu), dnf (Fedora/RHEL), and brew (macOS).
+    Returns the package name if found, None otherwise.
+    """
+    # Try apt-cache (Debian/Ubuntu)
+    if shutil.which("apt-cache"):
+        for pkg in _APT_PACKAGE_NAMES.get(tool_name, [tool_name]):
+            try:
+                result = subprocess.run(
+                    ["apt-cache", "show", pkg],
+                    capture_output=True, text=True, timeout=5,
+                )
+                if result.returncode == 0:
+                    return f"apt: {pkg}"
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+
+    # Try dnf (Fedora/RHEL)
+    if shutil.which("dnf"):
+        for pkg in _APT_PACKAGE_NAMES.get(tool_name, [tool_name]):
+            try:
+                result = subprocess.run(
+                    ["dnf", "info", pkg],
+                    capture_output=True, text=True, timeout=5,
+                )
+                if result.returncode == 0:
+                    return f"dnf: {pkg}"
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+
+    # Try brew (macOS / Linuxbrew)
+    if shutil.which("brew"):
+        for pkg in _BREW_PACKAGE_NAMES.get(tool_name, [tool_name]):
+            try:
+                result = subprocess.run(
+                    ["brew", "info", "--json=v2", pkg],
+                    capture_output=True, text=True, timeout=10,
+                )
+                if result.returncode == 0:
+                    return f"brew: {pkg}"
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+
+    return None
+
+
+def format_tool_survey(
+    available: List[str],
+    missing_installable: List[str],
+    missing_unknown: List[str],
+) -> str:
     """Format tool survey results as compact text for injection."""
     lines: List[str] = []
     lines.append("## Available CLI Tools")
@@ -741,10 +854,14 @@ def format_tool_survey(available: List[str], missing: List[str]) -> str:
             else:
                 lines.append(f"- **{name}**: {desc}")
 
-    if missing:
+    if missing_installable:
         lines.append("")
-        lines.append(f"*Not installed:* {', '.join(missing)}")
+        lines.append(f"*Not installed (available in repos):* {', '.join(missing_installable)}")
         lines.append("*Run `/setup-claude` to install missing tools.*")
+
+    if missing_unknown:
+        lines.append("")
+        lines.append(f"*Not installed (not in repos):* {', '.join(missing_unknown)}")
 
     return "\n".join(lines)
 
