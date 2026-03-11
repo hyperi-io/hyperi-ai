@@ -100,6 +100,45 @@ sudo install macbash /usr/local/bin/
 
 ---
 
+## Step 2b: Check hyperi-ci (Conditional)
+
+**Only if `.hyperi-ci.yaml` exists in the project root.** Skip this step entirely
+for projects without it.
+
+Check if `hyperi-ci` is installed:
+
+```bash
+which hyperi-ci
+```
+
+If NOT installed, tell the user:
+
+```
+This project uses hyperi-ci (.hyperi-ci.yaml detected).
+The hyperi-ci CLI is not installed. Install with:
+
+  uv tool install hyperi-ci
+
+Or if uv is unavailable:
+
+  pip install --user hyperi-ci
+```
+
+**Ask the user before installing.** Do NOT install without confirmation.
+
+If installed, verify it works:
+
+```bash
+hyperi-ci detect
+```
+
+Report the detected language and confirm CI tool is operational.
+
+Also verify the project has a `Makefile` with standard targets. If present,
+mention available targets: `make quality`, `make test`, `make build`, `make ci`.
+
+---
+
 ## Step 3: Review Current Permissions
 
 Read these files (each as a separate Read call):

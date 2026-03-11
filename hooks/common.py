@@ -705,7 +705,15 @@ _TOOL_SURVEY: List[Tuple[str, List[str], str]] = [
     ("bat", ["batcat", "bat"], "syntax-highlighted cat"),
     # Shell scripting
     ("macbash", ["macbash"], "check bash scripts for macOS/BSD compat issues and convert multi-line to single-line"),
+    # CI/CD — only relevant when .hyperi-ci.yaml is present
+    ("hyperi-ci", ["hyperi-ci"], "polyglot CI/CD CLI (quality, test, build, publish — same locally and in CI)"),
 ]
+
+
+    # Tools that are only relevant when certain project files exist
+_CONDITIONAL_TOOLS: Dict[str, str] = {
+    "hyperi-ci": ".hyperi-ci.yaml",  # only needed for hyperi-ci projects
+}
 
 
 def survey_tools() -> Tuple[List[str], List[str], List[str]]:
@@ -715,10 +723,18 @@ def survey_tools() -> Tuple[List[str], List[str], List[str]]:
     - available: tools found on PATH
     - missing_installable: not installed but available in apt/dnf repos
     - missing_unknown: not installed and not found in repos (may need manual install)
+
+    Tools listed in _CONDITIONAL_TOOLS are skipped unless their marker
+    file exists in the project root.
     """
+    project_root = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
     available: List[str] = []
     missing: List[str] = []
     for name, aliases, _desc in _TOOL_SURVEY:
+        # Skip conditional tools if their marker file is absent
+        marker = _CONDITIONAL_TOOLS.get(name)
+        if marker and not os.path.exists(os.path.join(project_root, marker)):
+            continue
         found = any(shutil.which(a) for a in aliases)
         if found:
             available.append(name)
@@ -762,6 +778,7 @@ _APT_PACKAGE_NAMES: Dict[str, List[str]] = {
     "entr": ["entr"],
     # macbash is not in standard repos — installed from GitHub releases
     # https://github.com/hyperi-io/macbash/releases
+    # hyperi-ci is a Python tool — installed via uv/pip, not OS packages
 }
 
 # Homebrew formula names (where different from apt)
@@ -865,6 +882,8 @@ def format_tool_survey(
         lines.append(f"*Not installed (not in repos):* {', '.join(missing_unknown)}")
         if "macbash" in missing_unknown:
             lines.append("*Install macbash from https://github.com/hyperi-io/macbash/releases*")
+        if "hyperi-ci" in missing_unknown:
+            lines.append("*Install hyperi-ci: `uv tool install hyperi-ci`*")
 
     return "\n".join(lines)
 

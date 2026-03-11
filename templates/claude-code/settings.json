@@ -278,6 +278,9 @@
       "Bash(docker-compose *)",
       "Bash(kubectl *)",
 
+      "Bash(hyperi-ci *)",
+      "Bash(hyperi-ci)",
+
       "Bash(./ci/bootstrap *)",
       "Bash(./ci/run *)",
       "Bash(./ci/ai *)",
