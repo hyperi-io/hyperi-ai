@@ -24,39 +24,34 @@ intermediate files between commands.
 
 ## Step 2: Survey Available Tools
 
-Run the tool survey via the Python helper (this checks both PATH and package
-repos in one call):
+**IMPORTANT: You MUST use the Python survey script below. Do NOT run individual
+`which` checks or guess about package availability. The script checks both PATH
+and package repos (apt-cache/dnf/brew) automatically and produces an accurate
+report.**
+
+Run this single command:
 
 ```bash
 python3 "$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/survey_tools_cli.py"
 ```
 
-This outputs a structured report showing:
-- **Installed** tools (with binary path)
-- **Not installed but available** in apt/dnf repos (with package name)
-- **Not available** in repos (may need manual install)
+Read the output. It shows three sections:
+- **Installed** — tools found on PATH (with binary path)
+- **Not Installed (available in package repos)** — not installed but the package
+  exists in apt/dnf/brew (with exact package name)
+- **Not Available in Repos** — needs manual install (e.g. macbash from GitHub)
 
 ### Install missing tools
 
-For any tools listed as "available in repos", suggest the install command.
+For tools listed as "available in package repos", suggest the install command
+using the **exact package name from the survey output**.
 **Ask the user before installing.** Do NOT install without confirmation.
 
-**Debian/Ubuntu:**
-```
-sudo apt install <package-names>
-```
+**Debian/Ubuntu:** `sudo apt install <package-names>`
+**Fedora/RHEL:** `sudo dnf install <package-names>`
+**macOS (Homebrew):** `brew install <formula-names>`
 
-**Fedora/RHEL:**
-```
-sudo dnf install <package-names>
-```
-
-**macOS (Homebrew):**
-```
-brew install <formula-names>
-```
-
-Use the package names shown in the survey output (e.g. `apt: moreutils` → `sudo apt install moreutils`).
+Example: if the survey says `gron (apt: gron)` → `sudo apt install gron`
 
 ### macbash
 
