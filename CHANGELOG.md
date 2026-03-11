@@ -1,3 +1,10 @@
+## [2.7.1](https://github.com/hyperi-io/hyperi-ai/compare/2.7.0...2.7.1) (2026-03-11)
+
+
+### Bug Fixes
+
+* enforce hyperi-ci check as mandatory pre-push step ([86682c9](https://github.com/hyperi-io/hyperi-ai/commit/86682c96529ff8f9562927c00ab198e2ec1fc683))
+
 ## [2.7.0](https://github.com/hyperi-io/hyperi-ai/compare/2.6.4...2.7.0) (2026-03-11)
 
 
