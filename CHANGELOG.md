@@ -1,3 +1,10 @@
+## [2.6.3](https://github.com/hyperi-io/hyperi-ai/compare/2.6.2...2.6.3) (2026-03-11)
+
+
+### Bug Fixes
+
+* use Homebrew tap for macbash install ([ee298e5](https://github.com/hyperi-io/hyperi-ai/commit/ee298e5792c763244a1cf9179640d9c4a7bd7667))
+
 ## [2.6.2](https://github.com/hyperi-io/hyperi-ai/compare/2.6.1...2.6.2) (2026-03-11)
 
 
