@@ -1,3 +1,10 @@
+## [2.6.1](https://github.com/hyperi-io/hyperi-ai/compare/2.6.0...2.6.1) (2026-03-11)
+
+
+### Bug Fixes
+
+* tool survey checks package repos, macOS support, BSD awk compat ([449cb7a](https://github.com/hyperi-io/hyperi-ai/commit/449cb7ab1ffcdacdd9309638d22b0c6e09f23faa))
+
 ## [2.6.0](https://github.com/hyperi-io/hyperi-ai/compare/2.5.0...2.6.0) (2026-03-11)
 
 
