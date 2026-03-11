@@ -1,3 +1,10 @@
+## [2.8.0](https://github.com/hyperi-io/hyperi-ai/compare/2.7.1...2.8.0) (2026-03-11)
+
+
+### Features
+
+* allow read-only access to CC task output files in /tmp/claude-* ([d1699dc](https://github.com/hyperi-io/hyperi-ai/commit/d1699dcc1ffcba6105fb73004233161b74ef0bf3))
+
 ## [2.7.1](https://github.com/hyperi-io/hyperi-ai/compare/2.7.0...2.7.1) (2026-03-11)
 
 
