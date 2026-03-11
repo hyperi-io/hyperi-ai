@@ -92,7 +92,7 @@ sudo rpm -i macbash-1.2.0-1.aarch64.rpm
 
 **macOS (Homebrew):**
 ```
-brew install https://github.com/hyperi-io/macbash/releases/latest/download/macbash.rb
+brew install hyperi-io/macbash/macbash
 ```
 
 **Any platform (tarball):**
