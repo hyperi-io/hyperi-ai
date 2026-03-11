@@ -1,3 +1,10 @@
+## [2.7.0](https://github.com/hyperi-io/hyperi-ai/compare/2.6.4...2.7.0) (2026-03-11)
+
+
+### Features
+
+* hyperi-ci awareness — conditional CI skills, tool survey, setup ([0df8a8b](https://github.com/hyperi-io/hyperi-ai/commit/0df8a8b8a3840db69c3364dab6dd8709f301e23b))
+
 ## [2.6.4](https://github.com/hyperi-io/hyperi-ai/compare/2.6.3...2.6.4) (2026-03-11)
 
 
