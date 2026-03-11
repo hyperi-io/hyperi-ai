@@ -43,6 +43,9 @@ If `uv` is not available: `pip install --user hyperi-ci`
 
 | Command | Purpose |
 |---|---|
+| `hyperi-ci check` | **Pre-push validation (quality + test) — run before every push** |
+| `hyperi-ci check --quick` | Quality checks only (skip tests) |
+| `hyperi-ci check --full` | Quality + test + build (native target) |
 | `hyperi-ci run quality` | Lint, format, type check, security audit |
 | `hyperi-ci run test` | Run test suite with coverage |
 | `hyperi-ci run build` | Build artifacts |
@@ -74,6 +77,7 @@ selection automatically:
 Projects using hyperi-ci have a generated `Makefile` with standard targets:
 
 ```bash
+make check      # Pre-push validation (quality + test) — USE THIS
 make quality    # Run all quality checks
 make test       # Run tests
 make build      # Build artifacts
@@ -81,6 +85,29 @@ make ci         # Run quality + test + build (full local CI)
 ```
 
 Always prefer `make <target>` or `hyperi-ci run <stage>` over raw tool commands.
+
+### MANDATORY: Run `hyperi-ci check` Before Every Push
+
+When `.hyperi-ci.yaml` is present, **ALWAYS run `hyperi-ci check` before
+pushing code.** This catches quality and test failures locally before they
+hit CI, saving time and CI minutes.
+
+**Workflow:**
+1. Write code, commit
+2. `hyperi-ci check` (runs quality + test locally)
+3. Fix any failures, amend or new commit
+4. `git pull --rebase origin main` (sync semantic-release commits)
+5. `git push`
+
+**Variants:**
+- `hyperi-ci check` — default: quality + test
+- `hyperi-ci check --quick` — quality only (fast, for WIP pushes)
+- `hyperi-ci check --full` — quality + test + build (for release branches)
+- `make check` — same as `hyperi-ci check` (Makefile target)
+
+**NEVER push without running check first.** If the user asks to push,
+run `hyperi-ci check` first. If it fails, fix the issues before pushing.
+Only skip check if the user explicitly says to skip it.
 
 ## Semantic Release
 
