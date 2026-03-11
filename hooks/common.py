@@ -759,8 +759,9 @@ _APT_PACKAGE_NAMES: Dict[str, List[str]] = {
     "chronic": ["moreutils"],
     "parallel": ["parallel"],
     "bat": ["bat"],
-    "macbash": ["macbash"],
     "entr": ["entr"],
+    # macbash is not in standard repos — installed from GitHub releases
+    # https://github.com/hyperi-io/macbash/releases
 }
 
 # Homebrew formula names (where different from apt)
@@ -780,8 +781,8 @@ _BREW_PACKAGE_NAMES: Dict[str, List[str]] = {
     "chronic": ["moreutils"],
     "parallel": ["parallel"],
     "bat": ["bat"],
-    "macbash": ["macbash"],
     "entr": ["entr"],
+    # macbash: install from https://github.com/hyperi-io/macbash/releases
 }
 
 
@@ -862,6 +863,8 @@ def format_tool_survey(
     if missing_unknown:
         lines.append("")
         lines.append(f"*Not installed (not in repos):* {', '.join(missing_unknown)}")
+        if "macbash" in missing_unknown:
+            lines.append("*Install macbash from https://github.com/hyperi-io/macbash/releases*")
 
     return "\n".join(lines)
 

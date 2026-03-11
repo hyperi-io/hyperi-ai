@@ -58,17 +58,50 @@ brew install <formula-names>
 
 Use the package names shown in the survey output (e.g. `apt: moreutils` → `sudo apt install moreutils`).
 
-### Tools not in package repos
+### macbash
 
-Some tools require manual installation:
+**macbash** (https://github.com/hyperi-io/macbash) checks bash scripts for
+macOS (BSD) compatibility and converts multi-line scripts to single-line.
+Essential for projects targeting both Linux and macOS.
 
-- **macbash** — checks bash scripts for macOS (BSD) compatibility and converts
-  multi-line scripts to single-line. Install from the project repo:
-  ```
-  sudo cp /path/to/macbash /usr/local/bin/macbash
-  sudo chmod +x /usr/local/bin/macbash
-  ```
-  Essential for projects targeting both Linux and macOS.
+Not in default OS repos — install from GitHub releases:
+
+**Debian/Ubuntu (amd64):**
+```
+curl -LO https://github.com/hyperi-io/macbash/releases/latest/download/macbash_1.2.0_amd64.deb
+sudo dpkg -i macbash_1.2.0_amd64.deb
+```
+
+**Debian/Ubuntu (arm64):**
+```
+curl -LO https://github.com/hyperi-io/macbash/releases/latest/download/macbash_1.2.0_arm64.deb
+sudo dpkg -i macbash_1.2.0_arm64.deb
+```
+
+**Fedora/RHEL (x86_64):**
+```
+curl -LO https://github.com/hyperi-io/macbash/releases/latest/download/macbash-1.2.0-1.x86_64.rpm
+sudo rpm -i macbash-1.2.0-1.x86_64.rpm
+```
+
+**Fedora/RHEL (aarch64):**
+```
+curl -LO https://github.com/hyperi-io/macbash/releases/latest/download/macbash-1.2.0-1.aarch64.rpm
+sudo rpm -i macbash-1.2.0-1.aarch64.rpm
+```
+
+**macOS (Homebrew):**
+```
+brew install https://github.com/hyperi-io/macbash/releases/latest/download/macbash.rb
+```
+
+**Any platform (tarball):**
+```
+# Download the appropriate tarball for your OS/arch from:
+# https://github.com/hyperi-io/macbash/releases/latest
+tar xzf macbash-1.2.0-*.tar.gz
+sudo install macbash /usr/local/bin/
+```
 
 ---
 
