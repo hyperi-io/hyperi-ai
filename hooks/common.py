@@ -676,3 +676,156 @@ def check_version_and_reattach(project_dir: Path) -> Optional[str]:
         actions.append("AI submodule updated (no deployment changes needed)")
 
     return "**AI submodule auto-update:** " + "; ".join(actions)
+
+
+# ---------------------------------------------------------------------------
+# Tool survey — discover available single-line-friendly CLI tools
+# ---------------------------------------------------------------------------
+
+# (binary_name, aliases_to_check, description_of_what_it_replaces)
+_TOOL_SURVEY: List[Tuple[str, List[str], str]] = [
+    # Text processing — replace pipe chains
+    ("sd", ["sd"], "sed alternative (simpler regex syntax, single command)"),
+    ("awk", ["awk", "gawk"], "text processing (field extraction, transforms — replaces cut|sort|uniq chains)"),
+    ("miller", ["mlr", "miller"], "CSV/JSON/tabular processor (replaces awk|sort|uniq|cut chains)"),
+    ("jq", ["jq"], "JSON processor (replaces grep|sed on JSON data)"),
+    ("yq", ["yq"], "YAML/XML processor (like jq but for YAML)"),
+    ("gron", ["gron"], "flatten JSON for grep (replaces jq|grep chains)"),
+    # File finding — replace find|grep chains
+    ("fd", ["fdfind", "fd"], "fast find replacement (single command, regex, respects .gitignore)"),
+    ("ripgrep", ["rg", "ripgrep"], "fast recursive grep (single command, respects .gitignore)"),
+    # File operations — replace pipe-to-file patterns
+    ("sponge", ["sponge"], "in-place filter (replaces cmd > tmp && mv tmp file)"),
+    ("ifne", ["ifne"], "run command only if stdin non-empty (from moreutils)"),
+    ("pee", ["pee"], "pipe to multiple commands (from moreutils)"),
+    ("ts", ["ts"], "timestamp lines (from moreutils)"),
+    ("chronic", ["chronic"], "run command silently unless it fails (from moreutils)"),
+    ("parallel", ["parallel"], "GNU parallel (replaces for loops over files)"),
+    # Display
+    ("bat", ["batcat", "bat"], "syntax-highlighted cat"),
+    # Shell scripting
+    ("macbash", ["macbash"], "convert multi-line scripts to single-line"),
+]
+
+
+def survey_tools() -> Tuple[List[str], List[str]]:
+    """Survey host for available single-line-friendly tools.
+
+    Returns (available, missing) — lists of tool display names.
+    """
+    available: List[str] = []
+    missing: List[str] = []
+    for name, aliases, _desc in _TOOL_SURVEY:
+        found = any(shutil.which(a) for a in aliases)
+        if found:
+            available.append(name)
+        else:
+            missing.append(name)
+    return available, missing
+
+
+def format_tool_survey(available: List[str], missing: List[str]) -> str:
+    """Format tool survey results as compact text for injection."""
+    lines: List[str] = []
+    lines.append("## Available CLI Tools")
+    lines.append("")
+
+    if available:
+        # Build a lookup for descriptions
+        desc_map = {name: desc for name, _, desc in _TOOL_SURVEY}
+        for name in available:
+            alias = _resolve_tool_binary(name)
+            desc = desc_map.get(name, "")
+            if alias and alias != name:
+                lines.append(f"- **{name}** (`{alias}`): {desc}")
+            else:
+                lines.append(f"- **{name}**: {desc}")
+
+    if missing:
+        lines.append("")
+        lines.append(f"*Not installed:* {', '.join(missing)}")
+        lines.append("*Run `/setup-claude` to install missing tools.*")
+
+    return "\n".join(lines)
+
+
+def _resolve_tool_binary(name: str) -> Optional[str]:
+    """Find the actual binary name for a tool."""
+    for tool_name, aliases, _ in _TOOL_SURVEY:
+        if tool_name == name:
+            for a in aliases:
+                if shutil.which(a):
+                    return a
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Bash efficiency rules — always injected at startup and post-compact
+# ---------------------------------------------------------------------------
+
+_BASH_EFFICIENCY_RULES = """
+## Bash Efficiency Rules
+
+These rules are MANDATORY for all Bash tool use. They prevent permission prompt
+stalls and ensure commands complete without user intervention.
+
+### 1. NEVER Use Compound Commands
+
+**BANNED:** `&&`, `||`, `;` between commands, `|` pipes, inline `for`/`while`/`if`
+
+**Instead:** Use separate Bash tool calls for each command. Claude Code runs
+independent calls in parallel automatically — this is faster than `&&` chaining.
+
+### 2. Use `.tmp/` for Intermediates
+
+The project has a gitignored `.tmp/` directory. Use it for ALL temporary files:
+
+- Write command output: `grep -r "pattern" src/ > .tmp/results.txt`
+- Read in next call: `sort .tmp/results.txt`
+- NEVER use `/tmp` — it is outside the project and may not be in the permitted path
+
+### 3. Write Scripts for Multi-Step Logic
+
+For anything requiring pipes, loops, or conditionals:
+
+1. Use the **Write** tool to create `.tmp/task.sh` (or `.py`)
+2. Run it: `bash .tmp/task.sh`
+
+This is a SINGLE command matching the allow list.
+
+### 4. Prefer Efficient Single-Command Tools
+
+Use tools that do in one command what would otherwise need pipes:
+
+| Instead of...                    | Use...                                    |
+|----------------------------------|-------------------------------------------|
+| `find . -name X \\| grep Y`      | `fd X` or `fdfind X`                      |
+| `grep -r X \\| sort \\| uniq -c`  | `rg -c X` (ripgrep with count)            |
+| `cat f \\| jq . \\| grep X`       | `jq 'select(.key == "X")' f`             |
+| `cmd > tmp && mv tmp file`       | `cmd \\| sponge file` or Write tool        |
+| `for f in *.py; do cmd; done`    | `fd -e py -x cmd` or `parallel cmd ::: *.py` |
+| `sed -i 's/old/new/g' file`      | `sd 'old' 'new' file`                    |
+| `cut -d, -f2 \\| sort \\| uniq`   | `mlr --csv cut -f col then sort-by col`   |
+
+### 5. Prefer Claude Code Native Tools Over Bash
+
+| Task                    | Use this                | NOT this              |
+|-------------------------|-------------------------|-----------------------|
+| Read file contents      | `Read` tool             | `cat`, `head`, `tail` |
+| Edit file               | `Edit` tool             | `sed`, `awk`          |
+| Create file             | `Write` tool            | `echo >`, `cat <<`    |
+| Search file contents    | `Grep` tool             | `grep`, `rg`          |
+| Find files by name      | `Glob` tool             | `find`, `fd`, `ls`    |
+
+Only use Bash when a dedicated tool genuinely cannot do the job (e.g. running
+builds, tests, git operations, package managers).
+
+### 6. Clean `.tmp/` Between Tasks
+
+After completing a major task: `rm -f .tmp/*.txt .tmp/*.sh .tmp/*.py .tmp/*.json`
+""".strip()
+
+
+def bash_efficiency_rules() -> str:
+    """Return the always-on bash efficiency rules text."""
+    return _BASH_EFFICIENCY_RULES

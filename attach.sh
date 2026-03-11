@@ -765,6 +765,11 @@ print_summary() {
         echo "       ./hyperi-ai/agents/cursor.sh   # Cursor IDE"
         echo "       ./hyperi-ai/agents/gemini.sh   # Gemini Code"
         echo "       ./hyperi-ai/agents/codex.sh    # OpenAI Codex"
+    else
+        echo "  2. Run /setup-claude in Claude Code to configure:"
+        echo "       - .tmp/ workspace (gitignored scratch directory)"
+        echo "       - Tool survey (discover installed CLI tools)"
+        echo "       - Permission patterns (reduce unnecessary OK prompts)"
     fi
     echo ""
 

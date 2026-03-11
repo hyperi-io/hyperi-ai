@@ -157,7 +157,7 @@ deploy_commands() {
     fi
 
     # Commands to deploy (add new commands here)
-    local commands="load save review simplify standards"
+    local commands="load save review simplify standards setup-claude"
 
     if [ "$DRY_RUN" = "true" ]; then
         for cmd in $commands; do
@@ -529,6 +529,7 @@ print_summary() {
         echo "  .claude/commands/review.md    -> commands/review.md"
         echo "  .claude/commands/simplify.md  -> commands/simplify.md"
         echo "  .claude/commands/standards.md -> commands/standards.md"
+        echo "  .claude/commands/setup-claude.md -> commands/setup-claude.md"
         echo "  .claude/rules/            -> rules/ (path-scoped, auto-inject on file read)"
         echo "  .claude/skills/           -> skills/ (full standards, on-demand for /review /simplify)"
         echo "  CLAUDE.md -> STATE.md"
@@ -542,10 +543,10 @@ print_summary() {
         echo "  Stop                   -> lint_check.py (lint modified files, feed errors back)"
         echo ""
         echo "Next steps:"
-        echo "  1. Open project in Claude Code — standards inject automatically"
-        echo "  2. Run /load to load project state (TODO, STATE, git sync)"
-        echo "  3. Rules also auto-inject when reading matching files (RAG)"
-        echo "  4. Skills loaded on-demand for /review and /simplify"
+        echo "  1. Open project in Claude Code — standards + efficiency rules inject automatically"
+        echo "  2. Run /setup-claude to configure .tmp/ workspace, survey tools, update permissions"
+        echo "  3. Run /load to load project state (TODO, STATE, git sync)"
+        echo "  4. Rules auto-inject on file read (RAG) and survive compacts"
     fi
     echo "================================"
 }
