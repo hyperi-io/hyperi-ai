@@ -1,3 +1,10 @@
+## [2.6.4](https://github.com/hyperi-io/hyperi-ai/compare/2.6.3...2.6.4) (2026-03-11)
+
+
+### Bug Fixes
+
+* loosen rm/mv permissions for .tmp/, enforce Python tool survey ([2f07eb3](https://github.com/hyperi-io/hyperi-ai/commit/2f07eb352015ba7b8878fafdd0a253eb5eb1352f))
+
 ## [2.6.3](https://github.com/hyperi-io/hyperi-ai/compare/2.6.2...2.6.3) (2026-03-11)
 
 
