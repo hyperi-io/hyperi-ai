@@ -1,3 +1,10 @@
+## [2.6.2](https://github.com/hyperi-io/hyperi-ai/compare/2.6.1...2.6.2) (2026-03-11)
+
+
+### Bug Fixes
+
+* correct macbash install instructions — GitHub releases, not OS repos ([f5d0c9a](https://github.com/hyperi-io/hyperi-ai/commit/f5d0c9a50cdc282f5598dfd59825992a9fff516b))
+
 ## [2.6.1](https://github.com/hyperi-io/hyperi-ai/compare/2.6.0...2.6.1) (2026-03-11)
 
 
