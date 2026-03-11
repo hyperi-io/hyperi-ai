@@ -42,6 +42,19 @@ Context was compacted. Coding standards have been re-injected below.
     text, loaded = common.inject_rules(project_dir)
     print(text)
 
+    # Re-inject bash efficiency rules (always-on — critical post-compact)
+    print("")
+    print("---")
+    print("")
+    print(common.bash_efficiency_rules())
+    print("")
+
+    # Re-survey available tools
+    available, missing = common.survey_tools()
+    print("")
+    print(common.format_tool_survey(available, missing))
+    print("")
+
     print("")
     print("**Run `/load` now** to restore full project context (STATE.md, TODO.md, submodule updates).")
 

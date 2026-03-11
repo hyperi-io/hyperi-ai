@@ -1,0 +1,1 @@
+../../templates/claude-code/commands/setup-claude.md

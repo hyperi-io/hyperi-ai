@@ -70,6 +70,19 @@ def main() -> None:
         print("")
         print(reattach_msg)
 
+    # Inject bash efficiency rules (always-on — prevents permission prompt stalls)
+    print("")
+    print("---")
+    print("")
+    print(common.bash_efficiency_rules())
+    print("")
+
+    # Survey available tools and report what CC can use
+    available, missing = common.survey_tools()
+    print("")
+    print(common.format_tool_survey(available, missing))
+    print("")
+
 
 if __name__ == "__main__":
     main()
