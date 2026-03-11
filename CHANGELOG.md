@@ -1,3 +1,11 @@
+## [2.6.0](https://github.com/hyperi-io/hyperi-ai/compare/2.5.0...2.6.0) (2026-03-11)
+
+
+### Features
+
+* bash efficiency rules, tool survey, and /setup-claude command ([27012b6](https://github.com/hyperi-io/hyperi-ai/commit/27012b68503fa60417cc552ad3022e422fb05fc6))
+* granular git permissions — replace broad `git *` with explicit safe patterns ([615c6bb](https://github.com/hyperi-io/hyperi-ai/commit/615c6bb049e3ca2c8bb3ec863cf11dbbc8298382))
+
 ## [2.5.0](https://github.com/hyperi-io/hyperi-ai/compare/2.4.0...2.5.0) (2026-03-10)
 
 
