@@ -157,7 +157,7 @@ deploy_commands() {
     fi
 
     # Commands to deploy (add new commands here)
-    local commands="load save review simplify standards setup-claude"
+    local commands="load save review simplify standards setup-claude doco"
 
     if [ "$DRY_RUN" = "true" ]; then
         for cmd in $commands; do

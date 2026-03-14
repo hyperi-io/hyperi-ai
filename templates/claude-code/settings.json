@@ -97,6 +97,7 @@
       "SlashCommand(/simplify)",
       "SlashCommand(/standards)",
       "SlashCommand(/setup-claude)",
+      "SlashCommand(/doco)",
       "Read(~/.gitconfig)",
 
       "Bash(.tmp/*)",
