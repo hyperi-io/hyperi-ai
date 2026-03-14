@@ -22,20 +22,62 @@
 - Name explains WHAT is being tested
 - 3–7 tests per function: happy path, error conditions, edge cases, business rules
 
-## Test-First Development
+## Test-Driven Development (TDD)
 
-- Define success criteria through tests BEFORE implementing changes
-- Use for: refactoring, bug fixes, adding features to existing code
-- NOT for: greenfield code (use pure TDD), exploratory prototypes, one-off scripts
+<!-- inspired-by: obra/superpowers test-driven-development (MIT) -->
+
+```
+NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+```
+
+Write the test first. Watch it fail. Write minimal code to pass.
+If you didn't watch the test fail, you don't know if it tests the right thing.
+
+### RED-GREEN-REFACTOR Cycle
+
+1. **RED** — write ONE minimal test showing what should happen. Clear name,
+   tests real behaviour, one thing only.
+2. **Verify RED** — run the test. Confirm it fails for the expected reason
+   (feature missing, not typos). Test passes immediately? You're testing
+   existing behaviour — fix the test.
+3. **GREEN** — write the SIMPLEST code to pass the test. Don't add features,
+   refactor other code, or "improve" beyond what the test requires.
+4. **Verify GREEN** — run the test. Confirm it passes. Confirm other tests
+   still pass. Output clean (no errors, warnings).
+5. **REFACTOR** — clean up (remove duplication, improve names, extract helpers).
+   Keep tests green. Don't add behaviour.
+6. **Repeat** — next failing test for next behaviour.
+
+### When to Use TDD
+
+- New features, bug fixes, refactoring, behaviour changes
 - Write tests yourself; let AI implement to pass them — tests ARE the specification
 
-### Workflow
+**Exceptions (ask the user):** throwaway prototypes, generated code, config files.
+
+### Wrote Code Before the Test?
+
+Delete it. Start over. Don't keep it as "reference." Don't "adapt" it.
+Implement fresh from tests.
+
+### Test-First Workflow (Existing Code)
 
 1. Understand current behaviour
 2. Write tests for success criteria (including preserving existing behaviour)
 3. Run tests — new tests should fail, existing-behaviour tests should pass
 4. Implement changes
 5. Run tests — all should pass
+
+### Common TDD Rationalisations
+
+| Excuse | Reality |
+|---|---|
+| "Too simple to test" | Simple code breaks. Test takes 30 seconds. |
+| "I'll test after" | Tests passing immediately prove nothing. |
+| "Need to explore first" | Fine. Throw away exploration, start with TDD. |
+| "Test hard = skip it" | Hard to test = hard to use. Listen to the test. |
+| "TDD will slow me down" | TDD is faster than debugging. |
+| "Manual test is faster" | Manual doesn't prove edge cases. Can't re-run. |
 
 ## Test Behaviour, Not Implementation
 
