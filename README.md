@@ -26,19 +26,59 @@ assistants to follow, plus configuration for AI tools. It's not a library.
 
 ## What This Is
 
-A standards library that attaches to any project to provide:
+A standards library that attaches to any project as a git submodule to provide
+coding standards, AI assistant configuration, and engineering discipline rules
+for Claude Code, Cursor IDE, Gemini Code, and OpenAI Codex.
 
-- **Coding standards** - Language-agnostic + language-specific (Python, Go, TypeScript, Rust, Bash, C++) + infrastructure (Docker, K8s, Terraform, Ansible)
-- **Session state** - Cross-LLM session persistence (STATE.md, TODO.md)
-- **AI assistant configs** - Setup scripts for Claude Code, Cursor IDE, Gemini Code, OpenAI Codex
+**Design:** Python 3 stdlib hooks (no pip dependencies), Bash 3.2+ scripts
+(macOS, Linux, WSL), path-agnostic, idempotent, works standalone or alongside
+HyperI CI.
 
-**Design:**
+---
 
-- **Hooks:** Python 3 stdlib (no pip dependencies) — technology detection, standards injection, safety, formatting, linting
-- **Scripts:** Bash 3.2+ (macOS, Linux, WSL) — attach.sh, agent deployment
-- Path-agnostic (works anywhere, any directory name)
-- Idempotent (safe to run repeatedly)
-- Works standalone or alongside HyperI CI
+## Architecture
+
+The submodule has six distinct layers:
+
+| Layer | Location | Format | Purpose | How it's used |
+|---|---|---|---|---|
+| **Standards** | `standards/common/`, `standards/languages/`, `standards/infrastructure/` | Markdown source docs | Human-readable coding standards | Source material for rule generation |
+| **Rules** | `standards/rules/` | Markdown with YAML frontmatter | Machine-readable rules injected into AI context | Auto-detected by `detect_markers` in frontmatter, injected by `inject_standards.py` at session start + compact |
+| **Commands** | `templates/claude-code/commands/` | Markdown skill files | User-invocable slash commands (`/review`, `/setup-claude`, etc.) | Symlinked to `.claude/commands/`, user runs them manually |
+| **Hooks** | `hooks/` | Python scripts | Automatic event handlers | Wired in `settings.json`, fire on SessionStart, PreToolUse, PostToolUse, Stop, SubagentStart |
+| **Settings** | `templates/claude-code/settings.json` | JSON | Permission patterns, hook wiring | Deployed to `.claude/settings.json` |
+| **Agents** | `agents/` | Shell scripts | Setup/deploy scripts per AI tool | `claude.sh`, `copilot.sh`, `cursor.sh`, `gemini.sh` |
+
+### How the layers interact
+
+```text
+attach.sh
+  └─► agents/claude.sh (or cursor.sh, gemini.sh, codex.sh)
+        ├─► Deploy settings.json ──► hooks/ (automatic event handlers)
+        ├─► Symlink commands/    ──► /review, /save, /load, /setup-claude
+        └─► Symlink rules/      ──► .claude/rules/ (file-type scoped)
+
+Session starts:
+  inject_standards.py ──► Reads standards/rules/*.md frontmatter
+                          ──► Detects project tech (Cargo.toml → rust.md)
+                          ──► Injects matching rules into AI context
+                          ──► Survives context compaction via on_compact.py
+```
+
+### Standards vs Rules vs Commands
+
+- **Standards** (`standards/common/`, `standards/languages/`) — the full,
+  human-readable reference documentation. Developers read these directly.
+  The `tools/generate-rules.py` script compresses these into rules.
+
+- **Rules** (`standards/rules/`) — compact, machine-readable versions with
+  YAML frontmatter for auto-detection. These are what the AI actually sees
+  in its context window. Each rule file has `detect_markers` that map to
+  project files (e.g., `file:Cargo.toml` → inject `rust.md`).
+
+- **Commands** (`templates/claude-code/commands/`) — prompt-based playbooks
+  the user invokes explicitly via `/command`. These tell the AI what to
+  analyse and produce. They're skills, not rules.
 
 ---
 
