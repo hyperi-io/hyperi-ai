@@ -115,6 +115,16 @@ When Terraform, Ansible, K8s, or Docker files are present:
 | Decision records | `docs/decisions/` or inline in STATE.md |
 | Generated docs | `docs/` (via `/doco` command) |
 
+## Avoid Hardcoded Counts
+
+Never embed counts that will go stale when code changes:
+
+- ❌ "132 BATS tests", "21 rule files", "7 hooks"
+- ✅ "BATS test suite", "rule files covering languages and infrastructure"
+
+Hardcoded counts create maintenance debt — every addition or removal
+requires a doc update. Use prose descriptions instead.
+
 ## Anti-Patterns
 
 - Writing docs without reading the code first
@@ -122,3 +132,4 @@ When Terraform, Ansible, K8s, or Docker files are present:
 - Leaving TODO/placeholder sections in committed documentation
 - Documenting aspirational architecture instead of actual architecture
 - Bloating README with content that belongs in `docs/`
+- Embedding counts (files, tests, rules) that go stale on every change

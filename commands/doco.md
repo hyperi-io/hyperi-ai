@@ -251,3 +251,6 @@ The user may specify a scope:
 12. **Commit message for doc changes:** Use `docs:` prefix (no version bump).
 13. **Concise.** Keep descriptions short. One paragraph per component.
     Link to source files instead of inlining large code blocks.
+14. **No hardcoded counts.** Never write "132 tests", "21 rules", "7 hooks"
+    — these go stale on every change. Use prose: "BATS test suite",
+    "rules covering languages and infrastructure".

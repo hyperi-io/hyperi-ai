@@ -30,7 +30,7 @@
 
 hyperi-ai is a git submodule that consumer projects add to get:
 
-- **Coding standards** — 21 rules covering languages, infrastructure, security, and conventions
+- **Coding standards** — rules covering languages, infrastructure, security, and conventions
 - **AI assistant setup** — automated configuration for Claude Code, Cursor, Copilot, and Gemini
 - **Skills** — verification, documentation, and bleeding-edge dependency protection
 - **Hooks** — auto-format, lint-on-stop, safety guards, standards injection
@@ -69,7 +69,7 @@ Consumer Project/
 ### Tech Stack
 
 - **Languages:** Bash (thin wrappers only), Python 3.12+ (all logic, stdlib only)
-- **Testing:** BATS (132 tests)
+- **Testing:** BATS
 - **CI:** hyperi-ci
 - **Standards:** Superpowers plugin (methodology) + our skills (corporate standards)
 - **MCP:** Context7 (live docs)

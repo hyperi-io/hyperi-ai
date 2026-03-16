@@ -119,7 +119,9 @@ Check project docs against actual code and recent commit history.
 3. Compare docs against the real file tree and recent commits
 4. Flag: stale file paths, removed/renamed APIs, outdated examples,
    references to deleted features, wrong directory structures
-5. Propose edits for user approval — never auto-fix
+5. Flag hardcoded counts or values that will go stale (test counts,
+   rule counts, file counts) — replace with prose or remove
+6. Propose edits for user approval — never auto-fix
 
 ### B. Audit Inline TODOs and FIXMEs
 

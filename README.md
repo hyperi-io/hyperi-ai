@@ -229,7 +229,7 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |-- tools/                       # Development tools
 |   +-- compact-standards.py    # Generate compact rules from full standards (API script)
 |
-|-- tests/                       # BATS test suite (86 tests)
+|-- tests/                       # BATS test suite
 +-- docs/                        # Project documentation
 ```
 
@@ -282,7 +282,7 @@ methodology. hyperi-ai handles corporate standards; superpowers handles how to w
 | Git worktrees | superpowers | Parallel development workflow |
 | Plan writing | superpowers | Structured planning |
 | Code review methodology | superpowers | Review workflow (our `/review` adds corporate standards) |
-| Corporate coding standards | hyperi-ai | 21 rules -- language, infra, cross-cutting |
+| Corporate coding standards | hyperi-ai | Rules -- language, infra, cross-cutting |
 | Verification before completion | hyperi-ai | Unique -- superpowers has no equivalent |
 | Documentation/code-reality audit | hyperi-ai | Unique -- superpowers has no equivalent |
 | Bleeding-edge protection | hyperi-ai | Unique -- superpowers has no equivalent |
