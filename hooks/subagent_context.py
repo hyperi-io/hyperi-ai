@@ -28,13 +28,15 @@ def main() -> None:
     common.read_hook_input()
 
     project_dir = common.get_project_dir()
-    text, loaded = common.inject_rules(project_dir)
+    text, loaded = common.inject_cag_payload(project_dir)
 
     if loaded:
-        print(common.hook_response(
-            "SubagentStart",
-            additional_context=text,
-        ))
+        print(
+            common.hook_response(
+                "SubagentStart",
+                additional_context=text,
+            )
+        )
 
 
 if __name__ == "__main__":
