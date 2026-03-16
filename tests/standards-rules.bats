@@ -83,8 +83,8 @@ load test_helper
     cleanup_test_env
 }
 
-@test "TC-216: load.md references inject_standards.py hook for standards" {
-    run grep -q "inject_standards.py" "$AI_SOURCE/commands/load.md"
+@test "TC-216: load.md references CAG injection for standards" {
+    run grep -q "CAG" "$AI_SOURCE/commands/load.md"
     [ "$status" -eq 0 ]
 }
 
@@ -157,8 +157,8 @@ load test_helper
     rm -rf "$tmp"
 }
 
-@test "TC-223: on_compact.py calls inject_rules" {
-    run grep -q "inject_rules" "$AI_SOURCE/hooks/on_compact.py"
+@test "TC-223: on_compact.py calls inject_cag_payload" {
+    run grep -q "inject_cag_payload" "$AI_SOURCE/hooks/on_compact.py"
     [ "$status" -eq 0 ]
 }
 
