@@ -25,7 +25,7 @@ teardown() {
     cd "$TEST_SUBMODULE"
     ./hyperi-ai/attach.sh --no-agent
 
-    run ./hyperi-ai/agents/claude.sh --verbose
+    run ./hyperi-ai/agents/claude.sh --no-managed --no-superpowers --verbose
 
     [ "$status" -eq 0 ]
     [ -d ".claude" ]
@@ -97,7 +97,7 @@ teardown() {
     run "$AI_SOURCE/agents/claude.sh" --help
 
     [ "$status" -eq 0 ]
-    [[ "$output" =~ "Usage:" ]]
+    [[ "$output" =~ "usage:" ]] || [[ "$output" =~ "Usage:" ]]
 }
 
 @test "TC-108: Custom path" {

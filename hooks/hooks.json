@@ -1,0 +1,34 @@
+{
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "matcher": "startup",
+      "script": "./inject_standards.py",
+      "async": false
+    },
+    {
+      "event": "SessionStart",
+      "matcher": "compact",
+      "script": "./on_compact.py",
+      "async": false
+    },
+    {
+      "event": "PostToolUse",
+      "matcher": "Edit|Write|MultiEdit",
+      "script": "./auto_format.py"
+    },
+    {
+      "event": "SubagentStart",
+      "script": "./subagent_context.py"
+    },
+    {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "script": "./safety_guard.py"
+    },
+    {
+      "event": "Stop",
+      "script": "./lint_check.py"
+    }
+  ]
+}

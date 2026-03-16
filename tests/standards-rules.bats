@@ -64,12 +64,12 @@ load test_helper
     done
 }
 
-@test "TC-213: standards.md exists in templates/claude-code/commands/" {
-    [ -f "$AI_SOURCE/templates/claude-code/commands/standards.md" ]
+@test "TC-213: standards.md exists in commands/" {
+    [ -f "$AI_SOURCE/commands/standards.md" ]
 }
 
 @test "TC-214: standards.md references correct relative path to rules dir" {
-    run grep -q "ai/standards/rules" "$AI_SOURCE/templates/claude-code/commands/standards.md"
+    run grep -q "ai/standards/rules" "$AI_SOURCE/commands/standards.md"
     [ "$status" -eq 0 ]
 }
 
@@ -84,7 +84,7 @@ load test_helper
 }
 
 @test "TC-216: load.md references inject_standards.py hook for standards" {
-    run grep -q "inject_standards.py" "$AI_SOURCE/templates/claude-code/commands/load.md"
+    run grep -q "inject_standards.py" "$AI_SOURCE/commands/load.md"
     [ "$status" -eq 0 ]
 }
 

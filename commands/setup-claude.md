@@ -11,6 +11,39 @@ OK prompts.
 
 ---
 
+## Step 0: Verify Superpowers Plugin
+
+Check if the superpowers plugin is installed:
+
+```bash
+claude plugin list 2>/dev/null | grep -q superpowers && echo "INSTALLED" || echo "NOT INSTALLED"
+```
+
+If **NOT INSTALLED**, tell the user:
+
+```
+The superpowers plugin provides methodology skills (debugging, TDD, planning,
+worktrees, code review). It complements our corporate coding standards.
+
+Install with:
+  claude plugin marketplace add obra/superpowers-marketplace
+  claude plugin install superpowers@superpowers-marketplace
+
+Restart Claude Code after installing.
+```
+
+**Ask the user before installing.** Do NOT install without confirmation.
+
+If **INSTALLED**, check for updates:
+
+```bash
+claude plugin list 2>/dev/null | grep superpowers
+```
+
+Report the installed version and move on.
+
+---
+
 ## Step 1: Create the `.tmp/` Workspace
 
 The `.tmp/` directory is a gitignored scratch area INSIDE THE PROJECT for
@@ -19,6 +52,58 @@ intermediate files between commands.
 1. Run `mkdir -p .tmp`
 2. Read `.gitignore` (create if missing)
 3. If `.tmp/` is not listed, append `.tmp/` to `.gitignore`
+
+---
+
+## Step 1b: Configure GitHub MCP Authentication
+
+The GitHub MCP server is deployed as a remote HTTP server
+(`https://api.githubcopilot.com/mcp/`) in `.mcp.json`. It needs authentication
+to work. Check if auth is already configured:
+
+```bash
+claude mcp list 2>/dev/null | grep -A2 github || echo "NOT CONFIGURED"
+```
+
+If the github server shows up with auth, move on.
+
+If NOT CONFIGURED or missing auth, discover a PAT:
+
+```bash
+python3 "$CLAUDE_PROJECT_DIR/hyperi-ai/tools/discover_github_pat.py" --source 2>&1 | tail -1
+```
+
+If a token was found, configure it at user scope:
+
+```bash
+TOKEN=$(python3 "$CLAUDE_PROJECT_DIR/hyperi-ai/tools/discover_github_pat.py")
+claude mcp add -s user --transport http github https://api.githubcopilot.com/mcp/ -H "Authorization: Bearer $TOKEN"
+```
+
+If no token was found, tell the user:
+
+```
+The GitHub MCP server needs authentication. Two options:
+
+Option 1 — OAuth (easiest, requires browser):
+  Claude Code will prompt for OAuth when the MCP server is first used.
+  Just approve the GitHub OAuth flow when prompted.
+
+Option 2 — Personal Access Token:
+  The PAT discovery script checks these locations (in order):
+    1. $GITHUB_TOKEN or $GH_TOKEN environment variable
+    2. Project .env file (GITHUB_TOKEN=...)
+    3. ~/.env file (GITHUB_TOKEN=...)
+    4. gh auth token (gh CLI keyring -- run: gh auth login)
+    5. ~/.config/gh/hosts.yml
+    6. ~/.netrc
+
+  Easiest: run `gh auth login` to authenticate the gh CLI, then re-run /setup-claude.
+  Or create a PAT at: https://github.com/settings/tokens
+  Required scopes: repo, read:org
+```
+
+**Ask the user which approach they prefer.** Do NOT create tokens for them.
 
 ---
 

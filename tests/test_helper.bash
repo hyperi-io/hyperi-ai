@@ -2,9 +2,13 @@
 
 # Test environment paths
 # Use TMPDIR for CI compatibility, /projects/ai for local development
-if [ -d "/projects/ai" ]; then
+if [ -d "/projects/hyperi-ai" ]; then
     # Local development
-    export TEST_ROOT="/projects/ai-test"
+    export TEST_ROOT="/tmp/ai-test"
+    export AI_SOURCE="/projects/hyperi-ai"
+elif [ -d "/projects/ai" ]; then
+    # Legacy local development path
+    export TEST_ROOT="/tmp/ai-test"
     export AI_SOURCE="/projects/ai"
 else
     # CI environment
@@ -37,25 +41,28 @@ setup_test_env() {
     mkdir -p "$TEST_SUBMODULE/hyperi-ai"
     mkdir -p "$TEST_SUBMODULE/hyperi-ai/agents"
     echo "gitdir: ../.git/modules/hyperi-ai" > "$TEST_SUBMODULE/hyperi-ai/.git" 2>/dev/null || true
-    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_SUBMODULE/hyperi-ai/" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks,commands,skills,tools,.mcp.json} "$TEST_SUBMODULE/hyperi-ai/" 2>/dev/null || true
     cp -r "$AI_SOURCE"/agents/*.sh "$TEST_SUBMODULE/hyperi-ai/agents/" 2>/dev/null || true
-    chmod +x "$TEST_SUBMODULE/hyperi-ai/attach.sh" "$TEST_SUBMODULE/hyperi-ai/agents/"*.sh "$TEST_SUBMODULE/hyperi-ai/hooks/"*.py 2>/dev/null || true
+    cp -r "$AI_SOURCE"/.claude-plugin "$TEST_SUBMODULE/hyperi-ai/" 2>/dev/null || true
+    chmod +x "$TEST_SUBMODULE/hyperi-ai/attach.sh" "$TEST_SUBMODULE/hyperi-ai/agents/"*.sh "$TEST_SUBMODULE/hyperi-ai/hooks/"*.py "$TEST_SUBMODULE/hyperi-ai/tools/"*.py 2>/dev/null || true
 
     # Setup clone test
     mkdir -p "$TEST_CLONE/hyperi-ai"
     mkdir -p "$TEST_CLONE/hyperi-ai/agents"
-    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_CLONE/hyperi-ai/"
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks,commands,skills,tools,.mcp.json} "$TEST_CLONE/hyperi-ai/" 2>/dev/null || true
     cp -r "$AI_SOURCE"/agents/*.sh "$TEST_CLONE/hyperi-ai/agents/" 2>/dev/null || true
-    chmod +x "$TEST_CLONE/hyperi-ai/attach.sh" "$TEST_CLONE/hyperi-ai/agents/"*.sh "$TEST_CLONE/hyperi-ai/hooks/"*.py 2>/dev/null || true
+    cp -r "$AI_SOURCE"/.claude-plugin "$TEST_CLONE/hyperi-ai/" 2>/dev/null || true
+    chmod +x "$TEST_CLONE/hyperi-ai/attach.sh" "$TEST_CLONE/hyperi-ai/agents/"*.sh "$TEST_CLONE/hyperi-ai/hooks/"*.py "$TEST_CLONE/hyperi-ai/tools/"*.py 2>/dev/null || true
     # Create .git directory (simulates clone)
     mkdir -p "$TEST_CLONE/hyperi-ai/.git"
 
     # Setup standalone test
     mkdir -p "$TEST_STANDALONE/hyperi-ai"
     mkdir -p "$TEST_STANDALONE/hyperi-ai/agents"
-    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks} "$TEST_STANDALONE/hyperi-ai/" 2>/dev/null || true
+    cp -r "$AI_SOURCE"/{attach.sh,standards,templates,hooks,commands,skills,tools,.mcp.json} "$TEST_STANDALONE/hyperi-ai/" 2>/dev/null || true
     cp -r "$AI_SOURCE"/agents/*.sh "$TEST_STANDALONE/hyperi-ai/agents/" 2>/dev/null || true
-    chmod +x "$TEST_STANDALONE/hyperi-ai/attach.sh" "$TEST_STANDALONE/hyperi-ai/agents/"*.sh "$TEST_STANDALONE/hyperi-ai/hooks/"*.py 2>/dev/null || true
+    cp -r "$AI_SOURCE"/.claude-plugin "$TEST_STANDALONE/hyperi-ai/" 2>/dev/null || true
+    chmod +x "$TEST_STANDALONE/hyperi-ai/attach.sh" "$TEST_STANDALONE/hyperi-ai/agents/"*.sh "$TEST_STANDALONE/hyperi-ai/hooks/"*.py "$TEST_STANDALONE/hyperi-ai/tools/"*.py 2>/dev/null || true
     # No .git (simulates unzipped)
 }
 

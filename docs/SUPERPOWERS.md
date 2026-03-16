@@ -1,69 +1,82 @@
 # Superpowers Integration
 
-## Relationship
+## Strategy: Superpowers + Ours (Lean)
 
-[obra/superpowers](https://github.com/obra/superpowers) (MIT, 83k+ stars) and
-hyperi-ai are **complementary, not competing**:
+[obra/superpowers](https://github.com/obra/superpowers) (MIT, 40k+ stars) handles
+**development methodology** -- how to debug, test, plan, and review. hyperi-ai handles
+**corporate standards** -- what rules apply, how they're detected per tech stack, and
+how they integrate with CI.
 
-- **Superpowers** provides **workflow methodology** — how to think about
-  debugging, testing, planning, and verification
-- **hyperi-ai** provides **standards enforcement** — what rules apply, how
-  they're auto-detected per project tech stack, and how they integrate with CI
+We previously cherry-picked superpowers ideas into our own rules. With the v2.8
+architecture, we delegate methodology entirely to superpowers and focus on what's
+unique to us.
 
-## What We Cherry-Picked (Option B)
+## Division of Responsibility
 
-We evaluated all 14 superpowers skills and cherry-picked the four highest-value
-ideas into our own `standards/rules/` format:
-
-| Superpowers Skill | Our Rule | What We Took |
+| What | Source | Why |
 |---|---|---|
-| `systematic-debugging` | `debugging.md` | 4-phase root cause methodology |
-| `verification-before-completion` | `verification.md` | Evidence-before-claims gate |
-| `test-driven-development` | `testing.md` (enhanced) | RED-GREEN-REFACTOR enforcement |
-| `dispatching-parallel-agents` | `parallel-agents.md` | When/how to parallelise subagents |
+| Systematic debugging | superpowers | Their 4-phase methodology is mature, maintained |
+| TDD enforcement | superpowers | RED-GREEN-REFACTOR workflow |
+| Brainstorming/design | superpowers | Design thinking workflow |
+| Git worktrees | superpowers | Parallel development |
+| Plan writing/execution | superpowers | Structured planning pipeline |
+| Code review methodology | superpowers | Review workflow |
+| Subagent-driven development | superpowers | Parallel agent coordination |
+| **Corporate coding standards** | **hyperi-ai** | 21 rules -- language, infra, cross-cutting |
+| **Verification before completion** | **hyperi-ai** | Unique -- evidence-before-claims gate |
+| **Documentation/code-reality audit** | **hyperi-ai** | Unique -- docs must match code |
+| **Bleeding-edge dependency protection** | **hyperi-ai** | Unique -- stale training data protection |
 
-### Why Not the Others
+## What We Removed (superpowers covers it)
 
-| Skill | Decision | Reason |
-|---|---|---|
-| `brainstorming` | Skip | Too heavyweight for most tasks |
-| `writing-plans` | Skip | Good for huge features, overkill for normal work |
-| `executing-plans` | Skip | Coupled to their planning pipeline |
-| `using-git-worktrees` | Skip | CC has native worktree support already |
-| `finishing-a-development-branch` | Skip | Covered by our git + CI rules |
-| `subagent-driven-development` | Skip | Coupled to their plan/execution pipeline |
-| `receiving-code-review` | Skip | We have `/review` command |
-| `requesting-code-review` | Skip | We have `/review` command |
-| `writing-skills` | Skip | Meta — only useful for their framework |
-| `using-superpowers` | Skip | Intro — not applicable |
+These rules were deleted from `standards/rules/` in v2.8:
 
-## Why Option B Over Other Options
+| Former hyperi-ai Rule | Superpowers Equivalent |
+|---|---|
+| `debugging.md` | `systematic-debugging` |
+| `testing.md` | `test-driven-development` |
+| `parallel-agents.md` | `dispatching-parallel-agents` / `subagent-driven-development` |
 
-**Option A (submodule)** was rejected because:
-- Their SKILL.md format doesn't match our YAML frontmatter detection system
-- Nested submodule (hyperi-ai is already a submodule) gets messy
-- Their skills cross-reference each other — we'd inherit the whole workflow graph
-- They're opinionated about file locations (`docs/superpowers/plans/`)
+## What We Kept as Skills (unique to us)
 
-**Option C (companion recommendation)** is still valid — users who want the full
-structured methodology can install superpowers via the Claude plugin marketplace
-alongside hyperi-ai without conflict.
+These became Agent Skills in `skills/` -- superpowers has no equivalent:
 
-**Option D (hybrid submodule + cherry-pick)** was rejected as unnecessary
-complexity — the methodology ideas are stable and don't need upstream tracking.
+| Skill | Purpose |
+|---|---|
+| `verification` | Verify before claiming completion -- requires fresh command output as evidence |
+| `documentation` | Documentation standards and code-reality auditing |
+| `bleeding-edge` | Stale training data protection + Context7 MCP for live library docs |
 
-## Our Advantages Over Plugin Approach
+## Installation
 
-| Feature | hyperi-ai (submodule) | superpowers (plugin) |
-|---|---|---|
-| Team enforcement | Committed to repo | Per-user install |
-| Tech detection | YAML frontmatter auto-detect | Manual skill selection |
-| Multi-agent | Claude, Cursor, Copilot, Gemini | Claude-only |
-| CI integration | hyperi-ci check, hooks, guards | None |
-| Customisation | Override per-project, per-user | Fork or skip skills |
-| Human-readable | Markdown rules in `standards/` | SKILL.md files |
+```bash
+# From within a Claude Code session
+claude plugin install superpowers@superpowers-marketplace
+
+# Or via /setup-claude command
+/setup-claude
+```
+
+The `/setup-claude` command checks for superpowers and prompts to install if missing.
+
+## Conflict Resolution
+
+| Potential Conflict | Resolution |
+|---|---|
+| Superpowers uses American English | Our `UNIVERSAL.md` rule (project-level) overrides -- Australian English wins |
+| Both define verification | Superpowers `verification-before-completion` and our `verification` skill complement -- ours is stricter (requires command output evidence) |
+| Both define code review | Superpowers provides methodology, our `/review` command adds corporate standards on top |
+
+## Air-Gapped Environments
+
+If superpowers can't be installed (no internet, restricted environments):
+- All corporate coding standards still work (rules are submodule-deployed)
+- Our 3 unique skills still work (verification, documentation, bleeding-edge)
+- Methodology (debugging, TDD, planning) is unavailable -- accepted gap
+- No fallback methodology skills are maintained -- lean approach
 
 ## Attribution
 
-Cherry-picked rules include `<!-- inspired-by: obra/superpowers ... (MIT) -->`
-comments crediting the source. The superpowers project is MIT licensed.
+superpowers is MIT licensed. See https://github.com/obra/superpowers for the full
+project. Our earlier cherry-picked rules (now removed) credited the source with
+`<!-- inspired-by: obra/superpowers ... (MIT) -->` comments.

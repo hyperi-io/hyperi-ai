@@ -1,22 +1,11 @@
 ---
-paths:
-  - "**/*.py"
-  - "**/*.rs"
-  - "**/*.go"
-  - "**/*.ts"
-  - "**/*.tsx"
-  - "**/*.js"
-  - "**/*.sh"
-  - "**/*.bash"
-  - "**/*.c"
-  - "**/*.cpp"
-detect_markers:
-  - "file:src"
-  - "dir:src"
-  - "dir:lib"
-  - "dir:tests"
+name: verification
+description: >-
+  Verification-before-completion protocol. Use before any success claim,
+  commit, PR, or expression of satisfaction. Requires fresh command output
+  as evidence — no claims without running the verification command.
 ---
-<!-- override: manual -->
+<!-- Project: HyperI AI -->
 <!-- inspired-by: obra/superpowers verification-before-completion (MIT) -->
 
 # Verification Before Completion

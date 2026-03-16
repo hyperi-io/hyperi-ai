@@ -1,16 +1,11 @@
 ---
-paths:
-  - "**/README.md"
-  - "**/STATE.md"
-  - "**/docs/**"
-  - "**/ARCHITECTURE.md"
-  - "**/*.md"
-detect_markers:
-  - "file:README.md"
-  - "dir:src"
-  - "dir:lib"
+name: documentation
+description: >-
+  Documentation standards and code-reality auditing. Use when writing or
+  updating docs, README, STATE.md, or ARCHITECTURE.md. Docs must match
+  actual code — verify before writing.
 ---
-<!-- override: manual -->
+<!-- Project: HyperI AI -->
 
 # Documentation Standards
 
@@ -89,17 +84,6 @@ Use mermaid diagrams in markdown for:
 | **Entity-relationship** (`erDiagram`) | Data models, database schemas |
 | **Flowchart** (`flowchart LR`) | Build pipelines, decision logic |
 | **State** (`stateDiagram-v2`) | Lifecycle management, status transitions |
-
-Embed directly in markdown:
-
-````markdown
-```mermaid
-graph TD
-    A[Client] --> B[API Gateway]
-    B --> C[Service]
-    C --> D[(Database)]
-```
-````
 
 ### Diagram Rules
 
