@@ -109,6 +109,33 @@ Consumer Project/
 
 ---
 
+## API Keys and Token Counting
+
+**Keys:** Stored in project `.env` (gitignored). Currently holds:
+
+- `ANTHROPIC_API_KEY` — for token counting via the Anthropic SDK
+- `CONTEXT7_API_KEY` — for Context7 MCP live docs
+
+**Token counting:** Use the Anthropic `count_tokens` API (free, no cost) for
+accurate Claude token measurements. Available via `anthropic` SDK in `~/.venv`:
+
+```python
+from anthropic import Anthropic
+client = Anthropic()  # reads ANTHROPIC_API_KEY from env
+result = client.messages.count_tokens(
+    model="claude-sonnet-4-20250514",
+    messages=[{"role": "user", "content": text}]
+)
+print(result.input_tokens)
+```
+
+**Key insight:** Compact markdown tokenises at approximately 3 bytes per token
+on Claude, not the commonly assumed 0.75-1.3. Always measure with the API,
+never estimate from byte counts. The full CAG payload is approximately 24K
+tokens (~2.4% of the 1M context window).
+
+---
+
 ## External Dependencies
 
 - **Superpowers plugin** — methodology skills (debugging, TDD, planning, worktrees, code review)

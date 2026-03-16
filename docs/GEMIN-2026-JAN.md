@@ -1,3 +1,5 @@
+> **Archived:** This assessment was written January 2026. The March 2026 revisit date has passed. See git log for current Gemini integration status.
+
 # Executive Summary: Gemini 3.0 Migration Strategy
 
 **Date:** January 8, 2026

@@ -7,15 +7,15 @@ Standards content is in the files referenced below — not in this file.
 
 Standards are delivered in three layers:
 
-1. **Universal Rules** — `ai/standards/rules/UNIVERSAL.md` (~137 lines)
+1. **Universal Rules** — `hyperi-ai/standards/rules/UNIVERSAL.md` (~137 lines)
    Cross-cutting rules for ALL code: git, style, errors, security, testing, licensing.
    Always load this first.
 
-2. **Path-Scoped Rules** — `ai/standards/rules/<topic>.md`
+2. **Path-Scoped Rules** — `hyperi-ai/standards/rules/<topic>.md`
    Auto-injected when editing matching file types.
 
-3. **Full Standards** — `ai/standards/languages/`, `ai/standards/infrastructure/`,
-   `ai/standards/common/`
+3. **Full Standards** — `hyperi-ai/standards/languages/`, `hyperi-ai/standards/infrastructure/`,
+   `hyperi-ai/standards/common/`
    Complete unabridged standards for deep reference, code review, and simplification.
 
 ## Available Rules
@@ -58,10 +58,10 @@ Standards are delivered in three layers:
 ### Session Start
 
 1. Read `TODO.md` and `STATE.md`
-2. Read `ai/standards/rules/UNIVERSAL.md`
+2. Read `hyperi-ai/standards/rules/UNIVERSAL.md`
 3. Language/infra rules are auto-injected by your agent when editing matching files
 
 ### When You Need Full Detail
 
-Read the full standard from `ai/standards/languages/` or `ai/standards/infrastructure/`.
+Read the full standard from `hyperi-ai/standards/languages/` or `hyperi-ai/standards/infrastructure/`.
 Appropriate for code review, simplification, or complex implementation decisions.

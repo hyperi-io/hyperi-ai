@@ -357,7 +357,7 @@ This is fully silent -- no output unless something actually changed.
 
 ## Standards Loading
 
-Standards are delivered in three layers, each with different persistence:
+Standards are delivered via CAG-heavy injection with redundant fallback layers:
 
 ### Layer 0 -- User overrides (highest priority)
 
@@ -380,10 +380,12 @@ EOF
 
 Respects `XDG_CONFIG_HOME` if set (defaults to `~/.config`).
 
-### Layer 1 -- Rules: Path-scoped, auto-injected (survives compaction)
+### Layer 1 -- CAG: Pre-loaded at session start (primary)
 
-Compact path-scoped rules in `.claude/rules/` are injected automatically by Claude Code
-when you edit matching files. They survive context compaction.
+All relevant standards are pre-loaded into context at session start by
+`inject_cag_payload()` in `hooks/common.py`: `UNIVERSAL.md`, all detected technology
+rules, project context (STATE.md), skills, and commands. Approximately 24K tokens
+(~2.4% of the 1M context window). Re-injected by `on_compact.py` after compaction.
 
 Technology detection scans up to 3 levels deep (handles monorepos and workspaces):
 
@@ -403,7 +405,13 @@ Technology detection scans up to 3 levels deep (handles monorepos and workspaces
 | `certs/`, `ssl/`, `pki/` | `pki.md` |
 | `.releaserc`, `release.config.*`, `.github/`, `VERSION` | `ci.md` |
 
-### Layer 2 -- Skills: Methodology on demand (descriptions survive compaction)
+### Layer 2 -- RAG: Path-scoped rules (redundant fallback)
+
+Compact path-scoped rules in `.claude/rules/` are still deployed and auto-injected by
+Claude Code when editing matching files. This provides a safety net if CAG injection
+is incomplete or a technology was not detected at startup.
+
+### Layer 3 -- Skills: Methodology on demand (descriptions survive compaction)
 
 Skills in `.claude/skills/` have descriptions that persist across compaction.
 CC loads the full skill content when the description matches the current task:
@@ -413,11 +421,6 @@ CC loads the full skill content when the description matches the current task:
 | `verification` | Claiming completion, committing, creating PRs |
 | `documentation` | Writing or updating docs, README, STATE.md |
 | `bleeding-edge` | Adding dependencies, using library APIs, Docker images |
-
-### Layer 3 -- CAG: Injected at session start
-
-`standards/rules/UNIVERSAL.md` plus all detected technology rules are automatically
-injected into Claude's context by the `SessionStart` hook (`inject_standards.py`).
 
 ---
 

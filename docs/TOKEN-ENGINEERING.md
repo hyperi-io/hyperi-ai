@@ -1,163 +1,104 @@
-# Token Engineering for Documentation
+# Token Engineering
 
-**Purpose:** Optimise markdown for token efficiency while preserving human readability.
-
----
-
-## Loading Strategy
-
-**Single path - always load:**
-
-1. `rules/UNIVERSAL.md` - Cross-cutting coding rules (~137 lines)
-2. Relevant `rules/<lang>.md` file(s) - Auto-injected by agent when editing matching files
-3. Full `languages/*.md` and `infrastructure/*.md` for deep reference
-
-**Auto-detection:**
-
-| If you find... | Load from `languages/` |
-|----------------|------------------------|
-| `pyproject.toml`, `*.py` | `PYTHON.md` |
-| `go.mod` | `GOLANG.md` |
-| `package.json`, `tsconfig.json` | `TYPESCRIPT.md` |
-| `Cargo.toml` | `RUST.md` |
-| `*.sh`, `ci/` directory | `BASH.md` |
-
-| If you find... | Load from `infrastructure/` |
-|----------------|----------------------------|
-| `Dockerfile`, `docker-compose.yaml` | `DOCKER.md` |
-| `Chart.yaml`, `helmfile.yaml` | `K8S.md` |
-| `*.tf` | `TERRAFORM.md` |
-| `ansible.cfg`, `playbooks/` | `ANSIBLE.md` |
+**Purpose:** Optimise standards delivery for token efficiency in LLM context windows.
 
 ---
 
-## Token Budgets
+## CAG-Heavy Strategy (1M Context Window)
 
-**Philosophy:** Token limits are LIMITS, not targets.
+All relevant standards, skills, and project context are pre-loaded at session
+start via `inject_cag_payload()` in `hooks/common.py`. The full payload is
+re-injected on context compaction — no tiered recovery, no user action needed.
 
-- Only add content that provides HIGH VALUE
-- Don't pad to reach a number - quality over quantity
-- If a file is 3K tokens and complete, that's GOOD
+**Payload contents:**
 
-| File Type | Maximum |
+1. UNIVERSAL.md (always)
+2. Detected tech compact rules (language + infrastructure, via `detect_markers`)
+3. All common compact rules (security, error-handling, design-principles, etc.)
+4. All skill content (verification, bleeding-edge, documentation)
+5. Project STATE.md
+6. User standards override (if present)
+7. Bash efficiency rules + tool survey
+
+**Budget (approximate, measured via Anthropic `count_tokens` API):**
+
+| Component | ~Tokens |
 |-----------|---------|
-| Compact rule (each) | 200 lines |
-| Language file (each) | 10K |
-| Infrastructure file (each) | 10K |
+| UNIVERSAL.md | ~2,300 |
+| Detected tech rules (typical 5) | ~10,000 |
+| All common rules (8 files) | ~5,000 |
+| All skills (3) | ~3,400 |
+| STATE.md | ~1,700 |
+| Bash efficiency + tool survey | ~1,400 |
+| **Typical total** | **~24,000** |
+| **Worst case (all 13 tech rules)** | **~39,000** |
 
-**Current Sizes:**
+~24K tokens is ~2.4% of the 1M window. Even worst case is under 4%.
 
-| File | Tokens | Status |
-|------|--------|--------|
-| UNIVERSAL.md (compact) | ~137 lines | ✅ Under budget |
-| PYTHON.md | ~3.7K | ✅ Under budget |
-| GOLANG.md | ~8.7K | ✅ Under budget |
-| TYPESCRIPT.md | ~7.7K | ✅ Under budget |
-| RUST.md | ~3.3K | ✅ Under budget |
-| BASH.md | ~5K | ✅ Under budget |
-| DOCKER.md | ~5.3K | ✅ Under budget |
-| K8S.md | ~3K | ✅ Under budget |
-| TERRAFORM.md | ~2.5K | ✅ Under budget |
-| ANSIBLE.md | ~6K | ✅ Under budget |
-
----
-
-## Document Profiles
-
-### AI Profile (LLM-First)
-
-**Use for:** `code-assistant/` files
-**Audience:** AI assistants (SME-level understanding)
-
-**Characteristics:**
-
-- Concise directives ("Use X", "Never Y")
-- Tables over prose
-- Symbolic notation (✅ ❌)
-- 1-2 examples max per concept
-- No motivational language
-
-### Human-AI Profile (Balanced)
-
-**Use for:** `common/`, `languages/`, `infrastructure/` files
-**Audience:** Developers + AI assistants
-
-**Characteristics:**
-
-- Clear, direct language
-- Sufficient context for intermediate developers
-- Brief rationale (1-2 sentences)
-- Balance tables and readable prose
-
----
-
-## File Structure
-
-```text
-standards/
-├── STANDARDS.md              # Full entry point (reference)
-├── STANDARDS-QUICKSTART.md   # Quick reference index
-├── rules/                   # Compact rules (<200 lines each)
-│
-├── code-assistant/           # AI profile
-│   ├── COMMON.md
-│   └── AI-GUIDELINES.md
-│
-├── common/                   # Human-AI profile
-│   └── (language-agnostic standards)
-│
-├── languages/                # Human-AI profile
-│   └── (per-language standards)
-│
-└── infrastructure/           # Human-AI profile
-    └── (per-tool standards)
-```
-
----
-
-## Section Ordering
-
-Order sections by developer workflow relevance:
-
-1. **Immediate needs** - Code style, git commits (used daily)
-2. **Writing code** - Error handling, security, testing
-3. **Architecture** - Design principles, reference material
-4. **Workflow** - Semantic release, CI/CD
-5. **Rare operations** - Repo setup, file headers
-6. **AI-specific** - No mocks policy, AI code of conduct (LAST)
+**Key insight:** Compact markdown tokenises at approximately 3 bytes per token
+on Claude — not the commonly assumed 0.75-1.3 bytes per token. Always measure
+with the API, never estimate from byte counts.
 
 ---
 
 ## Token Counting
 
-**Precise:**
+**Use the Anthropic API (free, accurate):**
 
-```bash
-python3 -c "import tiktoken; enc=tiktoken.encoding_for_model('gpt-4'); print(len(enc.encode(open('FILE.md').read())))"
+```python
+from anthropic import Anthropic
+client = Anthropic()  # reads ANTHROPIC_API_KEY from .env
+result = client.messages.count_tokens(
+    model="claude-sonnet-4-20250514",
+    messages=[{"role": "user", "content": text}]
+)
+print(result.input_tokens)
 ```
 
-**Approximate:**
+**Do NOT use** tiktoken (OpenAI tokeniser) or byte-count heuristics — these
+overestimate Claude token counts by 3-5x for compact markdown.
 
-```bash
-# 1 token ≈ 4 characters for English
-wc -c FILE.md | awk '{print int($1/4)}'
-```
+---
+
+## Compact Rules Design
+
+Compact rules in `standards/rules/` are the primary CAG payload. Generated
+from full source standards by `tools/generate-rules.py` or hand-maintained
+with `<!-- override: manual -->`.
+
+**Constraints:**
+
+| Rule | Maximum |
+|------|---------|
+| Compact rule (each) | 200 lines |
+| Single rule tokens | ~2,500 tokens |
+
+**Principles:**
+
+- Token limits are LIMITS, not targets — don't pad
+- Concise directives ("Use X", "Never Y")
+- Tables over prose
+- 1-2 examples max per concept
+- No motivational language
+
+---
+
+## Document Profiles
+
+| Profile | Location | Audience |
+|---------|----------|----------|
+| LLM-optimised | `standards/rules/` | AI assistants (CAG payload) |
+| Human-AI balanced | `standards/common/`, `languages/`, `infrastructure/` | Developers + AI (full reference) |
+
+The compact rules are what hit the context window. Full source standards are
+reference material for humans and for the `generate-rules.py` pipeline.
 
 ---
 
 ## Anti-Patterns
 
-❌ Don't create .backup files (use git commits)
-❌ Don't pad files to reach token limits
-❌ Don't remove essential context
-❌ Don't change meaning
-❌ Don't remove all examples
-
----
-
-## Quick Reference
-
-| Profile | Location | Audience |
-|---------|----------|----------|
-| AI | code-assistant/ | LLM only |
-| Human-AI | common/, languages/, infrastructure/ | Both |
+- Don't pad files to reach token limits
+- Don't estimate tokens from byte counts — measure with the API
+- Don't use tiktoken for Claude token counts
+- Don't remove essential context to save tokens (the budget is ~2.4% of 1M)
+- Don't hardcode token counts in docs — label as approximate

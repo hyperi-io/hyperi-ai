@@ -42,13 +42,21 @@ hyperi-ai/
 
 ---
 
-## Standards Architecture (v2)
+## Standards Architecture (CAG-Heavy)
 
-Standards are delivered in three layers, all sourced from `standards/rules/`:
+Standards are primarily delivered via CAG (Context-Augmented Generation) at session
+start, with redundant fallback layers:
 
-1. **CAG (Context-Augmented Generation):** `UNIVERSAL.md` + detected tech rules auto-injected at session start by `inject_standards.py` (SessionStart hook). Also injects current date and web-search-before-code mandate. Re-injected by `on_compact.py` after context compaction.
-2. **RAG (Retrieval-Augmented Generation):** Path-scoped rule files (e.g. `python.md`) auto-injected by Claude Code when editing matching files — survives context compaction
-3. **Skills (On-Demand):** Full standards in `standards/languages/` and `standards/infrastructure/` loaded via `/review` or `/simplify`
+1. **CAG (Primary):** All relevant standards — `UNIVERSAL.md`, detected tech rules,
+   project context (STATE.md), skills, and commands — are pre-loaded into context at
+   session start by `inject_cag_payload()` in `hooks/common.py`. Approximately 24K
+   tokens (~2.4% of the 1M context window). Re-injected by `on_compact.py` after
+   context compaction.
+2. **RAG (Redundant fallback):** Path-scoped rule files (e.g. `python.md`) in
+   `.claude/rules/` are still deployed and auto-injected by Claude Code when editing
+   matching files. This provides a safety net if CAG injection is incomplete.
+3. **Skills (On-Demand):** Full standards in `standards/languages/` and
+   `standards/infrastructure/` loaded via `/review` or `/simplify`
 
 Each agent's deploy script converts `standards/rules/*.md` into its platform's format:
 - **Claude Code:** Symlinked to `.claude/rules/` (YAML `paths:` frontmatter preserved)
