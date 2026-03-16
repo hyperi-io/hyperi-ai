@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/hyperi-io/hyperi-ai/compare/3.0.0...3.0.1) (2026-03-16)
+
+
+### Bug Fixes
+
+* switch GitHub MCP to Go binary (stdio), add STATE.md ([b0753a7](https://github.com/hyperi-io/hyperi-ai/commit/b0753a7a292e0a0fa5f4d4552c95abef291c6d39))
+
 ## [3.0.0](https://github.com/hyperi-io/hyperi-ai/compare/2.8.0...3.0.0) (2026-03-16)
 
 
