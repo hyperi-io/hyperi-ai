@@ -13,8 +13,6 @@ Called by agents/claude.sh (thin bash wrapper).
 
 import argparse
 import filecmp
-import glob
-import json
 import os
 import shutil
 import subprocess
@@ -30,7 +28,11 @@ EXIT_NOT_INSTALLED = 2
 # ANSI colours (disabled if not a terminal)
 if sys.stdout.isatty():
     _RED, _GREEN, _YELLOW, _BLUE, _NC = (
-        "\033[0;31m", "\033[0;32m", "\033[0;33m", "\033[0;34m", "\033[0m",
+        "\033[0;31m",
+        "\033[0;32m",
+        "\033[0;33m",
+        "\033[0;34m",
+        "\033[0m",
     )
 else:
     _RED = _GREEN = _YELLOW = _BLUE = _NC = ""
@@ -86,7 +88,12 @@ def setup_claude_dir(project_root: str, dry_run: bool, verbose: bool) -> None:
 
 
 def deploy_settings(
-    ai_root: str, project_root: str, *, dry_run: bool, force: bool, verbose: bool,
+    ai_root: str,
+    project_root: str,
+    *,
+    dry_run: bool,
+    force: bool,
+    verbose: bool,
 ) -> None:
     """Deploy settings.json as symlink."""
     src = Path(ai_root) / "templates" / "claude-code" / "settings.json"
@@ -115,7 +122,10 @@ def deploy_settings(
 
 
 def patch_self_deploy_hooks(
-    project_root: str, *, dry_run: bool, verbose: bool,
+    project_root: str,
+    *,
+    dry_run: bool,
+    verbose: bool,
 ) -> None:
     """Patch settings.json hook paths for self-deploy mode.
 
@@ -137,8 +147,8 @@ def patch_self_deploy_hooks(
         content = f.read()
 
     patched = content.replace(
-        '$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/',
-        '$CLAUDE_PROJECT_DIR/hooks/',
+        "$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/",
+        "$CLAUDE_PROJECT_DIR/hooks/",
     )
 
     if patched == content:
@@ -154,7 +164,11 @@ def patch_self_deploy_hooks(
 
 
 def deploy_commands(
-    ai_root: str, project_root: str, *, dry_run: bool, verbose: bool,
+    ai_root: str,
+    project_root: str,
+    *,
+    dry_run: bool,
+    verbose: bool,
 ) -> None:
     """Deploy slash commands as symlinks (always re-deployed)."""
     src_dir = Path(ai_root) / "commands"
@@ -166,7 +180,15 @@ def deploy_commands(
         sys.exit(EXIT_ERROR)
 
     dst_dir = Path(project_root) / ".claude" / "commands"
-    commands = ["load", "save", "review", "simplify", "standards", "setup-claude", "doco"]
+    commands = [
+        "load",
+        "save",
+        "review",
+        "simplify",
+        "standards",
+        "setup-claude",
+        "doco",
+    ]
 
     if dry_run:
         for cmd in commands:
@@ -200,7 +222,12 @@ def deploy_commands(
 
 
 def deploy_rules(
-    ai_root: str, project_root: str, *, dry_run: bool, force: bool, verbose: bool,
+    ai_root: str,
+    project_root: str,
+    *,
+    dry_run: bool,
+    force: bool,
+    verbose: bool,
 ) -> None:
     """Deploy rules as symlinks."""
     rules_src = Path(ai_root) / "standards" / "rules"
@@ -235,7 +262,7 @@ def deploy_rules(
         log_success(f"Deployed {count} rule files to {rules_dst}/")
 
     # Clean up migrated methodology rules
-    migrated = ["debugging", "verification", "testing", "parallel-agents", "documentation"]
+    migrated = ["debugging", "verification", "parallel-agents", "documentation"]
     for name in migrated:
         old = rules_dst / f"{name}.md"
         if old.exists() or old.is_symlink():
@@ -265,7 +292,10 @@ def _detect_tech(project_root: str) -> list[tuple[str, str, str]]:
     found: list[tuple[str, str, str]] = []
 
     # Languages
-    if any((p / f).exists() for f in ("pyproject.toml", "setup.py", "requirements.txt", "uv.lock")):
+    if any(
+        (p / f).exists()
+        for f in ("pyproject.toml", "setup.py", "requirements.txt", "uv.lock")
+    ):
         found.append(("Python", "python", "languages/PYTHON.md"))
     if (p / "go.mod").exists():
         found.append(("Go", "golang", "languages/GOLANG.md"))
@@ -278,18 +308,33 @@ def _detect_tech(project_root: str) -> list[tuple[str, str, str]]:
     if any(p.glob("*.sh")):
         found.append(("Bash", "bash", "languages/BASH.md"))
     # ClickHouse
-    ch_markers = ["clickhouse-server.xml", "clickhouse-client.xml", "config/clickhouse-server.xml"]
+    ch_markers = [
+        "clickhouse-server.xml",
+        "clickhouse-client.xml",
+        "config/clickhouse-server.xml",
+    ]
     if any((p / m).exists() for m in ch_markers):
-        found.append(("ClickHouse SQL", "clickhouse-sql", "languages/SQL-CLICKHOUSE.md"))
+        found.append(
+            ("ClickHouse SQL", "clickhouse-sql", "languages/SQL-CLICKHOUSE.md")
+        )
 
     # Infrastructure
-    if any((p / f).exists() for f in ("Dockerfile", "docker-compose.yaml", "docker-compose.yml")):
+    if any(
+        (p / f).exists()
+        for f in ("Dockerfile", "docker-compose.yaml", "docker-compose.yml")
+    ):
         found.append(("Docker", "docker", "infrastructure/DOCKER.md"))
-    if any((p / f).exists() for f in ("Chart.yaml", "values.yaml")) or (p / "charts").is_dir():
+    if (
+        any((p / f).exists() for f in ("Chart.yaml", "values.yaml"))
+        or (p / "charts").is_dir()
+    ):
         found.append(("Kubernetes", "k8s", "infrastructure/K8S.md"))
     if any(p.glob("*.tf")):
         found.append(("Terraform", "terraform", "infrastructure/TERRAFORM.md"))
-    if any((p / f).exists() for f in ("ansible.cfg", "playbook.yml")) or (p / "playbooks").is_dir():
+    if (
+        any((p / f).exists() for f in ("ansible.cfg", "playbook.yml"))
+        or (p / "playbooks").is_dir()
+    ):
         found.append(("Ansible", "ansible", "infrastructure/ANSIBLE.md"))
     # PKI
     pki_dirs = ["certs", "ssl", "pki", "tls"]
@@ -300,10 +345,18 @@ def _detect_tech(project_root: str) -> list[tuple[str, str, str]]:
 
 
 def _create_skill(
-    name: str, src_file: str, skills_dir: str,
-    *, dry_run: bool, force: bool, verbose: bool,
+    name: str,
+    src_file: str,
+    skills_dir: str,
+    *,
+    dry_run: bool,
+    force: bool,
+    verbose: bool,
 ) -> bool:
-    """Create a skill directory with SKILL.md symlinked to source. Returns True if created."""
+    """Create a skill dir with SKILL.md symlinked to source.
+
+    Returns True if created.
+    """
     if not Path(src_file).is_file():
         if verbose:
             log_info(f"Skill source not found: {src_file}")
@@ -331,7 +384,12 @@ def _create_skill(
 
 
 def deploy_skills(
-    ai_root: str, project_root: str, *, dry_run: bool, force: bool, verbose: bool,
+    ai_root: str,
+    project_root: str,
+    *,
+    dry_run: bool,
+    force: bool,
+    verbose: bool,
 ) -> None:
     """Deploy skills (standards + detected tech + methodology)."""
     skills_dir = str(Path(project_root) / ".claude" / "skills")
@@ -340,18 +398,38 @@ def deploy_skills(
     log_info("Deploying skills...")
 
     # Core skills
-    _create_skill("standards", str(standards_dir / "STANDARDS.md"), skills_dir,
-                   dry_run=dry_run, force=force, verbose=verbose)
-    _create_skill("ai-guidelines", str(standards_dir / "code-assistant" / "AI-GUIDELINES.md"),
-                   skills_dir, dry_run=dry_run, force=force, verbose=verbose)
-    _create_skill("ai-common", str(standards_dir / "code-assistant" / "COMMON.md"),
-                   skills_dir, dry_run=dry_run, force=force, verbose=verbose)
+    _create_skill(
+        "standards",
+        str(standards_dir / "STANDARDS.md"),
+        skills_dir,
+        dry_run=dry_run,
+        force=force,
+        verbose=verbose,
+    )
+    _create_skill(
+        "ai-guidelines",
+        str(standards_dir / "code-assistant" / "AI-GUIDELINES.md"),
+        skills_dir,
+        dry_run=dry_run,
+        force=force,
+        verbose=verbose,
+    )
+    _create_skill(
+        "ai-common",
+        str(standards_dir / "code-assistant" / "COMMON.md"),
+        skills_dir,
+        dry_run=dry_run,
+        force=force,
+        verbose=verbose,
+    )
     print("  Core: standards, ai-guidelines, ai-common")
 
     # Detected tech skills
     for display, skill_name, std_path in _detect_tech(project_root):
         src = str(standards_dir / std_path)
-        if _create_skill(skill_name, src, skills_dir, dry_run=dry_run, force=force, verbose=verbose):
+        if _create_skill(
+            skill_name, src, skills_dir, dry_run=dry_run, force=force, verbose=verbose
+        ):
             print(f"  Detected: {display}")
 
     # Methodology skills (from skills/ directory)
@@ -364,15 +442,26 @@ def deploy_skills(
             src_file = skill_src_dir / "SKILL.md"
             if not src_file.is_file():
                 continue
-            _create_skill(skill_src_dir.name, str(src_file), skills_dir,
-                          dry_run=dry_run, force=force, verbose=verbose)
+            _create_skill(
+                skill_src_dir.name,
+                str(src_file),
+                skills_dir,
+                dry_run=dry_run,
+                force=force,
+                verbose=verbose,
+            )
             names.append(skill_src_dir.name)
         if names:
             print(f"  Methodology: {' '.join(names)}")
 
 
 def deploy_mcp(
-    ai_root: str, project_root: str, *, dry_run: bool, force: bool, verbose: bool,
+    ai_root: str,
+    project_root: str,
+    *,
+    dry_run: bool,
+    force: bool,
+    verbose: bool,
 ) -> None:
     """Deploy MCP server configuration."""
     src = Path(ai_root) / ".mcp.json"
@@ -417,7 +506,11 @@ def deploy_mcp(
 
 
 def create_symlink(
-    project_root: str, *, dry_run: bool, self_mode: bool, verbose: bool,
+    project_root: str,
+    *,
+    dry_run: bool,
+    self_mode: bool,
+    verbose: bool,
 ) -> None:
     """Create CLAUDE.md -> STATE.md symlink."""
     if self_mode:
@@ -445,7 +538,12 @@ def create_symlink(
 
 
 def install_managed_settings(
-    ai_root: str, *, dry_run: bool, force: bool, no_managed: bool, verbose: bool,
+    ai_root: str,
+    *,
+    dry_run: bool,
+    force: bool,
+    no_managed: bool,
+    verbose: bool,
 ) -> None:
     """Install managed-settings.json to /etc/claude-code/ (requires sudo)."""
     if no_managed:
@@ -476,7 +574,7 @@ def install_managed_settings(
     if not shutil.which("sudo"):
         log_info("Skipped: managed-settings.json (sudo not available)")
         if verbose:
-            log_info(f"  To install manually: sudo mkdir -p {dst.parent} && sudo cp {src} {dst}")
+            log_info(f"  Manual: sudo mkdir -p {dst.parent} && sudo cp {src} {dst}")
         return
 
     print()
@@ -499,11 +597,17 @@ def install_managed_settings(
         log_success(f"Installed: {dst}")
     except subprocess.CalledProcessError:
         log_warn("Failed to install managed-settings.json")
-        log_info(f"  To install manually: sudo mkdir -p {dst.parent} && sudo cp {src} {dst}")
+        log_info(
+            f"  To install manually: sudo mkdir -p {dst.parent} && sudo cp {src} {dst}"
+        )
 
 
 def install_superpowers(
-    agent_cli: str, *, dry_run: bool, no_superpowers: bool, verbose: bool,
+    agent_cli: str,
+    *,
+    dry_run: bool,
+    no_superpowers: bool,
+    verbose: bool,
 ) -> None:
     """Install superpowers plugin for methodology skills."""
     if no_superpowers:
@@ -520,7 +624,9 @@ def install_superpowers(
         return
 
     # Check if already installed
-    result = subprocess.run([agent_cli, "plugin", "list"], capture_output=True, text=True, timeout=10)
+    result = subprocess.run(
+        [agent_cli, "plugin", "list"], capture_output=True, text=True, timeout=10
+    )
     if "superpowers" in (result.stdout + result.stderr):
         if verbose:
             log_info("Superpowers plugin already installed")
@@ -536,33 +642,51 @@ def install_superpowers(
 
     # Add marketplace
     mp_result = subprocess.run(
-        [agent_cli, "plugin", "marketplace", "list"], capture_output=True, text=True, timeout=10,
+        [agent_cli, "plugin", "marketplace", "list"],
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     if "superpowers-marketplace" not in (mp_result.stdout + mp_result.stderr):
         r = subprocess.run(
             [agent_cli, "plugin", "marketplace", "add", "obra/superpowers-marketplace"],
-            capture_output=True, timeout=30,
+            capture_output=True,
+            timeout=30,
         )
         if r.returncode == 0:
             log_success("Added marketplace: superpowers-marketplace")
         else:
             log_warn("Failed to add superpowers marketplace")
-            log_info("  Manual install: claude plugin marketplace add obra/superpowers-marketplace")
+            log_info(
+                "  Manual install: claude plugin marketplace add obra/superpowers-marketplace"
+            )
             return
 
     # Install plugin
     r = subprocess.run(
-        [agent_cli, "plugin", "install", "superpowers@superpowers-marketplace", "--scope", "user"],
-        capture_output=True, timeout=60,
+        [
+            agent_cli,
+            "plugin",
+            "install",
+            "superpowers@superpowers-marketplace",
+            "--scope",
+            "user",
+        ],
+        capture_output=True,
+        timeout=60,
     )
     if r.returncode == 0:
         log_success("Installed: superpowers plugin (restart Claude Code to activate)")
     else:
         log_warn("Failed to install superpowers plugin")
-        log_info("  Manual install: claude plugin install superpowers@superpowers-marketplace")
+        log_info(
+            "  Manual install: claude plugin install superpowers@superpowers-marketplace"
+        )
 
 
-def write_version_stamp(ai_root: str, project_root: str, *, dry_run: bool, verbose: bool) -> None:
+def write_version_stamp(
+    ai_root: str, project_root: str, *, dry_run: bool, verbose: bool
+) -> None:
     """Write version stamp for auto-reattach detection."""
     if dry_run:
         print(f"Would write: {project_root}/.claude/.ai-version")
@@ -577,7 +701,9 @@ def write_version_stamp(ai_root: str, project_root: str, *, dry_run: bool, verbo
     try:
         result = subprocess.run(
             ["git", "-C", ai_root, "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0 and result.stdout.strip():
             version = result.stdout.strip()
@@ -588,9 +714,54 @@ def write_version_stamp(ai_root: str, project_root: str, *, dry_run: bool, verbo
         pass
 
 
+GITIGNORE_ENTRIES = [
+    "docs/superpowers/",
+]
+
+
+def ensure_gitignore(
+    project_root: str,
+    *,
+    dry_run: bool,
+    verbose: bool,
+) -> None:
+    """Ensure required entries exist in project .gitignore."""
+    gitignore = Path(project_root) / ".gitignore"
+    if not gitignore.exists():
+        if verbose:
+            log_info("Skipped .gitignore: file does not exist")
+        return
+
+    content = gitignore.read_text(encoding="utf-8")
+    lines = content.splitlines()
+    missing = [e for e in GITIGNORE_ENTRIES if e not in lines]
+
+    if not missing:
+        if verbose:
+            log_info(".gitignore already has all required entries")
+        return
+
+    if dry_run:
+        for entry in missing:
+            print(f"Would add to .gitignore: {entry}")
+        return
+
+    addition = "\n# AI agent working files (not committed)\n"
+    addition += "\n".join(missing) + "\n"
+
+    with open(gitignore, "a", encoding="utf-8") as f:
+        if not content.endswith("\n"):
+            f.write("\n")
+        f.write(addition)
+    log_success(f"Added {len(missing)} entries to .gitignore")
+
+
 def print_summary(
-    ai_root: str, project_root: str, agent_cli: str,
-    *, dry_run: bool,
+    ai_root: str,
+    project_root: str,
+    agent_cli: str,
+    *,
+    dry_run: bool,
 ) -> None:
     """Print setup summary."""
     print()
@@ -611,34 +782,57 @@ def print_summary(
         print("  .claude/settings.json     -> settings.json")
         for cmd in ("load", "save", "review", "simplify", "standards", "setup-claude"):
             print(f"  .claude/commands/{cmd}.md")
-        print("  .claude/rules/            -> rules/ (path-scoped, auto-inject on file read)")
-        print("  .claude/skills/           -> skills/ (full standards, on-demand for /review /simplify)")
+        print(
+            "  .claude/rules/            -> rules/ (path-scoped, auto-inject on file read)"
+        )
+        print(
+            "  .claude/skills/           -> skills/ (full standards, on-demand for /review /simplify)"
+        )
         print("  CLAUDE.md -> STATE.md")
         print("  .mcp.json                 -> MCP servers (Context7 live docs)")
         print()
         print("Plugins:")
         try:
             r = subprocess.run(
-                [agent_cli, "plugin", "list"], capture_output=True, text=True, timeout=10,
+                [agent_cli, "plugin", "list"],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if "superpowers" in (r.stdout + r.stderr):
-                print("  superpowers               -> methodology (debugging, TDD, planning, worktrees)")
+                print(
+                    "  superpowers               -> methodology (debugging, TDD, planning, worktrees)"
+                )
             else:
-                print("  superpowers               -> NOT INSTALLED (run: claude plugin install superpowers@superpowers-marketplace)")
+                print(
+                    "  superpowers               -> NOT INSTALLED (run: claude plugin install superpowers@superpowers-marketplace)"
+                )
         except (FileNotFoundError, subprocess.TimeoutExpired):
             print("  superpowers               -> UNKNOWN (CLI unavailable)")
         print()
         print("Hooks (run from ai/hooks/ via settings.json):")
-        print("  SessionStart(startup) -> inject_standards.py (auto-detect + inject + reattach)")
+        print(
+            "  SessionStart(startup) -> inject_standards.py (auto-detect + inject + reattach)"
+        )
         print("  SessionStart(compact) -> on_compact.py (re-inject standards)")
-        print("  PostToolUse(Edit|Write) -> auto_format.py (run formatter on edited files)")
-        print("  SubagentStart          -> subagent_context.py (inject standards into subagents)")
+        print(
+            "  PostToolUse(Edit|Write) -> auto_format.py (run formatter on edited files)"
+        )
+        print(
+            "  SubagentStart          -> subagent_context.py (inject standards into subagents)"
+        )
         print("  PreToolUse(Bash)       -> safety_guard.py (block dangerous commands)")
-        print("  Stop                   -> lint_check.py (lint modified files, feed errors back)")
+        print(
+            "  Stop                   -> lint_check.py (lint modified files, feed errors back)"
+        )
         print()
         print("Next steps:")
-        print("  1. Open project in Claude Code — standards + efficiency rules inject automatically")
-        print("  2. Run /setup-claude to configure .tmp/ workspace, survey tools, update permissions")
+        print(
+            "  1. Open project in Claude Code — standards + efficiency rules inject automatically"
+        )
+        print(
+            "  2. Run /setup-claude to configure .tmp/ workspace, survey tools, update permissions"
+        )
         print("  3. Run /load to load project state (TODO, STATE, git sync)")
         print("  4. Rules auto-inject on file read (RAG) and survive compacts")
     print("================================")
@@ -653,20 +847,40 @@ def parse_args() -> argparse.Namespace:
         description="Deploy Claude Code configuration",
     )
     p.add_argument("--ai-root", required=True, help=argparse.SUPPRESS)
-    p.add_argument("--project-root", "--path", default="",
-                    help="Path to consumer project (default: parent of ai/)")
+    p.add_argument(
+        "--project-root",
+        "--path",
+        default="",
+        help="Path to consumer project (default: parent of ai/)",
+    )
     p.add_argument("--agent-cli", default="claude", help=argparse.SUPPRESS)
-    p.add_argument("--dry-run", action="store_true",
-                    help="Show what would be done without making changes")
-    p.add_argument("--force", action="store_true",
-                    help="Remove existing files and replace with symlinks")
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be done without making changes",
+    )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="Remove existing files and replace with symlinks",
+    )
     p.add_argument("--verbose", action="store_true", help="Enable verbose output")
-    p.add_argument("--self", dest="self_mode", action="store_true",
-                    help="Self-deploy: dogfood hyperi-ai onto itself")
-    p.add_argument("--no-managed", action="store_true",
-                    help="Skip system-wide managed-settings.json installation")
-    p.add_argument("--no-superpowers", action="store_true",
-                    help="Skip superpowers plugin installation")
+    p.add_argument(
+        "--self",
+        dest="self_mode",
+        action="store_true",
+        help="Self-deploy: dogfood hyperi-ai onto itself",
+    )
+    p.add_argument(
+        "--no-managed",
+        action="store_true",
+        help="Skip system-wide managed-settings.json installation",
+    )
+    p.add_argument(
+        "--no-superpowers",
+        action="store_true",
+        help="Skip superpowers plugin installation",
+    )
     return p.parse_args()
 
 
@@ -707,19 +921,62 @@ def main() -> int:
 
     # Deploy
     setup_claude_dir(project_root, args.dry_run, args.verbose)
-    deploy_settings(ai_root, project_root, dry_run=args.dry_run, force=args.force, verbose=args.verbose)
+    deploy_settings(
+        ai_root,
+        project_root,
+        dry_run=args.dry_run,
+        force=args.force,
+        verbose=args.verbose,
+    )
     if args.self_mode:
-        patch_self_deploy_hooks(project_root, dry_run=args.dry_run, verbose=args.verbose)
+        patch_self_deploy_hooks(
+            project_root, dry_run=args.dry_run, verbose=args.verbose
+        )
     deploy_commands(ai_root, project_root, dry_run=args.dry_run, verbose=args.verbose)
-    deploy_rules(ai_root, project_root, dry_run=args.dry_run, force=args.force, verbose=args.verbose)
-    deploy_skills(ai_root, project_root, dry_run=args.dry_run, force=args.force, verbose=args.verbose)
-    deploy_mcp(ai_root, project_root, dry_run=args.dry_run, force=args.force, verbose=args.verbose)
-    create_symlink(project_root, dry_run=args.dry_run, self_mode=args.self_mode, verbose=args.verbose)
-    install_managed_settings(ai_root, dry_run=args.dry_run, force=args.force,
-                              no_managed=args.no_managed, verbose=args.verbose)
-    install_superpowers(args.agent_cli, dry_run=args.dry_run,
-                         no_superpowers=args.no_superpowers, verbose=args.verbose)
-    write_version_stamp(ai_root, project_root, dry_run=args.dry_run, verbose=args.verbose)
+    deploy_rules(
+        ai_root,
+        project_root,
+        dry_run=args.dry_run,
+        force=args.force,
+        verbose=args.verbose,
+    )
+    deploy_skills(
+        ai_root,
+        project_root,
+        dry_run=args.dry_run,
+        force=args.force,
+        verbose=args.verbose,
+    )
+    deploy_mcp(
+        ai_root,
+        project_root,
+        dry_run=args.dry_run,
+        force=args.force,
+        verbose=args.verbose,
+    )
+    create_symlink(
+        project_root,
+        dry_run=args.dry_run,
+        self_mode=args.self_mode,
+        verbose=args.verbose,
+    )
+    install_managed_settings(
+        ai_root,
+        dry_run=args.dry_run,
+        force=args.force,
+        no_managed=args.no_managed,
+        verbose=args.verbose,
+    )
+    install_superpowers(
+        args.agent_cli,
+        dry_run=args.dry_run,
+        no_superpowers=args.no_superpowers,
+        verbose=args.verbose,
+    )
+    write_version_stamp(
+        ai_root, project_root, dry_run=args.dry_run, verbose=args.verbose
+    )
+    ensure_gitignore(project_root, dry_run=args.dry_run, verbose=args.verbose)
     print_summary(ai_root, project_root, args.agent_cli, dry_run=args.dry_run)
 
     return EXIT_SUCCESS

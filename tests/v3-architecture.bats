@@ -137,7 +137,7 @@ teardown() {
 
     # Simulate old deployment with methodology rules
     mkdir -p .claude/rules
-    for rule in debugging.md verification.md testing.md parallel-agents.md documentation.md; do
+    for rule in debugging.md verification.md parallel-agents.md documentation.md; do
         echo "old rule" > ".claude/rules/$rule"
     done
 
@@ -146,7 +146,6 @@ teardown() {
     # All migrated rules should be gone
     [ ! -f ".claude/rules/debugging.md" ]
     [ ! -f ".claude/rules/verification.md" ]
-    [ ! -f ".claude/rules/testing.md" ]
     [ ! -f ".claude/rules/parallel-agents.md" ]
     [ ! -f ".claude/rules/documentation.md" ]
 }
@@ -162,14 +161,14 @@ teardown() {
     [ -f ".claude/rules/security.md" ]
 }
 
-@test "TC-322: Exactly 21 rule files deployed (no methodology rules)" {
+@test "TC-322: Exactly 22 rule files deployed (no methodology rules)" {
     cd "$TEST_SUBMODULE"
     ./hyperi-ai/attach.sh --no-agent
     ./hyperi-ai/agents/claude.sh --force --no-managed --no-superpowers
 
     local count
     count="$(ls .claude/rules/*.md 2>/dev/null | wc -l)"
-    [ "$count" -eq 21 ]
+    [ "$count" -eq 22 ]
 }
 
 # --- Commands from new path ---
