@@ -1,3 +1,10 @@
+## [3.1.1](https://github.com/hyperi-io/hyperi-ai/compare/3.1.0...3.1.1) (2026-03-16)
+
+
+### Bug Fixes
+
+* remove GitHub MCP, use gh CLI, fix self-deploy hooks ([e5a63bd](https://github.com/hyperi-io/hyperi-ai/commit/e5a63bdb1f58fb3849fe54d02df1263f2886f703))
+
 ## [3.1.0](https://github.com/hyperi-io/hyperi-ai/compare/3.0.1...3.1.0) (2026-03-16)
 
 
