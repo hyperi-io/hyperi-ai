@@ -1,3 +1,27 @@
+## [3.1.5](https://github.com/hyperi-io/hyperi-ai/compare/3.1.4...3.1.5) (2026-03-16)
+
+
+### Bug Fixes
+
+* add explicit encoding="utf-8" to all read_text() calls in CAG payload ([ae5819f](https://github.com/hyperi-io/hyperi-ai/commit/ae5819f489487dd7afdbb2b6b974c3d7c2f8ecbc))
+* add inject_cag_payload() unified CAG entry point to hooks/common.py ([2fabf95](https://github.com/hyperi-io/hyperi-ai/commit/2fabf956607471d21ad579cc43f197daec983d10))
+* replace separate inject calls with inject_cag_payload in inject_standards.py ([ca73925](https://github.com/hyperi-io/hyperi-ai/commit/ca739258cc38f5ba4acfefaa70f3268733ceaf9f))
+* simplify /load command for CAG-heavy injection ([aac72ed](https://github.com/hyperi-io/hyperi-ai/commit/aac72ed31ea5d41714cb362e8600f5029e531322))
+* simplify on_compact.py to single inject_cag_payload call ([e43acec](https://github.com/hyperi-io/hyperi-ai/commit/e43acec13f3a468428b2ac68354aad563f09c5b1))
+* update deploy_claude.py summary for CAG-heavy delivery ([b755816](https://github.com/hyperi-io/hyperi-ai/commit/b75581617d5a0b86f103906c3d0d1ba826a03627))
+* update docs for CAG-heavy injection and fix stale refs ([783dfc5](https://github.com/hyperi-io/hyperi-ai/commit/783dfc5e6bd0fe5e3b44e655ed62ecd40d27417f))
+* use inject_cag_payload in subagent_context.py ([37f8980](https://github.com/hyperi-io/hyperi-ai/commit/37f89809f5f2e1747a56b50204285d5793920340))
+
+
+### Documentation
+
+* remove hardcoded counts, add no-counts rule to doc standards ([6bbe07f](https://github.com/hyperi-io/hyperi-ai/commit/6bbe07fafb9b977f4dcb6008eade6c7cee0f8a22))
+
+
+### Tests
+
+* update assertions for CAG-heavy injection output ([1aef6e7](https://github.com/hyperi-io/hyperi-ai/commit/1aef6e76f8a34879a469607dea22847023ddac8b))
+
 ## [3.1.4](https://github.com/hyperi-io/hyperi-ai/compare/3.1.3...3.1.4) (2026-03-16)
 
 
