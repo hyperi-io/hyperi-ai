@@ -1,3 +1,10 @@
+## [3.1.2](https://github.com/hyperi-io/hyperi-ai/compare/3.1.1...3.1.2) (2026-03-16)
+
+
+### Bug Fixes
+
+* update self-deploy command symlinks to correct paths ([026f63e](https://github.com/hyperi-io/hyperi-ai/commit/026f63ecce6cf74aa722c5f70ecd705a4a826378))
+
 ## [3.1.1](https://github.com/hyperi-io/hyperi-ai/compare/3.1.0...3.1.1) (2026-03-16)
 
 
