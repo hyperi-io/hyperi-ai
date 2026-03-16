@@ -114,6 +114,45 @@ def deploy_settings(
             log_info("  Use --force to overwrite with symlink")
 
 
+def patch_self_deploy_hooks(
+    project_root: str, *, dry_run: bool, verbose: bool,
+) -> None:
+    """Patch settings.json hook paths for self-deploy mode.
+
+    In consumer projects, hooks live at $CLAUDE_PROJECT_DIR/hyperi-ai/hooks/.
+    In self-deploy (the project IS hyperi-ai), they live at $CLAUDE_PROJECT_DIR/hooks/.
+    This replaces the symlink with a patched copy.
+    """
+    settings_path = Path(project_root) / ".claude" / "settings.json"
+    if not settings_path.exists():
+        return
+
+    if dry_run:
+        print("Would patch settings.json hook paths for self-deploy")
+        return
+
+    # Resolve symlink to read the template content
+    real_path = settings_path.resolve()
+    with open(real_path) as f:
+        content = f.read()
+
+    patched = content.replace(
+        '$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/',
+        '$CLAUDE_PROJECT_DIR/hooks/',
+    )
+
+    if patched == content:
+        if verbose:
+            log_info("Hook paths already correct for self-deploy")
+        return
+
+    # Replace symlink with patched file
+    settings_path.unlink()
+    with open(settings_path, "w") as f:
+        f.write(patched)
+    log_success("Patched settings.json hook paths for self-deploy")
+
+
 def deploy_commands(
     ai_root: str, project_root: str, *, dry_run: bool, verbose: bool,
 ) -> None:
@@ -669,6 +708,8 @@ def main() -> int:
     # Deploy
     setup_claude_dir(project_root, args.dry_run, args.verbose)
     deploy_settings(ai_root, project_root, dry_run=args.dry_run, force=args.force, verbose=args.verbose)
+    if args.self_mode:
+        patch_self_deploy_hooks(project_root, dry_run=args.dry_run, verbose=args.verbose)
     deploy_commands(ai_root, project_root, dry_run=args.dry_run, verbose=args.verbose)
     deploy_rules(ai_root, project_root, dry_run=args.dry_run, force=args.force, verbose=args.verbose)
     deploy_skills(ai_root, project_root, dry_run=args.dry_run, force=args.force, verbose=args.verbose)

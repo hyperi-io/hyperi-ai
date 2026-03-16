@@ -34,7 +34,7 @@ hyperi-ai is a git submodule that consumer projects add to get:
 - **AI assistant setup** — automated configuration for Claude Code, Cursor, Copilot, and Gemini
 - **Skills** — verification, documentation, and bleeding-edge dependency protection
 - **Hooks** — auto-format, lint-on-stop, safety guards, standards injection
-- **MCP servers** — Context7 (live library docs) and GitHub (issues, PRs, repos)
+- **MCP servers** — Context7 (live library docs)
 - **Slash commands** — `/load`, `/save`, `/review`, `/simplify`, `/standards`, `/doco`, `/setup-claude`
 
 ### Architecture
@@ -59,7 +59,7 @@ Consumer Project/
 ### Key Components
 
 1. **agents/** — thin bash wrappers per AI tool (claude.sh, cursor.sh, copilot.sh, gemini.sh)
-2. **tools/** — Python3+stdlib deploy logic (deploy_claude.py, merge_mcp.py, discover_github_pat.py)
+2. **tools/** — Python3+stdlib deploy logic (deploy_claude.py, merge_mcp.py)
 3. **standards/** — SSOT for all coding standards (rules/ for compact, languages/ and infrastructure/ for full)
 4. **skills/** — Agent Skills (SKILL.md with YAML frontmatter) for methodology
 5. **commands/** — slash command markdown files
@@ -72,7 +72,7 @@ Consumer Project/
 - **Testing:** BATS (132 tests)
 - **CI:** hyperi-ci
 - **Standards:** Superpowers plugin (methodology) + our skills (corporate standards)
-- **MCP:** Context7 (live docs), GitHub MCP Server (Go binary, stdio)
+- **MCP:** Context7 (live docs)
 
 ---
 
@@ -96,11 +96,11 @@ Consumer Project/
 **Rationale:** Skill descriptions survive context compaction. Rules are path-scoped (wrong trigger). Skills activate by description match (right trigger).
 **Alternatives considered:** Rules with broad globs (rejected — always-on wastes context budget)
 
-### GitHub MCP via Go Binary
+### GitHub via gh CLI (not MCP)
 
-**Decision:** Use `github-mcp-server` Go binary (stdio) instead of deprecated npm package or Copilot OAuth remote
-**Rationale:** Works with standard GITHUB_TOKEN from gh CLI keyring. No Docker. No interactive OAuth flow. Zero runtime dependencies.
-**Alternatives considered:** Deprecated npm package (EOL), Copilot remote HTTP (needs browser OAuth, breaks headless), Docker (heavy)
+**Decision:** Use `gh` CLI directly instead of GitHub MCP Server
+**Rationale:** MCP server was unreliable across subrepo deployments. `gh` CLI is already authenticated, universally available, and Claude Code can call it directly via Bash.
+**Alternatives considered:** Go binary MCP (fragile install/auth across consumer projects), deprecated npm package (EOL), Copilot remote HTTP (needs browser OAuth)
 
 ### Git Branch Flow
 
@@ -113,7 +113,7 @@ Consumer Project/
 
 - **Superpowers plugin** — methodology skills (debugging, TDD, planning, worktrees, code review)
 - **Context7 MCP** — live library documentation via Upstash
-- **GitHub MCP Server** — repository, issue, PR, Actions tools via GitHub's official Go binary
+- **gh CLI** — GitHub operations (PRs, issues, releases, Actions) via direct CLI calls
 - **hyperi-ci** — CI runner for consumer projects
 
 ---
@@ -129,7 +129,6 @@ Consumer Project/
 
 - [Agent Skills Open Standard](https://agentskills.io/home)
 - [Claude Code Skills Docs](https://code.claude.com/docs/en/skills)
-- [github/github-mcp-server](https://github.com/github/github-mcp-server) — GitHub MCP Server
 - [Context7 MCP](https://github.com/upstash/context7) — live library docs
 - [obra/superpowers](https://github.com/obra/superpowers) — methodology plugin
 

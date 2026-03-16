@@ -55,87 +55,55 @@ intermediate files between commands.
 
 ---
 
-## Step 1b: Install GitHub MCP Server
+## Step 1b: Configure GitHub CLI (`gh`)
 
-The GitHub MCP server (`github-mcp-server`) is a Go binary from
-[github/github-mcp-server](https://github.com/github/github-mcp-server).
-It provides repository browsing, issue/PR management, Actions, and code
-security tools via MCP.
+The `gh` CLI is used for GitHub operations (PRs, issues, releases, Actions).
+No MCP server needed — Claude Code calls `gh` directly.
 
-Check if installed:
+Check if installed and authenticated:
 
 ```bash
-which github-mcp-server
+gh auth status
 ```
 
-If **NOT installed**, install the latest release binary:
+If `gh` is **NOT installed**:
 
-**Linux (amd64):**
+**Debian/Ubuntu:**
 ```bash
-VERSION=$(gh release view --repo github/github-mcp-server --json tagName -q .tagName)
-curl -LO "https://github.com/github/github-mcp-server/releases/download/${VERSION}/github-mcp-server_${VERSION#v}_Linux_x86_64.tar.gz"
-tar xzf "github-mcp-server_${VERSION#v}_Linux_x86_64.tar.gz" github-mcp-server
-sudo install github-mcp-server /usr/local/bin/
-rm -f github-mcp-server "github-mcp-server_${VERSION#v}_Linux_x86_64.tar.gz"
+sudo apt install gh
 ```
 
-**Linux (arm64):**
+**Fedora/RHEL:**
 ```bash
-VERSION=$(gh release view --repo github/github-mcp-server --json tagName -q .tagName)
-curl -LO "https://github.com/github/github-mcp-server/releases/download/${VERSION}/github-mcp-server_${VERSION#v}_Linux_arm64.tar.gz"
-tar xzf "github-mcp-server_${VERSION#v}_Linux_arm64.tar.gz" github-mcp-server
-sudo install github-mcp-server /usr/local/bin/
-rm -f github-mcp-server "github-mcp-server_${VERSION#v}_Linux_arm64.tar.gz"
+sudo dnf install gh
 ```
 
 **macOS (Homebrew):**
 ```bash
-brew install github/github-mcp-server/github-mcp-server
-```
-
-**macOS (manual, Apple Silicon):**
-```bash
-VERSION=$(gh release view --repo github/github-mcp-server --json tagName -q .tagName)
-curl -LO "https://github.com/github/github-mcp-server/releases/download/${VERSION}/github-mcp-server_${VERSION#v}_Darwin_arm64.tar.gz"
-tar xzf "github-mcp-server_${VERSION#v}_Darwin_arm64.tar.gz" github-mcp-server
-sudo install github-mcp-server /usr/local/bin/
-rm -f github-mcp-server "github-mcp-server_${VERSION#v}_Darwin_arm64.tar.gz"
+brew install gh
 ```
 
 **Ask the user before installing.** Do NOT install without confirmation.
 
-If already installed, report the version and move on.
-
-### Configure Authentication
-
-The GitHub MCP server needs a `GITHUB_TOKEN` (PAT). Discover one:
-
-```bash
-python3 "$CLAUDE_PROJECT_DIR/hyperi-ai/tools/discover_github_pat.py" --source 2>&1 | tail -1
-```
-
-If a token was found, verify it's set as `GITHUB_TOKEN` in the environment.
-The `.mcp.json` references `${GITHUB_TOKEN:-}` which is picked up automatically.
-
-If no token was found, tell the user:
+If installed but **NOT authenticated**, tell the user:
 
 ```
-The GitHub MCP server needs a Personal Access Token.
+The gh CLI needs authentication. Run:
 
-The PAT discovery script checks these locations (in order):
-  1. $GITHUB_TOKEN or $GH_TOKEN environment variable
-  2. Project .env file (GITHUB_TOKEN=...)
-  3. ~/.env file (GITHUB_TOKEN=...)
-  4. gh auth token (gh CLI keyring -- run: gh auth login)
-  5. ~/.config/gh/hosts.yml
-  6. ~/.netrc
+  gh auth login
 
-Easiest: run `gh auth login` to authenticate the gh CLI, then re-run /setup-claude.
-Or create a PAT at: https://github.com/settings/tokens
-Required scopes: repo, read:org
+Choose:
+  - GitHub.com
+  - HTTPS protocol
+  - Authenticate via browser (or paste a PAT)
+
+Required PAT scopes (if using a token): repo, read:org, workflow
+Create a PAT at: https://github.com/settings/tokens
 ```
 
 **Ask the user before making changes.** Do NOT create tokens for them.
+
+If already authenticated, report the account and move on.
 
 ---
 

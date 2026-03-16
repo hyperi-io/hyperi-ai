@@ -240,7 +240,7 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 The `bleeding-edge` skill works with [Context7 MCP](https://github.com/upstash/context7)
 to fetch current documentation for any library, preventing stale training data mistakes.
 
-`claude.sh` deploys `.mcp.json` to the consumer project root, providing two MCP tools:
+`claude.sh` deploys `.mcp.json` to the consumer project root, providing Context7 MCP tools:
 
 - **`resolve-library-id`** -- find the Context7 identifier for a library
 - **`query-docs`** -- fetch current documentation for a specific API

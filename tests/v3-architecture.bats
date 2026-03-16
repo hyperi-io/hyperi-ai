@@ -318,30 +318,28 @@ for hook in data['hooks']:
     [ ! -f "$AI_SOURCE/standards/rules/documentation.md" ]
 }
 
-# --- GitHub MCP ---
+# --- MCP config ---
 
-@test "TC-380: MCP config contains GitHub server" {
+@test "TC-380: MCP config contains Context7 server" {
     cd "$TEST_SUBMODULE"
     ./hyperi-ai/attach.sh --no-agent
     ./hyperi-ai/agents/claude.sh --no-managed --no-superpowers
 
-    grep -q '"github"' .mcp.json
-    grep -q 'github-mcp-server' .mcp.json
+    grep -q '"context7"' .mcp.json
 }
 
-@test "TC-381: GitHub MCP uses official Go binary (not deprecated npm)" {
-    ! grep -q "@modelcontextprotocol/server-github" "$AI_SOURCE/.mcp.json"
-    grep -q '"github-mcp-server"' "$AI_SOURCE/.mcp.json"
-    grep -q '"stdio"' "$AI_SOURCE/.mcp.json"
+@test "TC-381: MCP config does not contain GitHub server (uses gh CLI instead)" {
+    ! grep -q '"github"' "$AI_SOURCE/.mcp.json"
+    ! grep -q 'github-mcp-server' "$AI_SOURCE/.mcp.json"
 }
 
-@test "TC-382: MCP merge deploys both Context7 and GitHub servers" {
+@test "TC-382: MCP merge deploys Context7 server" {
     local tmpdir
     tmpdir="$(mktemp -d)"
     python3 "$AI_SOURCE/tools/merge_mcp.py" "$AI_SOURCE/.mcp.json" "$tmpdir/new.json"
 
     grep -q "context7" "$tmpdir/new.json"
-    grep -q "github" "$tmpdir/new.json"
+    ! grep -q '"github"' "$tmpdir/new.json"
     rm -rf "$tmpdir"
 }
 
