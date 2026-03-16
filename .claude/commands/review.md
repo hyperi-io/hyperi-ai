@@ -1,1 +1,1 @@
-../../templates/claude-code/commands/review.md
+../../commands/review.md

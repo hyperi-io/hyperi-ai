@@ -1,1 +1,1 @@
-../../templates/claude-code/commands/setup-claude.md
+../../commands/setup-claude.md

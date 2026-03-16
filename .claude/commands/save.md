@@ -1,1 +1,1 @@
-../../templates/claude-code/commands/save.md
+../../commands/save.md

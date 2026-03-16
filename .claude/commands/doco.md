@@ -1,1 +1,1 @@
-../../templates/claude-code/commands/doco.md
+../../commands/doco.md
