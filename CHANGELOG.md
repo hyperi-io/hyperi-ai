@@ -1,3 +1,10 @@
+## [3.1.0](https://github.com/hyperi-io/hyperi-ai/compare/3.0.1...3.1.0) (2026-03-16)
+
+
+### Features
+
+* enforce branch flow — never commit directly to release ([e699df0](https://github.com/hyperi-io/hyperi-ai/commit/e699df093fb6989d5a4e64806d9c24b94b12f443))
+
 ## [3.0.1](https://github.com/hyperi-io/hyperi-ai/compare/3.0.0...3.0.1) (2026-03-16)
 
 
