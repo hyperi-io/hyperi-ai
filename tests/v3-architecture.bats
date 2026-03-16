@@ -320,20 +320,19 @@ for hook in data['hooks']:
 
 # --- GitHub MCP ---
 
-@test "TC-380: MCP config contains GitHub server as remote HTTP" {
+@test "TC-380: MCP config contains GitHub server" {
     cd "$TEST_SUBMODULE"
     ./hyperi-ai/attach.sh --no-agent
     ./hyperi-ai/agents/claude.sh --no-managed --no-superpowers
 
     grep -q '"github"' .mcp.json
-    grep -q '"type"' .mcp.json
-    grep -q '"http"' .mcp.json
-    grep -q 'api.githubcopilot.com/mcp' .mcp.json
+    grep -q 'github-mcp-server' .mcp.json
 }
 
-@test "TC-381: GitHub MCP uses official remote URL (not deprecated npm)" {
+@test "TC-381: GitHub MCP uses official Go binary (not deprecated npm)" {
     ! grep -q "@modelcontextprotocol/server-github" "$AI_SOURCE/.mcp.json"
-    grep -q "https://api.githubcopilot.com/mcp/" "$AI_SOURCE/.mcp.json"
+    grep -q '"github-mcp-server"' "$AI_SOURCE/.mcp.json"
+    grep -q '"stdio"' "$AI_SOURCE/.mcp.json"
 }
 
 @test "TC-382: MCP merge deploys both Context7 and GitHub servers" {

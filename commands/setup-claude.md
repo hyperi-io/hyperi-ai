@@ -55,55 +55,87 @@ intermediate files between commands.
 
 ---
 
-## Step 1b: Configure GitHub MCP Authentication
+## Step 1b: Install GitHub MCP Server
 
-The GitHub MCP server is deployed as a remote HTTP server
-(`https://api.githubcopilot.com/mcp/`) in `.mcp.json`. It needs authentication
-to work. Check if auth is already configured:
+The GitHub MCP server (`github-mcp-server`) is a Go binary from
+[github/github-mcp-server](https://github.com/github/github-mcp-server).
+It provides repository browsing, issue/PR management, Actions, and code
+security tools via MCP.
+
+Check if installed:
 
 ```bash
-claude mcp list 2>/dev/null | grep -A2 github || echo "NOT CONFIGURED"
+which github-mcp-server
 ```
 
-If the github server shows up with auth, move on.
+If **NOT installed**, install the latest release binary:
 
-If NOT CONFIGURED or missing auth, discover a PAT:
+**Linux (amd64):**
+```bash
+VERSION=$(gh release view --repo github/github-mcp-server --json tagName -q .tagName)
+curl -LO "https://github.com/github/github-mcp-server/releases/download/${VERSION}/github-mcp-server_${VERSION#v}_Linux_x86_64.tar.gz"
+tar xzf "github-mcp-server_${VERSION#v}_Linux_x86_64.tar.gz" github-mcp-server
+sudo install github-mcp-server /usr/local/bin/
+rm -f github-mcp-server "github-mcp-server_${VERSION#v}_Linux_x86_64.tar.gz"
+```
+
+**Linux (arm64):**
+```bash
+VERSION=$(gh release view --repo github/github-mcp-server --json tagName -q .tagName)
+curl -LO "https://github.com/github/github-mcp-server/releases/download/${VERSION}/github-mcp-server_${VERSION#v}_Linux_arm64.tar.gz"
+tar xzf "github-mcp-server_${VERSION#v}_Linux_arm64.tar.gz" github-mcp-server
+sudo install github-mcp-server /usr/local/bin/
+rm -f github-mcp-server "github-mcp-server_${VERSION#v}_Linux_arm64.tar.gz"
+```
+
+**macOS (Homebrew):**
+```bash
+brew install github/github-mcp-server/github-mcp-server
+```
+
+**macOS (manual, Apple Silicon):**
+```bash
+VERSION=$(gh release view --repo github/github-mcp-server --json tagName -q .tagName)
+curl -LO "https://github.com/github/github-mcp-server/releases/download/${VERSION}/github-mcp-server_${VERSION#v}_Darwin_arm64.tar.gz"
+tar xzf "github-mcp-server_${VERSION#v}_Darwin_arm64.tar.gz" github-mcp-server
+sudo install github-mcp-server /usr/local/bin/
+rm -f github-mcp-server "github-mcp-server_${VERSION#v}_Darwin_arm64.tar.gz"
+```
+
+**Ask the user before installing.** Do NOT install without confirmation.
+
+If already installed, report the version and move on.
+
+### Configure Authentication
+
+The GitHub MCP server needs a `GITHUB_TOKEN` (PAT). Discover one:
 
 ```bash
 python3 "$CLAUDE_PROJECT_DIR/hyperi-ai/tools/discover_github_pat.py" --source 2>&1 | tail -1
 ```
 
-If a token was found, configure it at user scope:
-
-```bash
-TOKEN=$(python3 "$CLAUDE_PROJECT_DIR/hyperi-ai/tools/discover_github_pat.py")
-claude mcp add -s user --transport http github https://api.githubcopilot.com/mcp/ -H "Authorization: Bearer $TOKEN"
-```
+If a token was found, verify it's set as `GITHUB_TOKEN` in the environment.
+The `.mcp.json` references `${GITHUB_TOKEN:-}` which is picked up automatically.
 
 If no token was found, tell the user:
 
 ```
-The GitHub MCP server needs authentication. Two options:
+The GitHub MCP server needs a Personal Access Token.
 
-Option 1 — OAuth (easiest, requires browser):
-  Claude Code will prompt for OAuth when the MCP server is first used.
-  Just approve the GitHub OAuth flow when prompted.
+The PAT discovery script checks these locations (in order):
+  1. $GITHUB_TOKEN or $GH_TOKEN environment variable
+  2. Project .env file (GITHUB_TOKEN=...)
+  3. ~/.env file (GITHUB_TOKEN=...)
+  4. gh auth token (gh CLI keyring -- run: gh auth login)
+  5. ~/.config/gh/hosts.yml
+  6. ~/.netrc
 
-Option 2 — Personal Access Token:
-  The PAT discovery script checks these locations (in order):
-    1. $GITHUB_TOKEN or $GH_TOKEN environment variable
-    2. Project .env file (GITHUB_TOKEN=...)
-    3. ~/.env file (GITHUB_TOKEN=...)
-    4. gh auth token (gh CLI keyring -- run: gh auth login)
-    5. ~/.config/gh/hosts.yml
-    6. ~/.netrc
-
-  Easiest: run `gh auth login` to authenticate the gh CLI, then re-run /setup-claude.
-  Or create a PAT at: https://github.com/settings/tokens
-  Required scopes: repo, read:org
+Easiest: run `gh auth login` to authenticate the gh CLI, then re-run /setup-claude.
+Or create a PAT at: https://github.com/settings/tokens
+Required scopes: repo, read:org
 ```
 
-**Ask the user which approach they prefer.** Do NOT create tokens for them.
+**Ask the user before making changes.** Do NOT create tokens for them.
 
 ---
 
