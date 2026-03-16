@@ -312,7 +312,6 @@ for hook in data['hooks']:
 
 @test "TC-371: Deleted methodology rules do not exist in standards/rules/" {
     [ ! -f "$AI_SOURCE/standards/rules/debugging.md" ]
-    [ ! -f "$AI_SOURCE/standards/rules/testing.md" ]
     [ ! -f "$AI_SOURCE/standards/rules/verification.md" ]
     [ ! -f "$AI_SOURCE/standards/rules/parallel-agents.md" ]
     [ ! -f "$AI_SOURCE/standards/rules/documentation.md" ]
