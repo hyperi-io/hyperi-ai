@@ -1,3 +1,10 @@
+## [3.1.3](https://github.com/hyperi-io/hyperi-ai/compare/3.1.2...3.1.3) (2026-03-16)
+
+
+### Bug Fixes
+
+* add testing.md rules file to fix CI validation ([d831424](https://github.com/hyperi-io/hyperi-ai/commit/d8314241409f36d51a94be2609c7be8dbab5145a))
+
 ## [3.1.2](https://github.com/hyperi-io/hyperi-ai/compare/3.1.1...3.1.2) (2026-03-16)
 
 
