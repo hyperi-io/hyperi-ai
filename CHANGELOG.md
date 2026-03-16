@@ -1,3 +1,36 @@
+## [3.0.0](https://github.com/hyperi-io/hyperi-ai/compare/2.8.0...3.0.0) (2026-03-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* methodology rules removed (superpowers covers them),
+commands moved from templates/ to commands/, deploy logic moved to Python.
+
+- Refactor claude.sh from 877-line bash to 45-line wrapper + deploy_claude.py (688 lines Python3+stdlib)
+- Move commands/ to repo root (auto-remediation cleans stale symlinks)
+- Create 3 unique skills: verification, documentation, bleeding-edge
+- Delete superseded rules: debugging, testing, parallel-agents (superpowers)
+- Add .claude-plugin/plugin.json for CC plugin mode
+- Add hooks/hooks.json for plugin hook config
+- Add .mcp.json with Context7 + official GitHub remote HTTP MCP
+- Add tools: deploy_claude.py, merge_mcp.py, discover_github_pat.py, relpath.py
+- Add 44 new tests (v3-architecture.bats) — all 132 tests pass
+- Update setup-claude command for GitHub MCP HTTP auth flow
+- Add --self flag for dogfooding (hyperi-ai deploys onto itself)
+- Update README and SUPERPOWERS.md for new architecture
+
+### Features
+
+* add /doco command and documentation standards rule ([341d70e](https://github.com/hyperi-io/hyperi-ai/commit/341d70e5a2653cd9c181596ae94a25258474a8e8))
+* cherry-pick engineering discipline rules from superpowers ([5a5bc6d](https://github.com/hyperi-io/hyperi-ai/commit/5a5bc6d090a6803ee735918bff5bad56a9fd245e))
+* v3.0 architecture — skills, plugin mode, bash-to-python refactor ([e8ef989](https://github.com/hyperi-io/hyperi-ai/commit/e8ef9892207b52a6c2ed4826b2c1366844903f28))
+
+
+### Documentation
+
+* add architecture table and layer interaction diagram to README ([9e22d03](https://github.com/hyperi-io/hyperi-ai/commit/9e22d03124d8fd9ac8aeaccdb66a62a4ff575092))
+* document superpowers integration strategy and cherry-pick rationale ([09473fd](https://github.com/hyperi-io/hyperi-ai/commit/09473fd52ae4365893bc9513c4133d600508d488))
+
 ## [2.8.0](https://github.com/hyperi-io/hyperi-ai/compare/2.7.1...2.8.0) (2026-03-11)
 
 
