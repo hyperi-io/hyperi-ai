@@ -302,7 +302,7 @@ def inject_rules(project_dir: Path) -> Tuple[str, List[str]]:
         parts.append("")
         parts.append("# User Coding Standards (OVERRIDE — these take priority)")
         parts.append("")
-        parts.append(user_standards.read_text())
+        parts.append(user_standards.read_text(encoding="utf-8"))
         parts.append("")
         loaded.append("USER")
 
@@ -338,7 +338,7 @@ def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
     # 1. UNIVERSAL always first
     universal = rules_dir / "UNIVERSAL.md"
     if universal.is_file():
-        parts.append(universal.read_text())
+        parts.append(universal.read_text(encoding="utf-8"))
         parts.append("")
         loaded.append("UNIVERSAL")
 
@@ -348,7 +348,7 @@ def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
         if rule_path.is_file():
             parts.append("---")
             parts.append("")
-            parts.append(rule_path.read_text())
+            parts.append(rule_path.read_text(encoding="utf-8"))
             parts.append("")
             loaded.append(tech_name)
 
@@ -365,7 +365,7 @@ def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
             continue
         parts.append("---")
         parts.append("")
-        parts.append(rule_path.read_text())
+        parts.append(rule_path.read_text(encoding="utf-8"))
         parts.append("")
         loaded.append(rule_path.stem)
 
@@ -418,7 +418,7 @@ def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
         parts.append("")
         parts.append("# User Coding Standards (OVERRIDE — these take priority)")
         parts.append("")
-        parts.append(user_standards.read_text())
+        parts.append(user_standards.read_text(encoding="utf-8"))
         parts.append("")
         loaded.append("USER")
 
