@@ -783,7 +783,7 @@ def print_summary(
         for cmd in ("load", "save", "review", "simplify", "standards", "setup-claude"):
             print(f"  .claude/commands/{cmd}.md")
         print(
-            "  .claude/rules/            -> rules/ (path-scoped, auto-inject on file read)"
+            "  .claude/rules/            -> rules/ (CAG-injected at startup; path-scoped as fallback)"
         )
         print(
             "  .claude/skills/           -> skills/ (full standards, on-demand for /review /simplify)"
@@ -834,7 +834,9 @@ def print_summary(
             "  2. Run /setup-claude to configure .tmp/ workspace, survey tools, update permissions"
         )
         print("  3. Run /load to load project state (TODO, STATE, git sync)")
-        print("  4. Rules auto-inject on file read (RAG) and survive compacts")
+        print(
+            "  4. Rules are CAG-injected at startup; path-scoped RAG is a redundant fallback"
+        )
     print("================================")
 
 
