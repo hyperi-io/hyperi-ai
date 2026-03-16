@@ -93,11 +93,12 @@ pushing code.** This catches quality and test failures locally before they
 hit CI, saving time and CI minutes.
 
 **Workflow:**
-1. Write code, commit
+1. Write code on topic branch or `main` — NEVER on `release`
 2. `hyperi-ci check` (runs quality + test locally)
 3. Fix any failures, amend or new commit
 4. `git pull --rebase origin main` (sync semantic-release commits)
-5. `git push`
+5. `git push origin main` (or merge topic branch into main)
+6. Create PR: `main -> release` (NEVER push directly to release)
 
 **Variants:**
 - `hyperi-ci check` — default: quality + test

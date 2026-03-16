@@ -23,6 +23,40 @@ Branch naming and commit message conventions for all HyperI projects.
 
 ---
 
+## Branch Flow
+
+**Protected branches:** `main` and `release` are protected. Never commit
+directly to `release`.
+
+**Required flow:**
+
+```
+feature-branch → merge → main → PR → release
+```
+
+Or for simple changes:
+
+```
+main → PR → release
+```
+
+**Rules:**
+
+- All feature work happens on topic branches off `main`
+- Merge topic branches into `main` (via PR or direct merge)
+- `release` is updated ONLY via PR from `main` — never direct commits
+- Semantic-release runs on `release` (or `main` depending on project config)
+- Hotfixes: branch from `main`, merge to `main`, PR to `release`
+
+**NEVER:**
+
+- Commit directly to `release` — always PR from `main`
+- Push to `release` without a PR
+- Rebase or force-push `release`
+- Skip the `main → release` PR step for "quick fixes"
+
+---
+
 ## Branch Naming
 
 **Formats:** (choose based on your workflow)

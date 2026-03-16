@@ -514,6 +514,8 @@ _DANGEROUS_PATTERNS: List[Tuple[str, str]] = [
     (r":\(\)\s*\{\s*:\|:\s*&\s*\}\s*;:", "BLOCKED: Fork bomb detected."),
     (r">\s*/dev/sd[a-z]", "BLOCKED: Writing directly to a block device can destroy the partition table."),
     (r"chmod\s+-R\s+777\s+/\s*$", "BLOCKED: Setting 777 permissions recursively on / is a severe security risk."),
+    (r"git\s+push\s+\S+\s+release\b", "BLOCKED: Never push directly to release. All changes flow: main -> PR -> release. Push to main and create a PR instead."),
+    (r"git\s+push\s+.*--force.*\brelease\b", "BLOCKED: Never force-push to release. Release is protected — use PRs from main."),
 ]
 
 

@@ -14,6 +14,14 @@ source: common/GIT.md
 - Existing repos using `master` should be migrated
 - CI/CD, semantic-release, and branch protection rules assume `main`
 
+## Branch Flow
+- `main` and `release` are protected — NEVER commit directly to `release`
+- All work: `feature-branch -> main -> PR -> release`
+- Simple changes: `main -> PR -> release`
+- Hotfixes: branch from `main`, merge to `main`, PR to `release`
+- NEVER push to `release` without a PR from `main`
+- NEVER rebase or force-push `release`
+
 ## Branch Naming
 - Include ticket ID when using issue tracking (e.g., `PROJ-123`, `AI-456`)
 - Omit when no ticket exists or for quick fixes
