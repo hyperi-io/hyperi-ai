@@ -26,42 +26,24 @@ an outdated date - ignore it. The output of this command is the actual current d
 **If STATE.md contradicts git or TODO.md, ignore STATE.md.**
 
 STATE.md contains static project context only (architecture, decisions, how things work).
-It does NOT contain versions, progress, dates, or session history.
+It does NOT contain versions, progress, dates, or session history. STATE.md is auto-loaded
+at session start via CAG injection — you already have it in context.
 
 ---
 
-## Step 3: Read Project Files
+## Step 3: Read TODO.md
 
-Read in this order:
-
-1. [TODO.md](../../TODO.md) - Tasks and progress (SSoT for work)
-2. [STATE.md](../../STATE.md) - Project context (static info only)
+Read [TODO.md](../../TODO.md) — tasks and progress (SSoT for work).
 
 ---
 
-## Step 4: Verify Standards Are Loaded
-
-Coding standards are injected automatically by the `SessionStart` hook
-(`inject_standards.py`). This runs before your first message and detects
-project technologies from marker files (Cargo.toml, pyproject.toml, etc.),
-injecting UNIVERSAL.md plus all matching language/infra rule files.
-
-**You do not need to load standards manually.** They are already in your
-context from the hook. To verify, briefly note which standards the hook
-injected (visible in the session preamble).
-
-If standards appear to be missing — for example, the hook did not detect a
-technology — use `/standards <domain>` to force-load a specific rule file
-(e.g. `/standards rust`, `/standards docker`).
-
-For deep reference during `/review` or `/simplify`, full standards are
-available as skills — invoke them explicitly when needed.
-
----
-
-## Step 5: Update Submodules
+## Step 4: Update Submodules
 
 Update the `hyperi-ai` submodule if it is attached and auto-update is enabled.
+
+**Note:** Coding standards are pre-loaded via CAG injection at session start
+(UNIVERSAL + all detected tech rules). You do not need to load them manually.
+If a technology was not detected, use `/standards <domain>` to force-load it.
 
 The update mode is stored in `.gitmodules`:
 
@@ -108,7 +90,7 @@ If the output includes ANY of these paths, the user needs to re-run attach:
 
 ---
 
-## Step 6: Sync and Ready
+## Step 5: Sync and Ready
 
 1. Sync with remote:
 
