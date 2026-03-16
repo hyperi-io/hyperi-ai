@@ -32,18 +32,23 @@ def main() -> None:
     if old_ai.exists() and not new_ai.exists():
         try:
             from migrate_submodule_name import main as migrate_main
+
             rc = migrate_main()
             if rc == 0:
                 print("**Submodule migrated: `ai/` → `hyperi-ai/`**")
-                print("Run `git add .gitmodules hyperi-ai .claude && "
-                      'git commit -m "chore: migrate ai submodule to hyperi-ai"` '
-                      "to commit the rename.")
+                print(
+                    "Run `git add .gitmodules hyperi-ai .claude && "
+                    'git commit -m "chore: migrate ai submodule to hyperi-ai"` '
+                    "to commit the rename."
+                )
                 print("")
             else:
                 print("**WARNING: Submodule migration may be incomplete.**")
-                print("See manual steps: `git submodule deinit -f ai && git rm -f ai "
-                      "&& rm -rf .git/modules/ai && git submodule add "
-                      "https://github.com/hyperi-io/hyperi-ai.git hyperi-ai`")
+                print(
+                    "See manual steps: `git submodule deinit -f ai && git rm -f ai "
+                    "&& rm -rf .git/modules/ai && git submodule add "
+                    "https://github.com/hyperi-io/hyperi-ai.git hyperi-ai`"
+                )
                 print("")
         except Exception as exc:
             print(f"[migrate] auto-migration failed: {exc}", file=sys.stderr)
@@ -57,30 +62,22 @@ def main() -> None:
     # Inject current date — models often hallucinate dates from training data
     today = date.today()
     print(f"**Current date: {today.strftime('%Y-%m-%d %A')}**")
-    print(f"Your training data may show an older date — IGNORE IT. Today is {today.isoformat()}.")
-    print(f"Use this date for ALL date-dependent decisions (web searches, version lookups, etc.).")
+    print(
+        f"Your training data may show an older date — IGNORE IT. Today is {today.isoformat()}."
+    )
+    print(
+        f"Use this date for ALL date-dependent decisions (web searches, version lookups, etc.)."
+    )
     print("")
-
-    # Inject standards
-    text, loaded = common.inject_rules(project_dir)
-    print(text)
 
     # Report reattach if it happened
     if reattach_msg:
-        print("")
         print(reattach_msg)
+        print("")
 
-    # Inject bash efficiency rules (always-on — prevents permission prompt stalls)
-    print("")
-    print("---")
-    print("")
-    print(common.bash_efficiency_rules())
-    print("")
-
-    # Survey available tools and report what CC can use
-    available, missing_installable, missing_unknown = common.survey_tools()
-    print("")
-    print(common.format_tool_survey(available, missing_installable, missing_unknown))
+    # Inject full CAG payload (standards, skills, state, bash rules, tool survey)
+    text, loaded = common.inject_cag_payload(project_dir)
+    print(text)
     print("")
 
 
