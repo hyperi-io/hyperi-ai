@@ -34,6 +34,7 @@ from typing import Dict, List, Optional, Tuple
 # Path resolution
 # ---------------------------------------------------------------------------
 
+
 def get_project_dir() -> Path:
     """Return the consumer project root from $CLAUDE_PROJECT_DIR or cwd."""
     return Path(os.environ.get("CLAUDE_PROJECT_DIR", ".")).resolve()
@@ -52,6 +53,7 @@ def get_rules_dir(project_dir: Path) -> Path:
 # ---------------------------------------------------------------------------
 # Hook I/O
 # ---------------------------------------------------------------------------
+
 
 def read_hook_input() -> Dict:
     """Read JSON from stdin (hook input). Returns empty dict on error/no input."""
@@ -156,12 +158,31 @@ def _load_tech_detections(
             detections.append((rules_path.stem, rules_path.name, markers))
     return detections
 
+
 # Directories to skip during deep scans (performance + false positive avoidance)
-_SKIP_DIRS = frozenset({
-    ".git", ".hg", ".svn", "node_modules", "__pycache__", ".tox", ".venv",
-    "venv", ".mypy_cache", "target", "dist", "build", ".next", ".nuxt",
-    ".cache", ".eggs", "vendor", "third_party", "3rdparty",
-})
+_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        "__pycache__",
+        ".tox",
+        ".venv",
+        "venv",
+        ".mypy_cache",
+        "target",
+        "dist",
+        "build",
+        ".next",
+        ".nuxt",
+        ".cache",
+        ".eggs",
+        "vendor",
+        "third_party",
+        "3rdparty",
+    }
+)
 
 
 def _any_marker_present(project_dir: Path, markers: List[Tuple[str, str]]) -> bool:
@@ -201,6 +222,7 @@ def _walk_for_match(root: Path, pattern: str, is_glob: bool, max_depth: int) -> 
             if entry.is_file():
                 if is_glob:
                     import fnmatch
+
                     if fnmatch.fnmatch(entry.name, pattern):
                         return True
                 elif entry.name == pattern:
@@ -232,6 +254,7 @@ def detect_technologies(project_dir: Path) -> List[Tuple[str, str]]:
 # ---------------------------------------------------------------------------
 # Rule injection
 # ---------------------------------------------------------------------------
+
 
 def inject_rules(project_dir: Path) -> Tuple[str, List[str]]:
     """Read UNIVERSAL.md + detected tech rules.
@@ -287,6 +310,134 @@ def inject_rules(project_dir: Path) -> Tuple[str, List[str]]:
     parts.append("---")
     parts.append("")
     parts.append(f"**HyperI AI standards loaded:** {', '.join(loaded)}")
+
+    return ("\n".join(parts), loaded)
+
+
+def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
+    """Unified CAG-Heavy injection — loads all standards, skills, and context.
+
+    Returns (output_text, loaded_names) identical to inject_rules() signature.
+    Set HYPERI_CAG_LEAN=1 to fall back to the lean inject_rules() path.
+    """
+    if os.environ.get("HYPERI_CAG_LEAN") == "1":
+        return inject_rules(project_dir)
+
+    rules_dir = get_rules_dir(project_dir)
+    if not rules_dir.is_dir():
+        return (
+            "NOTE: hyperi-ai/standards/rules/ not found — "
+            "coding standards not loaded. "
+            "If you have access, run: git submodule update --init hyperi-ai\n",
+            [],
+        )
+
+    parts: List[str] = []
+    loaded: List[str] = []
+
+    # 1. UNIVERSAL always first
+    universal = rules_dir / "UNIVERSAL.md"
+    if universal.is_file():
+        parts.append(universal.read_text())
+        parts.append("")
+        loaded.append("UNIVERSAL")
+
+    # 2. Detected technology rules
+    for tech_name, rule_file in detect_technologies(project_dir):
+        rule_path = rules_dir / rule_file
+        if rule_path.is_file():
+            parts.append("---")
+            parts.append("")
+            parts.append(rule_path.read_text())
+            parts.append("")
+            loaded.append(tech_name)
+
+    # 3. Common rules — everything in rules/*.md that is not UNIVERSAL and
+    #    not a tech-detection rule (has detect_markers in frontmatter)
+    tech_files: set[str] = set()
+    for _name, _fname, _markers in _load_tech_detections(rules_dir):
+        tech_files.add(_fname)
+
+    for rule_path in sorted(rules_dir.glob("*.md")):
+        if rule_path.name == "UNIVERSAL.md":
+            continue
+        if rule_path.name in tech_files:
+            continue
+        parts.append("---")
+        parts.append("")
+        parts.append(rule_path.read_text())
+        parts.append("")
+        loaded.append(rule_path.stem)
+
+    # 4. Skills — load each skills/*/SKILL.md, strip YAML frontmatter
+    ai_dir = get_ai_dir(project_dir)
+    skills_dir = ai_dir / "skills"
+    if skills_dir.is_dir():
+        for skill_dir in sorted(skills_dir.iterdir()):
+            skill_file = skill_dir / "SKILL.md"
+            if not skill_file.is_file():
+                continue
+            skill_text = skill_file.read_text(encoding="utf-8", errors="replace")
+            # Strip YAML frontmatter (between --- delimiters)
+            if skill_text.startswith("---"):
+                end = skill_text.find("\n---", 3)
+                if end != -1:
+                    # Skip past the closing --- and any immediate newline
+                    body_start = end + 4
+                    if body_start < len(skill_text) and skill_text[body_start] == "\n":
+                        body_start += 1
+                    skill_text = skill_text[body_start:]
+            skill_name = skill_dir.name
+            parts.append("---")
+            parts.append("")
+            parts.append(f"# Skill: {skill_name}")
+            parts.append("")
+            parts.append(skill_text.strip())
+            parts.append("")
+            loaded.append(f"skill:{skill_name}")
+
+    # 5. STATE.md from consumer project root (not the hyperi-ai submodule)
+    state_file = project_dir / "STATE.md"
+    if state_file.is_file():
+        parts.append("---")
+        parts.append("")
+        parts.append("# Project State")
+        parts.append("")
+        parts.append(state_file.read_text(encoding="utf-8", errors="replace"))
+        parts.append("")
+        loaded.append("STATE")
+
+    # 6. User standards override (highest priority — loaded last)
+    user_standards = Path(
+        os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"),
+        "hyperi-ai",
+        "USER-CODING-STANDARDS.md",
+    )
+    if user_standards.is_file():
+        parts.append("---")
+        parts.append("")
+        parts.append("# User Coding Standards (OVERRIDE — these take priority)")
+        parts.append("")
+        parts.append(user_standards.read_text())
+        parts.append("")
+        loaded.append("USER")
+
+    # 7. Bash efficiency rules
+    parts.append("---")
+    parts.append("")
+    parts.append(bash_efficiency_rules())
+    parts.append("")
+
+    # 8. Tool survey
+    available, missing_installable, missing_unknown = survey_tools()
+    parts.append("")
+    parts.append(format_tool_survey(available, missing_installable, missing_unknown))
+    parts.append("")
+
+    # Summary
+    parts.append("---")
+    parts.append("")
+    parts.append(f"[CAG payload: {', '.join(loaded)}]")
 
     return ("\n".join(parts), loaded)
 
@@ -370,7 +521,9 @@ def lint_modified_files(project_dir: Path) -> List[str]:
     try:
         result = subprocess.run(
             ["git", "diff", "--name-only"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
             cwd=str(project_dir),
         )
         if result.returncode != 0:
@@ -389,7 +542,10 @@ def lint_modified_files(project_dir: Path) -> List[str]:
             continue
         try:
             lint_result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=30,
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30,
                 cwd=str(project_dir),
             )
             if lint_result.returncode != 0 and lint_result.stdout.strip():
@@ -436,7 +592,9 @@ def check_test_integrity(project_dir: Path) -> List[str]:
     try:
         result = subprocess.run(
             ["git", "diff", "--name-only"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
             cwd=str(project_dir),
         )
         if result.returncode != 0:
@@ -455,7 +613,9 @@ def check_test_integrity(project_dir: Path) -> List[str]:
         try:
             diff_result = subprocess.run(
                 ["git", "diff", "-U0", "--", f],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
                 cwd=str(project_dir),
             )
             if diff_result.returncode != 0:
@@ -500,22 +660,61 @@ def check_test_integrity(project_dir: Path) -> List[str]:
 # ---------------------------------------------------------------------------
 
 _DANGEROUS_PATTERNS: List[Tuple[str, str]] = [
-    (r"rm\s+-rf\s+/\s*$", "BLOCKED: Refuses to remove filesystem root. Use a specific path or trash."),
-    (r"rm\s+-rf\s+/\*", "BLOCKED: Refuses to remove all files under /. Use a specific path."),
+    (
+        r"rm\s+-rf\s+/\s*$",
+        "BLOCKED: Refuses to remove filesystem root. Use a specific path or trash.",
+    ),
+    (
+        r"rm\s+-rf\s+/\*",
+        "BLOCKED: Refuses to remove all files under /. Use a specific path.",
+    ),
     (r"rm\s+-rf\s+~\s*$", "BLOCKED: Refuses to remove home directory."),
     (r"rm\s+-rf\s+~/\*", "BLOCKED: Refuses to remove all files in home directory."),
-    (r"git\s+push\s+.*--force\s+.*\b(main|master)\b", "BLOCKED: Force-pushing to main/master can destroy team history. Use --force-with-lease or push to a feature branch."),
-    (r"git\s+reset\s+--hard", "BLOCKED: git reset --hard destroys uncommitted work. Use git stash or commit first."),
-    (r"git\s+checkout\s+--\s", "BLOCKED: git checkout -- discards uncommitted changes to files. Commit or stash first."),
-    (r"git\s+restore\s+(?!--staged)(?!-S)\S", "BLOCKED: git restore discards uncommitted changes. Use git restore --staged to unstage, or commit/stash first."),
-    (r"--no-verify", "BLOCKED: --no-verify bypasses pre-commit hooks. Fix the hook issue instead of skipping it."),
-    (r"dd\s+if=/dev/(zero|random)", "BLOCKED: Writing /dev/zero or /dev/random can destroy data. Verify the target device carefully."),
-    (r"mkfs\.", "BLOCKED: Formatting a filesystem destroys all data on the device. Verify the target."),
+    (
+        r"git\s+push\s+.*--force\s+.*\b(main|master)\b",
+        "BLOCKED: Force-pushing to main/master can destroy team history. Use --force-with-lease or push to a feature branch.",
+    ),
+    (
+        r"git\s+reset\s+--hard",
+        "BLOCKED: git reset --hard destroys uncommitted work. Use git stash or commit first.",
+    ),
+    (
+        r"git\s+checkout\s+--\s",
+        "BLOCKED: git checkout -- discards uncommitted changes to files. Commit or stash first.",
+    ),
+    (
+        r"git\s+restore\s+(?!--staged)(?!-S)\S",
+        "BLOCKED: git restore discards uncommitted changes. Use git restore --staged to unstage, or commit/stash first.",
+    ),
+    (
+        r"--no-verify",
+        "BLOCKED: --no-verify bypasses pre-commit hooks. Fix the hook issue instead of skipping it.",
+    ),
+    (
+        r"dd\s+if=/dev/(zero|random)",
+        "BLOCKED: Writing /dev/zero or /dev/random can destroy data. Verify the target device carefully.",
+    ),
+    (
+        r"mkfs\.",
+        "BLOCKED: Formatting a filesystem destroys all data on the device. Verify the target.",
+    ),
     (r":\(\)\s*\{\s*:\|:\s*&\s*\}\s*;:", "BLOCKED: Fork bomb detected."),
-    (r">\s*/dev/sd[a-z]", "BLOCKED: Writing directly to a block device can destroy the partition table."),
-    (r"chmod\s+-R\s+777\s+/\s*$", "BLOCKED: Setting 777 permissions recursively on / is a severe security risk."),
-    (r"git\s+push\s+\S+\s+release\b", "BLOCKED: Never push directly to release. All changes flow: main -> PR -> release. Push to main and create a PR instead."),
-    (r"git\s+push\s+.*--force.*\brelease\b", "BLOCKED: Never force-push to release. Release is protected — use PRs from main."),
+    (
+        r">\s*/dev/sd[a-z]",
+        "BLOCKED: Writing directly to a block device can destroy the partition table.",
+    ),
+    (
+        r"chmod\s+-R\s+777\s+/\s*$",
+        "BLOCKED: Setting 777 permissions recursively on / is a severe security risk.",
+    ),
+    (
+        r"git\s+push\s+\S+\s+release\b",
+        "BLOCKED: Never push directly to release. All changes flow: main -> PR -> release. Push to main and create a PR instead.",
+    ),
+    (
+        r"git\s+push\s+.*--force.*\brelease\b",
+        "BLOCKED: Never force-push to release. Release is protected — use PRs from main.",
+    ),
 ]
 
 
@@ -534,12 +733,15 @@ def check_command_safety(command: str) -> Optional[Tuple[str, str]]:
 # Auto-reattach
 # ---------------------------------------------------------------------------
 
+
 def git_rev_parse(repo_dir: Path) -> Optional[str]:
     """Get HEAD commit hash. Returns None on error."""
     try:
         result = subprocess.run(
             ["git", "-C", str(repo_dir), "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -555,7 +757,9 @@ def git_diff_names(repo_dir: Path, old_rev: str, new_rev: str) -> List[str]:
     try:
         result = subprocess.run(
             ["git", "-C", str(repo_dir), "diff", "--name-only", old_rev, new_rev],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             return [f.strip() for f in result.stdout.strip().split("\n") if f.strip()]
@@ -581,9 +785,10 @@ def auto_update_submodule(project_dir: Path, name: str = "hyperi-ai") -> bool:
     if gitmodules.is_file():
         try:
             result = subprocess.run(
-                ["git", "config", "-f", str(gitmodules),
-                 f"submodule.{name}.update"],
-                capture_output=True, text=True, timeout=5,
+                ["git", "config", "-f", str(gitmodules), f"submodule.{name}.update"],
+                capture_output=True,
+                text=True,
+                timeout=5,
                 cwd=str(project_dir),
             )
             mode = result.stdout.strip()
@@ -596,7 +801,8 @@ def auto_update_submodule(project_dir: Path, name: str = "hyperi-ai") -> bool:
     try:
         subprocess.run(
             ["git", "submodule", "update", "--remote", name],
-            capture_output=True, timeout=30,
+            capture_output=True,
+            timeout=30,
             cwd=str(project_dir),
         )
         return True
@@ -657,7 +863,8 @@ def check_version_and_reattach(project_dir: Path) -> Optional[str]:
             try:
                 subprocess.run(
                     ["bash", str(claude_sh)],
-                    capture_output=True, timeout=30,
+                    capture_output=True,
+                    timeout=30,
                     cwd=str(project_dir),
                 )
                 actions.append("Re-deployed commands, rules, and skills via claude.sh")
@@ -688,14 +895,30 @@ def check_version_and_reattach(project_dir: Path) -> Optional[str]:
 _TOOL_SURVEY: List[Tuple[str, List[str], str]] = [
     # Text processing — replace pipe chains
     ("sd", ["sd"], "sed alternative (simpler regex syntax, single command)"),
-    ("awk", ["awk", "gawk"], "text processing (field extraction, transforms — replaces cut|sort|uniq chains)"),
-    ("miller", ["mlr", "miller"], "CSV/JSON/tabular processor (replaces awk|sort|uniq|cut chains)"),
+    (
+        "awk",
+        ["awk", "gawk"],
+        "text processing (field extraction, transforms — replaces cut|sort|uniq chains)",
+    ),
+    (
+        "miller",
+        ["mlr", "miller"],
+        "CSV/JSON/tabular processor (replaces awk|sort|uniq|cut chains)",
+    ),
     ("jq", ["jq"], "JSON processor (replaces grep|sed on JSON data)"),
     ("yq", ["yq"], "YAML/XML processor (like jq but for YAML)"),
     ("gron", ["gron"], "flatten JSON for grep (replaces jq|grep chains)"),
     # File finding — replace find|grep chains
-    ("fd", ["fdfind", "fd"], "fast find replacement (single command, regex, respects .gitignore)"),
-    ("ripgrep", ["rg", "ripgrep"], "fast recursive grep (single command, respects .gitignore)"),
+    (
+        "fd",
+        ["fdfind", "fd"],
+        "fast find replacement (single command, regex, respects .gitignore)",
+    ),
+    (
+        "ripgrep",
+        ["rg", "ripgrep"],
+        "fast recursive grep (single command, respects .gitignore)",
+    ),
     # File operations — replace pipe-to-file patterns
     ("sponge", ["sponge"], "in-place filter (replaces cmd > tmp && mv tmp file)"),
     ("ifne", ["ifne"], "run command only if stdin non-empty (from moreutils)"),
@@ -706,13 +929,21 @@ _TOOL_SURVEY: List[Tuple[str, List[str], str]] = [
     # Display
     ("bat", ["batcat", "bat"], "syntax-highlighted cat"),
     # Shell scripting
-    ("macbash", ["macbash"], "check bash scripts for macOS/BSD compat issues and convert multi-line to single-line"),
+    (
+        "macbash",
+        ["macbash"],
+        "check bash scripts for macOS/BSD compat issues and convert multi-line to single-line",
+    ),
     # CI/CD — only relevant when .hyperi-ci.yaml is present
-    ("hyperi-ci", ["hyperi-ci"], "polyglot CI/CD CLI (quality, test, build, publish — same locally and in CI)"),
+    (
+        "hyperi-ci",
+        ["hyperi-ci"],
+        "polyglot CI/CD CLI (quality, test, build, publish — same locally and in CI)",
+    ),
 ]
 
 
-    # Tools that are only relevant when certain project files exist
+# Tools that are only relevant when certain project files exist
 _CONDITIONAL_TOOLS: Dict[str, str] = {
     "hyperi-ci": ".hyperi-ci.yaml",  # only needed for hyperi-ci projects
 }
@@ -817,7 +1048,9 @@ def _check_package_available(tool_name: str) -> Optional[str]:
             try:
                 result = subprocess.run(
                     ["apt-cache", "show", pkg],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if result.returncode == 0:
                     return f"apt: {pkg}"
@@ -830,7 +1063,9 @@ def _check_package_available(tool_name: str) -> Optional[str]:
             try:
                 result = subprocess.run(
                     ["dnf", "info", pkg],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if result.returncode == 0:
                     return f"dnf: {pkg}"
@@ -843,7 +1078,9 @@ def _check_package_available(tool_name: str) -> Optional[str]:
             try:
                 result = subprocess.run(
                     ["brew", "info", "--json=v2", pkg],
-                    capture_output=True, text=True, timeout=10,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
                 )
                 if result.returncode == 0:
                     return f"brew: {pkg}"
@@ -876,14 +1113,18 @@ def format_tool_survey(
 
     if missing_installable:
         lines.append("")
-        lines.append(f"*Not installed (available in repos):* {', '.join(missing_installable)}")
+        lines.append(
+            f"*Not installed (available in repos):* {', '.join(missing_installable)}"
+        )
         lines.append("*Run `/setup-claude` to install missing tools.*")
 
     if missing_unknown:
         lines.append("")
         lines.append(f"*Not installed (not in repos):* {', '.join(missing_unknown)}")
         if "macbash" in missing_unknown:
-            lines.append("*Install macbash from https://github.com/hyperi-io/macbash/releases*")
+            lines.append(
+                "*Install macbash from https://github.com/hyperi-io/macbash/releases*"
+            )
         if "hyperi-ci" in missing_unknown:
             lines.append("*Install hyperi-ci: `uv tool install hyperi-ci`*")
 
