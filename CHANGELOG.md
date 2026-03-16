@@ -1,3 +1,10 @@
+## [3.1.4](https://github.com/hyperi-io/hyperi-ai/compare/3.1.3...3.1.4) (2026-03-16)
+
+
+### Bug Fixes
+
+* ensure docs/superpowers/ gitignored, fix testing.md rule deploy ([4ae69bf](https://github.com/hyperi-io/hyperi-ai/commit/4ae69bf68b01abf64ec27dcc2c5df740a595377e))
+
 ## [3.1.3](https://github.com/hyperi-io/hyperi-ai/compare/3.1.2...3.1.3) (2026-03-16)
 
 
