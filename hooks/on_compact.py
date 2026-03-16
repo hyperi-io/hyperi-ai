@@ -23,40 +23,18 @@ import common  # noqa: E402
 
 
 def main() -> None:
-    print("""
----
-
-## Context Recovery (Post-Compaction)
-
-Context was compacted. Coding standards have been re-injected below.
-**Run `/load` to restore full project state** (STATE.md, TODO.md, git sync).
-
----
-""")
-
     today = date.today()
-    print(f"**Current date: {today.strftime('%Y-%m-%d %A')}** (use this, not training data)")
+    print(
+        f"**Current date: {today.strftime('%Y-%m-%d %A')}** (use this, not training data)"
+    )
     print("")
 
     project_dir = common.get_project_dir()
-    text, loaded = common.inject_rules(project_dir)
+    text, _loaded = common.inject_cag_payload(project_dir)
     print(text)
-
-    # Re-inject bash efficiency rules (always-on — critical post-compact)
-    print("")
-    print("---")
-    print("")
-    print(common.bash_efficiency_rules())
     print("")
 
-    # Re-survey available tools
-    available, missing_installable, missing_unknown = common.survey_tools()
-    print("")
-    print(common.format_tool_survey(available, missing_installable, missing_unknown))
-    print("")
-
-    print("")
-    print("**Run `/load` now** to restore full project context (STATE.md, TODO.md, submodule updates).")
+    print("Context compacted. Full standards re-injected.")
 
 
 if __name__ == "__main__":
