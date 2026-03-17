@@ -58,7 +58,7 @@ teardown() {
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "Deployed:" ]]
-    grep -q "gemini-3-pro-preview" .gemini/settings.json
+    grep -q "QUICKSTART" .gemini/settings.json
 }
 
 @test "TC-G05: Dry run shows actions without executing" {
