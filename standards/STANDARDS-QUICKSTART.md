@@ -15,7 +15,7 @@ Standards are delivered in three layers:
    Auto-injected when editing matching file types.
 
 3. **Full Standards** — `hyperi-ai/standards/languages/`, `hyperi-ai/standards/infrastructure/`,
-   `hyperi-ai/standards/common/`
+   `hyperi-ai/standards/universal/`
    Complete unabridged standards for deep reference, code review, and simplification.
 
 ## Available Rules

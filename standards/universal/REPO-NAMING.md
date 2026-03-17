@@ -1,7 +1,6 @@
 ---
 name: repo-naming-standards
 description: Repository naming conventions for all HyperI projects. Prefix-based scheme by product scope.
-universal: true
 ---
 
 # Repository Naming Standards

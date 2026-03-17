@@ -339,7 +339,7 @@ def _detect_tech(project_root: str) -> list[tuple[str, str, str]]:
     # PKI
     pki_dirs = ["certs", "ssl", "pki", "tls"]
     if any((p / d).is_dir() for d in pki_dirs):
-        found.append(("PKI/TLS", "pki", "common/PKI.md"))
+        found.append(("PKI/TLS", "pki", "universal/PKI.md"))
 
     return found
 

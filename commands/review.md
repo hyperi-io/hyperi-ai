@@ -49,7 +49,7 @@ Only load if relevant files exist:
 | Condition | Load |
 |-----------|------|
 | `Dockerfile` or `docker-compose.yaml` | `ai/standards/infrastructure/DOCKER.md` |
-| `certs/`, `ssl/`, `tls/`, `pki/` directories | `ai/standards/common/PKI.md` |
+| `certs/`, `ssl/`, `tls/`, `pki/` directories | `ai/standards/universal/PKI.md` |
 | `*.tf` files | `ai/standards/infrastructure/TERRAFORM.md` |
 
 ---

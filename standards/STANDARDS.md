@@ -66,8 +66,8 @@ This standards library represents the collation of years of HyperI (and Derek's 
 
 **New to HyperI?** Start here:
 
-1. Read `$AI_ROOT/standards/common/CODE-STYLE.md` - Core language-agnostic code style
-2. Read `$AI_ROOT/standards/common/GIT.md` - Git conventions
+1. Read `$AI_ROOT/standards/universal/CODE-STYLE.md` - Core language-agnostic code style
+2. Read `$AI_ROOT/standards/universal/GIT.md` - Git conventions
 3. Read language-specific file from `$AI_ROOT/standards/languages/` based on your project
 4. For infrastructure, also read relevant files from `$AI_ROOT/standards/infrastructure/`
 
@@ -84,7 +84,7 @@ standards/
 │   ├── COMMON.md (session mgmt, bash, commits)
 │   └── AI-GUIDELINES.md (cognitive load research)
 │
-├── common/ (language-agnostic standards)
+├── universal/ (language-agnostic standards)
 │   ├── CHARS-POLICY.md (character/emoji policy)
 │   ├── CODE-HEADER.md (file header standards)
 │   ├── CODE-STYLE.md (clarity, naming, organisation)
@@ -120,15 +120,15 @@ standards/
 
 ### Code Style & Quality (Daily Use)
 
-**Code style:** `$AI_ROOT/standards/common/CODE-STYLE.md` (clarity, naming, organisation)
-**Design principles:** `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` (SOLID, DRY, KISS, YAGNI)
-**Configuration & logging:** `$AI_ROOT/standards/common/CONFIG-AND-LOGGING.md` (7-layer cascade, RFC 3339)
+**Code style:** `$AI_ROOT/standards/universal/CODE-STYLE.md` (clarity, naming, organisation)
+**Design principles:** `$AI_ROOT/standards/universal/DESIGN-PRINCIPLES.md` (SOLID, DRY, KISS, YAGNI)
+**Configuration & logging:** `$AI_ROOT/standards/universal/CONFIG-AND-LOGGING.md` (7-layer cascade, RFC 3339)
 
 **Language-specific:** See `$AI_ROOT/standards/languages/` directory for your language.
 
 ### Git Workflow (Every Commit)
 
-**Full guide:** `$AI_ROOT/standards/common/GIT.md`
+**Full guide:** `$AI_ROOT/standards/universal/GIT.md`
 
 **Quick tips:**
 
@@ -139,9 +139,9 @@ standards/
 
 ### Error Handling & Security
 
-**Error handling:** `$AI_ROOT/standards/common/ERROR-HANDLING.md`
-**Security:** `$AI_ROOT/standards/common/SECURITY.md`
-**PKI/TLS:** `$AI_ROOT/standards/common/PKI.md`
+**Error handling:** `$AI_ROOT/standards/universal/ERROR-HANDLING.md`
+**Security:** `$AI_ROOT/standards/universal/SECURITY.md`
+**PKI/TLS:** `$AI_ROOT/standards/universal/PKI.md`
 
 **Key rules:**
 
@@ -155,7 +155,7 @@ standards/
 
 ### Testing
 
-**Testing standards:** `$AI_ROOT/standards/common/TESTING.md`
+**Testing standards:** `$AI_ROOT/standards/universal/TESTING.md`
 
 **Key rules:**
 
@@ -180,7 +180,7 @@ standards/
 
 ### Code Completeness (Review/AI Code)
 
-**Mock-aware testing:** `$AI_ROOT/standards/common/MOCKS-POLICY.md`
+**Mock-aware testing:** `$AI_ROOT/standards/universal/MOCKS-POLICY.md`
 
 ### AI Code Assistants
 
@@ -201,25 +201,25 @@ standards/
 
 **Read once:**
 
-1. `$AI_ROOT/standards/common/CODE-STYLE.md` - Core code style
-2. `$AI_ROOT/standards/common/GIT.md` - Commit conventions
+1. `$AI_ROOT/standards/universal/CODE-STYLE.md` - Core code style
+2. `$AI_ROOT/standards/universal/GIT.md` - Commit conventions
 3. Your language file from `$AI_ROOT/standards/languages/`
 
 **Bookmark for reference:**
 
-- `$AI_ROOT/standards/common/ERROR-HANDLING.md` - When writing error handling
-- `$AI_ROOT/standards/common/CONFIG-AND-LOGGING.md` - When setting up config/logging
-- `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` - When designing architecture
+- `$AI_ROOT/standards/universal/ERROR-HANDLING.md` - When writing error handling
+- `$AI_ROOT/standards/universal/CONFIG-AND-LOGGING.md` - When setting up config/logging
+- `$AI_ROOT/standards/universal/DESIGN-PRINCIPLES.md` - When designing architecture
 - `$AI_ROOT/standards/infrastructure/` - When working with K8s or Terraform
 
 ### For Code Reviewers
 
 **Check against:**
 
-1. `$AI_ROOT/standards/common/CODE-STYLE.md` - Core standards compliance
-2. `$AI_ROOT/standards/common/MOCKS-POLICY.md` - Mock-aware testing, no placeholder code
-3. `$AI_ROOT/standards/common/ERROR-HANDLING.md` - Security-first errors
-4. `$AI_ROOT/standards/common/SECURITY.md` - Input validation, secrets
+1. `$AI_ROOT/standards/universal/CODE-STYLE.md` - Core standards compliance
+2. `$AI_ROOT/standards/universal/MOCKS-POLICY.md` - Mock-aware testing, no placeholder code
+3. `$AI_ROOT/standards/universal/ERROR-HANDLING.md` - Security-first errors
+4. `$AI_ROOT/standards/universal/SECURITY.md` - Input validation, secrets
 5. `$AI_ROOT/standards/code-assistant/AI-GUIDELINES.md` - Extra scrutiny for AI code
 6. Language-specific file from `$AI_ROOT/standards/languages/`
 
@@ -227,12 +227,12 @@ standards/
 
 **Architecture decisions:**
 
-- `$AI_ROOT/standards/common/DESIGN-PRINCIPLES.md` - SOLID, DRY, KISS, YAGNI
+- `$AI_ROOT/standards/universal/DESIGN-PRINCIPLES.md` - SOLID, DRY, KISS, YAGNI
 - `$AI_ROOT/standards/infrastructure/DOCKER.md` - Container architecture
 
 **Process enforcement:**
 
-- `$AI_ROOT/standards/common/GIT.md` - Git conventions
+- `$AI_ROOT/standards/universal/GIT.md` - Git conventions
 
 ---
 
@@ -240,13 +240,13 @@ standards/
 
 **Before committing code, verify:**
 
-- [ ] Follows code style standards (`$AI_ROOT/standards/common/CODE-STYLE.md`)
+- [ ] Follows code style standards (`$AI_ROOT/standards/universal/CODE-STYLE.md`)
 - [ ] Follows language-specific standards (`$AI_ROOT/standards/languages/`)
-- [ ] No TODO/FIXME comments in src/ (`$AI_ROOT/standards/common/MOCKS-POLICY.md`)
-- [ ] Error handling is security-first (`$AI_ROOT/standards/common/ERROR-HANDLING.md`)
-- [ ] Input validation present (`$AI_ROOT/standards/common/SECURITY.md`)
-- [ ] Tests pass (80%+ coverage) (`$AI_ROOT/standards/common/TESTING.md`)
-- [ ] Commit message follows format (`$AI_ROOT/standards/common/GIT.md`)
+- [ ] No TODO/FIXME comments in src/ (`$AI_ROOT/standards/universal/MOCKS-POLICY.md`)
+- [ ] Error handling is security-first (`$AI_ROOT/standards/universal/ERROR-HANDLING.md`)
+- [ ] Input validation present (`$AI_ROOT/standards/universal/SECURITY.md`)
+- [ ] Tests pass (80%+ coverage) (`$AI_ROOT/standards/universal/TESTING.md`)
+- [ ] Commit message follows format (`$AI_ROOT/standards/universal/GIT.md`)
 - [ ] No sensitive data logged
 
 **Language-specific checks:** See your language file in `$AI_ROOT/standards/languages/`

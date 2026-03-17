@@ -38,7 +38,7 @@ standards/
 │   ├── COMMON.md             # Session management, commits
 │   └── AI-GUIDELINES.md      # Cognitive load, pitfalls
 │
-├── common/                   # Language-agnostic
+├── universal/                   # Language-agnostic
 │   ├── CODE-STYLE.md
 │   ├── GIT.md
 │   ├── TESTING.md

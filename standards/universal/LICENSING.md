@@ -1,7 +1,6 @@
 ---
 name: licensing-standards
 description: HyperI licensing policy — FSL-1.1-ALv2 for all projects. No GPL/AGPL/SSPL dependencies.
-universal: true
 ---
 
 # Licensing Standards
