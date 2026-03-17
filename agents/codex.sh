@@ -214,7 +214,7 @@ description: ${description}
 
 # ${name_cap} Standards
 
-See the full standards document at: \`ai/standards/${src_file#"$standards_dir/"}\`
+See the full standards document at: \`hyperi-ai/standards/${src_file#"$standards_dir/"}\`
 
 EOF
             if [ "$VERBOSE" = "true" ]; then agent_log_info "Created skill: $name/"; fi
@@ -359,7 +359,7 @@ Options:
   --help          Show this help message
   --dry-run       Show what would be done without making changes
   --force         Overwrite existing files
-  --path PATH     Specify custom project root (default: parent of ai/)
+  --path PATH     Specify custom project root (default: parent of hyperi-ai/)
   --verbose       Enable verbose output
   -h              Same as --help
 

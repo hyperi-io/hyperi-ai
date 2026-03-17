@@ -77,7 +77,7 @@ check_common_prerequisites() {
 # Sets: AI_ROOT, PROJECT_ROOT (if not already set)
 # Usage: detect_agent_paths
 detect_agent_paths() {
-    # AI_ROOT = parent of agents/ directory (the ai/ repo root)
+    # AI_ROOT = parent of agents/ directory (the hyperi-ai/ repo root)
     if [ -z "${AI_ROOT:-}" ]; then
         local script_dir
         script_dir="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"

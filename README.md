@@ -502,7 +502,7 @@ Tests cover all scripts across submodule, clone, and standalone modes.
 
 Documentation uses these variables:
 
-- `$AI_ROOT` - Where this repo is attached (e.g., `hyperi-ai/`, `standards/`, `.ai/`)
+- `$AI_ROOT` - Where this repo is attached (always `hyperi-ai/`)
 - `$PROJECT_ROOT` - Parent project root (where STATE.md lives)
 
 ---

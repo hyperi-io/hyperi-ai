@@ -71,7 +71,7 @@ OPTIONS:
   --force          Overwrite existing config files (does NOT touch STATE.md/TODO.md)
   --reset-state    Overwrite STATE.md and TODO.md with fresh templates
                    (Use with --force to reset everything)
-  --path PATH      Specify custom project root (default: parent of ai/)
+  --path PATH      Specify custom project root (default: parent of hyperi-ai/)
   --verbose        Enable verbose output
 
   --pin            Pin submodule version (disable auto-update from upstream)

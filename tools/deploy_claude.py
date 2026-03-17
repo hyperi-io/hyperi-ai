@@ -762,7 +762,7 @@ def print_summary(
         print()
         log_success("Claude Code setup complete!")
         print()
-        print("Configuration (symlinked to ai/templates/claude-code/):")
+        print("Configuration (symlinked to hyperi-ai/templates/claude-code/):")
         print("  .claude/settings.json     -> settings.json")
         for cmd in ("load", "save", "review", "simplify", "standards", "setup-claude"):
             print(f"  .claude/commands/{cmd}.md")
@@ -794,7 +794,7 @@ def print_summary(
         except (FileNotFoundError, subprocess.TimeoutExpired):
             print("  superpowers               -> UNKNOWN (CLI unavailable)")
         print()
-        print("Hooks (run from ai/hooks/ via settings.json):")
+        print("Hooks (run from hyperi-ai/hooks/ via settings.json):")
         print(
             "  SessionStart(startup) -> inject_standards.py (auto-detect + inject + reattach)"
         )
@@ -837,7 +837,7 @@ def parse_args() -> argparse.Namespace:
         "--project-root",
         "--path",
         default="",
-        help="Path to consumer project (default: parent of ai/)",
+        help="Path to consumer project (default: parent of hyperi-ai/)",
     )
     p.add_argument("--agent-cli", default="claude", help=argparse.SUPPRESS)
     p.add_argument(

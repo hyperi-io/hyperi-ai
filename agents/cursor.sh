@@ -307,7 +307,7 @@ Options:
   --help          Show this help message
   --dry-run       Show what would be done without making changes
   --force         Overwrite existing cli.json
-  --path PATH     Specify custom project root (default: parent of ai/)
+  --path PATH     Specify custom project root (default: parent of hyperi-ai/)
   --verbose       Enable verbose output
   -h              Same as --help
 
