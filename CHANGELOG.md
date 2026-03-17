@@ -1,3 +1,15 @@
+## [3.4.6](https://github.com/hyperi-io/hyperi-ai/compare/3.4.5...3.4.6) (2026-03-17)
+
+
+### Bug Fixes
+
+* update codex and gemini tests for QUICKSTART.md rename ([f187df4](https://github.com/hyperi-io/hyperi-ai/commit/f187df40ff85089d0ef98a1e0636860ee5d03fd0))
+
+
+### Documentation
+
+* add Google style guide patterns + PyO3 bridge principle ([24ef6f5](https://github.com/hyperi-io/hyperi-ai/commit/24ef6f5fe593c75c844ea689d941b5183f5fe164))
+
 ## [3.4.5](https://github.com/hyperi-io/hyperi-ai/compare/3.4.4...3.4.5) (2026-03-17)
 
 
