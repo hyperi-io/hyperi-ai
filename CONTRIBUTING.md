@@ -25,7 +25,7 @@ hyperi-ai/
 │   └── lint_check.py         # Stop: lint modified files, feed errors back
 ├── standards/           # Main product - coding standards
 │   ├── STANDARDS.md             # Full reference
-│   ├── STANDARDS-QUICKSTART.md  # Router/index → standards/rules/
+│   ├── QUICKSTART.md  # Router/index → standards/rules/
 │   ├── rules/                  # Compact rules (<200 lines each, single source)
 │   ├── common/                  # Language-agnostic standards
 │   ├── languages/               # Python, Go, TypeScript, Rust, Bash, C++

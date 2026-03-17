@@ -1,38 +1,9 @@
 {
-  "permissions": {
-    "allow": [
-      "Read(**)",
-      "Write(**)",
-      "Edit(**)",
-      "Glob",
-      "Grep",
-      "LS",
-      "Search",
-      "Find"
-    ],
-    "deny": [],
-    "ask": [
-      "Write(ai/**)",
-      "Edit(ai/**)",
-      "Write(ci/**)",
-      "Edit(ci/**)"
-    ]
-  },
   "settings": {
     "contextFiles": [
       "STATE.md",
       "TODO.md",
-      "CURSOR.md"
-    ],
-    "ignorePatterns": [
-      "**/.git/**",
-      "**/node_modules/**",
-      "**/__pycache__/**",
-      "**/.venv/**",
-      "**/.pytest_cache/**",
-      "**/dist/**",
-      "**/build/**"
+      "hyperi-ai/standards/QUICKSTART.md"
     ]
   }
 }
-

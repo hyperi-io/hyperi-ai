@@ -400,7 +400,7 @@ def deploy_skills(
     # Core skills
     _create_skill(
         "standards",
-        str(standards_dir / "STANDARDS-QUICKSTART.md"),
+        str(standards_dir / "QUICKSTART.md"),
         skills_dir,
         dry_run=dry_run,
         force=force,

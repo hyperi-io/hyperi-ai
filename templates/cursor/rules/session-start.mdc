@@ -1,38 +1,11 @@
 ---
 category: Auto Attached
-description: Session initialization instructions - auto-attached when starting new work
+description: Session initialization — read QUICKSTART.md for coding standards
 ---
 
 # Start Session
 
-You are starting a new work session.
-
-## Session Initialization
-
-**Step 1: Read critical documentation** (in this order):
-
-1. `STATE.md` - Current project state and session history
-2. `TODO.md` - Current tasks and priorities
-
-**Step 2: Standards are already loaded**
-
-Universal standards are loaded as "Always" rules. Language-specific standards
-are auto-attached when you edit matching files. No manual loading needed.
-
-For deep reference (full unabridged standards), see `ai/standards/languages/`
-and `ai/standards/infrastructure/`.
-
----
-
-## Ready to Work
-
-After loading documentation:
-
-1. Check git status and recent commits
-2. Ask what they want to work on
-
-## Session State
-
-- Review `STATE.md` for current project status
-- Check `TODO.md` for active tasks
-- Note any blockers or issues from previous sessions
+1. Read `STATE.md` and `TODO.md` for project context
+2. Read `hyperi-ai/standards/QUICKSTART.md` for coding standards index
+3. Standards in `hyperi-ai/standards/` — language and infrastructure standards
+   are in `languages/` and `infrastructure/`, auto-matched by file type

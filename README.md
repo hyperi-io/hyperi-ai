@@ -211,7 +211,7 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |
 |-- standards/                   # Coding standards (main product)
 |   |-- STANDARDS.md             # Full reference
-|   |-- STANDARDS-QUICKSTART.md  # Router to rules/ (compact single source)
+|   |-- QUICKSTART.md  # Router to rules/ (compact single source)
 |   |-- rules/                  # Compact rules (<200 lines) -- single source for all agents
 |   |   |-- UNIVERSAL.md        # Cross-cutting rules (always loaded)
 |   |   +-- <topic>.md          # Path-scoped rules (auto-injected by file type)
