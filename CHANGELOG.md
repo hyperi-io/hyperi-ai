@@ -1,3 +1,15 @@
+## [3.1.6](https://github.com/hyperi-io/hyperi-ai/compare/3.1.5...3.1.6) (2026-03-17)
+
+
+### Bug Fixes
+
+* update compact rust.md rules for major RUST.md revision ([534c6cc](https://github.com/hyperi-io/hyperi-ai/commit/534c6cc4de67925b195517d38c4e7ac45c01f67f))
+
+
+### Documentation
+
+* major RUST.md revision — design philosophy, edition 2024, hyperi-rustlib, observability, async patterns ([03d8da3](https://github.com/hyperi-io/hyperi-ai/commit/03d8da3687cc947973f43b0f70433cf34d2afcf5))
+
 ## [3.1.5](https://github.com/hyperi-io/hyperi-ai/compare/3.1.4...3.1.5) (2026-03-16)
 
 
