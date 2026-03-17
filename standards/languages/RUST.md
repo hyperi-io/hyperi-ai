@@ -8,6 +8,15 @@ description: Rust coding standards using Cargo, clippy, and idiomatic patterns. 
 > These patterns come from building high-throughput data pipelines that process
 > PBs/hour. I've made the mistakes so you don't have to.
 >
+> **March 2026 update:** Major revision from Derek's "Derek Dump" — lessons
+> learned from the dfe-* Rust projects and dropping Vector.dev from the hot path.
+> Vector is excellent for routing/fan-out but its per-event overhead and GC-like
+> allocation patterns made it unsuitable for PB-scale ingest where every
+> microsecond of latency and every byte of allocation matters. The replacement:
+> pure Rust pipelines built on `hyperi-rustlib` (transport, tiered-sink,
+> resilience) with SIMD JSON parsing, zero-copy buffers, and direct Kafka/gRPC
+> transports — no intermediary runtime.
+>
 > **Improvements are WELCOME.** Found a better pattern? Know something I got
 > wrong? Fix it or ping me. This is a living document.
 
@@ -22,25 +31,31 @@ This doc covers HyperI-specific patterns and hard-won lessons from production sy
 
 ## Table of Contents
 
-1. [Code Style Rules](#code-style-rules) - the non-negotiables
-2. [Required Tooling](#required-tooling)
-3. [Quick Reference](#quick-reference)
-4. [Project Structure](#project-structure)
-5. [Error Handling](#error-handling)
-6. [Traits and Generics](#traits-and-generics)
-7. [Common Patterns](#common-patterns)
-8. [Testing](#testing)
-9. [Async with Tokio](#async-with-tokio)
-10. [Configuration and Logging](#configuration-hyperi-cascade)
-11. [External Libraries](#external-libraries-and-private-registries)
-12. [High Performance](#at-scale-performance-patterns) - memory, zero-copy, SIMD, concurrency
-13. [Data Pipeline Architecture](#data-pipeline-architecture)
-14. [FFI and Unsafe](#ffi-and-unsafe-rust)
-15. [Clippy Configuration](#clippy-configuration)
-16. [Cargo.toml Best Practices](#cargotoml-best-practices)
-17. [Coming from Other Languages](#coming-from-other-languages)
-18. [For AI Assistants](#ai-pitfalls-to-avoid)
-19. [Resources](#resources)
+1. [HyperI Rust Design Philosophy](#hyperi-rust-design-philosophy) - why Rust, when Rust
+2. [Rust 2024 Edition Features](#rust-2024-edition-features) - async closures, let chains, recent std stabilisations
+3. [Code Style Rules](#code-style-rules) - the non-negotiables
+4. [Required Tooling](#required-tooling)
+5. [Quick Reference](#quick-reference)
+6. [Project Structure](#project-structure)
+7. [Error Handling](#error-handling)
+8. [Traits and Generics](#traits-and-generics) - sealed traits, GATs, const generics
+9. [Common Patterns](#common-patterns)
+10. [Testing](#testing)
+11. [Async with Tokio](#async-with-tokio)
+12. [Configuration and Logging](#configuration-hyperi-cascade)
+13. [hyperi-rustlib](#hyperi-rustlib) - org shared library (config, logging, metrics, transports, secrets)
+14. [Observability](#observability) - OTel, Prometheus, tokio-console, health checks
+15. [HTTP Service Patterns](#http-service-patterns-axum--tower) - axum 0.8 + tower middleware
+16. [Graceful Shutdown](#graceful-shutdown-k8s-ready) - K8s-ready SIGTERM/drain
+17. [External Libraries](#external-libraries-and-private-registries)
+18. [High Performance](#at-scale-performance-patterns) - build perf, memory, zero-copy, SIMD, concurrency
+19. [Data Pipeline Architecture](#data-pipeline-architecture)
+20. [FFI and Unsafe](#ffi-and-unsafe-rust)
+21. [Clippy Configuration](#clippy-configuration)
+22. [Cargo.toml Best Practices](#cargotoml-best-practices)
+23. [Coming from Other Languages](#coming-from-other-languages)
+24. [For AI Assistants](#ai-pitfalls-to-avoid) - web-search-first enforcement, deprecated crate table
+25. [Resources](#resources)
 
 ---
 
@@ -56,6 +71,140 @@ This doc covers HyperI-specific patterns and hard-won lessons from production sy
 - Pin `rust-toolchain.toml` to the current stable version (check `rustup check` or <https://releases.rs/>).
 - Minimum acceptable floor as of March 2026: **Edition 2024**, **rustc 1.94.0**.
 - There is no valid reason to use an older edition in new projects. Existing projects should migrate.
+
+---
+
+## HyperI Rust Design Philosophy
+
+> **If it's scaling and on the hot path, it's in Rust.**
+> If not, expressive languages with large library ecosystems (Python, TypeScript) are fine.
+
+Rust at HyperI is for **high-throughput data pipelines, network services, and CPU-bound processing** where every cycle counts. We don't use Rust for glue scripts, admin dashboards, or one-off tools — Python or TypeScript are better there.
+
+### Core Principles
+
+1. **SIMD-first** — If the operation processes bytes at volume (JSON parsing, string search, compression, hashing), use SIMD-accelerated crates. Never hand-roll what `sonic-rs`, `memchr`, or `simd-json` already optimise.
+
+2. **Zero-copy by default** — Borrow `&[u8]` and `&str` from source buffers. Allocate only when mutation is required. Use `Cow<'_, str>` for conditionally-owned data. Use `Bytes` for reference-counted buffer sharing across tasks.
+
+3. **Zero-allocation hot paths** — Pre-allocate all structures during init. Use object pools (`crossbeam` bounded channels), arena allocators (`bumpalo`), and `CompactString` for short strings. The hot path should show zero in `perf record` for `malloc`.
+
+4. **Measure, don't guess** — Profile with `cargo flamegraph` or `perf`. Benchmark with `criterion`. No optimisation is valid without measurement.
+
+5. **Use `hyperi-rustlib`** — Never roll bespoke config, logging, metrics, or resilience patterns in HyperI projects. The shared library exists to eliminate this duplication. See the [hyperi-rustlib](#hyperi-rustlib) section.
+
+---
+
+## Rust 2024 Edition Features
+
+Edition 2024 (stable since Rust 1.85.0, February 2025) is the largest edition release.
+Use these features — they are the current standard.
+
+### Async Closures (`AsyncFn` traits)
+
+First-class async closures with `AsyncFn`, `AsyncFnMut`, `AsyncFnOnce` traits.
+Use these instead of the old `Fn() -> impl Future<Output = T>` workaround.
+
+```rust
+// ❌ Old pattern — verbose, lifetime issues
+fn retry<F, Fut, T>(f: F) -> T
+where
+    F: Fn() -> Fut,
+    Fut: Future<Output = Result<T>>,
+{ /* ... */ }
+
+// ✅ Edition 2024 — async closures
+fn retry<F: AsyncFn() -> Result<T>, T>(f: F) -> T { /* ... */ }
+
+// ✅ Async closures capture environment correctly
+let client = reqwest::Client::new();
+let fetch = async || {
+    client.get("https://api.example.com").send().await
+};
+```
+
+### Let Chains (Rust 1.88.0+, Edition 2024 only)
+
+Chain `let` patterns with `&&` in `if` and `while` expressions:
+
+```rust
+// ❌ Old pattern — nested if-let
+if let Some(response) = get_response() {
+    if let Ok(body) = response.text() {
+        if body.len() > 0 {
+            process(&body);
+        }
+    }
+}
+
+// ✅ Let chains — flat and readable
+if let Some(response) = get_response()
+    && let Ok(body) = response.text()
+    && !body.is_empty()
+{
+    process(&body);
+}
+```
+
+### Unsafe Changes
+
+- `unsafe_op_in_unsafe_fn` is now **warn-by-default** — unsafe operations inside
+  `unsafe fn` must be wrapped in explicit `unsafe {}` blocks.
+- `extern` blocks require the `unsafe` keyword: `unsafe extern "C" { ... }`.
+- Update existing FFI code accordingly.
+
+```rust
+// ❌ Edition 2021
+extern "C" {
+    fn external_func(ptr: *const u8) -> i32;
+}
+
+unsafe fn process(ptr: *const u8) -> i32 {
+    external_func(ptr)  // Warning in 2024: unsafe op without block
+}
+
+// ✅ Edition 2024
+unsafe extern "C" {
+    fn external_func(ptr: *const u8) -> i32;
+}
+
+unsafe fn process(ptr: *const u8) -> i32 {
+    unsafe { external_func(ptr) }  // Explicit unsafe block
+}
+```
+
+### Recent std Stabilisations (Rust 1.85–1.94)
+
+Notable additions to the standard library since Edition 2024 shipped.
+Use these instead of external crate equivalents.
+
+```rust
+// LazyCell::get / LazyLock::get — check if already initialised (1.87.0)
+use std::sync::LazyLock;
+
+static CONFIG: LazyLock<Config> = LazyLock::new(|| load_config());
+
+fn is_ready() -> bool {
+    // Non-blocking check: returns Some(&Config) if already initialised
+    LazyLock::get(&CONFIG).is_some()
+}
+
+// Peekable::next_if — conditional advance without consuming (stable)
+fn skip_whitespace(iter: &mut std::iter::Peekable<std::str::Chars<'_>>) {
+    while iter.next_if(|c| c.is_whitespace()).is_some() {}
+}
+
+// array_windows — compile-time sliding windows (1.94.0)
+// See "array_windows" section under Real-World SIMD Patterns for full examples
+
+// Const math functions (1.90.0+) — usable in const contexts
+const MAX_BUFFER: usize = usize::next_power_of_two(4096);
+const ALIGNED: usize = usize::div_ceil(100, 64) * 64;  // Round up to 64-byte alignment
+
+// std::io::IsTerminal — replaces atty crate (stable since 1.70)
+use std::io::IsTerminal;
+let interactive = std::io::stderr().is_terminal();
+```
 
 ---
 
@@ -424,6 +573,7 @@ notice = "warn"
 [licenses]
 unlicensed = "deny"
 allow = [
+    "FSL-1.1-ALv2",
     "MIT",
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
@@ -1528,6 +1678,241 @@ async fn main() {
 
     handle.await.unwrap();
 }
+```
+
+### Async Anti-Patterns (The Things That Kill Throughput)
+
+These are the most common async mistakes. Each one can silently halve your throughput.
+
+```rust
+// ❌ BLOCKING THE RUNTIME — the #1 async sin
+async fn bad_read() -> String {
+    std::fs::read_to_string("data.json").unwrap()  // Blocks a runtime thread!
+}
+// ✅ Use tokio's async fs, or spawn_blocking for heavy ops
+async fn good_read() -> String {
+    tokio::fs::read_to_string("data.json").await.unwrap()
+}
+async fn good_heavy_compute(data: Vec<u8>) -> ProcessedData {
+    tokio::task::spawn_blocking(move || {
+        cpu_intensive_transform(&data)  // Runs on blocking thread pool
+    }).await.unwrap()
+}
+
+// ❌ Holding std::sync::Mutex across .await — deadlock risk
+async fn bad_lock(cache: Arc<std::sync::Mutex<HashMap<String, String>>>) {
+    let mut guard = cache.lock().unwrap();
+    let value = fetch_remote(&guard["key"]).await;  // Blocks runtime thread while awaiting!
+    guard.insert("result".into(), value);
+}
+// ✅ Option A: Minimise lock scope — grab data, drop lock, then await
+async fn good_lock_minimal(cache: Arc<std::sync::Mutex<HashMap<String, String>>>) {
+    let key = {
+        let guard = cache.lock().unwrap();
+        guard["key"].clone()
+    };  // Lock dropped here
+    let value = fetch_remote(&key).await;
+    cache.lock().unwrap().insert("result".into(), value);
+}
+// ✅ Option B: Use tokio::sync::Mutex when lock must span .await
+async fn good_lock_async(cache: Arc<tokio::sync::Mutex<HashMap<String, String>>>) {
+    let mut guard = cache.lock().await;  // Yields, doesn't block
+    let value = fetch_remote(&guard["key"]).await;
+    guard.insert("result".into(), value);
+}
+
+// ❌ Unbounded channels — memory bomb at 3am
+let (tx, rx) = mpsc::unbounded_channel();  // No backpressure!
+// ✅ ALWAYS use bounded channels in production
+let (tx, rx) = mpsc::channel(1024);  // Sender blocks when full = backpressure
+```
+
+### Backpressure Design
+
+Backpressure is not optional in data pipelines. Without it, a slow consumer causes unbounded
+memory growth until OOM. Bounded channels are the primary mechanism.
+
+```rust
+use tokio::sync::mpsc;
+
+// Capacity = expected burst size, not sustained throughput
+// Too small: sender blocks constantly, throughput drops
+// Too large: memory wasted, latency spikes on drain
+let (tx, rx) = mpsc::channel::<Batch>(64);  // 64 batches in flight
+
+// For multi-stage pipelines, each stage gets its own bounded channel.
+// Backpressure cascades upstream automatically:
+//   [source] --64--> [transform] --32--> [sink]
+//   If sink slows down, transform channel fills, source blocks.
+```
+
+**Channel sizing rules of thumb:**
+- **CPU-bound stages:** 2-4x worker count
+- **I/O-bound stages (network/disk):** 32-128 (absorb latency variance)
+- **Never unbounded** — if you think you need unbounded, you have a design problem
+- **Exception:** Result/completion channels can be unbounded to avoid deadlock in DAG schedulers
+
+### Concurrency Limiting with Semaphores
+
+Control how many concurrent operations hit a downstream resource:
+
+```rust
+use tokio::sync::Semaphore;
+use std::sync::Arc;
+
+struct RateLimitedClient {
+    client: reqwest::Client,
+    semaphore: Arc<Semaphore>,
+}
+
+impl RateLimitedClient {
+    fn new(max_concurrent: usize) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            semaphore: Arc::new(Semaphore::new(max_concurrent)),
+        }
+    }
+
+    async fn fetch(&self, url: &str) -> Result<String> {
+        // Acquire permit — blocks if max_concurrent requests in flight
+        let _permit = self.semaphore.acquire().await.unwrap();
+        let resp = self.client.get(url).send().await?;
+        resp.text().await.map_err(Into::into)
+        // permit dropped here — next waiter unblocked
+    }
+}
+```
+
+### `select!` vs `spawn` — When to Use Which
+
+| Pattern | Use `select!` | Use `spawn` |
+|---------|--------------|-------------|
+| **Borrowing** | Can borrow local data (no `'static`) | Requires `'static` + `Send` |
+| **Cancellation** | Branch cancelled when another completes | Must use `CancellationToken` or `JoinHandle::abort()` |
+| **Scheduling** | Same task, interleaved (cooperative) | Independent tasks, truly concurrent |
+| **Use case** | Timeout races, shutdown signals, first-of-N | Background work, parallel I/O, fan-out |
+
+```rust
+// select! — race a timeout against work (borrows local data)
+let result = tokio::select! {
+    output = do_work(&local_data) => output,
+    _ = tokio::time::sleep(Duration::from_secs(5)) => {
+        Err(Error::Timeout)
+    }
+};
+
+// spawn — fan-out to parallel workers (must be 'static + Send)
+let mut set = JoinSet::new();
+for item in items {
+    let client = client.clone();  // Arc or Clone
+    set.spawn(async move { client.process(item).await });
+}
+// JoinSet drops remaining tasks when it goes out of scope = structured concurrency
+```
+
+### spawn_blocking — CPU-Bound Work
+
+`spawn_blocking` moves work to a dedicated thread pool so it doesn't starve the async
+runtime. Use it for compression, encryption, JSON parsing of large documents, or any
+computation >1ms.
+
+```rust
+// ❌ CPU work on the async runtime — starves other tasks
+async fn bad_compress(data: Vec<u8>) -> Vec<u8> {
+    zstd::bulk::compress(&data, 3).unwrap()  // Blocks runtime thread
+}
+
+// ✅ Offload to blocking pool
+async fn good_compress(data: Vec<u8>) -> Result<Vec<u8>> {
+    tokio::task::spawn_blocking(move || {
+        zstd::bulk::compress(&data, 3).map_err(Error::Compression)
+    }).await?
+}
+
+// ⚠️ spawn_blocking tasks cannot be cancelled — they run to completion.
+// Limit concurrency with a semaphore if spawning many:
+let sem = Arc::new(Semaphore::new(num_cpus::get()));
+for chunk in chunks {
+    let permit = sem.clone().acquire_owned().await.unwrap();
+    tokio::task::spawn_blocking(move || {
+        let result = heavy_compute(chunk);
+        drop(permit);
+        result
+    });
+}
+```
+
+### Yielding in Long Computations
+
+If you can't move work to `spawn_blocking` (e.g., iterating over data with async I/O
+interleaved), yield periodically to keep the runtime responsive:
+
+```rust
+async fn process_large_dataset(records: &[Record]) -> Result<()> {
+    for (i, record) in records.iter().enumerate() {
+        process_record(record)?;
+
+        // Yield every 1000 iterations so other tasks can run
+        if i % 1000 == 0 {
+            tokio::task::yield_now().await;
+        }
+    }
+    Ok(())
+}
+```
+
+### Structured Concurrency with JoinSet
+
+`JoinSet` provides structured concurrency — all spawned tasks are cancelled when the
+`JoinSet` is dropped. This prevents zombie tasks.
+
+```rust
+use tokio::task::JoinSet;
+
+async fn fetch_all(urls: Vec<String>) -> Vec<Result<Response>> {
+    let mut set = JoinSet::new();
+    let client = reqwest::Client::new();
+
+    for url in urls {
+        let client = client.clone();
+        set.spawn(async move {
+            client.get(&url).send().await.map_err(Error::from)
+        });
+    }
+
+    let mut results = Vec::with_capacity(set.len());
+    while let Some(res) = set.join_next().await {
+        match res {
+            Ok(response) => results.push(response),
+            Err(join_err) => {
+                // Task panicked or was cancelled
+                tracing::error!(error = %join_err, "Task failed");
+            }
+        }
+    }
+    results
+}
+// If fetch_all is dropped early (e.g., timeout), all in-flight tasks are cancelled.
+```
+
+### Async Stream Processing with Bounded Concurrency
+
+Process a stream of items with controlled parallelism:
+
+```rust
+use futures::stream::{self, StreamExt};
+
+async fn process_stream(items: Vec<Item>) -> Vec<Result<Output>> {
+    stream::iter(items)
+        .map(|item| async move {
+            transform(item).await
+        })
+        .buffer_unordered(32)  // Max 32 concurrent transforms
+        .collect()
+        .await
+}
+
+// For ordered results, use .buffered(32) instead of .buffer_unordered(32)
 ```
 
 ---
@@ -2987,11 +3372,12 @@ fn load_config() -> Result<Config, config::ConfigError> {
 Use `tracing` with RFC 3339 timestamps:
 
 ```rust
+use std::io::IsTerminal;
 use tracing::{info, error, warn, debug, instrument};
 use tracing_subscriber::{fmt, EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 fn init_logging() {
-    let is_terminal = atty::is(atty::Stream::Stderr);
+    let is_terminal = std::io::stderr().is_terminal();
 
     let subscriber = tracing_subscriber::registry()
         .with(EnvFilter::from_default_env().add_directive("info".parse().unwrap()));
@@ -3044,6 +3430,395 @@ fn hot_path(data: &[u8]) {
 | Container/CI | RFC 3339 JSON | No |
 
 **ENV overrides:** `RUST_LOG=debug`, `NO_COLOR=1`
+
+---
+
+## hyperi-rustlib
+
+> **This section applies when `hyperi-rustlib` is in `Cargo.toml`.**
+> For non-HyperI projects (e.g., open-source tools like claudemeter), skip this section
+> and use the generic patterns from the rest of this document.
+
+`hyperi-rustlib` is the shared Rust utility library for all HyperI Rust applications.
+It provides config, logging, metrics, observability, transports, resilience, secrets,
+and more. Available on crates.io. **Use it — never roll bespoke versions of what it provides.**
+
+### Quick Start
+
+```toml
+# Cargo.toml
+[dependencies]
+hyperi-rustlib = { version = ">=1.16", features = [
+    "config", "logger", "metrics", "env", "runtime"
+]}
+```
+
+```rust
+use hyperi_rustlib::{config, logger, env};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let environment = env::Environment::detect();
+    logger::setup_default()?;
+    config::setup(config::ConfigOptions {
+        env_prefix: "MYAPP".into(),
+        ..Default::default()
+    })?;
+
+    // Or use the convenience init:
+    // hyperi_rustlib::init("MYAPP")?;
+
+    tracing::info!("Running in {environment:?}");
+    Ok(())
+}
+```
+
+### Feature Selection Guide
+
+Enable only what you need — features are additive and pull in their dependencies.
+
+| Feature | Use When | Provides |
+|---------|----------|----------|
+| `config` | Always (default) | 8-layer figment cascade, .env, YAML, TOML, JSON, env vars |
+| `config-reload` | Config changes at runtime | `SharedConfig<T>` + `ConfigReloader` hot-reload |
+| `config-postgres` | Config stored in PostgreSQL | `PostgresConfigSource` with sqlx |
+| `logger` | Always (default) | Structured logging, JSON/text auto-detect, sensitive field masking |
+| `metrics` | Prometheus metrics | `MetricsManager`, process/container metrics, `/metrics` endpoint |
+| `otel` | OpenTelemetry tracing | OTLP export (gRPC/HTTP), distributed tracing |
+| `otel-metrics` | OTel + Prometheus metrics | OTel metrics bridge, OTLP metrics export |
+| `http-server` | Serve HTTP | Axum HTTP server with health endpoints (`/healthz`, `/readyz`) |
+| `http` | Call HTTP APIs | reqwest client with retry middleware |
+| `resilience` | Downstream protection | Circuit breaker, retry with backoff, bulkhead (tower-resilience) |
+| `transport-kafka` | Kafka producer/consumer | rdkafka wrapper (dynamic-linking against system librdkafka) |
+| `transport-grpc` | gRPC services | tonic/prost transport |
+| `transport-memory` | Testing | In-memory transport for test harnesses |
+| `secrets` | Secret management | Core provider interface, file provider |
+| `secrets-vault` | OpenBao/Vault | OpenBao/Vault secret provider |
+| `secrets-aws` | AWS Secrets Manager | AWS Secrets Manager provider |
+| `tiered-sink` | Resilient delivery | Hot buffer + disk spillover + circuit breaker |
+| `spool` | Disk queue | Async FIFO queue (yaque + zstd compression) |
+| `scaling` | KEDA autoscaling | Back-pressure primitives, scaling pressure calculation |
+| `cli` | CLI applications | Standard clap framework with version/env integration |
+| `top` | TUI dashboard | ratatui-based metrics dashboard |
+| `dlq` | Dead letter queue | File-backed DLQ |
+| `dlq-kafka` | DLQ to Kafka | Kafka DLQ backend |
+| `deployment` | CI contract checks | Helm chart + Dockerfile contract validation |
+| `expression` | CEL expressions | CEL expression evaluation (DFE expression profiles) |
+| `full` | Everything | All features enabled |
+
+### Use This, Not That
+
+**If `hyperi-rustlib` is a dependency, ALWAYS use its features instead of bespoke code.**
+
+| Need | Use (hyperi-rustlib) | NOT (bespoke) |
+|------|---------------------|---------------|
+| Config cascade | `config::setup()` + `config::get()` | Hand-rolling figment/dotenvy |
+| Logging | `logger::setup_default()` | Manual `tracing_subscriber` setup |
+| Sensitive field masking | `logger` (automatic) | Regex-based log scrubbing |
+| Prometheus metrics | `MetricsManager::new("app")` | Raw `metrics-exporter-prometheus` |
+| OTel tracing | `otel` feature | Manual `opentelemetry-otlp` setup |
+| HTTP server + health | `HttpServer` with `http-server` feature | Bespoke axum + health routes |
+| Circuit breaker | `resilience` feature | Hand-rolled state machines |
+| Kafka producer/consumer | `transport-kafka` feature | Raw `rdkafka` ClientConfig |
+| Secret rotation | `SecretsManager` | Direct vault/AWS SDK calls |
+| Config hot-reload | `SharedConfig<T>` + `ConfigReloader` | Custom file watcher |
+| Disk spillover | `TieredSink` with `tiered-sink` | Custom spool logic |
+| CLI framework | `DfeApp` with `cli` feature | Manual clap setup |
+| Environment detection | `env::Environment::detect()` | Checking env vars manually |
+| KEDA scaling signals | `ScalingPressure` with `scaling` | Custom pressure math |
+
+### Config Cascade (8 Layers)
+
+Priority (highest first):
+1. CLI arguments
+2. Environment variables (`{PREFIX}_DATABASE_HOST`)
+3. `.env` file
+4. `settings.{environment}.yaml`
+5. `settings.yaml`
+6. `defaults.yaml`
+7. Embedded defaults
+8. Hard-coded fallbacks
+
+```rust
+use hyperi_rustlib::config;
+
+config::setup(config::ConfigOptions {
+    env_prefix: "MYAPP".into(),
+    config_dir: Some("./config".into()),
+    ..Default::default()
+})?;
+
+let cfg = config::get();
+let db_host: String = cfg.get_string("database.host")?;
+let db_port: u16 = cfg.get("database.port")?;
+```
+
+### Metrics Quick Reference
+
+```rust
+use hyperi_rustlib::MetricsManager;
+
+let mgr = MetricsManager::new("dfe_loader");
+let counter = mgr.counter("messages_processed_total", "Messages processed");
+let histogram = mgr.histogram("batch_duration_seconds", "Batch processing duration");
+
+// Record
+counter.increment(1);
+histogram.record(elapsed.as_secs_f64());
+```
+
+### Native System Dependencies
+
+When using features that link C libraries, install system packages:
+
+| Feature | Build Package | Runtime Package |
+|---------|--------------|-----------------|
+| `transport-kafka` | `librdkafka-dev` (Confluent APT) | `librdkafka1` |
+| `directory-config-git` | `libgit2-dev` | `libgit2-1.7` |
+| `spool`, `tiered-sink` | `libzstd-dev` | `libzstd1` |
+| `secrets-aws` | (compiled from source) | (statically linked) |
+
+---
+
+## Observability
+
+Logging alone is insufficient for production services. Use the three pillars: **traces**, **metrics**, **logs** — all exported via OpenTelemetry OTLP.
+
+> **HyperI projects:** Use `hyperi-rustlib` features `otel`, `otel-metrics`, `otel-tracing`, `metrics`.
+> See the [hyperi-rustlib](#hyperi-rustlib) section. Only roll bespoke setup for non-HyperI projects.
+
+### OpenTelemetry Distributed Tracing
+
+```rust
+use opentelemetry::trace::TracerProvider;
+use opentelemetry_otlp::SpanExporter;
+use opentelemetry_sdk::trace::SdkTracerProvider;
+use tracing_opentelemetry::OpenTelemetryLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
+fn init_tracing() -> Result<SdkTracerProvider, Box<dyn std::error::Error>> {
+    // OTLP exporter — sends to collector at localhost:4317 by default
+    // Override with OTEL_EXPORTER_OTLP_ENDPOINT env var
+    let exporter = SpanExporter::builder()
+        .with_tonic()
+        .build()?;
+
+    let provider = SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
+        .build();
+
+    let tracer = provider.tracer("my-service");
+    let otel_layer = OpenTelemetryLayer::new(tracer);
+
+    tracing_subscriber::registry()
+        .with(EnvFilter::from_default_env())
+        .with(otel_layer)
+        .with(tracing_subscriber::fmt::layer().json())
+        .init();
+
+    Ok(provider)
+}
+```
+
+### Prometheus Metrics
+
+```rust
+use metrics::{counter, gauge, histogram};
+use metrics_exporter_prometheus::PrometheusBuilder;
+
+fn init_metrics() -> Result<(), Box<dyn std::error::Error>> {
+    // Serve /metrics on :9090
+    PrometheusBuilder::new()
+        .with_http_listener(([0, 0, 0, 0], 9090))
+        .install()?;
+    Ok(())
+}
+
+// Usage in hot paths — macros are zero-cost when no exporter is installed
+fn process_message(msg: &Message) {
+    counter!("messages_processed_total", "status" => "success").increment(1);
+    histogram!("message_size_bytes").record(msg.len() as f64);
+    gauge!("queue_depth").set(get_queue_depth() as f64);
+}
+```
+
+### tokio-console (Async Debugging)
+
+Interactive debugger for async tasks — like `htop` for your Tokio runtime.
+
+```toml
+# Cargo.toml — dev-only
+[dependencies]
+console-subscriber = { version = ">=0.4", optional = true }
+
+[features]
+tokio-console = ["console-subscriber"]
+```
+
+```rust
+// Enable with: RUSTFLAGS="--cfg tokio_unstable" cargo run --features tokio-console
+#[cfg(feature = "tokio-console")]
+fn init_console() {
+    console_subscriber::init();
+}
+```
+
+```bash
+# In another terminal:
+tokio-console  # Shows tasks, polls, wakers, resource contention
+```
+
+### Health Checks (K8s Liveness/Readiness)
+
+```rust
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
+#[derive(Clone)]
+pub struct HealthState {
+    ready: Arc<AtomicBool>,
+    alive: Arc<AtomicBool>,
+}
+
+impl HealthState {
+    pub fn new() -> Self {
+        Self {
+            ready: Arc::new(AtomicBool::new(false)),
+            alive: Arc::new(AtomicBool::new(true)),
+        }
+    }
+
+    pub fn set_ready(&self)    { self.ready.store(true, Ordering::Release); }
+    pub fn set_draining(&self) { self.ready.store(false, Ordering::Release); }
+    pub fn set_dead(&self)     { self.alive.store(false, Ordering::Release); }
+
+    pub fn is_ready(&self) -> bool { self.ready.load(Ordering::Acquire) }
+    pub fn is_alive(&self) -> bool { self.alive.load(Ordering::Acquire) }
+}
+
+// Wire into axum:
+// GET /healthz  -> 200 if alive, 503 if dead
+// GET /readyz   -> 200 if ready, 503 if draining
+```
+
+---
+
+## HTTP Service Patterns (axum + tower)
+
+axum 0.8+ is the standard HTTP framework. It uses tower middleware natively —
+no framework-specific middleware system to learn.
+
+> **Path syntax changed in axum 0.8:** `/{param}` not `/:param`, `/{*wildcard}` not `/*wildcard`.
+
+### Production Router
+
+```rust
+use axum::{Router, routing::get, extract::State};
+use tower_http::{
+    compression::CompressionLayer,
+    cors::CorsLayer,
+    timeout::TimeoutLayer,
+    trace::TraceLayer,
+};
+use std::time::Duration;
+
+fn build_router(state: AppState) -> Router {
+    let api = Router::new()
+        .route("/api/v1/records/{id}", get(get_record).post(create_record))
+        .route("/api/v1/records", get(list_records));
+
+    let health = Router::new()
+        .route("/healthz", get(liveness))
+        .route("/readyz", get(readiness))
+        .route("/metrics", get(metrics_handler));
+
+    Router::new()
+        .merge(api)
+        .merge(health)
+        .layer(TraceLayer::new_for_http())
+        .layer(TimeoutLayer::new(Duration::from_secs(30)))
+        .layer(CompressionLayer::new())
+        .layer(CorsLayer::permissive())  // Tighten for production
+        .with_state(state)
+}
+```
+
+### Resilience Middleware (tower-resilience)
+
+```rust
+use tower::ServiceBuilder;
+use tower_resilience::{CircuitBreakerLayer, RetryLayer, BulkheadLayer};
+
+// Stack resilience layers for downstream calls
+let service = ServiceBuilder::new()
+    .layer(BulkheadLayer::new(100))           // Max 100 concurrent
+    .layer(RetryLayer::new(3))                // Retry up to 3 times
+    .layer(CircuitBreakerLayer::default())    // Circuit breaker
+    .service(downstream_client);
+```
+
+---
+
+## Graceful Shutdown (K8s-Ready)
+
+K8s sends SIGTERM, then waits `terminationGracePeriodSeconds` (default 30s) before SIGKILL.
+Your service must: stop accepting new work, drain in-flight requests, then exit cleanly.
+
+```rust
+use tokio::sync::watch;
+use tokio_util::sync::CancellationToken;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+
+pub struct GracefulShutdown {
+    cancel: CancellationToken,
+    health: HealthState,
+    drain_timeout: Duration,
+}
+
+impl GracefulShutdown {
+    pub fn new(health: HealthState, drain_timeout: Duration) -> Self {
+        Self {
+            cancel: CancellationToken::new(),
+            health,
+            drain_timeout,
+        }
+    }
+
+    pub async fn run(self) {
+        // Listen for SIGTERM (K8s) and SIGINT (Ctrl+C)
+        let cancel = self.cancel.clone();
+        tokio::spawn(async move {
+            let mut sigterm = tokio::signal::unix::signal(
+                tokio::signal::unix::SignalKind::terminate()
+            ).expect("SIGTERM handler");
+
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {}
+                _ = sigterm.recv() => {}
+            }
+            cancel.cancel();
+        });
+
+        // Wait for shutdown signal
+        self.cancel.cancelled().await;
+        tracing::info!("Shutdown signal received, draining...");
+
+        // Phase 1: Mark unhealthy so K8s stops routing traffic
+        self.health.set_draining();
+
+        // Phase 2: Wait for in-flight requests to complete
+        tokio::time::sleep(self.drain_timeout).await;
+
+        // Phase 3: Mark dead
+        self.health.set_dead();
+        tracing::info!("Drain complete, exiting");
+    }
+
+    pub fn token(&self) -> CancellationToken {
+        self.cancel.clone()
+    }
+}
+```
 
 ---
 
@@ -3777,6 +4552,98 @@ unsafe impl Send for MyWrapper {}
 unsafe impl Sync for MyWrapper {}
 ```
 
+### Sealed Traits
+
+Prevent downstream crates from implementing your public trait. Essential
+for library API design where adding new methods must not be a breaking
+change.
+
+```rust
+// The sealed pattern: public trait, private supertrait
+
+mod private {
+    pub trait Sealed {}
+}
+
+/// Public trait that external crates cannot implement.
+/// New methods can be added without a semver-breaking change.
+pub trait Transport: private::Sealed {
+    fn send(&self, payload: &[u8]) -> Result<(), TransportError>;
+    fn max_payload_size(&self) -> usize;
+}
+
+// Only types in THIS crate can implement Sealed, therefore Transport
+pub struct KafkaTransport { /* ... */ }
+impl private::Sealed for KafkaTransport {}
+impl Transport for KafkaTransport {
+    fn send(&self, payload: &[u8]) -> Result<(), TransportError> { /* ... */ }
+    fn max_payload_size(&self) -> usize { 1_048_576 }  // 1 MiB
+}
+
+pub struct GrpcTransport { /* ... */ }
+impl private::Sealed for GrpcTransport {}
+impl Transport for GrpcTransport {
+    fn send(&self, payload: &[u8]) -> Result<(), TransportError> { /* ... */ }
+    fn max_payload_size(&self) -> usize { 4_194_304 }  // 4 MiB
+}
+```
+
+Use sealed traits when:
+- The trait is part of a public API and you need to add methods later
+- You want exhaustive matching over implementors (enum-like behaviour)
+- The trait has safety invariants that external impls could violate
+
+Do NOT seal traits that are genuinely meant for extension (e.g., user-defined
+serialisers, plugin interfaces).
+
+### Generic Associated Types (GATs)
+
+GATs allow associated types with their own generic parameters. This
+enables patterns that were previously impossible — streaming iterators,
+collection traits, and lending iterators.
+
+```rust
+/// A lending iterator — borrows from self, not from the item
+trait LendingIterator {
+    type Item<'a> where Self: 'a;
+
+    fn next(&mut self) -> Option<Self::Item<'_>>;
+}
+
+/// Streaming reader that yields borrowed slices from an internal buffer
+struct ChunkedReader {
+    data: Vec<u8>,
+    pos: usize,
+    chunk_size: usize,
+}
+
+impl LendingIterator for ChunkedReader {
+    type Item<'a> = &'a [u8] where Self: 'a;
+
+    fn next(&mut self) -> Option<Self::Item<'_>> {
+        if self.pos >= self.data.len() {
+            return None;
+        }
+        let end = (self.pos + self.chunk_size).min(self.data.len());
+        let chunk = &self.data[self.pos..end];
+        self.pos = end;
+        Some(chunk)
+    }
+}
+
+/// Collection trait — generic over the element type stored
+trait Collection {
+    type Iter<'a, T: 'a>: Iterator<Item = &'a T> where Self: 'a;
+
+    fn iter<T>(&self) -> Self::Iter<'_, T>;
+}
+```
+
+GATs are particularly useful in data pipeline code where you want
+zero-copy iteration over internal buffers without `unsafe`. If you
+find yourself reaching for `unsafe` to return references to internal
+data from an iterator, try GATs first.
+
 ### Safe Abstractions Over Unsafe
 
 ```rust
@@ -4111,6 +4978,25 @@ Key realisation: **The compiler is your pair programmer.** Read the error messag
 
 The following sections are specific guidance for AI code assistants working with Rust.
 
+> **CRITICAL: Web Search Before ANY Crate Usage**
+>
+> AI models are ALWAYS out of date with the Rust ecosystem. Your training data
+> contains deprecated crates, old API patterns, and superseded libraries.
+> **EVERY TIME** you reference a crate, dependency, or Rust API:
+>
+> 1. **Web search for the current version** — your training data version is wrong
+> 2. **Web search whether the crate has been superseded** — entire libraries get
+>    replaced (serde_yaml → serde_yaml_ng, atty → std::io::IsTerminal)
+> 3. **Web search for the current API** — axum 0.8 changed path syntax from
+>    `/:param` to `/{param}`, thiserror 2.x has different derives, etc.
+>
+> Do NOT rely on "I know this crate" — you don't know the CURRENT version.
+> See the [Deprecated / Superseded Crates](#deprecated--superseded-crates--do-not-use)
+> table above. That table is illustrative, not exhaustive. **Always search.**
+>
+> For HyperI projects: check if `hyperi-rustlib` already provides what you need
+> before reaching for any third-party crate. See [hyperi-rustlib](#hyperi-rustlib).
+
 ### DO NOT Generate
 
 ```rust
@@ -4213,6 +5099,48 @@ use actix_web_extras::...;   // Version may differ
 // tokio, serde, anyhow, thiserror, tracing, clap, axum, reqwest
 // rayon, dashmap, parking_lot, memchr, sonic-rs, criterion
 ```
+
+### Deprecated / Superseded Crates — Do NOT Use
+
+| Wrong (Stale) | Correct (Current) | Why |
+|---|---|---|
+| `serde_yaml` | `serde_yaml_ng` (or `serde_yml`) | `serde_yaml` archived March 2024, unmaintained |
+| `atty` | `std::io::IsTerminal` (std since 1.70) | `atty` unmaintained, has unaligned read bug |
+| `actix-web` (new projects) | `axum` 0.8+ | axum is the ecosystem standard, tower-native |
+| `thiserror` 1.x | `thiserror` 2.x | Major version with improved derives |
+| `warp` | `axum` | warp is maintenance-only |
+| `hyper` directly | `axum` (uses hyper internally) | Unless you need raw HTTP/2 control |
+| `structopt` | `clap` 4.x with derive | structopt merged into clap |
+| `dotenv` | `dotenvy` | dotenv unmaintained, dotenvy is the fork |
+| `chrono` (new code) | `time` or `jiff` | chrono works but `time` is lighter; `jiff` for civil time |
+| `reqwest` blocking in async | `reqwest` async client | Never use `reqwest::blocking` inside tokio |
+
+### Recommended Crate Stack (March 2026)
+
+| Category | Crate | Version | Notes |
+|---|---|---|---|
+| **Async runtime** | `tokio` | >=1.50 | Multi-threaded, LTS releases |
+| **HTTP framework** | `axum` | >=0.8.8 | `/{param}` syntax (not `/:param`) |
+| **HTTP middleware** | `tower-http` | >=0.6.8 | timeout, trace, compression, cors |
+| **HTTP client** | `reqwest` | >=0.12 | Async, HTTP/2, JSON |
+| **Serialisation** | `serde` + `serde_json` | >=1.0 | Universal |
+| **SIMD JSON** | `sonic-rs` | >=0.5 | SIMD-accelerated, zero-copy, `Bytes` integration |
+| **YAML** | `serde_yaml_ng` | >=0.10 | Maintained fork of serde_yaml |
+| **Error (libraries)** | `thiserror` | >=2.0 | Custom error types with derive |
+| **Error (apps)** | `anyhow` | >=1.0 | Context-rich error propagation |
+| **Tracing** | `tracing` + `tracing-subscriber` | >=0.1 / >=0.3 | Structured logging + spans |
+| **OTel** | `opentelemetry` + `opentelemetry-otlp` | >=0.31 | OTLP export, retry with backoff |
+| **Metrics** | `metrics` + `metrics-exporter-prometheus` | >=0.24 | Prometheus native |
+| **CLI** | `clap` | >=4.5 | Derive macros, env support |
+| **SQL** | `sqlx` | >=0.8 | Compile-time checked queries |
+| **String search** | `memchr` | >=2.7 | SIMD byte/string search |
+| **Concurrency** | `dashmap`, `parking_lot`, `crossbeam` | latest | Lock-free maps, faster mutexes |
+| **Small strings** | `compact_str` | >=0.8 | 24-byte SSO, no heap for short strings |
+| **Resilience** | `tower-resilience` | >=0.4 | Circuit breaker, bulkhead, retry |
+| **Arena alloc** | `bumpalo` | >=3.16 | Bump allocation for batch lifetimes |
+| **Benchmarks** | `criterion` | >=0.5 | Statistical benchmarking |
+| **Coverage** | `cargo-tarpaulin` | latest | Code coverage |
+| **Test runner** | `cargo-nextest` | latest | Parallel, better output |
 
 ---
 
@@ -4683,6 +5611,73 @@ codegen-units = 1
 # - Fat LTO: lto = true (slower compile, sometimes faster runtime)
 ```
 
+### Build Performance
+
+#### Linker Selection
+
+LLD became the default linker on Linux x86_64 since Rust 1.90 — roughly
+40% faster linking than GNU ld. No configuration needed on modern Rust.
+
+For even faster linking, mold is available:
+
+```toml
+# .cargo/config.toml
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+```
+
+> **Caveat:** mold can have backward-compatibility issues with some C++
+> dependencies. ClickHouse C++ client libraries are a known culprit.
+> Before switching to mold in a project that links C++ code, build and
+> run the full test suite first. If you hit linker errors or runtime
+> crashes, fall back to LLD (the default). Not a hard no — just verify.
+
+#### Distributed Build Caching (sccache)
+
+```bash
+# Install
+cargo install sccache --locked
+
+# Configure in .cargo/config.toml or environment
+export RUSTC_WRAPPER=sccache
+
+# Or in .cargo/config.toml:
+# [build]
+# rustc-wrapper = "sccache"
+```
+
+sccache supports S3, GCS, and Redis backends for CI cache sharing.
+First compile is normal speed; subsequent compiles of unchanged crates
+are near-instant. Essential for CI pipelines.
+
+#### Profile-Guided Optimisation (PGO) + BOLT
+
+PGO uses runtime profiling data to optimise hot paths. BOLT is a
+post-link optimiser that re-arranges binary layout for cache locality.
+Combined: 15-35% runtime improvement on data pipeline workloads.
+
+```bash
+# Install
+cargo install cargo-pgo --locked
+
+# Step 1: Build instrumented binary
+cargo pgo build
+
+# Step 2: Run representative workload to collect profile data
+./target/x86_64-unknown-linux-gnu/release/my-binary --benchmark
+
+# Step 3: Build optimised binary using profile data
+cargo pgo optimize
+
+# Step 4 (optional): Apply BOLT post-link optimisation
+cargo pgo optimize -- --bolt
+```
+
+PGO is most impactful for long-running services with stable hot paths
+(ingest pipelines, query engines). Not worth the complexity for CLI
+tools or short-lived processes.
+
 ### Inline Hints on Hot Paths
 
 ```rust
@@ -4858,6 +5853,42 @@ pub fn validate_json(payload: &[u8]) -> bool {
     sonic_rs::from_slice::<LazyValue>(payload).is_ok()
 }
 ```
+
+### `array_windows` — Compile-Time Sliding Windows (Rust 1.94.0+)
+
+`array_windows` provides zero-cost sliding windows with compile-time
+known size. Unlike `windows()` which returns slices, `array_windows`
+returns fixed-size array references — enabling the compiler to
+auto-vectorise and use SIMD instructions without manual intrinsics.
+
+```rust
+// Sliding window over byte stream — compiler knows window size at compile time
+fn find_crlf_positions(data: &[u8]) -> Vec<usize> {
+    data.array_windows::<2>()
+        .enumerate()
+        .filter(|(_, w)| *w == [b'\r', b'\n'])
+        .map(|(i, _)| i)
+        .collect()
+}
+
+// 4-byte magic number detection in binary formats
+fn find_magic(data: &[u8], magic: [u8; 4]) -> Option<usize> {
+    data.array_windows::<4>()
+        .position(|w| *w == magic)
+}
+
+// Rolling hash / checksum over fixed-size blocks
+fn block_checksums(data: &[u8]) -> Vec<u32> {
+    data.array_windows::<64>()
+        .map(|block| crc32fast::hash(block))
+        .collect()
+}
+```
+
+Prefer `array_windows::<N>()` over `windows(N)` when the window size
+is a compile-time constant. The fixed-size array enables better
+optimisation: loop unrolling, SIMD vectorisation, and elimination of
+bounds checks.
 
 ### SIMD String Search with memchr
 
