@@ -25,6 +25,11 @@ detect_markers:
 ---
 
 
+> **⚠️ hyperi-ci is under active development.** This document reflects the
+> current state but the tool evolves frequently. Always check the
+> [hyperi-ci repo](https://github.com/hyperi-io/hyperi-ci) `/docs` and
+> `CHANGELOG.md` for the latest commands, config format, and features.
+
 ## hyperi-ci (Polyglot CI/CD Tool)
 
 **Detection:** `.hyperi-ci.yaml` in project root.
