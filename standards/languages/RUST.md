@@ -98,6 +98,8 @@ Rust at HyperI is for **high-throughput data pipelines, network services, and CP
 
 5. **Use `hyperi-rustlib`** — Never roll bespoke config, logging, metrics, or resilience patterns in HyperI projects. The shared library exists to eliminate this duplication. See the [hyperi-rustlib](#hyperi-rustlib) section.
 
+6. **PyO3 bindings for Python** — If a Rust crate provides capability useful in Python, consider exposing it as a Python binding via PyO3/maturin rather than reimplementing in pure Python. You get Rust performance with Python ergonomics. Example: `common-expression-language` (CEL) in `hyperi-pylib` is a Rust crate exposed via PyO3.
+
 ---
 
 ## Rust 2024 Edition Features

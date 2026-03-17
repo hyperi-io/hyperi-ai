@@ -68,6 +68,23 @@ paths:
 - High-throughput ingest pipelines (→ Rust)
 - Anything where microsecond latency matters (→ Rust)
 
+### Rust-Python Bridge: PyO3 Bindings
+
+If a Rust crate provides capability that would be useful in Python,
+consider a Python binding of the Rust crate (via PyO3/maturin) over a
+native Python implementation. You get Rust performance with Python
+ergonomics.
+
+Example: `hyperi-pylib` uses `common-expression-language` (CEL via
+Rust/PyO3) for expression evaluation — orders of magnitude faster than
+a pure Python CEL implementation.
+
+```bash
+# Build Rust Python bindings with maturin
+uv add maturin --dev
+maturin develop  # Build + install in current venv
+```
+
 ---
 
 ## CRITICAL: AI Models Get Python Wrong
@@ -897,12 +914,65 @@ class User:
 
 ## Code Style: Clarity Over Cleverness
 
+Sourced from HyperI experience + [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
+
 ### Principles
 
 - Break down compound operations into clear steps
 - Use intermediate variables with descriptive names
 - Comments explain WHY, not WHAT
 - Avoid dense lambdas and nested comprehensions
+
+### Google-Sourced Rules (adopted)
+
+```python
+# ✅ Use `is` for None, True, False comparisons
+if value is None: ...       # ✅ Correct
+if value == None: ...       # ❌ Wrong (can be overridden by __eq__)
+if flag is True: ...        # ✅ Explicit bool check
+if flag: ...                # ✅ Also fine for truthiness
+
+# ✅ No mutable global state
+CACHE = {}                  # ❌ Mutable global — breaks testability
+_cache: dict[str, Any] = {} # ❌ Still mutable global
+
+# ✅ Use module-level functions or dependency injection instead
+def get_cache() -> dict[str, Any]:
+    return {}  # Or inject via parameter
+
+# ✅ Minimise try/except scope — catch only what you expect
+try:                        # ❌ Too broad — hides bugs
+    data = load_config()
+    result = process(data)
+    save(result)
+except Exception:
+    pass
+
+try:                        # ✅ Minimal scope
+    data = load_config()
+except FileNotFoundError:
+    data = default_config()
+result = process(data)
+
+# ✅ No semicolons — ever
+x = 1; y = 2               # ❌ Never
+x = 1                      # ✅ One statement per line
+y = 2
+
+# ✅ Properties over get/set methods
+class User:
+    @property
+    def full_name(self) -> str:        # ✅ Pythonic
+        return f"{self.first} {self.last}"
+
+    def get_full_name(self) -> str:    # ❌ Java-style
+        return f"{self.first} {self.last}"
+
+# ✅ Threading warning — prefer async or multiprocessing
+# Python threads do NOT provide parallelism for CPU work (GIL)
+# Use threads ONLY for I/O-bound concurrency with external services
+# For CPU parallelism: multiprocessing, concurrent.futures, or Rust
+```
 
 ### Examples
 
