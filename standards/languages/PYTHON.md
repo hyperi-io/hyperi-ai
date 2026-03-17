@@ -381,16 +381,15 @@ query = t"SELECT * FROM users WHERE id = {user_id}"
 
 ## Quick Reference
 
-**Setup:** `./ci/bootstrap install`
-**Dev:** `./ci/run check|test|build|dependency-update`
-**Release:** `./ci/run release [--dry-run|--no-push]`
+**Setup:** `uv tool install hyperi-ci && hyperi-ci init`
+**Dev:** `hyperi-ci check` (quality + test) or `make check`
+**Quality only:** `hyperi-ci check --quick` or `make quality`
+**Test:** `hyperi-ci run test` or `make test`
+**Build:** `hyperi-ci run build` or `make build`
 
-**Common issues:**
-
-- Wrong venv: CI enforces `ci-local/.venv`
-- Version: Pre-commit hook prevents corruption
-- Coverage: 80% min (ci.yaml)
-- Types: Use 3.12+ syntax
+> See `standards/universal/CI.md` and the
+> [hyperi-ci repo](https://github.com/hyperi-io/hyperi-ci) for full
+> CLI reference. hyperi-ci evolves frequently — check its docs.
 
 ---
 
@@ -455,22 +454,25 @@ def get_user(user_id: int) -> "User":  # String annotation
 
 ## Code Quality Tools
 
-**Tools:** ruff (lint + format), mypy/pyright (types), black (format)
+**Tools:** ruff (lint + format), ty/pyright (types), bandit (security), pip-audit (CVEs)
 
 ```bash
-ruff check . && ruff format .   # Lint + format
-mypy src/                       # Type check
-./ci/run test                   # Full CI suite
+hyperi-ci run quality    # Runs all quality checks (ruff, ty, bandit, pip-audit)
+hyperi-ci run test       # Run test suite with coverage
+# Or individually:
+ruff check . && ruff format .
+ty check src/
+bandit -r src/ -ll
 ```
 
-### HyperI CI Enforcement
+### CI Enforcement (via hyperi-ci)
 
 | Tool | Checks | Blocking? |
 |------|--------|-----------|
-| **ruff** | PEP 8, import sorting (I rules), naming, unused code | ✅ Yes |
-| **black** | Formatting (88 char, quotes) | ✅ Yes |
-| **pyright** | Type checking | ⚠️ Warnings only |
+| **ruff** | PEP 8, import sorting, naming, unused code, format | ✅ Yes |
+| **ty** | Type checking (Rust-based, replaces pyright) | ⚠️ Warnings → ✅ Blocking |
 | **bandit** | Security issues (medium/high) | ✅ Yes |
+| **pip-audit** | CVE scanning of dependencies | ✅ Yes |
 | **vulture** | Dead code | ✅ Yes |
 
 ---
