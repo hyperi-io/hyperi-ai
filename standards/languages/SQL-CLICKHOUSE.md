@@ -23,6 +23,10 @@ paths:
 
 # ClickHouse SQL Standards for HyperI Projects
 
+> **Schema SSOT:** The common event header and schema definitions live in
+> `/projects/dfe-engine` (schema builder, DDL generation, column profiles).
+> Always check `dfe-engine` for the current schema before creating tables.
+
 ClickHouse-specific patterns for analytical databases, time-series, log analytics,
 and real-time dashboards. If you know PostgreSQL or MySQL, unlearn most of it here.
 ClickHouse is a columnar append-only OLAP database — it has more in common w/ Parquet

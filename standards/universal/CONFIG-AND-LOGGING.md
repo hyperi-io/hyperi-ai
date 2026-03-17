@@ -66,7 +66,7 @@ Only implement bespoke config/logging for:
 
 ## Configuration Cascade
 
-### 7-Layer Priority (Highest to Lowest)
+### 8-Layer Priority (Highest to Lowest)
 
 | Priority | Source | Purpose | Example |
 |----------|--------|---------|---------|
@@ -76,7 +76,8 @@ Only implement bespoke config/logging for:
 | 4 | `settings.{env}.yaml` | Environment-specific | `settings.production.yaml` |
 | 5 | `settings.yaml` | Project base config | Team defaults |
 | 6 | `defaults.yaml` | Safe fallback | Local dev defaults |
-| 7 | Hard-coded | Last resort | Code fallback values |
+| 7 | Org library defaults | hyperi-pylib/rustlib built-in defaults | Sensible out-of-the-box |
+| 8 | Hard-coded | Last resort | Code fallback values |
 
 ### Real-World Example: `database.host`
 

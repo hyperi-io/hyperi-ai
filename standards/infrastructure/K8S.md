@@ -540,6 +540,43 @@ spec:
 
 ## KEDA Autoscaling
 
+### Prefer Native Scaling Metrics Over Prometheus Combinations
+
+> **The old pattern of scraping Prometheus container metrics for KEDA triggers is
+> brittle.** Prometheus queries break when metric names change, relabel configs
+> drift, or scrape intervals don't align with scaling decisions.
+
+**The new pattern:** Rust services using `hyperi-rustlib` expose native scaling
+pressure metrics via the `scaling` feature. These are purpose-built for KEDA —
+a single metric that combines queue depth, processing latency, and capacity into
+a normalised 0-100 pressure score.
+
+```yaml
+# ❌ Old pattern — brittle Prometheus combination queries
+triggers:
+  - type: prometheus
+    metadata:
+      query: |
+        sum(rate(kafka_consumer_lag{group="myapp"}[5m]))
+        / on() sum(rate(messages_processed_total{app="myapp"}[5m]))
+      threshold: "50"
+
+# ✅ New pattern — native scaling pressure from rustlib
+triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus:9090
+      metricName: scaling_pressure
+      threshold: "70"
+      query: avg(scaling_pressure{app="myapp"})
+```
+
+The `scaling_pressure` metric is exposed by `hyperi-rustlib`'s `scaling` feature.
+It accounts for queue depth, processing latency, error rate, and resource
+utilisation — one metric to rule them all.
+
+### Standard ScaledObject Pattern
+
 ```yaml
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -553,27 +590,21 @@ spec:
   pollingInterval: 30
   cooldownPeriod: 300
   triggers:
-    # CPU-based scaling
-    - type: cpu
-      metricType: Utilization
+    # Primary: native scaling pressure (preferred)
+    - type: prometheus
       metadata:
-        value: "80"
+        serverAddress: http://prometheus:9090
+        metricName: scaling_pressure
+        threshold: "70"
+        query: avg(scaling_pressure{app="myapp"})
 
-    # Kafka consumer lag
+    # Fallback: Kafka consumer lag (simple, no Prometheus needed)
     - type: kafka
       metadata:
         bootstrapServers: kafka:9092
         consumerGroup: myapp-group
         topic: events
         lagThreshold: "100"
-
-    # Prometheus metrics
-    - type: prometheus
-      metadata:
-        serverAddress: http://prometheus:9090
-        metricName: http_requests_total
-        threshold: "100"
-        query: sum(rate(http_requests_total{app="myapp"}[2m]))
 ```
 
 ---

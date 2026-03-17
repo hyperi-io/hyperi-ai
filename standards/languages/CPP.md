@@ -1026,6 +1026,43 @@ void process() {
 
 ---
 
+## ClickHouse Build & CI Specifics
+
+When working on the HyperI fork of ClickHouse (`/projects/ClickHouse`),
+these exceptions and requirements override the general C++ standards above.
+
+### Compiler Requirements
+
+- **C++ Standard:** C++23 (`CMAKE_CXX_STANDARD 23`)
+- **CMake:** ≥3.25
+- **Compiler:** Clang only (GCC is not officially supported for ClickHouse builds)
+- **Clang version:** Check the CI docker images for the current pinned version (typically Clang 18+)
+- **Linker:** LLD default. **mold does NOT work** with ClickHouse C++ — known backward compatibility issues with some ClickHouse C++ codegen. Do not switch to mold.
+
+### Build Oddities
+
+- ClickHouse uses WebKit-based `.clang-format` — different from typical LLVM style
+- Build includes `clang_tidy.cmake` — tidy checks are CI-enforced
+- `-Xclang -fuse-ctor-homing` flag is required (debug info optimisation)
+- ThinLTO is used for release builds (`-flto=thin`)
+- `ENABLE_CHECK_HEAVY_BUILDS` option exists to prevent excessively large translation units
+
+### CI Enforcement
+
+- CI runs in Docker containers from `ci/docker/` with pinned toolchains
+- Integration tests, fuzz tests, performance tests, and Jepsen tests all run in CI
+- PRs require CLA signature via bot
+- Build times are long (~30min+ for full build) — use ccache/sccache
+
+### Contributing (HyperI Fork)
+
+- Follow upstream ClickHouse contribution guidelines for code style
+- HyperI-specific changes go in clearly marked sections
+- Keep fork patches minimal and rebasing-friendly
+- Test against ClickHouse CI docker images locally before pushing
+
+---
+
 ## Advanced Patterns (from ClickHouse)
 
 These patterns are battle-tested in ClickHouse for high-throughput data processing.
