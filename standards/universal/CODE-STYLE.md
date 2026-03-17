@@ -486,3 +486,11 @@ Use modern CLI tools when available. Fall back to standard tools if not installe
 | Directory trees | `rsync` | complex cp/mv |
 | File preview | `bat` / `batcat` | `cat` |
 | Interactive pickers | `fzf` | custom shell menus |
+
+---
+
+## Temporary Files
+
+- Dev/CI: `./.tmp/` (project-scoped, gitignored)
+- Production: use language tempfile libraries with auto-cleanup
+- Never hardcode `/tmp`, never use predictable names
