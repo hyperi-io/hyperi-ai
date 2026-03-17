@@ -48,7 +48,7 @@ paths:
 12. [Package Structure](#package-structure) — src layout, tests
 13. [Configuration and Logging](#configuration-and-logging-hyperi-pylib) — cascade, structured logging
 14. [Security](#security-standards) — bandit, SQL injection, secrets
-15. [Testing](#mock-aware-testing-policy) — no-mocks, testcontainers, fixtures
+15. [Testing](#testing--no-mocks-policy) — no mocks, testcontainers, fixtures
 16. [Production Controls](#production-at-scale--controls) — CI enforcement, exceptions, Nuitka
 17. [Tooling](#ruff-configuration) — ruff, black, pyright/ty
 18. [For AI Assistants](#for-ai-code-assistants) — package verification, pitfalls
@@ -1802,24 +1802,47 @@ def get_user(user_id: int) -> User:
 
 ---
 
-## Mock-Aware Testing Policy
+## Testing — No Mocks Policy
 
-**Mocks are scaffolding, not testing. Mock-only tests ≠ production tested.**
+> **"Every time we have mocks and AI it always ends in tears."** — Derek
 
-| Mock Target | In Unit Tests? | Integration Test Required? |
-|-------------|---------------|---------------------------|
-| Internal functions/classes | ❌ Never mock | N/A — test real code |
-| External APIs, DBs, K8s, network | ✅ Yes | ✅ Yes — against sandbox/testcontainers |
+**Do not use mocks. Test against real dependencies.**
+See `standards/universal/MOCKS-POLICY.md` for the full policy.
 
 ```python
-# ❌ BAD - mocking internal code (tests nothing real)
-with patch('myapp.utils.calculate') as m: ...
+# ❌ NEVER — no mock libraries, no patch, no MagicMock
+from unittest.mock import patch, MagicMock  # FORBIDDEN
 
-# ✅ GOOD - mock external boundary, test real internal logic
-with patch('myapp.clients.stripe.charge') as m: ...
+with patch('myapp.db.session') as mock_db:
+    mock_db.query.return_value = User(name="test")
+    # Tests nothing real
+
+# ✅ ALWAYS — real dependencies via testcontainers
+import pytest
+from testcontainers.postgres import PostgresContainer
+
+@pytest.fixture
+def db():
+    with PostgresContainer() as postgres:
+        yield create_connection(postgres.get_connection_url())
+
+def test_save_user(db):
+    user_id = save_user(db, {"name": "Alice"})
+    assert db.get_user(user_id).name == "Alice"  # Real DB
+
+# ✅ External APIs — use sandbox, not mock
+@pytest.mark.integration
+def test_payment():
+    result = process_payment(100.0, "tok_visa")  # Stripe test mode
+    assert result.success is True
+
+# ✅ If you can't test against real deps — skip, don't mock
+@pytest.mark.skip(reason="Needs Stripe sandbox — not mocking")
+def test_payment_integration():
+    ...
 ```
 
-**Two-layer requirement:** Unit tests (mocks OK for external boundaries) + integration tests (no mocks).
+**The one exception:** freezing time is acceptable (`freezegun`).
 
 **Production code must be complete:** No TODOs, no `return True` placeholders, no `except: pass`.
 
