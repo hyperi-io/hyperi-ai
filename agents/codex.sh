@@ -112,7 +112,7 @@ setup_vscode_dir() {
 # Always regenerated (content depends on detected technologies)
 deploy_instructions() {
     local header="$AI_ROOT/templates/copilot/header.md"
-    local universal="$AI_ROOT/standards/rules/UNIVERSAL.md"
+    local universal="$AI_ROOT/standards/rules/universal.md"
     local rules_dir="$AI_ROOT/standards/rules"
     local dst="$PROJECT_ROOT/.github/copilot-instructions.md"
 
@@ -221,8 +221,8 @@ EOF
         fi
     }
 
-    # Core skill — points to UNIVERSAL.md
-    create_skill "standards" "HyperI coding standards - always use for code quality" "$standards_dir/rules/UNIVERSAL.md"
+    # Core skill — points to QUICKSTART.md
+    create_skill "standards" "HyperI coding standards - always use for code quality" "$standards_dir/QUICKSTART.md"
     echo "  Core: standards"
 
     # Deploy skills for detected technologies (uses shared detection from common.sh)

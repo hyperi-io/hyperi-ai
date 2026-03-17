@@ -285,7 +285,7 @@ print_summary() {
         echo ""
         echo "Configuration:"
         echo "  .cursor/cli.json                - Cursor permissions"
-        echo "  .cursor/rules/UNIVERSAL.mdc     - Always: Cross-cutting standards"
+        echo "  .cursor/rules/universal.mdc     - Always: Cross-cutting standards"
         echo "  .cursor/rules/<lang>.mdc        - Auto Attached: Detected language rules"
         echo "  .cursor/rules/session-start.mdc - Auto Attached: Session initialisation"
         echo "  .cursor/rules/session-save.mdc  - Manual: Session save instructions"

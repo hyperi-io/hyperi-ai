@@ -39,7 +39,7 @@ Check `$ARGUMENTS`:
   | `errors` / `error-handling` | `../../hyperi-ai/standards/rules/error-handling.md` |
   | `mocks` / `mocking` | `../../hyperi-ai/standards/rules/mocks-policy.md` |
   | `design` / `principles` | `../../hyperi-ai/standards/rules/design-principles.md` |
-  | `universal` / `common` | `../../hyperi-ai/standards/rules/UNIVERSAL.md` |
+  | `universal` / `common` | `../../hyperi-ai/standards/rules/universal.md` |
 
   If the argument does not match any entry, say: "Unknown domain `<argument>`.
   Run `/standards` without arguments to load all, or use one of: python, bash,
