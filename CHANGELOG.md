@@ -1,3 +1,14 @@
+## [3.4.1](https://github.com/hyperi-io/hyperi-ai/compare/3.4.0...3.4.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* consolidate STANDARDS.md into STANDARDS-QUICKSTART.md ([8067f23](https://github.com/hyperi-io/hyperi-ai/commit/8067f231420596fbed67f5dcab2be5c3fdce32a4))
+* dissolve UNIVERSAL.md into individual standards + create AI-CONDUCT.md ([3aa2561](https://github.com/hyperi-io/hyperi-ai/commit/3aa256147746bc2f0e42db8b31eb97d4feb393eb))
+* remove standards/code-assistant/, cherry-pick to proper locations ([dd49ed9](https://github.com/hyperi-io/hyperi-ai/commit/dd49ed94a9568925c1bc74d0dcf72a5af7f02220))
+* rename standards/common/ to standards/universal/ ([44c6304](https://github.com/hyperi-io/hyperi-ai/commit/44c63047d7ac406fcc0cef9ee8bfadf4dffb3f0c))
+* simplify non-Claude AI templates, rename QUICKSTART.md ([7855d70](https://github.com/hyperi-io/hyperi-ai/commit/7855d70a28a37d0c920bcda0f1a74d81e111ed83))
+
 ## [3.4.0](https://github.com/hyperi-io/hyperi-ai/compare/3.3.0...3.4.0) (2026-03-17)
 
 
