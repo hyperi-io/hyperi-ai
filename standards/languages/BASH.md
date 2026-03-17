@@ -618,7 +618,7 @@ some_command ${args}  # Word splitting issues
 
 ## Loops and Iteration
 
-**Prefer modern CLI tools over bash loops** - Use `fd`, `parallel`, `xargs -0` instead of hand-written loops. See `$AI_ROOT/standards/code-assistant/COMMON.md` for full CLI utility preferences.
+**Prefer modern CLI tools over bash loops** - Use `fd`, `parallel`, `xargs -0` instead of hand-written loops. See `$AI_ROOT/standards/common/CODE-STYLE.md` for full CLI utility preferences.
 
 ### Loop Over Files
 

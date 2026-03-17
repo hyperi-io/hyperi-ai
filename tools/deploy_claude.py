@@ -406,23 +406,7 @@ def deploy_skills(
         force=force,
         verbose=verbose,
     )
-    _create_skill(
-        "ai-guidelines",
-        str(standards_dir / "code-assistant" / "AI-GUIDELINES.md"),
-        skills_dir,
-        dry_run=dry_run,
-        force=force,
-        verbose=verbose,
-    )
-    _create_skill(
-        "ai-common",
-        str(standards_dir / "code-assistant" / "COMMON.md"),
-        skills_dir,
-        dry_run=dry_run,
-        force=force,
-        verbose=verbose,
-    )
-    print("  Core: standards, ai-guidelines, ai-common")
+    print("  Core: standards")
 
     # Detected tech skills
     for display, skill_name, std_path in _detect_tech(project_root):

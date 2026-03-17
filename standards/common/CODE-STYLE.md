@@ -466,3 +466,23 @@ def initialize_color_picker():
 - ❌ Memory leaks (unclosed resources)
 - ❌ Blocking operations in hot paths
 - ❌ Excessive logging in production
+
+---
+
+## CLI Utility Preferences
+
+Use modern CLI tools when available. Fall back to standard tools if not installed
+(`command -v tool_name`).
+
+| Task | Use | Instead of |
+|------|-----|------------|
+| Recursive text search | `rg` (ripgrep) | `grep -R` |
+| Find files | `fd` / `fdfind` | `find` |
+| File loops | `fd`, `parallel`, `xargs -0` | bash for loops |
+| Search/replace | `sd` | `sed -i` |
+| JSON | `jq` | grep/awk |
+| YAML/JSON/XML/CSV/TOML | `yq` | grep/awk |
+| CSV/TSV | `mlr` (Miller) | awk/cut |
+| Directory trees | `rsync` | complex cp/mv |
+| File preview | `bat` / `batcat` | `cat` |
+| Interactive pickers | `fzf` | custom shell menus |

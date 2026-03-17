@@ -118,26 +118,44 @@ test/add-payment-tests
 
 ### Commit Types
 
-**Trigger version bumps:**
+Aligned with `.releaserc.json` — this is the authoritative list. Semantic-release
+reads these to determine version bumps.
 
-- `feat:` - New feature (MINOR: 1.0.0 → 1.1.0)
-- `fix:` - Bug fix (PATCH: 1.0.0 → 1.0.1)
-- `perf:` - Performance (PATCH)
-- `sec:` - Security (PATCH)
-- `hotfix:` - Critical fix (PATCH)
+**Trigger version bumps (semantic versioning):**
 
-**No version bump:**
+| Type | Use | Bump |
+|------|-----|------|
+| `feat:` | New significant user-facing feature (**RARELY** — AI assistants exaggerate importance) | MINOR |
+| `fix:` | Bug fix, improvement, cleanup (**DEFAULT** — use this most of the time) | PATCH |
+| `perf:` | Performance optimisation | PATCH |
+| `refactor:` | Code restructure (no functional change) | PATCH |
+| `hotfix:` | Critical production fix | PATCH |
+| `sec:` | Security fix, hardening, audit action | PATCH |
 
-- `docs:` - Documentation only
-- `test:` - Tests only
-- `chore:` - Maintenance, dependencies
-- `ci:` - CI/CD configuration
-- `refactor:` - Code restructure (no functional change)
-- All other types listed above
+**No version bump (no release triggered):**
+
+| Type | Category | Use |
+|------|----------|-----|
+| `docs:` | Documentation | Documentation updates |
+| `test:` | Quality | Test coverage or QA improvement |
+| `chore:` | Maintenance | Dependencies, config, cleanup |
+| `ci:` | Infrastructure | CI/CD configuration or workflow |
+| `infra:` | Infrastructure | Infrastructure or environment changes |
+| `ops:` | Infrastructure | Platform, operational maintenance |
+| `cleanup:` | Quality | Remove deprecated code or assets |
+| `debt:` | Quality | Technical debt or legacy maintenance |
+| `spike:` | Development | Research or proof-of-concept work |
+| `review:` | Quality | Internal review, audit, documentation validation |
+| `ui:` | Design | Frontend, layout, visual improvements |
+| `design:` | Design | Architecture or UX design deliverable |
+| `data:` | Development | Data model, ETL, schema, analytics changes |
+| `meta:` | Process | Process or workflow improvements |
 
 **Breaking changes:**
 
-- Add `BREAKING CHANGE:` footer to trigger MAJOR bump (1.0.0 → 2.0.0)
+- Add `BREAKING CHANGE:` in commit body footer → MAJOR bump (1.0.0 → 2.0.0)
+- **NEVER write this automatically.** Always ask the user for explicit confirmation.
+  This triggers a major version bump and must be a deliberate human decision.
 
 ### Examples
 

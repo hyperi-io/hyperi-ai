@@ -30,10 +30,6 @@ Also check for shell scripts:
 
 Load in this order:
 
-### Always Load
-
-- `ai/standards/code-assistant/CODE-REVIEW.md` (~760 tokens)
-
 ### Load Per Detected Language
 
 | Language | Standard File |

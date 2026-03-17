@@ -27,7 +27,6 @@ hyperi-ai/
 │   ├── STANDARDS.md             # Full reference
 │   ├── STANDARDS-QUICKSTART.md  # Router/index → standards/rules/
 │   ├── rules/                  # Compact rules (<200 lines each, single source)
-│   ├── code-assistant/          # AI-specific guidance
 │   ├── common/                  # Language-agnostic standards
 │   ├── languages/               # Python, Go, TypeScript, Rust, Bash, C++
 │   └── infrastructure/          # Docker, K8s, Terraform, Ansible
@@ -180,7 +179,6 @@ git commit -m "refactor!: restructure standards delivery" -m "BREAKING CHANGE: c
 |-----------|---------|
 | `standards/rules/UNIVERSAL.md` | Cross-cutting rules, always loaded (~137 lines) |
 | `standards/rules/<topic>.md` | Compact path-scoped rules (<200 lines each) |
-| `standards/code-assistant/` | AI-specific guidance |
 | `standards/common/` | Language-agnostic standards |
 | `standards/languages/` | Per-language: PYTHON.md, GOLANG.md, etc. |
 | `standards/infrastructure/` | Per-tool: DOCKER.md, K8S.md, etc. |

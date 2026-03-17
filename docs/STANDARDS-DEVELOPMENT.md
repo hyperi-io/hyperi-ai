@@ -35,7 +35,6 @@ standards/
 ├── STANDARDS-QUICKSTART.md   # Quick reference index
 ├── rules/                   # Compact rules (<200 lines each)
 │
-├── code-assistant/           # AI-specific guidance
 │   ├── COMMON.md             # Session management, commits
 │   └── AI-GUIDELINES.md      # Cognitive load, pitfalls
 │

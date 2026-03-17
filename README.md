@@ -215,7 +215,6 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |   |-- rules/                  # Compact rules (<200 lines) -- single source for all agents
 |   |   |-- UNIVERSAL.md        # Cross-cutting rules (always loaded)
 |   |   +-- <topic>.md          # Path-scoped rules (auto-injected by file type)
-|   |-- code-assistant/          # AI-specific guidance
 |   |-- common/                  # Language-agnostic standards
 |   |-- languages/               # Python, Go, TypeScript, Rust, Bash, C++
 |   +-- infrastructure/          # Docker, K8s, Terraform, Ansible
