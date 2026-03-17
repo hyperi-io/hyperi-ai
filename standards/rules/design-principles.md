@@ -1,3 +1,7 @@
+---
+source: common/DESIGN-PRINCIPLES.md
+---
+
 <!-- override: manual -->
 # Design Principles
 

@@ -1,3 +1,7 @@
+---
+source: common/ERROR-HANDLING.md
+---
+
 <!-- override: manual -->
 # Error Handling Standards
 

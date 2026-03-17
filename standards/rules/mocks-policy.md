@@ -1,3 +1,7 @@
+---
+source: common/MOCKS-POLICY.md
+---
+
 <!-- override: manual -->
 # No Mocks Policy
 

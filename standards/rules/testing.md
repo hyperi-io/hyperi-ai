@@ -1,3 +1,7 @@
+---
+source: common/TESTING.md
+---
+
 <!-- override: manual -->
 # Testing Standards
 

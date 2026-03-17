@@ -1,3 +1,7 @@
+---
+source: common/SECURITY.md
+---
+
 <!-- override: manual -->
 # Security Standards
 

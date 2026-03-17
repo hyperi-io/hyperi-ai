@@ -31,6 +31,105 @@ from typing import Dict, List, Optional, Tuple
 
 
 # ---------------------------------------------------------------------------
+# Context tier detection
+# ---------------------------------------------------------------------------
+
+# Tier determines which standards payload to inject:
+#   "compact" — compact rules from standards/rules/ (~14-34K tokens, safe for 200K)
+#   "full"    — full source from standards/{languages,common,infrastructure}/ (~100-220K, needs 1M)
+#
+# Detection priority:
+#   1. HYPERI_CONTEXT_TIER env var (explicit override)
+#   2. VS Code claudeCode.selectedModel setting (auto-detect [1m]/[2m] suffix)
+#   3. Default: "compact" (safe for 200K — the common case)
+
+_CONTEXT_TIER_CACHE: Optional[str] = None
+
+
+def get_context_tier() -> str:
+    """Detect the appropriate context tier for standards injection.
+
+    Returns "compact" or "full".
+    """
+    global _CONTEXT_TIER_CACHE
+    if _CONTEXT_TIER_CACHE is not None:
+        return _CONTEXT_TIER_CACHE
+
+    # 1. Explicit env var override
+    tier = os.environ.get("HYPERI_CONTEXT_TIER", "").strip().lower()
+    if tier in ("compact", "full"):
+        _CONTEXT_TIER_CACHE = tier
+        return tier
+
+    # 2. Auto-detect from VS Code settings (claudeCode.selectedModel)
+    tier = _detect_tier_from_vscode()
+    if tier:
+        _CONTEXT_TIER_CACHE = tier
+        return tier
+
+    # 3. Default to compact (safe for 200K)
+    _CONTEXT_TIER_CACHE = "compact"
+    return "compact"
+
+
+def _detect_tier_from_vscode() -> Optional[str]:
+    """Read claudeCode.selectedModel from VS Code user settings.
+
+    Models with [Nm] suffix (e.g. opus[1m], sonnet[2m]) indicate extended
+    context windows. Returns "full" if context >= 1M, else None.
+
+    NOTE: This reads an undocumented VS Code extension setting. It may break
+    if the Claude Code extension changes its config schema.
+    """
+    # Try standard VS Code settings paths
+    candidates = []
+    config_home = os.environ.get("XDG_CONFIG_HOME", "")
+    if config_home:
+        candidates.append(Path(config_home) / "Code" / "User" / "settings.json")
+    candidates.extend(
+        [
+            Path.home() / ".config" / "Code" / "User" / "settings.json",
+            Path.home() / ".config" / "Code - Insiders" / "User" / "settings.json",
+            Path.home() / ".config" / "Codium" / "User" / "settings.json",
+        ]
+    )
+
+    for settings_path in candidates:
+        if not settings_path.is_file():
+            continue
+        try:
+            with open(settings_path, encoding="utf-8") as f:
+                # VS Code settings.json may have comments — strip them
+                content = f.read()
+                # Simple comment stripping (// line comments only)
+                lines = []
+                for line in content.splitlines():
+                    stripped = line.lstrip()
+                    if stripped.startswith("//"):
+                        continue
+                    lines.append(line)
+                data = json.loads("\n".join(lines))
+
+            model = data.get("claudeCode.selectedModel", "")
+            if not model:
+                continue
+
+            # Parse context suffix: opus[1m], sonnet[2m], etc.
+            m = re.search(r"\[(\d+)m\]", model)
+            if m:
+                context_millions = int(m.group(1))
+                if context_millions >= 1:
+                    return "full"
+
+            # No suffix or < 1M — don't override default
+            return None
+        except (json.JSONDecodeError, KeyError, OSError):
+            continue
+
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Path resolution
 # ---------------------------------------------------------------------------
 
@@ -41,8 +140,19 @@ def get_project_dir() -> Path:
 
 
 def get_ai_dir(project_dir: Path) -> Path:
-    """Return the hyperi-ai/ submodule directory within the project."""
-    return project_dir / "hyperi-ai"
+    """Return the hyperi-ai/ submodule directory within the project.
+
+    Handles two cases:
+    - Consumer project: /projects/myapp/hyperi-ai/ (submodule)
+    - Dogfooding: /projects/hyperi-ai/ (we ARE the repo)
+    """
+    submodule = project_dir / "hyperi-ai"
+    if submodule.is_dir():
+        return submodule
+    # Dogfooding: check if project_dir itself IS hyperi-ai
+    if (project_dir / "standards" / "rules").is_dir():
+        return project_dir
+    return submodule  # fallback (will fail gracefully downstream)
 
 
 def get_rules_dir(project_dir: Path) -> Path:
@@ -314,35 +424,39 @@ def inject_rules(project_dir: Path) -> Tuple[str, List[str]]:
     return ("\n".join(parts), loaded)
 
 
-def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
-    """Unified CAG-Heavy injection — loads all standards, skills, and context.
+def _resolve_full_source(rule_path: Path, standards_dir: Path) -> Optional[Path]:
+    """Resolve a compact rule to its full source standard via the source: frontmatter.
 
-    Returns (output_text, loaded_names) identical to inject_rules() signature.
-    Set HYPERI_CAG_LEAN=1 to fall back to the lean inject_rules() path.
+    Returns the full source Path if it exists, None otherwise.
     """
-    if os.environ.get("HYPERI_CAG_LEAN") == "1":
-        return inject_rules(project_dir)
+    meta = _parse_rules_frontmatter(rule_path)
+    source = meta.get("source", "")
+    if not source:
+        return None
+    full_path = standards_dir / source
+    if full_path.is_file():
+        return full_path
+    return None
 
-    rules_dir = get_rules_dir(project_dir)
-    if not rules_dir.is_dir():
-        return (
-            "NOTE: hyperi-ai/standards/rules/ not found — "
-            "coding standards not loaded. "
-            "If you have access, run: git submodule update --init hyperi-ai\n",
-            [],
-        )
 
+def _load_standards_compact(
+    rules_dir: Path, project_dir: Path
+) -> Tuple[List[str], List[str]]:
+    """Load standards as compact rules (for 200K context windows).
+
+    Returns (text_parts, loaded_names).
+    """
     parts: List[str] = []
     loaded: List[str] = []
 
-    # 1. UNIVERSAL always first
+    # UNIVERSAL always first
     universal = rules_dir / "UNIVERSAL.md"
     if universal.is_file():
         parts.append(universal.read_text(encoding="utf-8"))
         parts.append("")
         loaded.append("UNIVERSAL")
 
-    # 2. Detected technology rules
+    # Detected technology rules (compact)
     for tech_name, rule_file in detect_technologies(project_dir):
         rule_path = rules_dir / rule_file
         if rule_path.is_file():
@@ -352,8 +466,7 @@ def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
             parts.append("")
             loaded.append(tech_name)
 
-    # 3. Common rules — everything in rules/*.md that is not UNIVERSAL and
-    #    not a tech-detection rule (has detect_markers in frontmatter)
+    # Common rules — everything not UNIVERSAL and not a tech-detection rule
     tech_files: set[str] = set()
     for _name, _fname, _markers in _load_tech_detections(rules_dir):
         tech_files.add(_fname)
@@ -368,6 +481,108 @@ def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
         parts.append(rule_path.read_text(encoding="utf-8"))
         parts.append("")
         loaded.append(rule_path.stem)
+
+    return parts, loaded
+
+
+def _load_standards_full(
+    rules_dir: Path, project_dir: Path
+) -> Tuple[List[str], List[str]]:
+    """Load standards as full source documents (for 1M+ context windows).
+
+    Uses the source: frontmatter in each compact rule to find the full source
+    file in standards/{languages,common,infrastructure}/. Falls back to compact
+    if no source mapping exists.
+
+    Returns (text_parts, loaded_names).
+    """
+    standards_dir = rules_dir.parent  # standards/rules/ -> standards/
+    parts: List[str] = []
+    loaded: List[str] = []
+
+    # UNIVERSAL always first (same in both tiers — it IS the source)
+    universal = rules_dir / "UNIVERSAL.md"
+    if universal.is_file():
+        parts.append(universal.read_text(encoding="utf-8"))
+        parts.append("")
+        loaded.append("UNIVERSAL")
+
+    # Detected technology rules — load full source where available
+    for tech_name, rule_file in detect_technologies(project_dir):
+        rule_path = rules_dir / rule_file
+        if not rule_path.is_file():
+            continue
+        full_path = _resolve_full_source(rule_path, standards_dir)
+        if full_path:
+            parts.append("---")
+            parts.append("")
+            parts.append(full_path.read_text(encoding="utf-8"))
+            parts.append("")
+            loaded.append(f"{tech_name}[full]")
+        else:
+            parts.append("---")
+            parts.append("")
+            parts.append(rule_path.read_text(encoding="utf-8"))
+            parts.append("")
+            loaded.append(tech_name)
+
+    # Common rules — load full source where available
+    tech_files: set[str] = set()
+    for _name, _fname, _markers in _load_tech_detections(rules_dir):
+        tech_files.add(_fname)
+
+    for rule_path in sorted(rules_dir.glob("*.md")):
+        if rule_path.name == "UNIVERSAL.md":
+            continue
+        if rule_path.name in tech_files:
+            continue
+        full_path = _resolve_full_source(rule_path, standards_dir)
+        if full_path:
+            parts.append("---")
+            parts.append("")
+            parts.append(full_path.read_text(encoding="utf-8"))
+            parts.append("")
+            loaded.append(f"{rule_path.stem}[full]")
+        else:
+            parts.append("---")
+            parts.append("")
+            parts.append(rule_path.read_text(encoding="utf-8"))
+            parts.append("")
+            loaded.append(rule_path.stem)
+
+    return parts, loaded
+
+
+def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
+    """Unified CAG injection — loads standards, skills, and context.
+
+    Context tier selection:
+      - "compact": compact rules from standards/rules/ (~14-34K tokens, for 200K)
+      - "full": full source from standards/{languages,common,infrastructure}/ (for 1M+)
+
+    Tier is auto-detected from VS Code model selection or HYPERI_CONTEXT_TIER env var.
+    Set HYPERI_CAG_LEAN=1 to fall back to the minimal inject_rules() path.
+
+    Returns (output_text, loaded_names).
+    """
+    if os.environ.get("HYPERI_CAG_LEAN") == "1":
+        return inject_rules(project_dir)
+
+    rules_dir = get_rules_dir(project_dir)
+    if not rules_dir.is_dir():
+        return (
+            "NOTE: hyperi-ai/standards/rules/ not found — "
+            "coding standards not loaded. "
+            "If you have access, run: git submodule update --init hyperi-ai\n",
+            [],
+        )
+
+    # Select tier and load standards accordingly
+    tier = get_context_tier()
+    if tier == "full":
+        parts, loaded = _load_standards_full(rules_dir, project_dir)
+    else:
+        parts, loaded = _load_standards_compact(rules_dir, project_dir)
 
     # 4. Skills — load each skills/*/SKILL.md, strip YAML frontmatter
     ai_dir = get_ai_dir(project_dir)
@@ -437,7 +652,7 @@ def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
     # Summary
     parts.append("---")
     parts.append("")
-    parts.append(f"[CAG payload: {', '.join(loaded)}]")
+    parts.append(f"[CAG payload ({tier}): {', '.join(loaded)}]")
 
     return ("\n".join(parts), loaded)
 
