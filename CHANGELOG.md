@@ -1,3 +1,10 @@
+## [3.4.11](https://github.com/hyperi-io/hyperi-ai/compare/3.4.10...3.4.11) (2026-03-17)
+
+
+### Bug Fixes
+
+* use --break-system-packages for pip install in CI regen job ([1b2e022](https://github.com/hyperi-io/hyperi-ai/commit/1b2e022f6134b188cfd349b0c019d89e2aa33580))
+
 ## [3.4.10](https://github.com/hyperi-io/hyperi-ai/compare/3.4.9...3.4.10) (2026-03-17)
 
 
