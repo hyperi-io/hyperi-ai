@@ -1,3 +1,10 @@
+## [3.4.12](https://github.com/hyperi-io/hyperi-ai/compare/3.4.11...3.4.12) (2026-03-17)
+
+
+### Bug Fixes
+
+* add performance tuning lifecycle and profiling toolchain to Rust standards ([5435eae](https://github.com/hyperi-io/hyperi-ai/commit/5435eae3edc4f6625d286839dc39de19b20cb555))
+
 ## [3.4.11](https://github.com/hyperi-io/hyperi-ai/compare/3.4.10...3.4.11) (2026-03-17)
 
 
