@@ -1,3 +1,17 @@
+## [3.4.4](https://github.com/hyperi-io/hyperi-ai/compare/3.4.3...3.4.4) (2026-03-17)
+
+
+### Bug Fixes
+
+* update PYTHON.md CI references to hyperi-ci (replace old ./ci/run commands) ([477de52](https://github.com/hyperi-io/hyperi-ai/commit/477de524d8303ecfe570a7c2ebe002b2feaa7441))
+
+
+### Documentation
+
+* add missing Python patterns (Protocols, DI, fixtures, context managers, Pydantic settings) ([95c1a63](https://github.com/hyperi-io/hyperi-ai/commit/95c1a6392cf745ccb69c341d8eb8344f86178063))
+* add missing Python patterns from research pass ([987d4b9](https://github.com/hyperi-io/hyperi-ai/commit/987d4b9726b66474edd2aba5c9b5a186884837af))
+* Python Derek Dump + bash minimalism principle ([c86e4aa](https://github.com/hyperi-io/hyperi-ai/commit/c86e4aac5d0e6ddc19229602ae602d7b35a9cfe5))
+
 ## [3.4.3](https://github.com/hyperi-io/hyperi-ai/compare/3.4.2...3.4.3) (2026-03-17)
 
 
