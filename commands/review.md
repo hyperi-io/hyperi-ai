@@ -104,6 +104,7 @@ Focus your review on:
 - Excessive nesting / complexity
 - Copy-paste code that should be abstracted
 - Missing tests for core functionality
+- **Stale dependencies** — check if `uv.lock` / `Cargo.lock` / `package-lock.json` has been updated recently. Suggest `uv lock --upgrade` (Python), `cargo update` (Rust), `npm update` (TS) if deps look stale.
 
 ### Priority 3 - Language-Specific
 

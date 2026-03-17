@@ -646,6 +646,71 @@ uv run -m pytest               # Run module with deps
 ./ci/run dependency-update     # CI wrapper for lock update
 ```
 
+### Version Pinning & Update Policy
+
+**General rule: use `>=` version ranges, pin only when forced.**
+
+```toml
+# pyproject.toml
+[project]
+dependencies = [
+    "httpx>=0.27",              # ✅ >= range (normal)
+    "pydantic>=2.0,<3",         # ✅ >= with upper bound (major version)
+    "hyperi-pylib>=2.24",       # ✅ >= range
+    "cryptography==44.0.1",     # ⚠️ Pinned — only when you MUST
+]
+```
+
+**Rules:**
+- `>=X.Y` — default for all dependencies. Accept patches and minors.
+- `>=X.Y,<Z` — when a known breaking major version exists
+- `==X.Y.Z` — pin ONLY when a specific version has a known issue or
+  you need reproducibility for a security-critical package. Document WHY.
+- `uv.lock` — always committed. This IS your reproducible pin. The
+  `pyproject.toml` ranges are for compatibility; the lock file is for builds.
+
+**Update cadence:**
+- Dependencies MUST be updated with every code review. Add `uv lock --upgrade`
+  to the review checklist. Stale deps are a security and compatibility risk.
+- `pip-audit` runs in CI — fails on known CVEs. Update or pin immediately.
+- When updating, run the full test suite. If tests pass, update is safe.
+
+```bash
+# Update all deps to latest compatible versions
+uv lock --upgrade
+
+# Update a specific package
+uv lock --upgrade-package httpx
+
+# Check for security issues
+uv run pip-audit
+```
+
+**Risk mitigation for `>=` ranges:**
+
+The risk of `>=` is that a breaking upstream release can break your build.
+We mitigate this with multiple layers:
+
+| Risk | Mitigation |
+|---|---|
+| Breaking upstream release | `uv.lock` pins exact versions — builds are reproducible even with `>=` ranges |
+| Security vulnerability | `pip-audit` in CI catches CVEs — blocks merge until resolved |
+| Incompatible transitive deps | `uv.lock` resolves the full dependency tree — conflicts caught at lock time, not runtime |
+| Stale deps accumulating risk | Mandatory `uv lock --upgrade` at every code review — deps never drift more than a few weeks |
+| Major version break | Use `>=X.Y,<Z` upper bound for dependencies with known breaking major versions |
+
+The key insight: `pyproject.toml` ranges express **compatibility intent**.
+`uv.lock` provides **reproducible builds**. CI provides **safety gates**.
+Together, these three layers make `>=` ranges safe and maintainable.
+
+**When to pin `==`:** only when a specific version has a known regression
+that the upstream hasn't fixed, OR for security-critical packages where
+you need audit traceability. Always add a comment explaining WHY.
+
+**For AI assistants:** when adding a dependency, always use `>=` not `==`.
+When reviewing code, check if `uv.lock` is stale and suggest
+`uv lock --upgrade` if deps haven't been updated recently.
+
 ### When Native Python is Acceptable
 
 Only use native `python` or `pip` when:
