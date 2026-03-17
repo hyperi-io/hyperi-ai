@@ -36,46 +36,42 @@ This doc covers HyperI-specific patterns and hard-won lessons from production sy
 
 ## Table of Contents
 
-1. [HyperI Rust Design Philosophy](#hyperi-rust-design-philosophy) - why Rust, when Rust
-2. [Rust 2024 Edition Features](#rust-2024-edition-features) - async closures, let chains, recent std stabilisations
-3. [Code Style Rules](#code-style-rules) - the non-negotiables
-4. [Required Tooling](#required-tooling)
-5. [Quick Reference](#quick-reference)
-6. [Project Structure](#project-structure)
-7. [Error Handling](#error-handling)
-8. [Traits and Generics](#traits-and-generics) - sealed traits, GATs, const generics
-9. [Common Patterns](#common-patterns)
-10. [Testing](#testing)
-11. [Async with Tokio](#async-with-tokio)
-12. [Configuration and Logging](#configuration-hyperi-cascade)
-13. [hyperi-rustlib](#hyperi-rustlib) - org shared library (config, logging, metrics, transports, secrets)
-14. [Observability](#observability) - OTel, Prometheus, tokio-console, health checks
-15. [HTTP Service Patterns](#http-service-patterns-axum--tower) - axum 0.8 + tower middleware
-16. [Graceful Shutdown](#graceful-shutdown-k8s-ready) - K8s-ready SIGTERM/drain
-17. [External Libraries](#external-libraries-and-private-registries)
-18. [High Performance](#at-scale-performance-patterns) - build perf, memory, zero-copy, SIMD, concurrency
-19. [Data Pipeline Architecture](#data-pipeline-architecture)
-20. [FFI and Unsafe](#ffi-and-unsafe-rust)
-21. [Clippy Configuration](#clippy-configuration)
-22. [Cargo.toml Best Practices](#cargotoml-best-practices)
-23. [Coming from Other Languages](#coming-from-other-languages)
-24. [For AI Assistants](#ai-pitfalls-to-avoid) - web-search-first enforcement, deprecated crate table
-25. [Resources](#resources)
-
----
-
-## Rust Version Policy
-
-> **Always use the latest stable Rust edition and compiler version.**
->
-> **NEVER rely on LLM/AI model knowledge for the current Rust version — it is always out of date.**
-> Always web-check the current stable release at <https://releases.rs/> or run `rustup check`.
-
-- Use the latest stable edition. Edition 2024 is the minimum as of March 2026.
-- Set `edition` in `Cargo.toml` and `rustfmt.toml` to the latest stable edition.
-- Pin `rust-toolchain.toml` to the current stable version (check `rustup check` or <https://releases.rs/>).
-- Minimum acceptable floor as of March 2026: **Edition 2024**, **rustc 1.94.0**.
-- There is no valid reason to use an older edition in new projects. Existing projects should migrate.
+1. [HyperI Rust Design Philosophy](#hyperi-rust-design-philosophy)
+2. [Rust Version Policy](#rust-version-policy)
+3. [Rust 2024 Edition Features](#rust-2024-edition-features)
+4. [Quick Reference](#quick-reference)
+5. [Code Style Rules](#code-style-rules)
+6. [Required Tooling](#required-tooling)
+7. [Project Structure](#project-structure)
+8. [Rust Foundations](#rust-foundations)
+9. [Error Handling](#error-handling)
+10. [Ownership and Borrowing](#ownership-and-borrowing)
+11. [Structs and Enums](#structs-and-enums)
+12. [Traits and Generics](#traits-and-generics)
+13. [Common Patterns](#common-patterns)
+14. [Async with Tokio](#async-with-tokio)
+15. [Concurrency Patterns](#concurrency-patterns)
+16. [Hot Path Optimization](#hot-path-optimization)
+17. [Zero-Copy Data Processing](#zero-copy-data-processing)
+18. [SIMD and Vectorized Processing](#simd-and-vectorized-processing)
+19. [Memory Management for Scale](#memory-management-for-scale)
+20. [At-Scale Performance Patterns](#at-scale-performance-patterns)
+21. [Real-World SIMD Patterns](#real-world-simd-patterns)
+22. [Data Pipeline Architecture](#data-pipeline-architecture)
+23. [hyperi-rustlib](#hyperi-rustlib)
+24. [Observability](#observability)
+25. [HTTP Service Patterns (axum + tower)](#http-service-patterns-axum-tower)
+26. [Graceful Shutdown (K8s-Ready)](#graceful-shutdown-k8s-ready)
+27. [Configuration (HyperI Cascade)](#configuration-hyperi-cascade)
+28. [Logging (HyperI Standard)](#logging-hyperi-standard)
+29. [Cargo.toml Best Practices](#cargotoml-best-practices)
+30. [Clippy Configuration](#clippy-configuration)
+31. [External Libraries and Private Registries](#external-libraries-and-private-registries)
+32. [FFI and Unsafe Rust](#ffi-and-unsafe-rust)
+33. [8 Common Rust Mistakes](#8-common-rust-mistakes)
+34. [AI Pitfalls to Avoid](#ai-pitfalls-to-avoid)
+35. [Coming from Other Languages](#coming-from-other-languages)
+36. [Resources](#resources)
 
 ---
 
@@ -99,6 +95,21 @@ Rust at HyperI is for **high-throughput data pipelines, network services, and CP
 5. **Use `hyperi-rustlib`** — Never roll bespoke config, logging, metrics, or resilience patterns in HyperI projects. The shared library exists to eliminate this duplication. See the [hyperi-rustlib](#hyperi-rustlib) section.
 
 6. **PyO3 bindings for Python** — If a Rust crate provides capability useful in Python, consider exposing it as a Python binding via PyO3/maturin rather than reimplementing in pure Python. You get Rust performance with Python ergonomics. Example: `common-expression-language` (CEL) in `hyperi-pylib` is a Rust crate exposed via PyO3.
+
+---
+
+## Rust Version Policy
+
+> **Always use the latest stable Rust edition and compiler version.**
+>
+> **NEVER rely on LLM/AI model knowledge for the current Rust version — it is always out of date.**
+> Always web-check the current stable release at <https://releases.rs/> or run `rustup check`.
+
+- Use the latest stable edition. Edition 2024 is the minimum as of March 2026.
+- Set `edition` in `Cargo.toml` and `rustfmt.toml` to the latest stable edition.
+- Pin `rust-toolchain.toml` to the current stable version (check `rustup check` or <https://releases.rs/>).
+- Minimum acceptable floor as of March 2026: **Edition 2024**, **rustc 1.94.0**.
+- There is no valid reason to use an older edition in new projects. Existing projects should migrate.
 
 ---
 
@@ -212,6 +223,52 @@ const ALIGNED: usize = usize::div_ceil(100, 64) * 64;  // Round up to 64-byte al
 use std::io::IsTerminal;
 let interactive = std::io::stderr().is_terminal();
 ```
+
+---
+
+## Quick Reference
+
+```bash
+# Essential commands
+cargo build                     # Build debug
+cargo build --release           # Build release
+cargo nextest run               # Run tests (preferred over cargo test)
+cargo clippy                    # Lint
+cargo fmt                       # Format
+cargo check                     # Type check (fast)
+cargo doc --open                # Generate docs
+cargo bench                     # Run benchmarks
+cargo tree                      # Dependency tree
+cargo deny check                # License/advisory check
+
+# Development workflow
+bacon                           # Continuous clippy (use instead of cargo watch)
+bacon test                      # Continuous testing
+cargo tarpaulin --out Html      # Coverage report
+```
+
+### Type Quick Reference
+
+| Type | Size | Use Case |
+|------|------|----------|
+| `i8/u8` | 1 byte | Small integers, bytes |
+| `i32/u32` | 4 bytes | Default integers |
+| `i64/u64` | 8 bytes | Large integers, timestamps |
+| `isize/usize` | pointer | Indexing, lengths |
+| `f32` | 4 bytes | GPU, graphics |
+| `f64` | 8 bytes | Default float, precision |
+| `bool` | 1 byte | Boolean logic |
+| `char` | 4 bytes | Unicode scalar |
+
+### String Types
+
+| Type | Ownership | Mutability | Use Case |
+|------|-----------|------------|----------|
+| `String` | Owned | Mutable | Building strings |
+| `&str` | Borrowed | Immutable | String parameters |
+| `&mut str` | Borrowed | Mutable | Rare, in-place |
+| `Cow<'a, str>` | Either | Copy-on-write | Zero-copy with fallback |
+| `Arc<str>` | Shared | Immutable | Shared across threads |
 
 ---
 
@@ -726,52 +783,6 @@ jobs:
       - name: Upload coverage
         uses: codecov/codecov-action@v4
 ```
-
----
-
-## Quick Reference
-
-```bash
-# Essential commands
-cargo build                     # Build debug
-cargo build --release           # Build release
-cargo nextest run               # Run tests (preferred over cargo test)
-cargo clippy                    # Lint
-cargo fmt                       # Format
-cargo check                     # Type check (fast)
-cargo doc --open                # Generate docs
-cargo bench                     # Run benchmarks
-cargo tree                      # Dependency tree
-cargo deny check                # License/advisory check
-
-# Development workflow
-bacon                           # Continuous clippy (use instead of cargo watch)
-bacon test                      # Continuous testing
-cargo tarpaulin --out Html      # Coverage report
-```
-
-### Type Quick Reference
-
-| Type | Size | Use Case |
-|------|------|----------|
-| `i8/u8` | 1 byte | Small integers, bytes |
-| `i32/u32` | 4 bytes | Default integers |
-| `i64/u64` | 8 bytes | Large integers, timestamps |
-| `isize/usize` | pointer | Indexing, lengths |
-| `f32` | 4 bytes | GPU, graphics |
-| `f64` | 8 bytes | Default float, precision |
-| `bool` | 1 byte | Boolean logic |
-| `char` | 4 bytes | Unicode scalar |
-
-### String Types
-
-| Type | Ownership | Mutability | Use Case |
-|------|-----------|------------|----------|
-| `String` | Owned | Mutable | Building strings |
-| `&str` | Borrowed | Immutable | String parameters |
-| `&mut str` | Borrowed | Mutable | Rare, in-place |
-| `Cow<'a, str>` | Either | Copy-on-write | Zero-copy with fallback |
-| `Arc<str>` | Shared | Immutable | Shared across threads |
 
 ---
 
@@ -1291,6 +1302,445 @@ fn process_order(user: UserId, order: OrderId) { }
 
 ---
 
+## Traits and Generics
+
+### Trait Basics
+
+```rust
+/// Define behaviour that types can implement
+pub trait Processor {
+    /// Associated type - implementor chooses the concrete type
+    type Output;
+
+    /// Required method - must be implemented
+    fn process(&self, input: &[u8]) -> Self::Output;
+
+    /// Provided method - default implementation, can be overridden
+    fn name(&self) -> &'static str {
+        "unnamed"
+    }
+}
+
+/// Implement trait for a type
+struct JsonProcessor;
+
+impl Processor for JsonProcessor {
+    type Output = serde_json::Value;
+
+    fn process(&self, input: &[u8]) -> Self::Output {
+        serde_json::from_slice(input).unwrap_or_default()
+    }
+
+    fn name(&self) -> &'static str {
+        "json"
+    }
+}
+```
+
+### The Orphan Rule
+
+You can only implement a trait on a type if **either** the trait **or** the type is local to your crate:
+
+```rust
+// ✅ OK - your trait on external type
+impl MyTrait for Vec<i32> { }
+
+// ✅ OK - external trait on your type
+impl Display for MyType { }
+
+// ❌ ERROR - both trait and type are external
+impl Display for Vec<i32> { }  // Orphan rule violation
+```
+
+This ensures code coherence and prevents conflicting implementations across crates.
+
+### Generic Functions
+
+```rust
+// Single trait bound
+fn process<T: Processor>(processor: T, data: &[u8]) -> T::Output {
+    processor.process(data)
+}
+
+// Multiple bounds with +
+fn process_and_log<T: Processor + Debug>(processor: T, data: &[u8]) -> T::Output {
+    println!("Using processor: {:?}", processor);
+    processor.process(data)
+}
+
+// Where clause for complex bounds
+fn transform<T, U>(input: T, transformer: U) -> U::Output
+where
+    T: AsRef<[u8]>,
+    U: Processor + Send + Sync + 'static,
+{
+    transformer.process(input.as_ref())
+}
+
+// impl Trait in argument position (syntactic sugar)
+fn process_any(processor: impl Processor) {
+    let _ = processor.process(b"data");
+}
+
+// impl Trait in return position - single concrete type
+fn create_processor() -> impl Processor<Output = String> {
+    StringProcessor::new()
+}
+```
+
+### Trait Objects (Dynamic Dispatch)
+
+```rust
+// Box<dyn Trait> for runtime polymorphism
+fn process_dynamic(processor: Box<dyn Processor<Output = String>>) -> String {
+    processor.process(b"input")
+}
+
+// &dyn Trait for borrowed trait objects
+fn process_borrowed(processor: &dyn Processor<Output = String>) -> String {
+    processor.process(b"input")
+}
+
+// Vec of trait objects - heterogeneous collection
+fn process_many(processors: Vec<Box<dyn Processor<Output = String>>>) {
+    for p in processors {
+        println!("{}: {}", p.name(), p.process(b"data"));
+    }
+}
+
+// Object safety rules - trait must be object-safe to use as dyn Trait:
+// ✅ Methods with &self or &mut self receiver
+// ✅ Methods with no type parameters
+// ❌ Methods returning Self
+// ❌ Methods with generic type parameters
+// ❌ Static methods (no self)
+
+// ❌ NOT object-safe
+trait NotObjectSafe {
+    fn clone_self(&self) -> Self;  // Returns Self
+    fn generic<T>(&self, t: T);    // Generic method
+}
+
+// ✅ Object-safe
+trait ObjectSafe {
+    fn process(&self) -> Box<dyn ObjectSafe>;  // Returns trait object, not Self
+    fn name(&self) -> &str;
+}
+```
+
+### When to Use Static vs Dynamic Dispatch
+
+```rust
+// ✅ Static dispatch (generics) - use when:
+// - Performance is critical (no vtable lookup)
+// - Types known at compile time
+// - Monomorphization acceptable (larger binary)
+fn fast_process<T: Processor>(p: T, data: &[u8]) -> T::Output {
+    p.process(data)  // Direct call, inlined
+}
+
+// ✅ Dynamic dispatch (trait objects) - use when:
+// - Need heterogeneous collections
+// - Plugin systems / runtime loading
+// - Reducing binary size
+// - API boundary stability
+fn flexible_process(p: &dyn Processor<Output = String>, data: &[u8]) -> String {
+    p.process(data)  // vtable lookup
+}
+
+// Pattern: Store trait objects, process with generics
+struct Pipeline {
+    stages: Vec<Box<dyn Stage>>,  // Dynamic storage
+}
+
+impl Pipeline {
+    fn add<S: Stage + 'static>(&mut self, stage: S) {
+        self.stages.push(Box::new(stage));  // Generic addition
+    }
+}
+```
+
+### Associated Types vs Generic Parameters
+
+```rust
+// Associated type - one implementation per type
+trait Iterator {
+    type Item;  // Determined by implementor
+    fn next(&mut self) -> Option<Self::Item>;
+}
+
+// Each type has exactly one Item type
+impl Iterator for Counter {
+    type Item = u32;  // Counter always yields u32
+    fn next(&mut self) -> Option<u32> { ... }
+}
+
+// Generic parameter - multiple implementations per type
+trait Converter<T> {
+    fn convert(&self) -> T;
+}
+
+// Same type can implement multiple conversions
+impl Converter<String> for MyType {
+    fn convert(&self) -> String { ... }
+}
+impl Converter<i32> for MyType {
+    fn convert(&self) -> i32 { ... }
+}
+
+// Rule of thumb:
+// - Associated type: "A type HAS one X" (Iterator has one Item type)
+// - Generic param: "A type can BE converted to many X" (can convert to String, i32, etc.)
+```
+
+### Supertraits and Trait Inheritance
+
+```rust
+// Supertrait - require another trait
+trait Serializable: Debug + Clone {
+    fn serialize(&self) -> Vec<u8>;
+}
+
+// Implementors must also implement Debug and Clone
+#[derive(Debug, Clone)]
+struct Record { id: u64 }
+
+impl Serializable for Record {
+    fn serialize(&self) -> Vec<u8> {
+        format!("{:?}", self).into_bytes()
+    }
+}
+
+// Multiple supertraits
+trait Service: Send + Sync + 'static {
+    fn handle(&self, request: Request) -> Response;
+}
+```
+
+### Marker Traits
+
+```rust
+// Marker traits have no methods - they mark capabilities
+// Standard library markers:
+
+// Send - safe to transfer between threads
+// Sync - safe to share references between threads (&T is Send)
+// Copy - can be copied bitwise (no Drop)
+// Sized - has known size at compile time (default bound)
+// Unpin - can be moved after being pinned
+
+// Auto traits - implemented automatically unless opted out
+struct ThreadSafeData {
+    value: i32,  // i32 is Send + Sync, so ThreadSafeData is too
+}
+
+// Opt out with negative impl (nightly) or PhantomData
+use std::marker::PhantomData;
+use std::cell::UnsafeCell;
+
+struct NotSync {
+    _marker: PhantomData<UnsafeCell<()>>,  // UnsafeCell is !Sync
+}
+
+// Custom marker trait
+trait DatabaseConnection: Send + Sync {}
+
+fn spawn_with_db<D: DatabaseConnection>(db: D) {
+    std::thread::spawn(move || {
+        // db is guaranteed Send + Sync
+    });
+}
+```
+
+### Default Trait Implementations
+
+```rust
+// The Default trait
+#[derive(Default)]
+struct Config {
+    port: u16,
+    host: String,
+    #[default]  // Requires nightly or manual impl
+    timeout_ms: u64,
+}
+
+// Manual Default implementation
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            port: 8080,
+            host: "localhost".to_string(),
+            timeout_ms: 30_000,
+        }
+    }
+}
+
+// Using Default
+let config = Config::default();
+let config = Config { port: 9000, ..Default::default() };
+
+// Default in generics
+fn create_with_defaults<T: Default>() -> T {
+    T::default()
+}
+```
+
+### Extension Traits
+
+```rust
+// Add methods to existing types without modifying them
+trait StringExt {
+    fn truncate_with_ellipsis(&self, max_len: usize) -> String;
+}
+
+impl StringExt for str {
+    fn truncate_with_ellipsis(&self, max_len: usize) -> String {
+        if self.len() <= max_len {
+            self.to_string()
+        } else {
+            format!("{}...", &self[..max_len.saturating_sub(3)])
+        }
+    }
+}
+
+// Usage - must import the trait!
+use crate::StringExt;
+let short = "Hello, World!".truncate_with_ellipsis(8);  // "Hello..."
+
+// Common pattern: extension traits for Result/Option
+trait ResultExt<T, E> {
+    fn log_err(self) -> Result<T, E>;
+}
+
+impl<T, E: std::fmt::Display> ResultExt<T, E> for Result<T, E> {
+    fn log_err(self) -> Result<T, E> {
+        if let Err(ref e) = self {
+            tracing::error!("Error: {}", e);
+        }
+        self
+    }
+}
+```
+
+### Generic Structs and Enums
+
+```rust
+// Generic struct
+struct Container<T> {
+    value: T,
+}
+
+impl<T> Container<T> {
+    fn new(value: T) -> Self {
+        Self { value }
+    }
+
+    fn into_inner(self) -> T {
+        self.value
+    }
+}
+
+// Methods only for specific types
+impl Container<String> {
+    fn len(&self) -> usize {
+        self.value.len()
+    }
+}
+
+// Methods with additional bounds
+impl<T: Clone> Container<T> {
+    fn cloned(&self) -> T {
+        self.value.clone()
+    }
+}
+
+// Multiple type parameters
+struct Pair<K, V> {
+    key: K,
+    value: V,
+}
+
+// Generic enum
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+// PhantomData for unused type parameters
+use std::marker::PhantomData;
+
+struct TypedId<T> {
+    id: u64,
+    _marker: PhantomData<T>,  // T not used in fields
+}
+
+// Different types even though same underlying data
+type UserId = TypedId<User>;
+type OrderId = TypedId<Order>;
+```
+
+### Const Generics
+
+```rust
+// Generic over constant values (not just types)
+struct Buffer<const N: usize> {
+    data: [u8; N],
+}
+
+impl<const N: usize> Buffer<N> {
+    fn new() -> Self {
+        Self { data: [0; N] }
+    }
+
+    fn len(&self) -> usize {
+        N
+    }
+}
+
+// Usage
+let small: Buffer<64> = Buffer::new();
+let large: Buffer<4096> = Buffer::new();
+
+// Const generic in functions
+fn copy_fixed<const N: usize>(src: &[u8; N], dst: &mut [u8; N]) {
+    dst.copy_from_slice(src);
+}
+
+// Combine with type generics
+struct Matrix<T, const ROWS: usize, const COLS: usize> {
+    data: [[T; COLS]; ROWS],
+}
+```
+
+### Blanket Implementations
+
+```rust
+// Implement trait for all types that satisfy bounds
+// From std: impl<T: Display> ToString for T
+
+trait Describable {
+    fn describe(&self) -> String;
+}
+
+// Blanket impl: any Debug type is Describable
+impl<T: std::fmt::Debug> Describable for T {
+    fn describe(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+// Now ALL Debug types have describe()
+let x = 42;
+println!("{}", x.describe());  // "42"
+
+// Common blanket impls in ecosystem:
+// - impl<T: Error> From<T> for Box<dyn Error>
+// - impl<T: AsRef<str>> From<T> for String
+// - impl<T: Iterator> IntoIterator for T
+```
+
+---
+
 ## Common Patterns
 
 ### Option Handling
@@ -1557,6 +2007,8 @@ async fn test_pipeline_end_to_end() {
     assert!(output[0].processed);
 }
 ```
+
+---
 
 ---
 
@@ -1920,6 +2372,199 @@ async fn process_stream(items: Vec<Item>) -> Vec<Result<Output>> {
 }
 
 // For ordered results, use .buffered(32) instead of .buffer_unordered(32)
+```
+
+---
+
+## Concurrency Patterns
+
+### Choosing Sync Primitives
+
+| Primitive | Use Case | Lock Type |
+|-----------|----------|-----------|
+| `Mutex<T>` | General mutable access | Blocking |
+| `RwLock<T>` | Read-heavy workloads | Blocking |
+| `parking_lot::Mutex` | High-contention | Blocking (faster) |
+| `tokio::sync::Mutex` | Async contexts | Async |
+| `AtomicU64` | Simple counters | Lock-free |
+| `crossbeam::channel` | Producer-consumer | Lock-free |
+| `DashMap` | Concurrent HashMap | Fine-grained |
+
+### Read-Heavy Access with RwLock
+
+```rust
+use parking_lot::RwLock;
+use std::sync::Arc;
+
+struct Cache {
+    data: RwLock<HashMap<String, Value>>,
+}
+
+impl Cache {
+    fn get(&self, key: &str) -> Option<Value> {
+        // Multiple readers can access simultaneously
+        self.data.read().get(key).cloned()
+    }
+
+    fn insert(&self, key: String, value: Value) {
+        // Writers get exclusive access
+        self.data.write().insert(key, value);
+    }
+
+    fn get_or_insert(&self, key: &str, f: impl FnOnce() -> Value) -> Value {
+        // Upgrade pattern: try read first
+        if let Some(v) = self.data.read().get(key) {
+            return v.clone();
+        }
+
+        // Only take write lock if needed
+        let mut write = self.data.write();
+        // Double-check after acquiring write lock
+        if let Some(v) = write.get(key) {
+            return v.clone();
+        }
+
+        let value = f();
+        write.insert(key.to_string(), value.clone());
+        value
+    }
+}
+```
+
+### Lock-Free Data Structures
+
+```rust
+use dashmap::DashMap;
+use crossbeam::queue::SegQueue;
+
+// Concurrent HashMap - fine-grained locking
+fn concurrent_index() {
+    let map: DashMap<String, u64> = DashMap::new();
+
+    // Can be safely shared across threads
+    map.insert("key".to_string(), 42);
+
+    // Entry API for atomic updates
+    map.entry("counter".to_string())
+        .and_modify(|v| *v += 1)
+        .or_insert(1);
+
+    // Parallel iteration
+    map.par_iter().for_each(|entry| {
+        println!("{}: {}", entry.key(), entry.value());
+    });
+}
+
+// Lock-free queue for work distribution
+fn work_queue() {
+    let queue: Arc<SegQueue<Work>> = Arc::new(SegQueue::new());
+
+    // Producer
+    let q = Arc::clone(&queue);
+    std::thread::spawn(move || {
+        for work in generate_work() {
+            q.push(work);
+        }
+    });
+
+    // Consumer
+    loop {
+        if let Some(work) = queue.pop() {
+            process(work);
+        }
+    }
+}
+```
+
+### Atomic Operations
+
+```rust
+use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
+
+struct Metrics {
+    processed: AtomicU64,
+    errors: AtomicU64,
+    running: AtomicBool,
+}
+
+impl Metrics {
+    fn new() -> Self {
+        Self {
+            processed: AtomicU64::new(0),
+            errors: AtomicU64::new(0),
+            running: AtomicBool::new(true),
+        }
+    }
+
+    fn record_success(&self) {
+        // Relaxed ordering OK for counters
+        self.processed.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn record_error(&self) {
+        self.errors.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn stop(&self) {
+        // Release ordering ensures all prior writes are visible
+        self.running.store(false, Ordering::Release);
+    }
+
+    fn is_running(&self) -> bool {
+        // Acquire ordering ensures we see all writes before stop()
+        self.running.load(Ordering::Acquire)
+    }
+
+    fn snapshot(&self) -> (u64, u64) {
+        (
+            self.processed.load(Ordering::Relaxed),
+            self.errors.load(Ordering::Relaxed),
+        )
+    }
+}
+```
+
+### Parallel Processing with Rayon
+
+```rust
+use rayon::prelude::*;
+
+// Parallel iteration
+fn process_parallel(records: &[Record]) -> Vec<Output> {
+    records
+        .par_iter()
+        .map(|r| transform(r))
+        .collect()
+}
+
+// Parallel with filtering
+fn filter_parallel(records: &[Record]) -> Vec<&Record> {
+    records
+        .par_iter()
+        .filter(|r| r.is_valid())
+        .collect()
+}
+
+// Parallel fold/reduce
+fn sum_parallel(values: &[i64]) -> i64 {
+    values.par_iter().sum()
+}
+
+// Custom parallelism
+fn process_with_chunks(data: &[u8]) -> Vec<Result> {
+    data.par_chunks(1024 * 1024)  // 1MB chunks
+        .map(|chunk| process_chunk(chunk))
+        .collect()
+}
+
+// Control thread pool
+fn configure_rayon() {
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(8)
+        .stack_size(4 * 1024 * 1024)
+        .build_global()
+        .unwrap();
+}
 ```
 
 ---
@@ -2622,2784 +3267,6 @@ buffer.extend_from_slice(data);
 
 ---
 
-## Concurrency Patterns
-
-### Choosing Sync Primitives
-
-| Primitive | Use Case | Lock Type |
-|-----------|----------|-----------|
-| `Mutex<T>` | General mutable access | Blocking |
-| `RwLock<T>` | Read-heavy workloads | Blocking |
-| `parking_lot::Mutex` | High-contention | Blocking (faster) |
-| `tokio::sync::Mutex` | Async contexts | Async |
-| `AtomicU64` | Simple counters | Lock-free |
-| `crossbeam::channel` | Producer-consumer | Lock-free |
-| `DashMap` | Concurrent HashMap | Fine-grained |
-
-### Read-Heavy Access with RwLock
-
-```rust
-use parking_lot::RwLock;
-use std::sync::Arc;
-
-struct Cache {
-    data: RwLock<HashMap<String, Value>>,
-}
-
-impl Cache {
-    fn get(&self, key: &str) -> Option<Value> {
-        // Multiple readers can access simultaneously
-        self.data.read().get(key).cloned()
-    }
-
-    fn insert(&self, key: String, value: Value) {
-        // Writers get exclusive access
-        self.data.write().insert(key, value);
-    }
-
-    fn get_or_insert(&self, key: &str, f: impl FnOnce() -> Value) -> Value {
-        // Upgrade pattern: try read first
-        if let Some(v) = self.data.read().get(key) {
-            return v.clone();
-        }
-
-        // Only take write lock if needed
-        let mut write = self.data.write();
-        // Double-check after acquiring write lock
-        if let Some(v) = write.get(key) {
-            return v.clone();
-        }
-
-        let value = f();
-        write.insert(key.to_string(), value.clone());
-        value
-    }
-}
-```
-
-### Lock-Free Data Structures
-
-```rust
-use dashmap::DashMap;
-use crossbeam::queue::SegQueue;
-
-// Concurrent HashMap - fine-grained locking
-fn concurrent_index() {
-    let map: DashMap<String, u64> = DashMap::new();
-
-    // Can be safely shared across threads
-    map.insert("key".to_string(), 42);
-
-    // Entry API for atomic updates
-    map.entry("counter".to_string())
-        .and_modify(|v| *v += 1)
-        .or_insert(1);
-
-    // Parallel iteration
-    map.par_iter().for_each(|entry| {
-        println!("{}: {}", entry.key(), entry.value());
-    });
-}
-
-// Lock-free queue for work distribution
-fn work_queue() {
-    let queue: Arc<SegQueue<Work>> = Arc::new(SegQueue::new());
-
-    // Producer
-    let q = Arc::clone(&queue);
-    std::thread::spawn(move || {
-        for work in generate_work() {
-            q.push(work);
-        }
-    });
-
-    // Consumer
-    loop {
-        if let Some(work) = queue.pop() {
-            process(work);
-        }
-    }
-}
-```
-
-### Atomic Operations
-
-```rust
-use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
-
-struct Metrics {
-    processed: AtomicU64,
-    errors: AtomicU64,
-    running: AtomicBool,
-}
-
-impl Metrics {
-    fn new() -> Self {
-        Self {
-            processed: AtomicU64::new(0),
-            errors: AtomicU64::new(0),
-            running: AtomicBool::new(true),
-        }
-    }
-
-    fn record_success(&self) {
-        // Relaxed ordering OK for counters
-        self.processed.fetch_add(1, Ordering::Relaxed);
-    }
-
-    fn record_error(&self) {
-        self.errors.fetch_add(1, Ordering::Relaxed);
-    }
-
-    fn stop(&self) {
-        // Release ordering ensures all prior writes are visible
-        self.running.store(false, Ordering::Release);
-    }
-
-    fn is_running(&self) -> bool {
-        // Acquire ordering ensures we see all writes before stop()
-        self.running.load(Ordering::Acquire)
-    }
-
-    fn snapshot(&self) -> (u64, u64) {
-        (
-            self.processed.load(Ordering::Relaxed),
-            self.errors.load(Ordering::Relaxed),
-        )
-    }
-}
-```
-
-### Parallel Processing with Rayon
-
-```rust
-use rayon::prelude::*;
-
-// Parallel iteration
-fn process_parallel(records: &[Record]) -> Vec<Output> {
-    records
-        .par_iter()
-        .map(|r| transform(r))
-        .collect()
-}
-
-// Parallel with filtering
-fn filter_parallel(records: &[Record]) -> Vec<&Record> {
-    records
-        .par_iter()
-        .filter(|r| r.is_valid())
-        .collect()
-}
-
-// Parallel fold/reduce
-fn sum_parallel(values: &[i64]) -> i64 {
-    values.par_iter().sum()
-}
-
-// Custom parallelism
-fn process_with_chunks(data: &[u8]) -> Vec<Result> {
-    data.par_chunks(1024 * 1024)  // 1MB chunks
-        .map(|chunk| process_chunk(chunk))
-        .collect()
-}
-
-// Control thread pool
-fn configure_rayon() {
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(8)
-        .stack_size(4 * 1024 * 1024)
-        .build_global()
-        .unwrap();
-}
-```
-
----
-
-## Data Pipeline Architecture
-
-### Pipeline Stages
-
-```rust
-use tokio::sync::mpsc;
-
-/// Stage trait for pipeline components
-#[async_trait]
-pub trait Stage: Send + Sync {
-    type Input: Send;
-    type Output: Send;
-
-    async fn process(&self, input: Self::Input) -> Result<Self::Output>;
-}
-
-/// Connect stages with channels
-pub struct Pipeline<I, O> {
-    stages: Vec<Box<dyn Stage<Input = I, Output = O>>>,
-}
-
-impl<I: Send + 'static, O: Send + 'static> Pipeline<I, O> {
-    pub async fn run(
-        self,
-        mut input: mpsc::Receiver<I>,
-        output: mpsc::Sender<O>,
-    ) -> Result<()> {
-        while let Some(item) = input.recv().await {
-            let mut current: Box<dyn Any + Send> = Box::new(item);
-
-            for stage in &self.stages {
-                current = Box::new(stage.process(
-                    *current.downcast().unwrap()
-                ).await?);
-            }
-
-            output.send(*current.downcast().unwrap()).await?;
-        }
-        Ok(())
-    }
-}
-```
-
-### Batch Processing Pipeline
-
-```rust
-/// Batch accumulator for efficient processing
-pub struct BatchAccumulator<T> {
-    batch: Vec<T>,
-    capacity: usize,
-}
-
-impl<T> BatchAccumulator<T> {
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            batch: Vec::with_capacity(capacity),
-            capacity,
-        }
-    }
-
-    pub fn push(&mut self, item: T) -> Option<Vec<T>> {
-        self.batch.push(item);
-        if self.batch.len() >= self.capacity {
-            Some(std::mem::replace(
-                &mut self.batch,
-                Vec::with_capacity(self.capacity),
-            ))
-        } else {
-            None
-        }
-    }
-
-    pub fn flush(&mut self) -> Option<Vec<T>> {
-        if self.batch.is_empty() {
-            None
-        } else {
-            Some(std::mem::replace(
-                &mut self.batch,
-                Vec::with_capacity(self.capacity),
-            ))
-        }
-    }
-}
-
-// Usage
-async fn batch_process(
-    mut rx: mpsc::Receiver<Record>,
-    tx: mpsc::Sender<Vec<Output>>,
-) -> Result<()> {
-    let mut accumulator = BatchAccumulator::new(10_000);
-
-    while let Some(record) = rx.recv().await {
-        if let Some(batch) = accumulator.push(record) {
-            let outputs = process_batch(&batch).await?;
-            tx.send(outputs).await?;
-        }
-    }
-
-    // Flush remaining
-    if let Some(batch) = accumulator.flush() {
-        let outputs = process_batch(&batch).await?;
-        tx.send(outputs).await?;
-    }
-
-    Ok(())
-}
-```
-
-### Column-Wise Processing
-
-```rust
-/// Process data column-wise for better cache efficiency
-pub struct ColumnarBatch {
-    ids: Vec<u64>,
-    timestamps: Vec<i64>,
-    values: Vec<f64>,
-    flags: Vec<u8>,
-}
-
-impl ColumnarBatch {
-    pub fn with_capacity(cap: usize) -> Self {
-        Self {
-            ids: Vec::with_capacity(cap),
-            timestamps: Vec::with_capacity(cap),
-            values: Vec::with_capacity(cap),
-            flags: Vec::with_capacity(cap),
-        }
-    }
-
-    pub fn push(&mut self, record: &Record) {
-        self.ids.push(record.id);
-        self.timestamps.push(record.timestamp);
-        self.values.push(record.value);
-        self.flags.push(record.flags);
-    }
-
-    /// Filter by timestamp - operates on contiguous memory
-    pub fn filter_by_time(&self, min: i64, max: i64) -> Vec<usize> {
-        self.timestamps
-            .iter()
-            .enumerate()
-            .filter(|(_, &ts)| ts >= min && ts <= max)
-            .map(|(i, _)| i)
-            .collect()
-    }
-
-    /// Aggregate values - cache-friendly sequential access
-    pub fn sum_values(&self) -> f64 {
-        self.values.iter().sum()
-    }
-
-    /// Vectorizable operation
-    pub fn scale_values(&mut self, factor: f64) {
-        for v in &mut self.values {
-            *v *= factor;
-        }
-    }
-}
-```
-
-### Backpressure Handling
-
-```rust
-use tokio::sync::{mpsc, Semaphore};
-use std::sync::Arc;
-
-/// Pipeline with backpressure control
-pub struct BackpressuredPipeline {
-    semaphore: Arc<Semaphore>,
-    max_in_flight: usize,
-}
-
-impl BackpressuredPipeline {
-    pub fn new(max_in_flight: usize) -> Self {
-        Self {
-            semaphore: Arc::new(Semaphore::new(max_in_flight)),
-            max_in_flight,
-        }
-    }
-
-    pub async fn process<T, F, Fut>(&self, items: Vec<T>, processor: F) -> Vec<Result<()>>
-    where
-        T: Send + 'static,
-        F: Fn(T) -> Fut + Send + Sync + Clone + 'static,
-        Fut: std::future::Future<Output = Result<()>> + Send,
-    {
-        let mut handles = Vec::with_capacity(items.len());
-
-        for item in items {
-            // Wait for permit - blocks if too many in flight
-            let permit = self.semaphore.clone().acquire_owned().await.unwrap();
-            let processor = processor.clone();
-
-            let handle = tokio::spawn(async move {
-                let result = processor(item).await;
-                drop(permit);  // Release permit when done
-                result
-            });
-
-            handles.push(handle);
-        }
-
-        let mut results = Vec::with_capacity(handles.len());
-        for handle in handles {
-            results.push(handle.await.unwrap());
-        }
-        results
-    }
-}
-```
-
----
-
-## 8 Common Rust Mistakes
-
-### 1. Using String When &str Works
-
-```rust
-// ❌ Bad - forces allocation for callers
-fn greet(name: String) {
-    println!("Hello, {}!", name);
-}
-
-// Caller must allocate:
-greet("world".to_string());  // Unnecessary allocation
-
-// ✅ Good - accept reference
-fn greet(name: &str) {
-    println!("Hello, {}!", name);
-}
-
-// Works with both:
-greet("world");                    // &str directly
-greet(&my_string);                 // &String coerces to &str
-greet(&format!("user_{}", id));    // Temporary works too
-```
-
-### 2. Excessive Cloning
-
-```rust
-// ❌ Bad - clone to avoid borrow checker
-fn process(data: &Data) {
-    let cloned = data.clone();  // Expensive copy
-    for item in cloned.items {
-        println!("{}", item);
-    }
-}
-
-// ✅ Good - borrow instead
-fn process(data: &Data) {
-    for item in &data.items {
-        println!("{}", item);
-    }
-}
-
-// ❌ Bad - clone in loop
-for item in &items {
-    let owned = item.name.clone();  // N allocations
-    results.push(owned);
-}
-
-// ✅ Good - clone only when needed
-let results: Vec<&str> = items.iter()
-    .map(|item| item.name.as_str())
-    .collect();
-```
-
-### 3. Over-using unwrap()
-
-```rust
-// ❌ Bad - panic in production
-fn get_user(id: u64) -> User {
-    let user = database.get(id).unwrap();  // Panics if not found
-    user
-}
-
-// ✅ Good - return Result
-fn get_user(id: u64) -> Result<User, UserError> {
-    database.get(id).ok_or(UserError::NotFound(id))
-}
-
-// ✅ Good - return Option
-fn get_user(id: u64) -> Option<User> {
-    database.get(id)
-}
-
-// ✅ OK - unwrap with guaranteed invariant
-fn first_char(s: &str) -> char {
-    assert!(!s.is_empty(), "precondition: non-empty string");
-    s.chars().next().unwrap()  // Safe due to assertion
-}
-
-// ✅ OK - expect with clear message (for truly impossible cases)
-let home = std::env::var("HOME")
-    .expect("HOME environment variable must be set");
-```
-
-### 4. Manual Memory Management Mindset
-
-```rust
-// ❌ Bad - C-style thinking
-let mut ptr = Box::new(value);
-// ... use ptr ...
-drop(ptr);  // Unnecessary - Rust drops automatically
-
-// ❌ Bad - manual null checks
-let mut data: Option<Box<Data>> = None;
-// ...
-if data.is_some() {
-    // ...
-}
-
-// ✅ Good - let Rust manage it
-{
-    let data = Box::new(value);
-    // ... use data ...
-}  // Automatically dropped here
-
-// ✅ Good - use pattern matching
-if let Some(data) = &data {
-    process(data);
-}
-```
-
-### 5. Ignoring Compiler Errors
-
-```rust
-// The Rust compiler is your friend!
-
-// ❌ Bad - ignore and add random &, *, clone
-fn process(data: &Vec<String>) {
-    let first = &*data[0].clone();  // Confused symbols
-
-// ✅ Good - read the error message
-// error[E0507]: cannot move out of index
-// help: consider borrowing here: `&data[0]`
-
-fn process(data: &[String]) {
-    let first = &data[0];  // Follow compiler suggestion
-}
-
-// Compiler errors usually tell you exactly what to do:
-// - "consider borrowing" -> add &
-// - "consider using clone" -> add .clone() (but think first!)
-// - "lifetime may not live long enough" -> check lifetime annotations
-```
-
-### 6. Complex Nested Loops Instead of Iterators
-
-```rust
-// ❌ Bad - imperative with nested loops
-let mut result = Vec::new();
-for user in &users {
-    if user.active {
-        for order in &user.orders {
-            if order.total > 100.0 {
-                result.push(order.id);
-            }
-        }
-    }
-}
-
-// ✅ Good - iterator chain
-let result: Vec<_> = users
-    .iter()
-    .filter(|u| u.active)
-    .flat_map(|u| &u.orders)
-    .filter(|o| o.total > 100.0)
-    .map(|o| o.id)
-    .collect();
-
-// ❌ Bad - manual index tracking
-let mut i = 0;
-while i < data.len() {
-    process(&data[i]);
-    i += 1;
-}
-
-// ✅ Good - iterator
-for item in &data {
-    process(item);
-}
-
-// With index if needed
-for (i, item) in data.iter().enumerate() {
-    process(i, item);
-}
-```
-
-### 7. Not Using rustfmt and clippy
-
-```rust
-// ❌ Bad - inconsistent formatting
-fn process(x:i32,y:i32)->i32{
-if x>y {x}else{y}}
-
-// ✅ Good - run rustfmt
-fn process(x: i32, y: i32) -> i32 {
-    if x > y { x } else { y }
-}
-
-// Set up in your project:
-// $ rustfmt --check src/**/*.rs  # CI
-// $ cargo fmt                     # Auto-format
-
-// Clippy catches common mistakes:
-// $ cargo clippy -- -D warnings
-
-// Example clippy catches:
-// - .iter().map().collect() -> .to_vec()
-// - if let Some(_) = x -> if x.is_some()
-// - x.clone().clone() -> x.clone()
-```
-
-### 8. Fighting the Borrow Checker
-
-```rust
-// ❌ Bad - fighting with RefCell/Rc everywhere
-use std::cell::RefCell;
-use std::rc::Rc;
-
-struct Node {
-    value: i32,
-    children: RefCell<Vec<Rc<RefCell<Node>>>>,
-    parent: RefCell<Option<Rc<RefCell<Node>>>>,
-}
-
-// ✅ Good - restructure to work with ownership
-// Option 1: Arena allocation
-struct Tree {
-    nodes: Vec<Node>,
-}
-
-struct Node {
-    value: i32,
-    children: Vec<usize>,  // Indices into nodes vec
-    parent: Option<usize>,
-}
-
-// Option 2: Separate structure from references
-struct TreeData {
-    values: Vec<i32>,
-    children: Vec<Vec<usize>>,
-    parents: Vec<Option<usize>>,
-}
-
-// Option 3: Accept the ownership model
-struct OwnedTree {
-    value: i32,
-    children: Vec<OwnedTree>,  // Children are owned
-}
-
-// ✅ Good - use indices for graph structures
-struct Graph {
-    nodes: Vec<NodeData>,
-    edges: Vec<(usize, usize)>,
-}
-```
-
----
-
-## Clippy Configuration
-
-### clippy.toml
-
-```toml
-# Allow up to 7 arguments (default is 7)
-too-many-arguments-threshold = 7
-
-# Cognitive complexity threshold
-cognitive-complexity-threshold = 25
-
-# Allow large enum variants
-enum-variant-size-threshold = 200
-```
-
-### Common Clippy Attributes
-
-```rust
-// Allow specific lints
-#[allow(clippy::too_many_arguments)]
-fn complex_function(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32) {}
-
-// Deny specific lints in module/crate
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-
-// Warn on all pedantic lints
-#![warn(clippy::pedantic)]
-
-// Allow in specific scope
-#[allow(clippy::cast_possible_truncation)]
-fn convert(x: u64) -> u32 {
-    x as u32
-}
-```
-
-### CI Clippy Command
-
-```bash
-cargo clippy --all-targets --all-features -- -D warnings
-```
-
-### Recommended Lints for Data Pipelines
-
-```rust
-// lib.rs or main.rs
-#![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
-#![allow(clippy::module_name_repetitions)]
-#![allow(clippy::must_use_candidate)]
-
-// Deny dangerous patterns
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::panic)]
-#![deny(clippy::expect_used)]
-```
-
----
-
-## Cargo.toml Best Practices
-
-```toml
-[package]
-name = "data-pipeline"
-version = "0.1.0"
-edition = "2024"
-rust-version = "1.94.0"  # Current stable as of March 2026; always use latest stable
-description = "High-performance data processing pipeline"
-license = "Apache-2.0"
-
-[dependencies]
-# Async runtime
-tokio = { version = "1", features = ["full"] }
-
-# Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-sonic-rs = "0.3"  # SIMD JSON
-
-# Error handling
-thiserror = "1"
-anyhow = "1"
-
-# Logging
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
-
-# Performance
-memchr = "2"           # SIMD string search
-compact_str = "0.7"    # Small string optimization
-rustc-hash = "1"       # Fast hashing
-parking_lot = "0.12"   # Faster locks
-dashmap = "5"          # Concurrent HashMap
-rayon = "1"            # Parallel iterators
-
-# Memory
-bumpalo = "3"          # Arena allocation
-tikv-jemallocator = "0.5"
-
-[dev-dependencies]
-tempfile = "3"
-criterion = { version = "0.5", features = ["html_reports"] }
-proptest = "1"
-
-[profile.release]
-lto = true
-codegen-units = 1
-strip = true
-panic = "abort"
-
-[profile.bench]
-lto = true
-codegen-units = 1
-
-[lints.rust]
-unsafe_code = "forbid"
-
-[lints.clippy]
-pedantic = "warn"
-unwrap_used = "deny"
-expect_used = "deny"
-
-[[bench]]
-name = "throughput"
-harness = false
-```
-
-### Version Pinning & Update Policy
-
-**General rule: use `>=X.Y` compatible ranges, pin only when forced.**
-
-```toml
-# Cargo.toml
-[dependencies]
-tokio = { version = ">=1.50, <2" }           # ✅ >= range with semver bound
-serde = { version = ">=1.0.228, <2" }        # ✅ >= with upper bound
-hyperi-rustlib = { version = ">=1.16" }       # ✅ >= range
-rdkafka = { version = "=0.39.0" }            # ⚠️ Pinned — document WHY
-```
-
-**Rules:**
-- `>=X.Y, <Z` — default for all dependencies. Accept patches and minors
-  within the major version. Cargo semver compatibility handles this naturally.
-- `=X.Y.Z` — pin ONLY when a specific version has a known regression.
-  Always add a `# pinned: reason` comment.
-- `Cargo.lock` — always committed for binaries and applications. This IS
-  your reproducible build. Libraries omit `Cargo.lock` (consumers resolve).
-- `cargo deny check` in CI — catches license violations and security advisories.
-
-**Update cadence:**
-- Dependencies MUST be updated with every code review. Run `cargo update`
-  and check for `cargo audit` advisories.
-- `cargo deny check advisories` in CI — fails on known vulnerabilities.
-- When updating, run the full test suite + clippy. If clean, update is safe.
-
-```bash
-# Update all deps to latest compatible versions
-cargo update
-
-# Check for security advisories
-cargo audit
-
-# Check licenses and advisories (CI)
-cargo deny check
-```
-
-**Deprecation warnings MUST be fixed immediately.** If `cargo clippy`,
-`cargo build`, or test output shows a deprecation warning, address it
-in the current PR — do not defer. Deprecations become compile errors
-on the next Rust edition or dependency major release.
-
-**Risk mitigation for `>=` ranges:**
-
-| Risk | Mitigation |
-|---|---|
-| Breaking upstream release | `Cargo.lock` pins exact versions — reproducible builds |
-| Security vulnerability | `cargo audit` + `cargo deny` in CI — blocks merge |
-| Yanked crate version | `cargo update` resolves to latest non-yanked |
-| Stale deps | Mandatory `cargo update` at every code review |
-| Incompatible transitive deps | Cargo resolver handles this — conflicts caught at build |
-
----
-
-## Configuration (HyperI Cascade)
-
-Rust implements the 7-layer config cascade using `config-rs`:
-
-```rust
-use config::{Config, Environment, File};
-
-fn load_config() -> Result<Config, config::ConfigError> {
-    Config::builder()
-        // 7. Hard-coded defaults (lowest priority)
-        .set_default("database.host", "localhost")?
-        .set_default("database.port", 5432)?
-        .set_default("log_level", "info")?
-        .set_default("batch_size", 10_000)?
-        .set_default("parallelism", num_cpus::get())?
-
-        // 6. defaults.toml
-        .add_source(File::with_name("config/defaults").required(false))
-
-        // 5. settings.toml
-        .add_source(File::with_name("config/settings").required(false))
-
-        // 4. settings.{env}.toml
-        .add_source(
-            File::with_name(&format!(
-                "config/settings.{}",
-                std::env::var("APP_ENV").unwrap_or_else(|_| "development".into())
-            ))
-            .required(false),
-        )
-
-        // 3. .env file (via dotenvy)
-        // dotenvy::dotenv().ok(); // Call at start of main()
-
-        // 2. ENV variables (MYAPP_DATABASE_HOST)
-        .add_source(Environment::with_prefix("MYAPP").separator("_"))
-
-        // 1. CLI args via clap (applied after Config::build())
-        .build()
-}
-```
-
----
-
-## Logging (HyperI Standard)
-
-Use `tracing` with RFC 3339 timestamps:
-
-```rust
-use std::io::IsTerminal;
-use tracing::{info, error, warn, debug, instrument};
-use tracing_subscriber::{fmt, EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
-
-fn init_logging() {
-    let is_terminal = std::io::stderr().is_terminal();
-
-    let subscriber = tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env().add_directive("info".parse().unwrap()));
-
-    if is_terminal {
-        // Console: human-friendly with colours
-        subscriber
-            .with(fmt::layer().with_ansi(true).pretty())
-            .init();
-    } else {
-        // Container/CI: JSON with RFC 3339 timestamps
-        subscriber
-            .with(fmt::layer().json().with_timer(fmt::time::UtcTime::rfc_3339()))
-            .init();
-    }
-}
-
-// Structured logging with spans
-#[instrument(skip(data), fields(record_count = data.len()))]
-async fn process_batch(data: &[Record]) -> Result<ProcessResult> {
-    info!("Starting batch processing");
-
-    for record in data {
-        if let Err(e) = process_record(record).await {
-            error!(error = %e, record_id = %record.id, "Failed to process record");
-        }
-    }
-
-    info!("Batch complete");
-    Ok(ProcessResult::default())
-}
-
-// Performance-sensitive logging
-fn hot_path(data: &[u8]) {
-    // Use debug! for hot paths - disabled in release
-    debug!(bytes = data.len(), "Processing chunk");
-
-    // Or check log level first
-    if tracing::enabled!(tracing::Level::DEBUG) {
-        debug!(first_bytes = ?&data[..8.min(data.len())], "Chunk preview");
-    }
-}
-```
-
-**Output Modes:**
-
-| Context | Format | Colours |
-|---------|--------|---------|
-| Console (dev) | Human-friendly | Yes |
-| Container/CI | RFC 3339 JSON | No |
-
-**ENV overrides:** `RUST_LOG=debug`, `NO_COLOR=1`
-
----
-
-## hyperi-rustlib
-
-> **This section applies when `hyperi-rustlib` is in `Cargo.toml`.**
-> For non-HyperI projects (e.g., open-source tools like claudemeter), skip this section
-> and use the generic patterns from the rest of this document.
-
-`hyperi-rustlib` is the shared Rust utility library for all HyperI Rust applications.
-It provides config, logging, metrics, observability, transports, resilience, secrets,
-and more. Available on crates.io. **Use it — never roll bespoke versions of what it provides.**
-
-### Quick Start
-
-```toml
-# Cargo.toml
-[dependencies]
-hyperi-rustlib = { version = ">=1.16", features = [
-    "config", "logger", "metrics", "env", "runtime"
-]}
-```
-
-```rust
-use hyperi_rustlib::{config, logger, env};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let environment = env::Environment::detect();
-    logger::setup_default()?;
-    config::setup(config::ConfigOptions {
-        env_prefix: "MYAPP".into(),
-        ..Default::default()
-    })?;
-
-    // Or use the convenience init:
-    // hyperi_rustlib::init("MYAPP")?;
-
-    tracing::info!("Running in {environment:?}");
-    Ok(())
-}
-```
-
-### Feature Selection Guide
-
-Enable only what you need — features are additive and pull in their dependencies.
-
-| Feature | Use When | Provides |
-|---------|----------|----------|
-| `config` | Always (default) | 8-layer figment cascade, .env, YAML, TOML, JSON, env vars |
-| `config-reload` | Config changes at runtime | `SharedConfig<T>` + `ConfigReloader` hot-reload |
-| `config-postgres` | Config stored in PostgreSQL | `PostgresConfigSource` with sqlx |
-| `logger` | Always (default) | Structured logging, JSON/text auto-detect, sensitive field masking |
-| `metrics` | Prometheus metrics | `MetricsManager`, process/container metrics, `/metrics` endpoint |
-| `otel` | OpenTelemetry tracing | OTLP export (gRPC/HTTP), distributed tracing |
-| `otel-metrics` | OTel + Prometheus metrics | OTel metrics bridge, OTLP metrics export |
-| `http-server` | Serve HTTP | Axum HTTP server with health endpoints (`/healthz`, `/readyz`) |
-| `http` | Call HTTP APIs | reqwest client with retry middleware |
-| `resilience` | Downstream protection | Circuit breaker, retry with backoff, bulkhead (tower-resilience) |
-| `transport-kafka` | Kafka producer/consumer | rdkafka wrapper (dynamic-linking against system librdkafka) |
-| `transport-grpc` | gRPC services | tonic/prost transport |
-| `transport-memory` | Testing | In-memory transport for test harnesses |
-| `secrets` | Secret management | Core provider interface, file provider |
-| `secrets-vault` | OpenBao/Vault | OpenBao/Vault secret provider |
-| `secrets-aws` | AWS Secrets Manager | AWS Secrets Manager provider |
-| `tiered-sink` | Resilient delivery | Hot buffer + disk spillover + circuit breaker |
-| `spool` | Disk queue | Async FIFO queue (yaque + zstd compression) |
-| `scaling` | KEDA autoscaling | Back-pressure primitives, scaling pressure calculation |
-| `cli` | CLI applications | Standard clap framework with version/env integration |
-| `top` | TUI dashboard | ratatui-based metrics dashboard |
-| `dlq` | Dead letter queue | File-backed DLQ |
-| `dlq-kafka` | DLQ to Kafka | Kafka DLQ backend |
-| `deployment` | CI contract checks | Helm chart + Dockerfile contract validation |
-| `expression` | CEL expressions | CEL expression evaluation (DFE expression profiles) |
-| `full` | Everything | All features enabled |
-
-### Use This, Not That
-
-**If `hyperi-rustlib` is a dependency, ALWAYS use its features instead of bespoke code.**
-
-| Need | Use (hyperi-rustlib) | NOT (bespoke) |
-|------|---------------------|---------------|
-| Config cascade | `config::setup()` + `config::get()` | Hand-rolling figment/dotenvy |
-| Logging | `logger::setup_default()` | Manual `tracing_subscriber` setup |
-| Sensitive field masking | `logger` (automatic) | Regex-based log scrubbing |
-| Prometheus metrics | `MetricsManager::new("app")` | Raw `metrics-exporter-prometheus` |
-| OTel tracing | `otel` feature | Manual `opentelemetry-otlp` setup |
-| HTTP server + health | `HttpServer` with `http-server` feature | Bespoke axum + health routes |
-| Circuit breaker | `resilience` feature | Hand-rolled state machines |
-| Kafka producer/consumer | `transport-kafka` feature | Raw `rdkafka` ClientConfig |
-| Secret rotation | `SecretsManager` | Direct vault/AWS SDK calls |
-| Config hot-reload | `SharedConfig<T>` + `ConfigReloader` | Custom file watcher |
-| Disk spillover | `TieredSink` with `tiered-sink` | Custom spool logic |
-| CLI framework | `DfeApp` with `cli` feature | Manual clap setup |
-| Environment detection | `env::Environment::detect()` | Checking env vars manually |
-| KEDA scaling signals | `ScalingPressure` with `scaling` | Custom pressure math |
-
-### Config Cascade (8 Layers)
-
-Priority (highest first):
-1. CLI arguments
-2. Environment variables (`{PREFIX}_DATABASE_HOST`)
-3. `.env` file
-4. `settings.{environment}.yaml`
-5. `settings.yaml`
-6. `defaults.yaml`
-7. Embedded defaults
-8. Hard-coded fallbacks
-
-```rust
-use hyperi_rustlib::config;
-
-config::setup(config::ConfigOptions {
-    env_prefix: "MYAPP".into(),
-    config_dir: Some("./config".into()),
-    ..Default::default()
-})?;
-
-let cfg = config::get();
-let db_host: String = cfg.get_string("database.host")?;
-let db_port: u16 = cfg.get("database.port")?;
-```
-
-### Metrics Quick Reference
-
-```rust
-use hyperi_rustlib::MetricsManager;
-
-let mgr = MetricsManager::new("dfe_loader");
-let counter = mgr.counter("messages_processed_total", "Messages processed");
-let histogram = mgr.histogram("batch_duration_seconds", "Batch processing duration");
-
-// Record
-counter.increment(1);
-histogram.record(elapsed.as_secs_f64());
-```
-
-### Native System Dependencies
-
-When using features that link C libraries, install system packages:
-
-| Feature | Build Package | Runtime Package |
-|---------|--------------|-----------------|
-| `transport-kafka` | `librdkafka-dev` (Confluent APT) | `librdkafka1` |
-| `directory-config-git` | `libgit2-dev` | `libgit2-1.7` |
-| `spool`, `tiered-sink` | `libzstd-dev` | `libzstd1` |
-| `secrets-aws` | (compiled from source) | (statically linked) |
-
----
-
-## Observability
-
-Logging alone is insufficient for production services. Use the three pillars: **traces**, **metrics**, **logs** — all exported via OpenTelemetry OTLP.
-
-> **HyperI projects:** Use `hyperi-rustlib` features `otel`, `otel-metrics`, `otel-tracing`, `metrics`.
-> See the [hyperi-rustlib](#hyperi-rustlib) section. Only roll bespoke setup for non-HyperI projects.
-
-### OpenTelemetry Distributed Tracing
-
-```rust
-use opentelemetry::trace::TracerProvider;
-use opentelemetry_otlp::SpanExporter;
-use opentelemetry_sdk::trace::SdkTracerProvider;
-use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-
-fn init_tracing() -> Result<SdkTracerProvider, Box<dyn std::error::Error>> {
-    // OTLP exporter — sends to collector at localhost:4317 by default
-    // Override with OTEL_EXPORTER_OTLP_ENDPOINT env var
-    let exporter = SpanExporter::builder()
-        .with_tonic()
-        .build()?;
-
-    let provider = SdkTracerProvider::builder()
-        .with_batch_exporter(exporter)
-        .build();
-
-    let tracer = provider.tracer("my-service");
-    let otel_layer = OpenTelemetryLayer::new(tracer);
-
-    tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env())
-        .with(otel_layer)
-        .with(tracing_subscriber::fmt::layer().json())
-        .init();
-
-    Ok(provider)
-}
-```
-
-### Prometheus Metrics
-
-```rust
-use metrics::{counter, gauge, histogram};
-use metrics_exporter_prometheus::PrometheusBuilder;
-
-fn init_metrics() -> Result<(), Box<dyn std::error::Error>> {
-    // Serve /metrics on :9090
-    PrometheusBuilder::new()
-        .with_http_listener(([0, 0, 0, 0], 9090))
-        .install()?;
-    Ok(())
-}
-
-// Usage in hot paths — macros are zero-cost when no exporter is installed
-fn process_message(msg: &Message) {
-    counter!("messages_processed_total", "status" => "success").increment(1);
-    histogram!("message_size_bytes").record(msg.len() as f64);
-    gauge!("queue_depth").set(get_queue_depth() as f64);
-}
-```
-
-### tokio-console (Async Debugging)
-
-Interactive debugger for async tasks — like `htop` for your Tokio runtime.
-
-```toml
-# Cargo.toml — dev-only
-[dependencies]
-console-subscriber = { version = ">=0.4", optional = true }
-
-[features]
-tokio-console = ["console-subscriber"]
-```
-
-```rust
-// Enable with: RUSTFLAGS="--cfg tokio_unstable" cargo run --features tokio-console
-#[cfg(feature = "tokio-console")]
-fn init_console() {
-    console_subscriber::init();
-}
-```
-
-```bash
-# In another terminal:
-tokio-console  # Shows tasks, polls, wakers, resource contention
-```
-
-### Health Checks (K8s Liveness/Readiness)
-
-```rust
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-
-#[derive(Clone)]
-pub struct HealthState {
-    ready: Arc<AtomicBool>,
-    alive: Arc<AtomicBool>,
-}
-
-impl HealthState {
-    pub fn new() -> Self {
-        Self {
-            ready: Arc::new(AtomicBool::new(false)),
-            alive: Arc::new(AtomicBool::new(true)),
-        }
-    }
-
-    pub fn set_ready(&self)    { self.ready.store(true, Ordering::Release); }
-    pub fn set_draining(&self) { self.ready.store(false, Ordering::Release); }
-    pub fn set_dead(&self)     { self.alive.store(false, Ordering::Release); }
-
-    pub fn is_ready(&self) -> bool { self.ready.load(Ordering::Acquire) }
-    pub fn is_alive(&self) -> bool { self.alive.load(Ordering::Acquire) }
-}
-
-// Wire into axum:
-// GET /healthz  -> 200 if alive, 503 if dead
-// GET /readyz   -> 200 if ready, 503 if draining
-```
-
----
-
-## HTTP Service Patterns (axum + tower)
-
-axum 0.8+ is the standard HTTP framework. It uses tower middleware natively —
-no framework-specific middleware system to learn.
-
-> **Path syntax changed in axum 0.8:** `/{param}` not `/:param`, `/{*wildcard}` not `/*wildcard`.
-
-### Production Router
-
-```rust
-use axum::{Router, routing::get, extract::State};
-use tower_http::{
-    compression::CompressionLayer,
-    cors::CorsLayer,
-    timeout::TimeoutLayer,
-    trace::TraceLayer,
-};
-use std::time::Duration;
-
-fn build_router(state: AppState) -> Router {
-    let api = Router::new()
-        .route("/api/v1/records/{id}", get(get_record).post(create_record))
-        .route("/api/v1/records", get(list_records));
-
-    let health = Router::new()
-        .route("/healthz", get(liveness))
-        .route("/readyz", get(readiness))
-        .route("/metrics", get(metrics_handler));
-
-    Router::new()
-        .merge(api)
-        .merge(health)
-        .layer(TraceLayer::new_for_http())
-        .layer(TimeoutLayer::new(Duration::from_secs(30)))
-        .layer(CompressionLayer::new())
-        .layer(CorsLayer::permissive())  // Tighten for production
-        .with_state(state)
-}
-```
-
-### Resilience Middleware (tower-resilience)
-
-```rust
-use tower::ServiceBuilder;
-use tower_resilience::{CircuitBreakerLayer, RetryLayer, BulkheadLayer};
-
-// Stack resilience layers for downstream calls
-let service = ServiceBuilder::new()
-    .layer(BulkheadLayer::new(100))           // Max 100 concurrent
-    .layer(RetryLayer::new(3))                // Retry up to 3 times
-    .layer(CircuitBreakerLayer::default())    // Circuit breaker
-    .service(downstream_client);
-```
-
----
-
-## Graceful Shutdown (K8s-Ready)
-
-K8s sends SIGTERM, then waits `terminationGracePeriodSeconds` (default 30s) before SIGKILL.
-Your service must: stop accepting new work, drain in-flight requests, then exit cleanly.
-
-```rust
-use tokio::sync::watch;
-use tokio_util::sync::CancellationToken;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
-
-pub struct GracefulShutdown {
-    cancel: CancellationToken,
-    health: HealthState,
-    drain_timeout: Duration,
-}
-
-impl GracefulShutdown {
-    pub fn new(health: HealthState, drain_timeout: Duration) -> Self {
-        Self {
-            cancel: CancellationToken::new(),
-            health,
-            drain_timeout,
-        }
-    }
-
-    pub async fn run(self) {
-        // Listen for SIGTERM (K8s) and SIGINT (Ctrl+C)
-        let cancel = self.cancel.clone();
-        tokio::spawn(async move {
-            let mut sigterm = tokio::signal::unix::signal(
-                tokio::signal::unix::SignalKind::terminate()
-            ).expect("SIGTERM handler");
-
-            tokio::select! {
-                _ = tokio::signal::ctrl_c() => {}
-                _ = sigterm.recv() => {}
-            }
-            cancel.cancel();
-        });
-
-        // Wait for shutdown signal
-        self.cancel.cancelled().await;
-        tracing::info!("Shutdown signal received, draining...");
-
-        // Phase 1: Mark unhealthy so K8s stops routing traffic
-        self.health.set_draining();
-
-        // Phase 2: Wait for in-flight requests to complete
-        tokio::time::sleep(self.drain_timeout).await;
-
-        // Phase 3: Mark dead
-        self.health.set_dead();
-        tracing::info!("Drain complete, exiting");
-    }
-
-    pub fn token(&self) -> CancellationToken {
-        self.cancel.clone()
-    }
-}
-```
-
----
-
-## Traits and Generics
-
-### Trait Basics
-
-```rust
-/// Define behaviour that types can implement
-pub trait Processor {
-    /// Associated type - implementor chooses the concrete type
-    type Output;
-
-    /// Required method - must be implemented
-    fn process(&self, input: &[u8]) -> Self::Output;
-
-    /// Provided method - default implementation, can be overridden
-    fn name(&self) -> &'static str {
-        "unnamed"
-    }
-}
-
-/// Implement trait for a type
-struct JsonProcessor;
-
-impl Processor for JsonProcessor {
-    type Output = serde_json::Value;
-
-    fn process(&self, input: &[u8]) -> Self::Output {
-        serde_json::from_slice(input).unwrap_or_default()
-    }
-
-    fn name(&self) -> &'static str {
-        "json"
-    }
-}
-```
-
-### The Orphan Rule
-
-You can only implement a trait on a type if **either** the trait **or** the type is local to your crate:
-
-```rust
-// ✅ OK - your trait on external type
-impl MyTrait for Vec<i32> { }
-
-// ✅ OK - external trait on your type
-impl Display for MyType { }
-
-// ❌ ERROR - both trait and type are external
-impl Display for Vec<i32> { }  // Orphan rule violation
-```
-
-This ensures code coherence and prevents conflicting implementations across crates.
-
-### Generic Functions
-
-```rust
-// Single trait bound
-fn process<T: Processor>(processor: T, data: &[u8]) -> T::Output {
-    processor.process(data)
-}
-
-// Multiple bounds with +
-fn process_and_log<T: Processor + Debug>(processor: T, data: &[u8]) -> T::Output {
-    println!("Using processor: {:?}", processor);
-    processor.process(data)
-}
-
-// Where clause for complex bounds
-fn transform<T, U>(input: T, transformer: U) -> U::Output
-where
-    T: AsRef<[u8]>,
-    U: Processor + Send + Sync + 'static,
-{
-    transformer.process(input.as_ref())
-}
-
-// impl Trait in argument position (syntactic sugar)
-fn process_any(processor: impl Processor) {
-    let _ = processor.process(b"data");
-}
-
-// impl Trait in return position - single concrete type
-fn create_processor() -> impl Processor<Output = String> {
-    StringProcessor::new()
-}
-```
-
-### Trait Objects (Dynamic Dispatch)
-
-```rust
-// Box<dyn Trait> for runtime polymorphism
-fn process_dynamic(processor: Box<dyn Processor<Output = String>>) -> String {
-    processor.process(b"input")
-}
-
-// &dyn Trait for borrowed trait objects
-fn process_borrowed(processor: &dyn Processor<Output = String>) -> String {
-    processor.process(b"input")
-}
-
-// Vec of trait objects - heterogeneous collection
-fn process_many(processors: Vec<Box<dyn Processor<Output = String>>>) {
-    for p in processors {
-        println!("{}: {}", p.name(), p.process(b"data"));
-    }
-}
-
-// Object safety rules - trait must be object-safe to use as dyn Trait:
-// ✅ Methods with &self or &mut self receiver
-// ✅ Methods with no type parameters
-// ❌ Methods returning Self
-// ❌ Methods with generic type parameters
-// ❌ Static methods (no self)
-
-// ❌ NOT object-safe
-trait NotObjectSafe {
-    fn clone_self(&self) -> Self;  // Returns Self
-    fn generic<T>(&self, t: T);    // Generic method
-}
-
-// ✅ Object-safe
-trait ObjectSafe {
-    fn process(&self) -> Box<dyn ObjectSafe>;  // Returns trait object, not Self
-    fn name(&self) -> &str;
-}
-```
-
-### When to Use Static vs Dynamic Dispatch
-
-```rust
-// ✅ Static dispatch (generics) - use when:
-// - Performance is critical (no vtable lookup)
-// - Types known at compile time
-// - Monomorphization acceptable (larger binary)
-fn fast_process<T: Processor>(p: T, data: &[u8]) -> T::Output {
-    p.process(data)  // Direct call, inlined
-}
-
-// ✅ Dynamic dispatch (trait objects) - use when:
-// - Need heterogeneous collections
-// - Plugin systems / runtime loading
-// - Reducing binary size
-// - API boundary stability
-fn flexible_process(p: &dyn Processor<Output = String>, data: &[u8]) -> String {
-    p.process(data)  // vtable lookup
-}
-
-// Pattern: Store trait objects, process with generics
-struct Pipeline {
-    stages: Vec<Box<dyn Stage>>,  // Dynamic storage
-}
-
-impl Pipeline {
-    fn add<S: Stage + 'static>(&mut self, stage: S) {
-        self.stages.push(Box::new(stage));  // Generic addition
-    }
-}
-```
-
-### Associated Types vs Generic Parameters
-
-```rust
-// Associated type - one implementation per type
-trait Iterator {
-    type Item;  // Determined by implementor
-    fn next(&mut self) -> Option<Self::Item>;
-}
-
-// Each type has exactly one Item type
-impl Iterator for Counter {
-    type Item = u32;  // Counter always yields u32
-    fn next(&mut self) -> Option<u32> { ... }
-}
-
-// Generic parameter - multiple implementations per type
-trait Converter<T> {
-    fn convert(&self) -> T;
-}
-
-// Same type can implement multiple conversions
-impl Converter<String> for MyType {
-    fn convert(&self) -> String { ... }
-}
-impl Converter<i32> for MyType {
-    fn convert(&self) -> i32 { ... }
-}
-
-// Rule of thumb:
-// - Associated type: "A type HAS one X" (Iterator has one Item type)
-// - Generic param: "A type can BE converted to many X" (can convert to String, i32, etc.)
-```
-
-### Supertraits and Trait Inheritance
-
-```rust
-// Supertrait - require another trait
-trait Serializable: Debug + Clone {
-    fn serialize(&self) -> Vec<u8>;
-}
-
-// Implementors must also implement Debug and Clone
-#[derive(Debug, Clone)]
-struct Record { id: u64 }
-
-impl Serializable for Record {
-    fn serialize(&self) -> Vec<u8> {
-        format!("{:?}", self).into_bytes()
-    }
-}
-
-// Multiple supertraits
-trait Service: Send + Sync + 'static {
-    fn handle(&self, request: Request) -> Response;
-}
-```
-
-### Marker Traits
-
-```rust
-// Marker traits have no methods - they mark capabilities
-// Standard library markers:
-
-// Send - safe to transfer between threads
-// Sync - safe to share references between threads (&T is Send)
-// Copy - can be copied bitwise (no Drop)
-// Sized - has known size at compile time (default bound)
-// Unpin - can be moved after being pinned
-
-// Auto traits - implemented automatically unless opted out
-struct ThreadSafeData {
-    value: i32,  // i32 is Send + Sync, so ThreadSafeData is too
-}
-
-// Opt out with negative impl (nightly) or PhantomData
-use std::marker::PhantomData;
-use std::cell::UnsafeCell;
-
-struct NotSync {
-    _marker: PhantomData<UnsafeCell<()>>,  // UnsafeCell is !Sync
-}
-
-// Custom marker trait
-trait DatabaseConnection: Send + Sync {}
-
-fn spawn_with_db<D: DatabaseConnection>(db: D) {
-    std::thread::spawn(move || {
-        // db is guaranteed Send + Sync
-    });
-}
-```
-
-### Default Trait Implementations
-
-```rust
-// The Default trait
-#[derive(Default)]
-struct Config {
-    port: u16,
-    host: String,
-    #[default]  // Requires nightly or manual impl
-    timeout_ms: u64,
-}
-
-// Manual Default implementation
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            port: 8080,
-            host: "localhost".to_string(),
-            timeout_ms: 30_000,
-        }
-    }
-}
-
-// Using Default
-let config = Config::default();
-let config = Config { port: 9000, ..Default::default() };
-
-// Default in generics
-fn create_with_defaults<T: Default>() -> T {
-    T::default()
-}
-```
-
-### Extension Traits
-
-```rust
-// Add methods to existing types without modifying them
-trait StringExt {
-    fn truncate_with_ellipsis(&self, max_len: usize) -> String;
-}
-
-impl StringExt for str {
-    fn truncate_with_ellipsis(&self, max_len: usize) -> String {
-        if self.len() <= max_len {
-            self.to_string()
-        } else {
-            format!("{}...", &self[..max_len.saturating_sub(3)])
-        }
-    }
-}
-
-// Usage - must import the trait!
-use crate::StringExt;
-let short = "Hello, World!".truncate_with_ellipsis(8);  // "Hello..."
-
-// Common pattern: extension traits for Result/Option
-trait ResultExt<T, E> {
-    fn log_err(self) -> Result<T, E>;
-}
-
-impl<T, E: std::fmt::Display> ResultExt<T, E> for Result<T, E> {
-    fn log_err(self) -> Result<T, E> {
-        if let Err(ref e) = self {
-            tracing::error!("Error: {}", e);
-        }
-        self
-    }
-}
-```
-
-### Generic Structs and Enums
-
-```rust
-// Generic struct
-struct Container<T> {
-    value: T,
-}
-
-impl<T> Container<T> {
-    fn new(value: T) -> Self {
-        Self { value }
-    }
-
-    fn into_inner(self) -> T {
-        self.value
-    }
-}
-
-// Methods only for specific types
-impl Container<String> {
-    fn len(&self) -> usize {
-        self.value.len()
-    }
-}
-
-// Methods with additional bounds
-impl<T: Clone> Container<T> {
-    fn cloned(&self) -> T {
-        self.value.clone()
-    }
-}
-
-// Multiple type parameters
-struct Pair<K, V> {
-    key: K,
-    value: V,
-}
-
-// Generic enum
-enum Result<T, E> {
-    Ok(T),
-    Err(E),
-}
-
-// PhantomData for unused type parameters
-use std::marker::PhantomData;
-
-struct TypedId<T> {
-    id: u64,
-    _marker: PhantomData<T>,  // T not used in fields
-}
-
-// Different types even though same underlying data
-type UserId = TypedId<User>;
-type OrderId = TypedId<Order>;
-```
-
-### Const Generics
-
-```rust
-// Generic over constant values (not just types)
-struct Buffer<const N: usize> {
-    data: [u8; N],
-}
-
-impl<const N: usize> Buffer<N> {
-    fn new() -> Self {
-        Self { data: [0; N] }
-    }
-
-    fn len(&self) -> usize {
-        N
-    }
-}
-
-// Usage
-let small: Buffer<64> = Buffer::new();
-let large: Buffer<4096> = Buffer::new();
-
-// Const generic in functions
-fn copy_fixed<const N: usize>(src: &[u8; N], dst: &mut [u8; N]) {
-    dst.copy_from_slice(src);
-}
-
-// Combine with type generics
-struct Matrix<T, const ROWS: usize, const COLS: usize> {
-    data: [[T; COLS]; ROWS],
-}
-```
-
-### Blanket Implementations
-
-```rust
-// Implement trait for all types that satisfy bounds
-// From std: impl<T: Display> ToString for T
-
-trait Describable {
-    fn describe(&self) -> String;
-}
-
-// Blanket impl: any Debug type is Describable
-impl<T: std::fmt::Debug> Describable for T {
-    fn describe(&self) -> String {
-        format!("{:?}", self)
-    }
-}
-
-// Now ALL Debug types have describe()
-let x = 42;
-println!("{}", x.describe());  // "42"
-
-// Common blanket impls in ecosystem:
-// - impl<T: Error> From<T> for Box<dyn Error>
-// - impl<T: AsRef<str>> From<T> for String
-// - impl<T: Iterator> IntoIterator for T
-```
-
----
-
-## FFI and Unsafe Rust
-
-### When Unsafe is Necessary
-
-Unsafe Rust is required for:
-
-1. Dereferencing raw pointers
-2. Calling unsafe functions (including FFI)
-3. Accessing/modifying mutable statics
-4. Implementing unsafe traits
-5. Accessing fields of unions
-
-### Raw Pointers
-
-```rust
-// Creating raw pointers is safe, dereferencing is unsafe
-let x = 42;
-let ptr: *const i32 = &x;      // Immutable raw pointer
-let mut y = 42;
-let mut_ptr: *mut i32 = &mut y; // Mutable raw pointer
-
-// Rust 2024+: Use raw borrow operators (preferred)
-let ptr: *const i32 = &raw const x;
-let mut_ptr: *mut i32 = &raw mut y;
-
-// Dereferencing requires unsafe
-unsafe {
-    println!("Value: {}", *ptr);
-    *mut_ptr = 100;
-}
-
-// Null pointers
-let null_ptr: *const i32 = std::ptr::null();
-let null_mut: *mut i32 = std::ptr::null_mut();
-
-// Check for null before dereferencing
-if !ptr.is_null() {
-    unsafe { println!("{}", *ptr); }
-}
-
-// Pointer arithmetic
-unsafe {
-    let arr = [1, 2, 3, 4, 5];
-    let ptr = arr.as_ptr();
-    let third = *ptr.add(2);  // arr[2]
-    let second = *ptr.offset(1);  // arr[1]
-}
-```
-
-### FFI Basics - Calling C from Rust
-
-```rust
-// Link to C library (Rust 2024 edition: all items in unsafe extern are unsafe)
-#[link(name = "c")]
-unsafe extern "C" {
-    fn strlen(s: *const std::ffi::c_char) -> usize;
-    fn printf(format: *const std::ffi::c_char, ...) -> i32;
-
-    // Mark known-safe functions explicitly
-    safe fn abs(input: i32) -> i32;
-}
-
-// Pre-2024 edition syntax (still valid)
-#[link(name = "mylib")]
-extern "C" {
-    fn my_function(x: i32) -> i32;  // Implicitly unsafe to call
-}
-
-// Safe wrapper around unsafe FFI
-pub fn safe_strlen(s: &std::ffi::CStr) -> usize {
-    unsafe { strlen(s.as_ptr()) }
-}
-
-// Usage
-use std::ffi::CString;
-
-fn main() {
-    let s = CString::new("Hello").expect("CString::new failed");
-    let len = safe_strlen(&s);
-    println!("Length: {}", len);
-}
-```
-
-### C String Handling
-
-```rust
-use std::ffi::{CStr, CString, c_char};
-
-// Rust string to C string (owned, null-terminated)
-fn rust_to_c(s: &str) -> CString {
-    CString::new(s).expect("String contains null byte")
-}
-
-// C string to Rust (borrowed)
-unsafe fn c_to_rust<'a>(ptr: *const c_char) -> &'a str {
-    CStr::from_ptr(ptr)
-        .to_str()
-        .expect("Invalid UTF-8")
-}
-
-// C string to owned Rust String
-unsafe fn c_to_rust_owned(ptr: *const c_char) -> String {
-    CStr::from_ptr(ptr)
-        .to_string_lossy()  // Replaces invalid UTF-8 with �
-        .into_owned()
-}
-
-// Pattern: C callback with string
-extern "C" fn log_callback(message: *const c_char) {
-    let msg = unsafe {
-        if message.is_null() {
-            return;
-        }
-        CStr::from_ptr(message).to_string_lossy()
-    };
-    tracing::info!("{}", msg);
-}
-```
-
-### Exposing Rust to C
-
-```rust
-// Prevent name mangling
-#[no_mangle]
-pub extern "C" fn rust_add(a: i32, b: i32) -> i32 {
-    a + b
-}
-
-// Return allocated string to C (caller must free)
-#[no_mangle]
-pub extern "C" fn rust_greeting(name: *const c_char) -> *mut c_char {
-    let name = unsafe {
-        if name.is_null() {
-            return std::ptr::null_mut();
-        }
-        CStr::from_ptr(name).to_string_lossy()
-    };
-
-    let greeting = format!("Hello, {}!", name);
-    CString::new(greeting)
-        .map(|s| s.into_raw())  // Transfer ownership to C
-        .unwrap_or(std::ptr::null_mut())
-}
-
-// Free function for C to call
-#[no_mangle]
-pub extern "C" fn rust_free_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        unsafe {
-            drop(CString::from_raw(ptr));  // Reclaim and drop
-        }
-    }
-}
-```
-
-### repr(C) for C-Compatible Structs
-
-```rust
-// Ensure C-compatible memory layout
-#[repr(C)]
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-}
-
-#[repr(C)]
-pub struct Buffer {
-    pub data: *mut u8,
-    pub len: usize,
-    pub capacity: usize,
-}
-
-// Opaque types - hide Rust implementation from C
-#[repr(C)]
-pub struct OpaqueHandle {
-    _private: [u8; 0],  // Zero-sized, prevents construction in C
-}
-
-// Create/destroy pattern for opaque types
-#[no_mangle]
-pub extern "C" fn processor_new() -> *mut OpaqueHandle {
-    let processor = Box::new(RealProcessor::new());
-    Box::into_raw(processor) as *mut OpaqueHandle
-}
-
-#[no_mangle]
-pub extern "C" fn processor_free(ptr: *mut OpaqueHandle) {
-    if !ptr.is_null() {
-        unsafe {
-            drop(Box::from_raw(ptr as *mut RealProcessor));
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn processor_process(
-    ptr: *mut OpaqueHandle,
-    data: *const u8,
-    len: usize,
-) -> i32 {
-    let processor = unsafe {
-        if ptr.is_null() { return -1; }
-        &mut *(ptr as *mut RealProcessor)
-    };
-
-    let slice = unsafe {
-        if data.is_null() { return -1; }
-        std::slice::from_raw_parts(data, len)
-    };
-
-    match processor.process(slice) {
-        Ok(_) => 0,
-        Err(_) => -1,
-    }
-}
-```
-
-### Bindgen for Automatic Bindings
-
-```rust
-// build.rs - generate Rust bindings from C headers
-fn main() {
-    println!("cargo:rerun-if-changed=wrapper.h");
-
-    let bindings = bindgen::Builder::default()
-        .header("wrapper.h")
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-        // Allowlist specific functions/types
-        .allowlist_function("mylib_.*")
-        .allowlist_type("MyLib.*")
-        // Block problematic items
-        .blocklist_item("FILE")
-        .generate()
-        .expect("Unable to generate bindings");
-
-    let out_path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings");
-}
-
-// src/lib.rs - include generated bindings
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-```
-
-### cbindgen for C Header Generation
-
-```toml
-# cbindgen.toml
-language = "C"
-include_guard = "MY_LIB_H"
-no_includes = true
-sys_includes = ["stdint.h", "stdbool.h"]
-
-[export]
-include = ["Point", "Buffer", "processor_.*"]
-```
-
-```bash
-# Generate header
-cbindgen --config cbindgen.toml --output include/mylib.h
-```
-
-### Unsafe Traits
-
-```rust
-// Unsafe trait - implementor guarantees invariants
-unsafe trait TrustedLen: Iterator {
-    // Implementor guarantees size_hint() is exact
-}
-
-// Unsafe impl - "I promise this is correct"
-unsafe impl<T> TrustedLen for std::vec::IntoIter<T> {}
-
-// Common unsafe traits:
-// - Send: safe to transfer to another thread
-// - Sync: safe to share between threads
-// - GlobalAlloc: custom allocator
-
-// Implementing Send/Sync manually
-struct MyWrapper(*mut u8);
-
-// "I guarantee this is safe to send between threads"
-unsafe impl Send for MyWrapper {}
-unsafe impl Sync for MyWrapper {}
-```
-
-### Sealed Traits
-
-Prevent downstream crates from implementing your public trait. Essential
-for library API design where adding new methods must not be a breaking
-change.
-
-```rust
-// The sealed pattern: public trait, private supertrait
-
-mod private {
-    pub trait Sealed {}
-}
-
-/// Public trait that external crates cannot implement.
-/// New methods can be added without a semver-breaking change.
-pub trait Transport: private::Sealed {
-    fn send(&self, payload: &[u8]) -> Result<(), TransportError>;
-    fn max_payload_size(&self) -> usize;
-}
-
-// Only types in THIS crate can implement Sealed, therefore Transport
-pub struct KafkaTransport { /* ... */ }
-impl private::Sealed for KafkaTransport {}
-impl Transport for KafkaTransport {
-    fn send(&self, payload: &[u8]) -> Result<(), TransportError> { /* ... */ }
-    fn max_payload_size(&self) -> usize { 1_048_576 }  // 1 MiB
-}
-
-pub struct GrpcTransport { /* ... */ }
-impl private::Sealed for GrpcTransport {}
-impl Transport for GrpcTransport {
-    fn send(&self, payload: &[u8]) -> Result<(), TransportError> { /* ... */ }
-    fn max_payload_size(&self) -> usize { 4_194_304 }  // 4 MiB
-}
-```
-
-Use sealed traits when:
-- The trait is part of a public API and you need to add methods later
-- You want exhaustive matching over implementors (enum-like behaviour)
-- The trait has safety invariants that external impls could violate
-
-Do NOT seal traits that are genuinely meant for extension (e.g., user-defined
-serialisers, plugin interfaces).
-
-### Generic Associated Types (GATs)
-
-GATs allow associated types with their own generic parameters. This
-enables patterns that were previously impossible — streaming iterators,
-collection traits, and lending iterators.
-
-```rust
-/// A lending iterator — borrows from self, not from the item
-trait LendingIterator {
-    type Item<'a> where Self: 'a;
-
-    fn next(&mut self) -> Option<Self::Item<'_>>;
-}
-
-/// Streaming reader that yields borrowed slices from an internal buffer
-struct ChunkedReader {
-    data: Vec<u8>,
-    pos: usize,
-    chunk_size: usize,
-}
-
-impl LendingIterator for ChunkedReader {
-    type Item<'a> = &'a [u8] where Self: 'a;
-
-    fn next(&mut self) -> Option<Self::Item<'_>> {
-        if self.pos >= self.data.len() {
-            return None;
-        }
-        let end = (self.pos + self.chunk_size).min(self.data.len());
-        let chunk = &self.data[self.pos..end];
-        self.pos = end;
-        Some(chunk)
-    }
-}
-
-/// Collection trait — generic over the element type stored
-trait Collection {
-    type Iter<'a, T: 'a>: Iterator<Item = &'a T> where Self: 'a;
-
-    fn iter<T>(&self) -> Self::Iter<'_, T>;
-}
-```
-
-GATs are particularly useful in data pipeline code where you want
-zero-copy iteration over internal buffers without `unsafe`. If you
-find yourself reaching for `unsafe` to return references to internal
-data from an iterator, try GATs first.
-
-### Safe Abstractions Over Unsafe
-
-```rust
-/// Safe wrapper around raw buffer
-pub struct SafeBuffer {
-    ptr: *mut u8,
-    len: usize,
-    capacity: usize,
-}
-
-impl SafeBuffer {
-    /// Creates a new buffer. All unsafe operations are encapsulated.
-    pub fn new(capacity: usize) -> Self {
-        let layout = std::alloc::Layout::array::<u8>(capacity).unwrap();
-        let ptr = unsafe { std::alloc::alloc(layout) };
-        if ptr.is_null() {
-            std::alloc::handle_alloc_error(layout);
-        }
-        Self { ptr, len: 0, capacity }
-    }
-
-    /// Safe slice access
-    pub fn as_slice(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
-    }
-
-    /// Safe mutable slice access
-    pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
-    }
-
-    /// Push with bounds checking
-    pub fn push(&mut self, byte: u8) -> Result<(), BufferFull> {
-        if self.len >= self.capacity {
-            return Err(BufferFull);
-        }
-        unsafe {
-            self.ptr.add(self.len).write(byte);
-        }
-        self.len += 1;
-        Ok(())
-    }
-}
-
-impl Drop for SafeBuffer {
-    fn drop(&mut self) {
-        if !self.ptr.is_null() {
-            let layout = std::alloc::Layout::array::<u8>(self.capacity).unwrap();
-            unsafe { std::alloc::dealloc(self.ptr, layout) };
-        }
-    }
-}
-
-// Implement Send/Sync if safe
-unsafe impl Send for SafeBuffer {}
-unsafe impl Sync for SafeBuffer {}
-```
-
-### Unsafe Code Guidelines
-
-```rust
-// ❌ Bad - unsafe block too large
-unsafe {
-    let ptr = get_pointer();
-    validate_something();  // Safe code in unsafe block
-    process_data();        // Safe code in unsafe block
-    *ptr = 42;             // Only this needs unsafe
-}
-
-// ✅ Good - minimal unsafe scope
-let ptr = get_pointer();
-validate_something();
-process_data();
-unsafe { *ptr = 42; }  // Only unsafe operation
-
-// ❌ Bad - no safety comment
-unsafe impl Send for MyType {}
-
-// ✅ Good - document safety invariants
-// SAFETY: MyType contains only thread-safe types (AtomicU64, Arc).
-// The raw pointer field is never dereferenced, only used as an identifier.
-unsafe impl Send for MyType {}
-
-// ❌ Bad - unsafe function without safety docs
-pub unsafe fn process_raw(ptr: *mut u8, len: usize) {
-    // ...
-}
-
-// ✅ Good - document preconditions in doc comment
-/// Processes raw bytes in place.
-///
-/// # Safety
-///
-/// - `ptr` must be valid for reads and writes of `len` bytes
-/// - `ptr` must be properly aligned for u8
-/// - The memory must not be accessed by other threads during this call
-pub unsafe fn process_raw(ptr: *mut u8, len: usize) {
-    // ...
-}
-
-// ✅ Good - SAFETY comment before unsafe block (for callers)
-fn safe_wrapper(data: &mut [u8]) {
-    let ptr = data.as_mut_ptr();
-    let len = data.len();
-
-    // SAFETY: ptr and len come from a valid slice, so ptr is valid for
-    // len bytes, properly aligned, and we have exclusive access via &mut.
-    unsafe {
-        process_raw(ptr, len);
-    }
-}
-```
-
-### Unwinding Across FFI Boundaries
-
-```rust
-// If panics or foreign exceptions may cross an FFI boundary,
-// use -unwind ABI variants to avoid undefined behaviour
-
-// ❌ Dangerous - panic across FFI is UB without -unwind
-#[no_mangle]
-pub extern "C" fn might_panic() {
-    panic!("This causes UB if it unwinds into C!");
-}
-
-// ✅ Safe - use catch_unwind to prevent unwinding
-use std::panic::catch_unwind;
-
-#[no_mangle]
-pub extern "C" fn safe_function() -> i32 {
-    match catch_unwind(|| {
-        // Rust code that might panic
-        risky_operation()
-    }) {
-        Ok(result) => result,
-        Err(_) => -1,  // Return error code instead of unwinding
-    }
-}
-
-// ✅ Safe - use C-unwind if unwinding is intentional (Rust 2024+)
-#[no_mangle]
-pub extern "C-unwind" fn can_unwind() {
-    panic!("This can safely unwind through C++ code");
-}
-
-// Calling foreign functions that might throw
-unsafe extern "C-unwind" {
-    fn cpp_function_that_throws();
-}
-```
-
-### Common FFI Patterns
-
-```rust
-// Error handling across FFI boundary
-#[repr(C)]
-pub enum ErrorCode {
-    Success = 0,
-    NullPointer = -1,
-    InvalidArgument = -2,
-    BufferTooSmall = -3,
-    InternalError = -99,
-}
-
-// Thread-local error message
-thread_local! {
-    static LAST_ERROR: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
-}
-
-fn set_last_error(msg: String) {
-    LAST_ERROR.with(|e| *e.borrow_mut() = Some(msg));
-}
-
-#[no_mangle]
-pub extern "C" fn get_last_error() -> *const c_char {
-    LAST_ERROR.with(|e| {
-        e.borrow()
-            .as_ref()
-            .map(|s| s.as_ptr() as *const c_char)
-            .unwrap_or(std::ptr::null())
-    })
-}
-
-// Callback pattern
-type Callback = extern "C" fn(data: *const u8, len: usize, user_data: *mut std::ffi::c_void);
-
-#[no_mangle]
-pub extern "C" fn process_with_callback(
-    input: *const u8,
-    input_len: usize,
-    callback: Callback,
-    user_data: *mut std::ffi::c_void,
-) -> ErrorCode {
-    if input.is_null() || input_len == 0 {
-        return ErrorCode::NullPointer;
-    }
-
-    let data = unsafe { std::slice::from_raw_parts(input, input_len) };
-
-    // Process and invoke callback
-    let result = process_internal(data);
-    callback(result.as_ptr(), result.len(), user_data);
-
-    ErrorCode::Success
-}
-```
-
-### Miri for Unsafe Code Verification
-
-```bash
-# Install Miri
-rustup +nightly component add miri
-
-# Run tests under Miri (detects undefined behaviour)
-cargo +nightly miri test
-
-# Run specific test
-cargo +nightly miri test test_unsafe_buffer
-
-# Common issues Miri catches:
-#
-# - Use after free
-# - Out of bounds access
-# - Invalid pointer alignment
-# - Data races
-# - Uninitialised memory reads
-```
-
----
-
-## Coming from Other Languages
-
-If you're new to Rust from another language, here's what will trip you up.
-
-### From Python
-
-**The borrow checker will hurt at first.** In Python everything is a reference and the GC sorts it out. In Rust you must think about ownership. Start by cloning liberally (it's fine for learning), then optimise once you understand the patterns.
-
-```rust
-// ❌ Fails - data moved
-let data = vec![1, 2, 3];
-process(data);
-process(data);  // Error: value used after move
-
-// ✅ Clone when learning (refactor later)
-let data = vec![1, 2, 3];
-process(data.clone());
-process(data);
-
-// ✅ Better: borrow
-fn process(data: &[i32]) { ... }
-process(&data);
-process(&data);
-```
-
-**No exceptions.** Use `Result<T, E>` and the `?` operator. It's actually nicer than try/catch once you get used to it.
-
-**No `None` as a default.** `Option<T>` is explicit. No `AttributeError` at runtime.
-
-### From Go
-
-**Error handling is similar** - Rust's `Result<T, E>` is like Go's `(T, error)` but type-safe. You can't ignore errors without explicitly calling `.unwrap()`.
-
-```rust
-// Go-ish pattern
-result := doThing()
-if result.Err != nil {
-    return result.Err
-}
-
-// Rust - cleaner with ?
-let result = do_thing()?;  // Returns early if Err
-```
-
-**No nil.** Rust has `Option<T>` which forces you to handle the `None` case. No more nil pointer panics.
-
-**Generics are more powerful** but also more complex. Start simple, add bounds when the compiler complains.
-
-**No goroutines.** Rust async is different - you need a runtime (Tokio). Threads are also available if you prefer the Go mental model.
-
-### From TypeScript/JavaScript
-
-**Types are not optional.** Every value has a concrete type at compile time. No `any` escape hatch.
-
-**No garbage collection.** Ownership rules replace the GC. Variables are dropped when they go out of scope.
-
-**String handling is explicit.** `String` vs `&str` - owned vs borrowed. Coming from JS where strings just work, this takes adjustment.
-
-```rust
-// ❌ Won't compile
-fn greet(name: String) { ... }
-greet("world");  // &str not String
-
-// ✅ Accept reference
-fn greet(name: &str) { ... }
-greet("world");
-greet(&my_string);
-```
-
-**No null or undefined.** Use `Option<T>` for "might not exist".
-
-### From C/C++
-
-**You'll feel at home** but safer. The borrow checker does at compile time what you did mentally (or forgot and got a segfault).
-
-**No manual memory management.** Forget `malloc`/`free`. Rust handles it. You can opt into manual control with `unsafe` but you shouldn't need it for most code.
-
-**No header files.** Modules and `pub` visibility handle API exposure.
-
-**Macros are different.** Rust macros are hygienic and operate on the AST, not text substitution. They're powerful but different from C preprocessor macros.
-
-### Common Gotchas for Everyone
-
-| Coming From | Gotcha | Rust Way |
-|-------------|--------|----------|
-| Python | Everything is mutable | `let mut` for mutability |
-| Go | `nil` everywhere | `Option<T>` is explicit |
-| TypeScript | `any` escape hatch | No escape - fix the types |
-| C | Manual memory management | Ownership system |
-| Java | Everything is a reference | Value types by default |
-| All | Exceptions | `Result<T, E>` + `?` |
-
-### The Mindset Shift
-
-Rust will reject your first attempts. This is normal. The compiler is teaching you patterns that prevent bugs. Once you stop fighting it and start listening, code that compiles tends to work.
-
-Key realisation: **The compiler is your pair programmer.** Read the error messages - they usually tell you exactly what to fix.
-
----
-
-## AI Pitfalls to Avoid
-
-The following sections are specific guidance for AI code assistants working with Rust.
-
-> **CRITICAL: Web Search Before ANY Crate Usage**
->
-> AI models are ALWAYS out of date with the Rust ecosystem. Your training data
-> contains deprecated crates, old API patterns, and superseded libraries.
-> **EVERY TIME** you reference a crate, dependency, or Rust API:
->
-> 1. **Web search for the current version** — your training data version is wrong
-> 2. **Web search whether the crate has been superseded** — entire libraries get
->    replaced (serde_yaml → serde_yaml_ng, atty → std::io::IsTerminal)
-> 3. **Web search for the current API** — axum 0.8 changed path syntax from
->    `/:param` to `/{param}`, thiserror 2.x has different derives, etc.
->
-> Do NOT rely on "I know this crate" — you don't know the CURRENT version.
-> See the [Deprecated / Superseded Crates](#deprecated--superseded-crates--do-not-use)
-> table above. That table is illustrative, not exhaustive. **Always search.**
->
-> For HyperI projects: check if `hyperi-rustlib` already provides what you need
-> before reaching for any third-party crate. See [hyperi-rustlib](#hyperi-rustlib).
-
-### DO NOT Generate
-
-```rust
-// ❌ Using unwrap() in production code
-let value = some_option.unwrap();  // Panics on None
-let data = result.unwrap();        // Panics on Err
-// ✅ Handle errors properly
-let value = some_option.ok_or_else(|| Error::MissingValue)?;
-let value = some_option.unwrap_or_default();
-let data = result.map_err(|e| Error::Processing(e))?;
-
-// ❌ Using expect() without good reason
-let config = load_config().expect("config");  // Cryptic panic
-// ✅ Meaningful error or proper handling
-let config = load_config().expect("Failed to load config from config.toml");
-let config = load_config()?;  // Propagate error
-
-// ❌ Cloning to avoid borrow checker
-let data = expensive_data.clone();  // Performance hit
-process(&data);
-// ✅ Use references properly
-process(&expensive_data);  // Borrow instead
-
-// ❌ Using String when &str works
-fn greet(name: String) {  // Forces allocation
-// ✅ Accept reference
-fn greet(name: &str) {    // Works with &String, &str, String
-
-// ❌ Blocking in async code
-async fn fetch() {
-    std::thread::sleep(Duration::from_secs(1));  // Blocks executor
-}
-// ✅ Use async sleep
-async fn fetch() {
-    tokio::time::sleep(Duration::from_secs(1)).await;
-}
-
-// ❌ Using panic! for errors
-if !valid {
-    panic!("Invalid input");  // Crashes program
-}
-// ✅ Return Result
-if !valid {
-    return Err(Error::InvalidInput);
-}
-```
-
-### Lifetime Patterns
-
-```rust
-// ❌ Incorrect lifetime annotations
-fn longest(x: &str, y: &str) -> &str {  // Missing lifetime
-// ✅ Explicit lifetimes
-fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
-
-// ❌ Storing references in structs without lifetimes
-struct Parser {
-    input: &str,  // Won't compile
-}
-// ✅ Add lifetime parameter
-struct Parser<'a> {
-    input: &'a str,
-}
-// Or use owned types
-struct Parser {
-    input: String,
-}
-```
-
-### Error Handling Pitfalls
-
-```rust
-// ❌ Using Box<dyn Error> in libraries
-fn process() -> Result<(), Box<dyn std::error::Error>> {
-// ✅ Define custom error type
-#[derive(Debug, thiserror::Error)]
-enum ProcessError {
-    #[error("IO error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("Parse error: {0}")]
-    Parse(#[from] serde_json::Error),
-}
-fn process() -> Result<(), ProcessError> {
-
-// ❌ Ignoring Result
-let _ = file.write_all(data);  // Silently ignores errors
-// ✅ Handle or propagate
-file.write_all(data)?;
-```
-
-### Crate Verification
-
-```rust
-// ❌ These may be hallucinations - verify on crates.io:
-use tokio_utils::...;        // Check if it exists
-use serde_helpers::...;      // Often wrong
-use actix_web_extras::...;   // Version may differ
-
-// ✅ Well-known crates:
-// tokio, serde, anyhow, thiserror, tracing, clap, axum, reqwest
-// rayon, dashmap, parking_lot, memchr, sonic-rs, criterion
-```
-
-### Deprecated / Superseded Crates — Do NOT Use
-
-| Wrong (Stale) | Correct (Current) | Why |
-|---|---|---|
-| `serde_yaml` | `serde_yaml_ng` (or `serde_yml`) | `serde_yaml` archived March 2024, unmaintained |
-| `atty` | `std::io::IsTerminal` (std since 1.70) | `atty` unmaintained, has unaligned read bug |
-| `actix-web` (new projects) | `axum` 0.8+ | axum is the ecosystem standard, tower-native |
-| `thiserror` 1.x | `thiserror` 2.x | Major version with improved derives |
-| `warp` | `axum` | warp is maintenance-only |
-| `hyper` directly | `axum` (uses hyper internally) | Unless you need raw HTTP/2 control |
-| `structopt` | `clap` 4.x with derive | structopt merged into clap |
-| `dotenv` | `dotenvy` | dotenv unmaintained, dotenvy is the fork |
-| `chrono` (new code) | `time` or `jiff` | chrono works but `time` is lighter; `jiff` for civil time |
-| `reqwest` blocking in async | `reqwest` async client | Never use `reqwest::blocking` inside tokio |
-
-### Recommended Crate Stack (March 2026)
-
-| Category | Crate | Version | Notes |
-|---|---|---|---|
-| **Async runtime** | `tokio` | >=1.50 | Multi-threaded, LTS releases |
-| **HTTP framework** | `axum` | >=0.8.8 | `/{param}` syntax (not `/:param`) |
-| **HTTP middleware** | `tower-http` | >=0.6.8 | timeout, trace, compression, cors |
-| **HTTP client** | `reqwest` | >=0.12 | Async, HTTP/2, JSON |
-| **Serialisation** | `serde` + `serde_json` | >=1.0 | Universal |
-| **SIMD JSON** | `sonic-rs` | >=0.5 | SIMD-accelerated, zero-copy, `Bytes` integration |
-| **YAML** | `serde_yaml_ng` | >=0.10 | Maintained fork of serde_yaml |
-| **Error (libraries)** | `thiserror` | >=2.0 | Custom error types with derive |
-| **Error (apps)** | `anyhow` | >=1.0 | Context-rich error propagation |
-| **Tracing** | `tracing` + `tracing-subscriber` | >=0.1 / >=0.3 | Structured logging + spans |
-| **OTel** | `opentelemetry` + `opentelemetry-otlp` | >=0.31 | OTLP export, retry with backoff |
-| **Metrics** | `metrics` + `metrics-exporter-prometheus` | >=0.24 | Prometheus native |
-| **CLI** | `clap` | >=4.5 | Derive macros, env support |
-| **SQL** | `sqlx` | >=0.8 | Compile-time checked queries |
-| **String search** | `memchr` | >=2.7 | SIMD byte/string search |
-| **Concurrency** | `dashmap`, `parking_lot`, `crossbeam` | latest | Lock-free maps, faster mutexes |
-| **Small strings** | `compact_str` | >=0.8 | 24-byte SSO, no heap for short strings |
-| **Resilience** | `tower-resilience` | >=0.4 | Circuit breaker, bulkhead, retry |
-| **Arena alloc** | `bumpalo` | >=3.16 | Bump allocation for batch lifetimes |
-| **Benchmarks** | `criterion` | >=0.5 | Statistical benchmarking |
-| **Coverage** | `cargo-tarpaulin` | latest | Code coverage |
-| **Test runner** | `cargo-nextest` | latest | Parallel, better output |
-
----
-
-## External Libraries and Private Registries
-
-### Private Cargo Registry Configuration
-
-For enterprise environments using private artifact repositories:
-
-```toml
-# .cargo/config.toml
-[registries.hyperi]
-index = "sparse+https://hyperi.jfrog.io/artifactory/api/cargo/hyperi-cargo-virtual/index/"
-
-[build]
-# Optional: Use mold linker for faster builds
-# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
-
-[target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "force-frame-pointers=yes"]  # Better profiling
-
-[target.aarch64-unknown-linux-gnu]
-rustflags = ["-C", "force-frame-pointers=yes"]
-```
-
-```toml
-# Cargo.toml - using private registry
-[dependencies]
-hyperi-rustlib = { version = ">=1.3", registry = "hyperi", features = [
-    "config", "logger", "metrics", "transport-kafka", "http-server"
-]}
-```
-
-### Linking C Libraries via Wrapper Crates
-
-For C libraries like librdkafka, use safe Rust wrapper crates:
-
-```toml
-# Cargo.toml - rdkafka with C library compilation
-[dependencies]
-rdkafka = { version = ">=0.38", features = [
-    "cmake-build",  # Compile librdkafka from source
-    "ssl",          # Link OpenSSL for TLS
-    "sasl",         # Link SASL for Kerberos/PLAIN auth
-]}
-
-# Pure Rust compression alternatives
-lz4_flex = ">=0.11"     # Pure Rust LZ4 (preferred over C binding)
-snap = ">=1.1"          # Pure Rust Snappy
-zstd = ">=0.13"         # Rust wrapper around libzstd C library
-```
-
-### Safe Wrappers for C Libraries
-
-Pattern: Configure C library through safe Rust API without direct FFI:
-
-```rust
-use rdkafka::ClientConfig;
-use rdkafka::producer::FutureProducer;
-
-fn create_kafka_producer(config: &KafkaConfig) -> Result<FutureProducer> {
-    let mut client_config = ClientConfig::new();
-
-    // All configuration passed safely to underlying librdkafka
-    client_config.set("bootstrap.servers", config.brokers.join(","));
-    client_config.set("batch.size", config.batch_size.to_string());
-    client_config.set("compression.type", &config.compression);
-    client_config.set("acks", &config.acks);
-    client_config.set("message.max.bytes", "8388608");  // 8MiB
-
-    // TLS configuration for librdkafka
-    if config.tls.enabled {
-        client_config.set("security.protocol", "ssl");
-        client_config.set("ssl.ca.location", &config.tls.ca_path);
-        client_config.set("ssl.certificate.location", &config.tls.cert_path);
-        client_config.set("ssl.key.location", &config.tls.key_path);
-    }
-
-    // SASL authentication
-    if let Some(ref sasl) = config.sasl {
-        client_config.set("security.protocol", "sasl_ssl");
-        client_config.set("sasl.mechanism", &sasl.mechanism.to_uppercase());
-        client_config.set("sasl.username", &sasl.username);
-        client_config.set("sasl.password", &sasl.password);
-    }
-
-    // Create producer - initialises librdkafka safely
-    client_config.create().map_err(Error::Kafka)
-}
-```
-
-### Pure Rust vs C Library Trade-offs
-
-| Category | Pure Rust | C Wrapper | Recommendation |
-|----------|-----------|-----------|----------------|
-| **TLS** | rustls | OpenSSL bindings | Pure Rust (rustls) |
-| **JSON** | serde_json, sonic-rs | - | Pure Rust (sonic-rs for SIMD) |
-| **Compression** | lz4_flex, snap | zstd, flate2 | Pure Rust when available |
-| **Kafka** | - | rdkafka | C wrapper (no pure Rust alternative) |
-| **Protobuf** | prost | protobuf-native | Pure Rust (prost) |
-
-```rust
-// Prefer pure Rust TLS
-use rustls::ServerConfig;
-use tokio_rustls::TlsAcceptor;
-
-// Not: OpenSSL bindings
-// use openssl::ssl::SslAcceptor;
-```
-
-### Forbid Unsafe in Application Code
-
-```rust
-// src/lib.rs and src/main.rs
-#![forbid(unsafe_code)]
-
-// All FFI is handled by wrapper crates
-// No direct unsafe blocks in application code
-```
-
----
-
 ## At-Scale Performance Patterns
 
 Production patterns from HyperI data pipelines handling PB/s scale.
@@ -6070,6 +3937,2152 @@ impl PatternMatcher {
 
 ---
 
+## Data Pipeline Architecture
+
+### Pipeline Stages
+
+```rust
+use tokio::sync::mpsc;
+
+/// Stage trait for pipeline components
+#[async_trait]
+pub trait Stage: Send + Sync {
+    type Input: Send;
+    type Output: Send;
+
+    async fn process(&self, input: Self::Input) -> Result<Self::Output>;
+}
+
+/// Connect stages with channels
+pub struct Pipeline<I, O> {
+    stages: Vec<Box<dyn Stage<Input = I, Output = O>>>,
+}
+
+impl<I: Send + 'static, O: Send + 'static> Pipeline<I, O> {
+    pub async fn run(
+        self,
+        mut input: mpsc::Receiver<I>,
+        output: mpsc::Sender<O>,
+    ) -> Result<()> {
+        while let Some(item) = input.recv().await {
+            let mut current: Box<dyn Any + Send> = Box::new(item);
+
+            for stage in &self.stages {
+                current = Box::new(stage.process(
+                    *current.downcast().unwrap()
+                ).await?);
+            }
+
+            output.send(*current.downcast().unwrap()).await?;
+        }
+        Ok(())
+    }
+}
+```
+
+### Batch Processing Pipeline
+
+```rust
+/// Batch accumulator for efficient processing
+pub struct BatchAccumulator<T> {
+    batch: Vec<T>,
+    capacity: usize,
+}
+
+impl<T> BatchAccumulator<T> {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            batch: Vec::with_capacity(capacity),
+            capacity,
+        }
+    }
+
+    pub fn push(&mut self, item: T) -> Option<Vec<T>> {
+        self.batch.push(item);
+        if self.batch.len() >= self.capacity {
+            Some(std::mem::replace(
+                &mut self.batch,
+                Vec::with_capacity(self.capacity),
+            ))
+        } else {
+            None
+        }
+    }
+
+    pub fn flush(&mut self) -> Option<Vec<T>> {
+        if self.batch.is_empty() {
+            None
+        } else {
+            Some(std::mem::replace(
+                &mut self.batch,
+                Vec::with_capacity(self.capacity),
+            ))
+        }
+    }
+}
+
+// Usage
+async fn batch_process(
+    mut rx: mpsc::Receiver<Record>,
+    tx: mpsc::Sender<Vec<Output>>,
+) -> Result<()> {
+    let mut accumulator = BatchAccumulator::new(10_000);
+
+    while let Some(record) = rx.recv().await {
+        if let Some(batch) = accumulator.push(record) {
+            let outputs = process_batch(&batch).await?;
+            tx.send(outputs).await?;
+        }
+    }
+
+    // Flush remaining
+    if let Some(batch) = accumulator.flush() {
+        let outputs = process_batch(&batch).await?;
+        tx.send(outputs).await?;
+    }
+
+    Ok(())
+}
+```
+
+### Column-Wise Processing
+
+```rust
+/// Process data column-wise for better cache efficiency
+pub struct ColumnarBatch {
+    ids: Vec<u64>,
+    timestamps: Vec<i64>,
+    values: Vec<f64>,
+    flags: Vec<u8>,
+}
+
+impl ColumnarBatch {
+    pub fn with_capacity(cap: usize) -> Self {
+        Self {
+            ids: Vec::with_capacity(cap),
+            timestamps: Vec::with_capacity(cap),
+            values: Vec::with_capacity(cap),
+            flags: Vec::with_capacity(cap),
+        }
+    }
+
+    pub fn push(&mut self, record: &Record) {
+        self.ids.push(record.id);
+        self.timestamps.push(record.timestamp);
+        self.values.push(record.value);
+        self.flags.push(record.flags);
+    }
+
+    /// Filter by timestamp - operates on contiguous memory
+    pub fn filter_by_time(&self, min: i64, max: i64) -> Vec<usize> {
+        self.timestamps
+            .iter()
+            .enumerate()
+            .filter(|(_, &ts)| ts >= min && ts <= max)
+            .map(|(i, _)| i)
+            .collect()
+    }
+
+    /// Aggregate values - cache-friendly sequential access
+    pub fn sum_values(&self) -> f64 {
+        self.values.iter().sum()
+    }
+
+    /// Vectorizable operation
+    pub fn scale_values(&mut self, factor: f64) {
+        for v in &mut self.values {
+            *v *= factor;
+        }
+    }
+}
+```
+
+### Backpressure Handling
+
+```rust
+use tokio::sync::{mpsc, Semaphore};
+use std::sync::Arc;
+
+/// Pipeline with backpressure control
+pub struct BackpressuredPipeline {
+    semaphore: Arc<Semaphore>,
+    max_in_flight: usize,
+}
+
+impl BackpressuredPipeline {
+    pub fn new(max_in_flight: usize) -> Self {
+        Self {
+            semaphore: Arc::new(Semaphore::new(max_in_flight)),
+            max_in_flight,
+        }
+    }
+
+    pub async fn process<T, F, Fut>(&self, items: Vec<T>, processor: F) -> Vec<Result<()>>
+    where
+        T: Send + 'static,
+        F: Fn(T) -> Fut + Send + Sync + Clone + 'static,
+        Fut: std::future::Future<Output = Result<()>> + Send,
+    {
+        let mut handles = Vec::with_capacity(items.len());
+
+        for item in items {
+            // Wait for permit - blocks if too many in flight
+            let permit = self.semaphore.clone().acquire_owned().await.unwrap();
+            let processor = processor.clone();
+
+            let handle = tokio::spawn(async move {
+                let result = processor(item).await;
+                drop(permit);  // Release permit when done
+                result
+            });
+
+            handles.push(handle);
+        }
+
+        let mut results = Vec::with_capacity(handles.len());
+        for handle in handles {
+            results.push(handle.await.unwrap());
+        }
+        results
+    }
+}
+```
+
+---
+
+## hyperi-rustlib
+
+> **This section applies when `hyperi-rustlib` is in `Cargo.toml`.**
+> For non-HyperI projects (e.g., open-source tools like claudemeter), skip this section
+> and use the generic patterns from the rest of this document.
+
+`hyperi-rustlib` is the shared Rust utility library for all HyperI Rust applications.
+It provides config, logging, metrics, observability, transports, resilience, secrets,
+and more. Available on crates.io. **Use it — never roll bespoke versions of what it provides.**
+
+### Quick Start
+
+```toml
+# Cargo.toml
+[dependencies]
+hyperi-rustlib = { version = ">=1.16", features = [
+    "config", "logger", "metrics", "env", "runtime"
+]}
+```
+
+```rust
+use hyperi_rustlib::{config, logger, env};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let environment = env::Environment::detect();
+    logger::setup_default()?;
+    config::setup(config::ConfigOptions {
+        env_prefix: "MYAPP".into(),
+        ..Default::default()
+    })?;
+
+    // Or use the convenience init:
+    // hyperi_rustlib::init("MYAPP")?;
+
+    tracing::info!("Running in {environment:?}");
+    Ok(())
+}
+```
+
+### Feature Selection Guide
+
+Enable only what you need — features are additive and pull in their dependencies.
+
+| Feature | Use When | Provides |
+|---------|----------|----------|
+| `config` | Always (default) | 8-layer figment cascade, .env, YAML, TOML, JSON, env vars |
+| `config-reload` | Config changes at runtime | `SharedConfig<T>` + `ConfigReloader` hot-reload |
+| `config-postgres` | Config stored in PostgreSQL | `PostgresConfigSource` with sqlx |
+| `logger` | Always (default) | Structured logging, JSON/text auto-detect, sensitive field masking |
+| `metrics` | Prometheus metrics | `MetricsManager`, process/container metrics, `/metrics` endpoint |
+| `otel` | OpenTelemetry tracing | OTLP export (gRPC/HTTP), distributed tracing |
+| `otel-metrics` | OTel + Prometheus metrics | OTel metrics bridge, OTLP metrics export |
+| `http-server` | Serve HTTP | Axum HTTP server with health endpoints (`/healthz`, `/readyz`) |
+| `http` | Call HTTP APIs | reqwest client with retry middleware |
+| `resilience` | Downstream protection | Circuit breaker, retry with backoff, bulkhead (tower-resilience) |
+| `transport-kafka` | Kafka producer/consumer | rdkafka wrapper (dynamic-linking against system librdkafka) |
+| `transport-grpc` | gRPC services | tonic/prost transport |
+| `transport-memory` | Testing | In-memory transport for test harnesses |
+| `secrets` | Secret management | Core provider interface, file provider |
+| `secrets-vault` | OpenBao/Vault | OpenBao/Vault secret provider |
+| `secrets-aws` | AWS Secrets Manager | AWS Secrets Manager provider |
+| `tiered-sink` | Resilient delivery | Hot buffer + disk spillover + circuit breaker |
+| `spool` | Disk queue | Async FIFO queue (yaque + zstd compression) |
+| `scaling` | KEDA autoscaling | Back-pressure primitives, scaling pressure calculation |
+| `cli` | CLI applications | Standard clap framework with version/env integration |
+| `top` | TUI dashboard | ratatui-based metrics dashboard |
+| `dlq` | Dead letter queue | File-backed DLQ |
+| `dlq-kafka` | DLQ to Kafka | Kafka DLQ backend |
+| `deployment` | CI contract checks | Helm chart + Dockerfile contract validation |
+| `expression` | CEL expressions | CEL expression evaluation (DFE expression profiles) |
+| `full` | Everything | All features enabled |
+
+### Use This, Not That
+
+**If `hyperi-rustlib` is a dependency, ALWAYS use its features instead of bespoke code.**
+
+| Need | Use (hyperi-rustlib) | NOT (bespoke) |
+|------|---------------------|---------------|
+| Config cascade | `config::setup()` + `config::get()` | Hand-rolling figment/dotenvy |
+| Logging | `logger::setup_default()` | Manual `tracing_subscriber` setup |
+| Sensitive field masking | `logger` (automatic) | Regex-based log scrubbing |
+| Prometheus metrics | `MetricsManager::new("app")` | Raw `metrics-exporter-prometheus` |
+| OTel tracing | `otel` feature | Manual `opentelemetry-otlp` setup |
+| HTTP server + health | `HttpServer` with `http-server` feature | Bespoke axum + health routes |
+| Circuit breaker | `resilience` feature | Hand-rolled state machines |
+| Kafka producer/consumer | `transport-kafka` feature | Raw `rdkafka` ClientConfig |
+| Secret rotation | `SecretsManager` | Direct vault/AWS SDK calls |
+| Config hot-reload | `SharedConfig<T>` + `ConfigReloader` | Custom file watcher |
+| Disk spillover | `TieredSink` with `tiered-sink` | Custom spool logic |
+| CLI framework | `DfeApp` with `cli` feature | Manual clap setup |
+| Environment detection | `env::Environment::detect()` | Checking env vars manually |
+| KEDA scaling signals | `ScalingPressure` with `scaling` | Custom pressure math |
+
+### Config Cascade (8 Layers)
+
+Priority (highest first):
+1. CLI arguments
+2. Environment variables (`{PREFIX}_DATABASE_HOST`)
+3. `.env` file
+4. `settings.{environment}.yaml`
+5. `settings.yaml`
+6. `defaults.yaml`
+7. Embedded defaults
+8. Hard-coded fallbacks
+
+```rust
+use hyperi_rustlib::config;
+
+config::setup(config::ConfigOptions {
+    env_prefix: "MYAPP".into(),
+    config_dir: Some("./config".into()),
+    ..Default::default()
+})?;
+
+let cfg = config::get();
+let db_host: String = cfg.get_string("database.host")?;
+let db_port: u16 = cfg.get("database.port")?;
+```
+
+### Metrics Quick Reference
+
+```rust
+use hyperi_rustlib::MetricsManager;
+
+let mgr = MetricsManager::new("dfe_loader");
+let counter = mgr.counter("messages_processed_total", "Messages processed");
+let histogram = mgr.histogram("batch_duration_seconds", "Batch processing duration");
+
+// Record
+counter.increment(1);
+histogram.record(elapsed.as_secs_f64());
+```
+
+### Native System Dependencies
+
+When using features that link C libraries, install system packages:
+
+| Feature | Build Package | Runtime Package |
+|---------|--------------|-----------------|
+| `transport-kafka` | `librdkafka-dev` (Confluent APT) | `librdkafka1` |
+| `directory-config-git` | `libgit2-dev` | `libgit2-1.7` |
+| `spool`, `tiered-sink` | `libzstd-dev` | `libzstd1` |
+| `secrets-aws` | (compiled from source) | (statically linked) |
+
+---
+
+## Observability
+
+Logging alone is insufficient for production services. Use the three pillars: **traces**, **metrics**, **logs** — all exported via OpenTelemetry OTLP.
+
+> **HyperI projects:** Use `hyperi-rustlib` features `otel`, `otel-metrics`, `otel-tracing`, `metrics`.
+> See the [hyperi-rustlib](#hyperi-rustlib) section. Only roll bespoke setup for non-HyperI projects.
+
+### OpenTelemetry Distributed Tracing
+
+```rust
+use opentelemetry::trace::TracerProvider;
+use opentelemetry_otlp::SpanExporter;
+use opentelemetry_sdk::trace::SdkTracerProvider;
+use tracing_opentelemetry::OpenTelemetryLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
+fn init_tracing() -> Result<SdkTracerProvider, Box<dyn std::error::Error>> {
+    // OTLP exporter — sends to collector at localhost:4317 by default
+    // Override with OTEL_EXPORTER_OTLP_ENDPOINT env var
+    let exporter = SpanExporter::builder()
+        .with_tonic()
+        .build()?;
+
+    let provider = SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
+        .build();
+
+    let tracer = provider.tracer("my-service");
+    let otel_layer = OpenTelemetryLayer::new(tracer);
+
+    tracing_subscriber::registry()
+        .with(EnvFilter::from_default_env())
+        .with(otel_layer)
+        .with(tracing_subscriber::fmt::layer().json())
+        .init();
+
+    Ok(provider)
+}
+```
+
+### Prometheus Metrics
+
+```rust
+use metrics::{counter, gauge, histogram};
+use metrics_exporter_prometheus::PrometheusBuilder;
+
+fn init_metrics() -> Result<(), Box<dyn std::error::Error>> {
+    // Serve /metrics on :9090
+    PrometheusBuilder::new()
+        .with_http_listener(([0, 0, 0, 0], 9090))
+        .install()?;
+    Ok(())
+}
+
+// Usage in hot paths — macros are zero-cost when no exporter is installed
+fn process_message(msg: &Message) {
+    counter!("messages_processed_total", "status" => "success").increment(1);
+    histogram!("message_size_bytes").record(msg.len() as f64);
+    gauge!("queue_depth").set(get_queue_depth() as f64);
+}
+```
+
+### tokio-console (Async Debugging)
+
+Interactive debugger for async tasks — like `htop` for your Tokio runtime.
+
+```toml
+# Cargo.toml — dev-only
+[dependencies]
+console-subscriber = { version = ">=0.4", optional = true }
+
+[features]
+tokio-console = ["console-subscriber"]
+```
+
+```rust
+// Enable with: RUSTFLAGS="--cfg tokio_unstable" cargo run --features tokio-console
+#[cfg(feature = "tokio-console")]
+fn init_console() {
+    console_subscriber::init();
+}
+```
+
+```bash
+# In another terminal:
+tokio-console  # Shows tasks, polls, wakers, resource contention
+```
+
+### Health Checks (K8s Liveness/Readiness)
+
+```rust
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
+#[derive(Clone)]
+pub struct HealthState {
+    ready: Arc<AtomicBool>,
+    alive: Arc<AtomicBool>,
+}
+
+impl HealthState {
+    pub fn new() -> Self {
+        Self {
+            ready: Arc::new(AtomicBool::new(false)),
+            alive: Arc::new(AtomicBool::new(true)),
+        }
+    }
+
+    pub fn set_ready(&self)    { self.ready.store(true, Ordering::Release); }
+    pub fn set_draining(&self) { self.ready.store(false, Ordering::Release); }
+    pub fn set_dead(&self)     { self.alive.store(false, Ordering::Release); }
+
+    pub fn is_ready(&self) -> bool { self.ready.load(Ordering::Acquire) }
+    pub fn is_alive(&self) -> bool { self.alive.load(Ordering::Acquire) }
+}
+
+// Wire into axum:
+// GET /healthz  -> 200 if alive, 503 if dead
+// GET /readyz   -> 200 if ready, 503 if draining
+```
+
+---
+
+## HTTP Service Patterns (axum + tower)
+
+axum 0.8+ is the standard HTTP framework. It uses tower middleware natively —
+no framework-specific middleware system to learn.
+
+> **Path syntax changed in axum 0.8:** `/{param}` not `/:param`, `/{*wildcard}` not `/*wildcard`.
+
+### Production Router
+
+```rust
+use axum::{Router, routing::get, extract::State};
+use tower_http::{
+    compression::CompressionLayer,
+    cors::CorsLayer,
+    timeout::TimeoutLayer,
+    trace::TraceLayer,
+};
+use std::time::Duration;
+
+fn build_router(state: AppState) -> Router {
+    let api = Router::new()
+        .route("/api/v1/records/{id}", get(get_record).post(create_record))
+        .route("/api/v1/records", get(list_records));
+
+    let health = Router::new()
+        .route("/healthz", get(liveness))
+        .route("/readyz", get(readiness))
+        .route("/metrics", get(metrics_handler));
+
+    Router::new()
+        .merge(api)
+        .merge(health)
+        .layer(TraceLayer::new_for_http())
+        .layer(TimeoutLayer::new(Duration::from_secs(30)))
+        .layer(CompressionLayer::new())
+        .layer(CorsLayer::permissive())  // Tighten for production
+        .with_state(state)
+}
+```
+
+### Resilience Middleware (tower-resilience)
+
+```rust
+use tower::ServiceBuilder;
+use tower_resilience::{CircuitBreakerLayer, RetryLayer, BulkheadLayer};
+
+// Stack resilience layers for downstream calls
+let service = ServiceBuilder::new()
+    .layer(BulkheadLayer::new(100))           // Max 100 concurrent
+    .layer(RetryLayer::new(3))                // Retry up to 3 times
+    .layer(CircuitBreakerLayer::default())    // Circuit breaker
+    .service(downstream_client);
+```
+
+---
+
+## Graceful Shutdown (K8s-Ready)
+
+K8s sends SIGTERM, then waits `terminationGracePeriodSeconds` (default 30s) before SIGKILL.
+Your service must: stop accepting new work, drain in-flight requests, then exit cleanly.
+
+```rust
+use tokio::sync::watch;
+use tokio_util::sync::CancellationToken;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+
+pub struct GracefulShutdown {
+    cancel: CancellationToken,
+    health: HealthState,
+    drain_timeout: Duration,
+}
+
+impl GracefulShutdown {
+    pub fn new(health: HealthState, drain_timeout: Duration) -> Self {
+        Self {
+            cancel: CancellationToken::new(),
+            health,
+            drain_timeout,
+        }
+    }
+
+    pub async fn run(self) {
+        // Listen for SIGTERM (K8s) and SIGINT (Ctrl+C)
+        let cancel = self.cancel.clone();
+        tokio::spawn(async move {
+            let mut sigterm = tokio::signal::unix::signal(
+                tokio::signal::unix::SignalKind::terminate()
+            ).expect("SIGTERM handler");
+
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {}
+                _ = sigterm.recv() => {}
+            }
+            cancel.cancel();
+        });
+
+        // Wait for shutdown signal
+        self.cancel.cancelled().await;
+        tracing::info!("Shutdown signal received, draining...");
+
+        // Phase 1: Mark unhealthy so K8s stops routing traffic
+        self.health.set_draining();
+
+        // Phase 2: Wait for in-flight requests to complete
+        tokio::time::sleep(self.drain_timeout).await;
+
+        // Phase 3: Mark dead
+        self.health.set_dead();
+        tracing::info!("Drain complete, exiting");
+    }
+
+    pub fn token(&self) -> CancellationToken {
+        self.cancel.clone()
+    }
+}
+```
+
+---
+
+## Configuration (HyperI Cascade)
+
+Rust implements the 7-layer config cascade using `config-rs`:
+
+```rust
+use config::{Config, Environment, File};
+
+fn load_config() -> Result<Config, config::ConfigError> {
+    Config::builder()
+        // 7. Hard-coded defaults (lowest priority)
+        .set_default("database.host", "localhost")?
+        .set_default("database.port", 5432)?
+        .set_default("log_level", "info")?
+        .set_default("batch_size", 10_000)?
+        .set_default("parallelism", num_cpus::get())?
+
+        // 6. defaults.toml
+        .add_source(File::with_name("config/defaults").required(false))
+
+        // 5. settings.toml
+        .add_source(File::with_name("config/settings").required(false))
+
+        // 4. settings.{env}.toml
+        .add_source(
+            File::with_name(&format!(
+                "config/settings.{}",
+                std::env::var("APP_ENV").unwrap_or_else(|_| "development".into())
+            ))
+            .required(false),
+        )
+
+        // 3. .env file (via dotenvy)
+        // dotenvy::dotenv().ok(); // Call at start of main()
+
+        // 2. ENV variables (MYAPP_DATABASE_HOST)
+        .add_source(Environment::with_prefix("MYAPP").separator("_"))
+
+        // 1. CLI args via clap (applied after Config::build())
+        .build()
+}
+```
+
+---
+
+## Logging (HyperI Standard)
+
+Use `tracing` with RFC 3339 timestamps:
+
+```rust
+use std::io::IsTerminal;
+use tracing::{info, error, warn, debug, instrument};
+use tracing_subscriber::{fmt, EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
+
+fn init_logging() {
+    let is_terminal = std::io::stderr().is_terminal();
+
+    let subscriber = tracing_subscriber::registry()
+        .with(EnvFilter::from_default_env().add_directive("info".parse().unwrap()));
+
+    if is_terminal {
+        // Console: human-friendly with colours
+        subscriber
+            .with(fmt::layer().with_ansi(true).pretty())
+            .init();
+    } else {
+        // Container/CI: JSON with RFC 3339 timestamps
+        subscriber
+            .with(fmt::layer().json().with_timer(fmt::time::UtcTime::rfc_3339()))
+            .init();
+    }
+}
+
+// Structured logging with spans
+#[instrument(skip(data), fields(record_count = data.len()))]
+async fn process_batch(data: &[Record]) -> Result<ProcessResult> {
+    info!("Starting batch processing");
+
+    for record in data {
+        if let Err(e) = process_record(record).await {
+            error!(error = %e, record_id = %record.id, "Failed to process record");
+        }
+    }
+
+    info!("Batch complete");
+    Ok(ProcessResult::default())
+}
+
+// Performance-sensitive logging
+fn hot_path(data: &[u8]) {
+    // Use debug! for hot paths - disabled in release
+    debug!(bytes = data.len(), "Processing chunk");
+
+    // Or check log level first
+    if tracing::enabled!(tracing::Level::DEBUG) {
+        debug!(first_bytes = ?&data[..8.min(data.len())], "Chunk preview");
+    }
+}
+```
+
+**Output Modes:**
+
+| Context | Format | Colours |
+|---------|--------|---------|
+| Console (dev) | Human-friendly | Yes |
+| Container/CI | RFC 3339 JSON | No |
+
+**ENV overrides:** `RUST_LOG=debug`, `NO_COLOR=1`
+
+---
+
+## Cargo.toml Best Practices
+
+```toml
+[package]
+name = "data-pipeline"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94.0"  # Current stable as of March 2026; always use latest stable
+description = "High-performance data processing pipeline"
+license = "Apache-2.0"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sonic-rs = "0.3"  # SIMD JSON
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+
+# Performance
+memchr = "2"           # SIMD string search
+compact_str = "0.7"    # Small string optimization
+rustc-hash = "1"       # Fast hashing
+parking_lot = "0.12"   # Faster locks
+dashmap = "5"          # Concurrent HashMap
+rayon = "1"            # Parallel iterators
+
+# Memory
+bumpalo = "3"          # Arena allocation
+tikv-jemallocator = "0.5"
+
+[dev-dependencies]
+tempfile = "3"
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.bench]
+lto = true
+codegen-units = 1
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = "warn"
+unwrap_used = "deny"
+expect_used = "deny"
+
+[[bench]]
+name = "throughput"
+harness = false
+```
+
+### Version Pinning & Update Policy
+
+**General rule: use `>=X.Y` compatible ranges, pin only when forced.**
+
+```toml
+# Cargo.toml
+[dependencies]
+tokio = { version = ">=1.50, <2" }           # ✅ >= range with semver bound
+serde = { version = ">=1.0.228, <2" }        # ✅ >= with upper bound
+hyperi-rustlib = { version = ">=1.16" }       # ✅ >= range
+rdkafka = { version = "=0.39.0" }            # ⚠️ Pinned — document WHY
+```
+
+**Rules:**
+- `>=X.Y, <Z` — default for all dependencies. Accept patches and minors
+  within the major version. Cargo semver compatibility handles this naturally.
+- `=X.Y.Z` — pin ONLY when a specific version has a known regression.
+  Always add a `# pinned: reason` comment.
+- `Cargo.lock` — always committed for binaries and applications. This IS
+  your reproducible build. Libraries omit `Cargo.lock` (consumers resolve).
+- `cargo deny check` in CI — catches license violations and security advisories.
+
+**Update cadence:**
+- Dependencies MUST be updated with every code review. Run `cargo update`
+  and check for `cargo audit` advisories.
+- `cargo deny check advisories` in CI — fails on known vulnerabilities.
+- When updating, run the full test suite + clippy. If clean, update is safe.
+
+```bash
+# Update all deps to latest compatible versions
+cargo update
+
+# Check for security advisories
+cargo audit
+
+# Check licenses and advisories (CI)
+cargo deny check
+```
+
+**Deprecation warnings MUST be fixed immediately.** If `cargo clippy`,
+`cargo build`, or test output shows a deprecation warning, address it
+in the current PR — do not defer. Deprecations become compile errors
+on the next Rust edition or dependency major release.
+
+**Risk mitigation for `>=` ranges:**
+
+| Risk | Mitigation |
+|---|---|
+| Breaking upstream release | `Cargo.lock` pins exact versions — reproducible builds |
+| Security vulnerability | `cargo audit` + `cargo deny` in CI — blocks merge |
+| Yanked crate version | `cargo update` resolves to latest non-yanked |
+| Stale deps | Mandatory `cargo update` at every code review |
+| Incompatible transitive deps | Cargo resolver handles this — conflicts caught at build |
+
+---
+
+## Clippy Configuration
+
+### clippy.toml
+
+```toml
+# Allow up to 7 arguments (default is 7)
+too-many-arguments-threshold = 7
+
+# Cognitive complexity threshold
+cognitive-complexity-threshold = 25
+
+# Allow large enum variants
+enum-variant-size-threshold = 200
+```
+
+### Common Clippy Attributes
+
+```rust
+// Allow specific lints
+#[allow(clippy::too_many_arguments)]
+fn complex_function(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32) {}
+
+// Deny specific lints in module/crate
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+
+// Warn on all pedantic lints
+#![warn(clippy::pedantic)]
+
+// Allow in specific scope
+#[allow(clippy::cast_possible_truncation)]
+fn convert(x: u64) -> u32 {
+    x as u32
+}
+```
+
+### CI Clippy Command
+
+```bash
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+### Recommended Lints for Data Pipelines
+
+```rust
+// lib.rs or main.rs
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::must_use_candidate)]
+
+// Deny dangerous patterns
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::expect_used)]
+```
+
+---
+
+## External Libraries and Private Registries
+
+### Private Cargo Registry Configuration
+
+For enterprise environments using private artifact repositories:
+
+```toml
+# .cargo/config.toml
+[registries.hyperi]
+index = "sparse+https://hyperi.jfrog.io/artifactory/api/cargo/hyperi-cargo-virtual/index/"
+
+[build]
+# Optional: Use mold linker for faster builds
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "force-frame-pointers=yes"]  # Better profiling
+
+[target.aarch64-unknown-linux-gnu]
+rustflags = ["-C", "force-frame-pointers=yes"]
+```
+
+```toml
+# Cargo.toml - using private registry
+[dependencies]
+hyperi-rustlib = { version = ">=1.3", registry = "hyperi", features = [
+    "config", "logger", "metrics", "transport-kafka", "http-server"
+]}
+```
+
+### Linking C Libraries via Wrapper Crates
+
+For C libraries like librdkafka, use safe Rust wrapper crates:
+
+```toml
+# Cargo.toml - rdkafka with C library compilation
+[dependencies]
+rdkafka = { version = ">=0.38", features = [
+    "cmake-build",  # Compile librdkafka from source
+    "ssl",          # Link OpenSSL for TLS
+    "sasl",         # Link SASL for Kerberos/PLAIN auth
+]}
+
+# Pure Rust compression alternatives
+lz4_flex = ">=0.11"     # Pure Rust LZ4 (preferred over C binding)
+snap = ">=1.1"          # Pure Rust Snappy
+zstd = ">=0.13"         # Rust wrapper around libzstd C library
+```
+
+### Safe Wrappers for C Libraries
+
+Pattern: Configure C library through safe Rust API without direct FFI:
+
+```rust
+use rdkafka::ClientConfig;
+use rdkafka::producer::FutureProducer;
+
+fn create_kafka_producer(config: &KafkaConfig) -> Result<FutureProducer> {
+    let mut client_config = ClientConfig::new();
+
+    // All configuration passed safely to underlying librdkafka
+    client_config.set("bootstrap.servers", config.brokers.join(","));
+    client_config.set("batch.size", config.batch_size.to_string());
+    client_config.set("compression.type", &config.compression);
+    client_config.set("acks", &config.acks);
+    client_config.set("message.max.bytes", "8388608");  // 8MiB
+
+    // TLS configuration for librdkafka
+    if config.tls.enabled {
+        client_config.set("security.protocol", "ssl");
+        client_config.set("ssl.ca.location", &config.tls.ca_path);
+        client_config.set("ssl.certificate.location", &config.tls.cert_path);
+        client_config.set("ssl.key.location", &config.tls.key_path);
+    }
+
+    // SASL authentication
+    if let Some(ref sasl) = config.sasl {
+        client_config.set("security.protocol", "sasl_ssl");
+        client_config.set("sasl.mechanism", &sasl.mechanism.to_uppercase());
+        client_config.set("sasl.username", &sasl.username);
+        client_config.set("sasl.password", &sasl.password);
+    }
+
+    // Create producer - initialises librdkafka safely
+    client_config.create().map_err(Error::Kafka)
+}
+```
+
+### Pure Rust vs C Library Trade-offs
+
+| Category | Pure Rust | C Wrapper | Recommendation |
+|----------|-----------|-----------|----------------|
+| **TLS** | rustls | OpenSSL bindings | Pure Rust (rustls) |
+| **JSON** | serde_json, sonic-rs | - | Pure Rust (sonic-rs for SIMD) |
+| **Compression** | lz4_flex, snap | zstd, flate2 | Pure Rust when available |
+| **Kafka** | - | rdkafka | C wrapper (no pure Rust alternative) |
+| **Protobuf** | prost | protobuf-native | Pure Rust (prost) |
+
+```rust
+// Prefer pure Rust TLS
+use rustls::ServerConfig;
+use tokio_rustls::TlsAcceptor;
+
+// Not: OpenSSL bindings
+// use openssl::ssl::SslAcceptor;
+```
+
+### Forbid Unsafe in Application Code
+
+```rust
+// src/lib.rs and src/main.rs
+#![forbid(unsafe_code)]
+
+// All FFI is handled by wrapper crates
+// No direct unsafe blocks in application code
+```
+
+---
+
+## FFI and Unsafe Rust
+
+### When Unsafe is Necessary
+
+Unsafe Rust is required for:
+
+1. Dereferencing raw pointers
+2. Calling unsafe functions (including FFI)
+3. Accessing/modifying mutable statics
+4. Implementing unsafe traits
+5. Accessing fields of unions
+
+### Raw Pointers
+
+```rust
+// Creating raw pointers is safe, dereferencing is unsafe
+let x = 42;
+let ptr: *const i32 = &x;      // Immutable raw pointer
+let mut y = 42;
+let mut_ptr: *mut i32 = &mut y; // Mutable raw pointer
+
+// Rust 2024+: Use raw borrow operators (preferred)
+let ptr: *const i32 = &raw const x;
+let mut_ptr: *mut i32 = &raw mut y;
+
+// Dereferencing requires unsafe
+unsafe {
+    println!("Value: {}", *ptr);
+    *mut_ptr = 100;
+}
+
+// Null pointers
+let null_ptr: *const i32 = std::ptr::null();
+let null_mut: *mut i32 = std::ptr::null_mut();
+
+// Check for null before dereferencing
+if !ptr.is_null() {
+    unsafe { println!("{}", *ptr); }
+}
+
+// Pointer arithmetic
+unsafe {
+    let arr = [1, 2, 3, 4, 5];
+    let ptr = arr.as_ptr();
+    let third = *ptr.add(2);  // arr[2]
+    let second = *ptr.offset(1);  // arr[1]
+}
+```
+
+### FFI Basics - Calling C from Rust
+
+```rust
+// Link to C library (Rust 2024 edition: all items in unsafe extern are unsafe)
+#[link(name = "c")]
+unsafe extern "C" {
+    fn strlen(s: *const std::ffi::c_char) -> usize;
+    fn printf(format: *const std::ffi::c_char, ...) -> i32;
+
+    // Mark known-safe functions explicitly
+    safe fn abs(input: i32) -> i32;
+}
+
+// Pre-2024 edition syntax (still valid)
+#[link(name = "mylib")]
+extern "C" {
+    fn my_function(x: i32) -> i32;  // Implicitly unsafe to call
+}
+
+// Safe wrapper around unsafe FFI
+pub fn safe_strlen(s: &std::ffi::CStr) -> usize {
+    unsafe { strlen(s.as_ptr()) }
+}
+
+// Usage
+use std::ffi::CString;
+
+fn main() {
+    let s = CString::new("Hello").expect("CString::new failed");
+    let len = safe_strlen(&s);
+    println!("Length: {}", len);
+}
+```
+
+### C String Handling
+
+```rust
+use std::ffi::{CStr, CString, c_char};
+
+// Rust string to C string (owned, null-terminated)
+fn rust_to_c(s: &str) -> CString {
+    CString::new(s).expect("String contains null byte")
+}
+
+// C string to Rust (borrowed)
+unsafe fn c_to_rust<'a>(ptr: *const c_char) -> &'a str {
+    CStr::from_ptr(ptr)
+        .to_str()
+        .expect("Invalid UTF-8")
+}
+
+// C string to owned Rust String
+unsafe fn c_to_rust_owned(ptr: *const c_char) -> String {
+    CStr::from_ptr(ptr)
+        .to_string_lossy()  // Replaces invalid UTF-8 with �
+        .into_owned()
+}
+
+// Pattern: C callback with string
+extern "C" fn log_callback(message: *const c_char) {
+    let msg = unsafe {
+        if message.is_null() {
+            return;
+        }
+        CStr::from_ptr(message).to_string_lossy()
+    };
+    tracing::info!("{}", msg);
+}
+```
+
+### Exposing Rust to C
+
+```rust
+// Prevent name mangling
+#[no_mangle]
+pub extern "C" fn rust_add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+// Return allocated string to C (caller must free)
+#[no_mangle]
+pub extern "C" fn rust_greeting(name: *const c_char) -> *mut c_char {
+    let name = unsafe {
+        if name.is_null() {
+            return std::ptr::null_mut();
+        }
+        CStr::from_ptr(name).to_string_lossy()
+    };
+
+    let greeting = format!("Hello, {}!", name);
+    CString::new(greeting)
+        .map(|s| s.into_raw())  // Transfer ownership to C
+        .unwrap_or(std::ptr::null_mut())
+}
+
+// Free function for C to call
+#[no_mangle]
+pub extern "C" fn rust_free_string(ptr: *mut c_char) {
+    if !ptr.is_null() {
+        unsafe {
+            drop(CString::from_raw(ptr));  // Reclaim and drop
+        }
+    }
+}
+```
+
+### repr(C) for C-Compatible Structs
+
+```rust
+// Ensure C-compatible memory layout
+#[repr(C)]
+pub struct Point {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[repr(C)]
+pub struct Buffer {
+    pub data: *mut u8,
+    pub len: usize,
+    pub capacity: usize,
+}
+
+// Opaque types - hide Rust implementation from C
+#[repr(C)]
+pub struct OpaqueHandle {
+    _private: [u8; 0],  // Zero-sized, prevents construction in C
+}
+
+// Create/destroy pattern for opaque types
+#[no_mangle]
+pub extern "C" fn processor_new() -> *mut OpaqueHandle {
+    let processor = Box::new(RealProcessor::new());
+    Box::into_raw(processor) as *mut OpaqueHandle
+}
+
+#[no_mangle]
+pub extern "C" fn processor_free(ptr: *mut OpaqueHandle) {
+    if !ptr.is_null() {
+        unsafe {
+            drop(Box::from_raw(ptr as *mut RealProcessor));
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn processor_process(
+    ptr: *mut OpaqueHandle,
+    data: *const u8,
+    len: usize,
+) -> i32 {
+    let processor = unsafe {
+        if ptr.is_null() { return -1; }
+        &mut *(ptr as *mut RealProcessor)
+    };
+
+    let slice = unsafe {
+        if data.is_null() { return -1; }
+        std::slice::from_raw_parts(data, len)
+    };
+
+    match processor.process(slice) {
+        Ok(_) => 0,
+        Err(_) => -1,
+    }
+}
+```
+
+### Bindgen for Automatic Bindings
+
+```rust
+// build.rs - generate Rust bindings from C headers
+fn main() {
+    println!("cargo:rerun-if-changed=wrapper.h");
+
+    let bindings = bindgen::Builder::default()
+        .header("wrapper.h")
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        // Allowlist specific functions/types
+        .allowlist_function("mylib_.*")
+        .allowlist_type("MyLib.*")
+        // Block problematic items
+        .blocklist_item("FILE")
+        .generate()
+        .expect("Unable to generate bindings");
+
+    let out_path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("Couldn't write bindings");
+}
+
+// src/lib.rs - include generated bindings
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+```
+
+### cbindgen for C Header Generation
+
+```toml
+# cbindgen.toml
+language = "C"
+include_guard = "MY_LIB_H"
+no_includes = true
+sys_includes = ["stdint.h", "stdbool.h"]
+
+[export]
+include = ["Point", "Buffer", "processor_.*"]
+```
+
+```bash
+# Generate header
+cbindgen --config cbindgen.toml --output include/mylib.h
+```
+
+### Unsafe Traits
+
+```rust
+// Unsafe trait - implementor guarantees invariants
+unsafe trait TrustedLen: Iterator {
+    // Implementor guarantees size_hint() is exact
+}
+
+// Unsafe impl - "I promise this is correct"
+unsafe impl<T> TrustedLen for std::vec::IntoIter<T> {}
+
+// Common unsafe traits:
+// - Send: safe to transfer to another thread
+// - Sync: safe to share between threads
+// - GlobalAlloc: custom allocator
+
+// Implementing Send/Sync manually
+struct MyWrapper(*mut u8);
+
+// "I guarantee this is safe to send between threads"
+unsafe impl Send for MyWrapper {}
+unsafe impl Sync for MyWrapper {}
+```
+
+### Sealed Traits
+
+Prevent downstream crates from implementing your public trait. Essential
+for library API design where adding new methods must not be a breaking
+change.
+
+```rust
+// The sealed pattern: public trait, private supertrait
+
+mod private {
+    pub trait Sealed {}
+}
+
+/// Public trait that external crates cannot implement.
+/// New methods can be added without a semver-breaking change.
+pub trait Transport: private::Sealed {
+    fn send(&self, payload: &[u8]) -> Result<(), TransportError>;
+    fn max_payload_size(&self) -> usize;
+}
+
+// Only types in THIS crate can implement Sealed, therefore Transport
+pub struct KafkaTransport { /* ... */ }
+impl private::Sealed for KafkaTransport {}
+impl Transport for KafkaTransport {
+    fn send(&self, payload: &[u8]) -> Result<(), TransportError> { /* ... */ }
+    fn max_payload_size(&self) -> usize { 1_048_576 }  // 1 MiB
+}
+
+pub struct GrpcTransport { /* ... */ }
+impl private::Sealed for GrpcTransport {}
+impl Transport for GrpcTransport {
+    fn send(&self, payload: &[u8]) -> Result<(), TransportError> { /* ... */ }
+    fn max_payload_size(&self) -> usize { 4_194_304 }  // 4 MiB
+}
+```
+
+Use sealed traits when:
+- The trait is part of a public API and you need to add methods later
+- You want exhaustive matching over implementors (enum-like behaviour)
+- The trait has safety invariants that external impls could violate
+
+Do NOT seal traits that are genuinely meant for extension (e.g., user-defined
+serialisers, plugin interfaces).
+
+### Generic Associated Types (GATs)
+
+GATs allow associated types with their own generic parameters. This
+enables patterns that were previously impossible — streaming iterators,
+collection traits, and lending iterators.
+
+```rust
+/// A lending iterator — borrows from self, not from the item
+trait LendingIterator {
+    type Item<'a> where Self: 'a;
+
+    fn next(&mut self) -> Option<Self::Item<'_>>;
+}
+
+/// Streaming reader that yields borrowed slices from an internal buffer
+struct ChunkedReader {
+    data: Vec<u8>,
+    pos: usize,
+    chunk_size: usize,
+}
+
+impl LendingIterator for ChunkedReader {
+    type Item<'a> = &'a [u8] where Self: 'a;
+
+    fn next(&mut self) -> Option<Self::Item<'_>> {
+        if self.pos >= self.data.len() {
+            return None;
+        }
+        let end = (self.pos + self.chunk_size).min(self.data.len());
+        let chunk = &self.data[self.pos..end];
+        self.pos = end;
+        Some(chunk)
+    }
+}
+
+/// Collection trait — generic over the element type stored
+trait Collection {
+    type Iter<'a, T: 'a>: Iterator<Item = &'a T> where Self: 'a;
+
+    fn iter<T>(&self) -> Self::Iter<'_, T>;
+}
+```
+
+GATs are particularly useful in data pipeline code where you want
+zero-copy iteration over internal buffers without `unsafe`. If you
+find yourself reaching for `unsafe` to return references to internal
+data from an iterator, try GATs first.
+
+### Safe Abstractions Over Unsafe
+
+```rust
+/// Safe wrapper around raw buffer
+pub struct SafeBuffer {
+    ptr: *mut u8,
+    len: usize,
+    capacity: usize,
+}
+
+impl SafeBuffer {
+    /// Creates a new buffer. All unsafe operations are encapsulated.
+    pub fn new(capacity: usize) -> Self {
+        let layout = std::alloc::Layout::array::<u8>(capacity).unwrap();
+        let ptr = unsafe { std::alloc::alloc(layout) };
+        if ptr.is_null() {
+            std::alloc::handle_alloc_error(layout);
+        }
+        Self { ptr, len: 0, capacity }
+    }
+
+    /// Safe slice access
+    pub fn as_slice(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
+    }
+
+    /// Safe mutable slice access
+    pub fn as_mut_slice(&mut self) -> &mut [u8] {
+        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
+    }
+
+    /// Push with bounds checking
+    pub fn push(&mut self, byte: u8) -> Result<(), BufferFull> {
+        if self.len >= self.capacity {
+            return Err(BufferFull);
+        }
+        unsafe {
+            self.ptr.add(self.len).write(byte);
+        }
+        self.len += 1;
+        Ok(())
+    }
+}
+
+impl Drop for SafeBuffer {
+    fn drop(&mut self) {
+        if !self.ptr.is_null() {
+            let layout = std::alloc::Layout::array::<u8>(self.capacity).unwrap();
+            unsafe { std::alloc::dealloc(self.ptr, layout) };
+        }
+    }
+}
+
+// Implement Send/Sync if safe
+unsafe impl Send for SafeBuffer {}
+unsafe impl Sync for SafeBuffer {}
+```
+
+### Unsafe Code Guidelines
+
+```rust
+// ❌ Bad - unsafe block too large
+unsafe {
+    let ptr = get_pointer();
+    validate_something();  // Safe code in unsafe block
+    process_data();        // Safe code in unsafe block
+    *ptr = 42;             // Only this needs unsafe
+}
+
+// ✅ Good - minimal unsafe scope
+let ptr = get_pointer();
+validate_something();
+process_data();
+unsafe { *ptr = 42; }  // Only unsafe operation
+
+// ❌ Bad - no safety comment
+unsafe impl Send for MyType {}
+
+// ✅ Good - document safety invariants
+// SAFETY: MyType contains only thread-safe types (AtomicU64, Arc).
+// The raw pointer field is never dereferenced, only used as an identifier.
+unsafe impl Send for MyType {}
+
+// ❌ Bad - unsafe function without safety docs
+pub unsafe fn process_raw(ptr: *mut u8, len: usize) {
+    // ...
+}
+
+// ✅ Good - document preconditions in doc comment
+/// Processes raw bytes in place.
+///
+/// # Safety
+///
+/// - `ptr` must be valid for reads and writes of `len` bytes
+/// - `ptr` must be properly aligned for u8
+/// - The memory must not be accessed by other threads during this call
+pub unsafe fn process_raw(ptr: *mut u8, len: usize) {
+    // ...
+}
+
+// ✅ Good - SAFETY comment before unsafe block (for callers)
+fn safe_wrapper(data: &mut [u8]) {
+    let ptr = data.as_mut_ptr();
+    let len = data.len();
+
+    // SAFETY: ptr and len come from a valid slice, so ptr is valid for
+    // len bytes, properly aligned, and we have exclusive access via &mut.
+    unsafe {
+        process_raw(ptr, len);
+    }
+}
+```
+
+### Unwinding Across FFI Boundaries
+
+```rust
+// If panics or foreign exceptions may cross an FFI boundary,
+// use -unwind ABI variants to avoid undefined behaviour
+
+// ❌ Dangerous - panic across FFI is UB without -unwind
+#[no_mangle]
+pub extern "C" fn might_panic() {
+    panic!("This causes UB if it unwinds into C!");
+}
+
+// ✅ Safe - use catch_unwind to prevent unwinding
+use std::panic::catch_unwind;
+
+#[no_mangle]
+pub extern "C" fn safe_function() -> i32 {
+    match catch_unwind(|| {
+        // Rust code that might panic
+        risky_operation()
+    }) {
+        Ok(result) => result,
+        Err(_) => -1,  // Return error code instead of unwinding
+    }
+}
+
+// ✅ Safe - use C-unwind if unwinding is intentional (Rust 2024+)
+#[no_mangle]
+pub extern "C-unwind" fn can_unwind() {
+    panic!("This can safely unwind through C++ code");
+}
+
+// Calling foreign functions that might throw
+unsafe extern "C-unwind" {
+    fn cpp_function_that_throws();
+}
+```
+
+### Common FFI Patterns
+
+```rust
+// Error handling across FFI boundary
+#[repr(C)]
+pub enum ErrorCode {
+    Success = 0,
+    NullPointer = -1,
+    InvalidArgument = -2,
+    BufferTooSmall = -3,
+    InternalError = -99,
+}
+
+// Thread-local error message
+thread_local! {
+    static LAST_ERROR: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
+}
+
+fn set_last_error(msg: String) {
+    LAST_ERROR.with(|e| *e.borrow_mut() = Some(msg));
+}
+
+#[no_mangle]
+pub extern "C" fn get_last_error() -> *const c_char {
+    LAST_ERROR.with(|e| {
+        e.borrow()
+            .as_ref()
+            .map(|s| s.as_ptr() as *const c_char)
+            .unwrap_or(std::ptr::null())
+    })
+}
+
+// Callback pattern
+type Callback = extern "C" fn(data: *const u8, len: usize, user_data: *mut std::ffi::c_void);
+
+#[no_mangle]
+pub extern "C" fn process_with_callback(
+    input: *const u8,
+    input_len: usize,
+    callback: Callback,
+    user_data: *mut std::ffi::c_void,
+) -> ErrorCode {
+    if input.is_null() || input_len == 0 {
+        return ErrorCode::NullPointer;
+    }
+
+    let data = unsafe { std::slice::from_raw_parts(input, input_len) };
+
+    // Process and invoke callback
+    let result = process_internal(data);
+    callback(result.as_ptr(), result.len(), user_data);
+
+    ErrorCode::Success
+}
+```
+
+### Miri for Unsafe Code Verification
+
+```bash
+# Install Miri
+rustup +nightly component add miri
+
+# Run tests under Miri (detects undefined behaviour)
+cargo +nightly miri test
+
+# Run specific test
+cargo +nightly miri test test_unsafe_buffer
+
+# Common issues Miri catches:
+#
+# - Use after free
+# - Out of bounds access
+# - Invalid pointer alignment
+# - Data races
+# - Uninitialised memory reads
+```
+
+---
+
+## 8 Common Rust Mistakes
+
+### 1. Using String When &str Works
+
+```rust
+// ❌ Bad - forces allocation for callers
+fn greet(name: String) {
+    println!("Hello, {}!", name);
+}
+
+// Caller must allocate:
+greet("world".to_string());  // Unnecessary allocation
+
+// ✅ Good - accept reference
+fn greet(name: &str) {
+    println!("Hello, {}!", name);
+}
+
+// Works with both:
+greet("world");                    // &str directly
+greet(&my_string);                 // &String coerces to &str
+greet(&format!("user_{}", id));    // Temporary works too
+```
+
+### 2. Excessive Cloning
+
+```rust
+// ❌ Bad - clone to avoid borrow checker
+fn process(data: &Data) {
+    let cloned = data.clone();  // Expensive copy
+    for item in cloned.items {
+        println!("{}", item);
+    }
+}
+
+// ✅ Good - borrow instead
+fn process(data: &Data) {
+    for item in &data.items {
+        println!("{}", item);
+    }
+}
+
+// ❌ Bad - clone in loop
+for item in &items {
+    let owned = item.name.clone();  // N allocations
+    results.push(owned);
+}
+
+// ✅ Good - clone only when needed
+let results: Vec<&str> = items.iter()
+    .map(|item| item.name.as_str())
+    .collect();
+```
+
+### 3. Over-using unwrap()
+
+```rust
+// ❌ Bad - panic in production
+fn get_user(id: u64) -> User {
+    let user = database.get(id).unwrap();  // Panics if not found
+    user
+}
+
+// ✅ Good - return Result
+fn get_user(id: u64) -> Result<User, UserError> {
+    database.get(id).ok_or(UserError::NotFound(id))
+}
+
+// ✅ Good - return Option
+fn get_user(id: u64) -> Option<User> {
+    database.get(id)
+}
+
+// ✅ OK - unwrap with guaranteed invariant
+fn first_char(s: &str) -> char {
+    assert!(!s.is_empty(), "precondition: non-empty string");
+    s.chars().next().unwrap()  // Safe due to assertion
+}
+
+// ✅ OK - expect with clear message (for truly impossible cases)
+let home = std::env::var("HOME")
+    .expect("HOME environment variable must be set");
+```
+
+### 4. Manual Memory Management Mindset
+
+```rust
+// ❌ Bad - C-style thinking
+let mut ptr = Box::new(value);
+// ... use ptr ...
+drop(ptr);  // Unnecessary - Rust drops automatically
+
+// ❌ Bad - manual null checks
+let mut data: Option<Box<Data>> = None;
+// ...
+if data.is_some() {
+    // ...
+}
+
+// ✅ Good - let Rust manage it
+{
+    let data = Box::new(value);
+    // ... use data ...
+}  // Automatically dropped here
+
+// ✅ Good - use pattern matching
+if let Some(data) = &data {
+    process(data);
+}
+```
+
+### 5. Ignoring Compiler Errors
+
+```rust
+// The Rust compiler is your friend!
+
+// ❌ Bad - ignore and add random &, *, clone
+fn process(data: &Vec<String>) {
+    let first = &*data[0].clone();  // Confused symbols
+
+// ✅ Good - read the error message
+// error[E0507]: cannot move out of index
+// help: consider borrowing here: `&data[0]`
+
+fn process(data: &[String]) {
+    let first = &data[0];  // Follow compiler suggestion
+}
+
+// Compiler errors usually tell you exactly what to do:
+// - "consider borrowing" -> add &
+// - "consider using clone" -> add .clone() (but think first!)
+// - "lifetime may not live long enough" -> check lifetime annotations
+```
+
+### 6. Complex Nested Loops Instead of Iterators
+
+```rust
+// ❌ Bad - imperative with nested loops
+let mut result = Vec::new();
+for user in &users {
+    if user.active {
+        for order in &user.orders {
+            if order.total > 100.0 {
+                result.push(order.id);
+            }
+        }
+    }
+}
+
+// ✅ Good - iterator chain
+let result: Vec<_> = users
+    .iter()
+    .filter(|u| u.active)
+    .flat_map(|u| &u.orders)
+    .filter(|o| o.total > 100.0)
+    .map(|o| o.id)
+    .collect();
+
+// ❌ Bad - manual index tracking
+let mut i = 0;
+while i < data.len() {
+    process(&data[i]);
+    i += 1;
+}
+
+// ✅ Good - iterator
+for item in &data {
+    process(item);
+}
+
+// With index if needed
+for (i, item) in data.iter().enumerate() {
+    process(i, item);
+}
+```
+
+### 7. Not Using rustfmt and clippy
+
+```rust
+// ❌ Bad - inconsistent formatting
+fn process(x:i32,y:i32)->i32{
+if x>y {x}else{y}}
+
+// ✅ Good - run rustfmt
+fn process(x: i32, y: i32) -> i32 {
+    if x > y { x } else { y }
+}
+
+// Set up in your project:
+// $ rustfmt --check src/**/*.rs  # CI
+// $ cargo fmt                     # Auto-format
+
+// Clippy catches common mistakes:
+// $ cargo clippy -- -D warnings
+
+// Example clippy catches:
+// - .iter().map().collect() -> .to_vec()
+// - if let Some(_) = x -> if x.is_some()
+// - x.clone().clone() -> x.clone()
+```
+
+### 8. Fighting the Borrow Checker
+
+```rust
+// ❌ Bad - fighting with RefCell/Rc everywhere
+use std::cell::RefCell;
+use std::rc::Rc;
+
+struct Node {
+    value: i32,
+    children: RefCell<Vec<Rc<RefCell<Node>>>>,
+    parent: RefCell<Option<Rc<RefCell<Node>>>>,
+}
+
+// ✅ Good - restructure to work with ownership
+// Option 1: Arena allocation
+struct Tree {
+    nodes: Vec<Node>,
+}
+
+struct Node {
+    value: i32,
+    children: Vec<usize>,  // Indices into nodes vec
+    parent: Option<usize>,
+}
+
+// Option 2: Separate structure from references
+struct TreeData {
+    values: Vec<i32>,
+    children: Vec<Vec<usize>>,
+    parents: Vec<Option<usize>>,
+}
+
+// Option 3: Accept the ownership model
+struct OwnedTree {
+    value: i32,
+    children: Vec<OwnedTree>,  // Children are owned
+}
+
+// ✅ Good - use indices for graph structures
+struct Graph {
+    nodes: Vec<NodeData>,
+    edges: Vec<(usize, usize)>,
+}
+```
+
+---
+
+## AI Pitfalls to Avoid
+
+The following sections are specific guidance for AI code assistants working with Rust.
+
+> **CRITICAL: Web Search Before ANY Crate Usage**
+>
+> AI models are ALWAYS out of date with the Rust ecosystem. Your training data
+> contains deprecated crates, old API patterns, and superseded libraries.
+> **EVERY TIME** you reference a crate, dependency, or Rust API:
+>
+> 1. **Web search for the current version** — your training data version is wrong
+> 2. **Web search whether the crate has been superseded** — entire libraries get
+>    replaced (serde_yaml → serde_yaml_ng, atty → std::io::IsTerminal)
+> 3. **Web search for the current API** — axum 0.8 changed path syntax from
+>    `/:param` to `/{param}`, thiserror 2.x has different derives, etc.
+>
+> Do NOT rely on "I know this crate" — you don't know the CURRENT version.
+> See the [Deprecated / Superseded Crates](#deprecated--superseded-crates--do-not-use)
+> table above. That table is illustrative, not exhaustive. **Always search.**
+>
+> For HyperI projects: check if `hyperi-rustlib` already provides what you need
+> before reaching for any third-party crate. See [hyperi-rustlib](#hyperi-rustlib).
+
+### DO NOT Generate
+
+```rust
+// ❌ Using unwrap() in production code
+let value = some_option.unwrap();  // Panics on None
+let data = result.unwrap();        // Panics on Err
+// ✅ Handle errors properly
+let value = some_option.ok_or_else(|| Error::MissingValue)?;
+let value = some_option.unwrap_or_default();
+let data = result.map_err(|e| Error::Processing(e))?;
+
+// ❌ Using expect() without good reason
+let config = load_config().expect("config");  // Cryptic panic
+// ✅ Meaningful error or proper handling
+let config = load_config().expect("Failed to load config from config.toml");
+let config = load_config()?;  // Propagate error
+
+// ❌ Cloning to avoid borrow checker
+let data = expensive_data.clone();  // Performance hit
+process(&data);
+// ✅ Use references properly
+process(&expensive_data);  // Borrow instead
+
+// ❌ Using String when &str works
+fn greet(name: String) {  // Forces allocation
+// ✅ Accept reference
+fn greet(name: &str) {    // Works with &String, &str, String
+
+// ❌ Blocking in async code
+async fn fetch() {
+    std::thread::sleep(Duration::from_secs(1));  // Blocks executor
+}
+// ✅ Use async sleep
+async fn fetch() {
+    tokio::time::sleep(Duration::from_secs(1)).await;
+}
+
+// ❌ Using panic! for errors
+if !valid {
+    panic!("Invalid input");  // Crashes program
+}
+// ✅ Return Result
+if !valid {
+    return Err(Error::InvalidInput);
+}
+```
+
+### Lifetime Patterns
+
+```rust
+// ❌ Incorrect lifetime annotations
+fn longest(x: &str, y: &str) -> &str {  // Missing lifetime
+// ✅ Explicit lifetimes
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+
+// ❌ Storing references in structs without lifetimes
+struct Parser {
+    input: &str,  // Won't compile
+}
+// ✅ Add lifetime parameter
+struct Parser<'a> {
+    input: &'a str,
+}
+// Or use owned types
+struct Parser {
+    input: String,
+}
+```
+
+### Error Handling Pitfalls
+
+```rust
+// ❌ Using Box<dyn Error> in libraries
+fn process() -> Result<(), Box<dyn std::error::Error>> {
+// ✅ Define custom error type
+#[derive(Debug, thiserror::Error)]
+enum ProcessError {
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Parse error: {0}")]
+    Parse(#[from] serde_json::Error),
+}
+fn process() -> Result<(), ProcessError> {
+
+// ❌ Ignoring Result
+let _ = file.write_all(data);  // Silently ignores errors
+// ✅ Handle or propagate
+file.write_all(data)?;
+```
+
+### Crate Verification
+
+```rust
+// ❌ These may be hallucinations - verify on crates.io:
+use tokio_utils::...;        // Check if it exists
+use serde_helpers::...;      // Often wrong
+use actix_web_extras::...;   // Version may differ
+
+// ✅ Well-known crates:
+// tokio, serde, anyhow, thiserror, tracing, clap, axum, reqwest
+// rayon, dashmap, parking_lot, memchr, sonic-rs, criterion
+```
+
+### Deprecated / Superseded Crates — Do NOT Use
+
+| Wrong (Stale) | Correct (Current) | Why |
+|---|---|---|
+| `serde_yaml` | `serde_yaml_ng` (or `serde_yml`) | `serde_yaml` archived March 2024, unmaintained |
+| `atty` | `std::io::IsTerminal` (std since 1.70) | `atty` unmaintained, has unaligned read bug |
+| `actix-web` (new projects) | `axum` 0.8+ | axum is the ecosystem standard, tower-native |
+| `thiserror` 1.x | `thiserror` 2.x | Major version with improved derives |
+| `warp` | `axum` | warp is maintenance-only |
+| `hyper` directly | `axum` (uses hyper internally) | Unless you need raw HTTP/2 control |
+| `structopt` | `clap` 4.x with derive | structopt merged into clap |
+| `dotenv` | `dotenvy` | dotenv unmaintained, dotenvy is the fork |
+| `chrono` (new code) | `time` or `jiff` | chrono works but `time` is lighter; `jiff` for civil time |
+| `reqwest` blocking in async | `reqwest` async client | Never use `reqwest::blocking` inside tokio |
+
+### Recommended Crate Stack (March 2026)
+
+| Category | Crate | Version | Notes |
+|---|---|---|---|
+| **Async runtime** | `tokio` | >=1.50 | Multi-threaded, LTS releases |
+| **HTTP framework** | `axum` | >=0.8.8 | `/{param}` syntax (not `/:param`) |
+| **HTTP middleware** | `tower-http` | >=0.6.8 | timeout, trace, compression, cors |
+| **HTTP client** | `reqwest` | >=0.12 | Async, HTTP/2, JSON |
+| **Serialisation** | `serde` + `serde_json` | >=1.0 | Universal |
+| **SIMD JSON** | `sonic-rs` | >=0.5 | SIMD-accelerated, zero-copy, `Bytes` integration |
+| **YAML** | `serde_yaml_ng` | >=0.10 | Maintained fork of serde_yaml |
+| **Error (libraries)** | `thiserror` | >=2.0 | Custom error types with derive |
+| **Error (apps)** | `anyhow` | >=1.0 | Context-rich error propagation |
+| **Tracing** | `tracing` + `tracing-subscriber` | >=0.1 / >=0.3 | Structured logging + spans |
+| **OTel** | `opentelemetry` + `opentelemetry-otlp` | >=0.31 | OTLP export, retry with backoff |
+| **Metrics** | `metrics` + `metrics-exporter-prometheus` | >=0.24 | Prometheus native |
+| **CLI** | `clap` | >=4.5 | Derive macros, env support |
+| **SQL** | `sqlx` | >=0.8 | Compile-time checked queries |
+| **String search** | `memchr` | >=2.7 | SIMD byte/string search |
+| **Concurrency** | `dashmap`, `parking_lot`, `crossbeam` | latest | Lock-free maps, faster mutexes |
+| **Small strings** | `compact_str` | >=0.8 | 24-byte SSO, no heap for short strings |
+| **Resilience** | `tower-resilience` | >=0.4 | Circuit breaker, bulkhead, retry |
+| **Arena alloc** | `bumpalo` | >=3.16 | Bump allocation for batch lifetimes |
+| **Benchmarks** | `criterion` | >=0.5 | Statistical benchmarking |
+| **Coverage** | `cargo-tarpaulin` | latest | Code coverage |
+| **Test runner** | `cargo-nextest` | latest | Parallel, better output |
+
+---
+
+## Coming from Other Languages
+
+If you're new to Rust from another language, here's what will trip you up.
+
+### From Python
+
+**The borrow checker will hurt at first.** In Python everything is a reference and the GC sorts it out. In Rust you must think about ownership. Start by cloning liberally (it's fine for learning), then optimise once you understand the patterns.
+
+```rust
+// ❌ Fails - data moved
+let data = vec![1, 2, 3];
+process(data);
+process(data);  // Error: value used after move
+
+// ✅ Clone when learning (refactor later)
+let data = vec![1, 2, 3];
+process(data.clone());
+process(data);
+
+// ✅ Better: borrow
+fn process(data: &[i32]) { ... }
+process(&data);
+process(&data);
+```
+
+**No exceptions.** Use `Result<T, E>` and the `?` operator. It's actually nicer than try/catch once you get used to it.
+
+**No `None` as a default.** `Option<T>` is explicit. No `AttributeError` at runtime.
+
+### From Go
+
+**Error handling is similar** - Rust's `Result<T, E>` is like Go's `(T, error)` but type-safe. You can't ignore errors without explicitly calling `.unwrap()`.
+
+```rust
+// Go-ish pattern
+result := doThing()
+if result.Err != nil {
+    return result.Err
+}
+
+// Rust - cleaner with ?
+let result = do_thing()?;  // Returns early if Err
+```
+
+**No nil.** Rust has `Option<T>` which forces you to handle the `None` case. No more nil pointer panics.
+
+**Generics are more powerful** but also more complex. Start simple, add bounds when the compiler complains.
+
+**No goroutines.** Rust async is different - you need a runtime (Tokio). Threads are also available if you prefer the Go mental model.
+
+### From TypeScript/JavaScript
+
+**Types are not optional.** Every value has a concrete type at compile time. No `any` escape hatch.
+
+**No garbage collection.** Ownership rules replace the GC. Variables are dropped when they go out of scope.
+
+**String handling is explicit.** `String` vs `&str` - owned vs borrowed. Coming from JS where strings just work, this takes adjustment.
+
+```rust
+// ❌ Won't compile
+fn greet(name: String) { ... }
+greet("world");  // &str not String
+
+// ✅ Accept reference
+fn greet(name: &str) { ... }
+greet("world");
+greet(&my_string);
+```
+
+**No null or undefined.** Use `Option<T>` for "might not exist".
+
+### From C/C++
+
+**You'll feel at home** but safer. The borrow checker does at compile time what you did mentally (or forgot and got a segfault).
+
+**No manual memory management.** Forget `malloc`/`free`. Rust handles it. You can opt into manual control with `unsafe` but you shouldn't need it for most code.
+
+**No header files.** Modules and `pub` visibility handle API exposure.
+
+**Macros are different.** Rust macros are hygienic and operate on the AST, not text substitution. They're powerful but different from C preprocessor macros.
+
+### Common Gotchas for Everyone
+
+| Coming From | Gotcha | Rust Way |
+|-------------|--------|----------|
+| Python | Everything is mutable | `let mut` for mutability |
+| Go | `nil` everywhere | `Option<T>` is explicit |
+| TypeScript | `any` escape hatch | No escape - fix the types |
+| C | Manual memory management | Ownership system |
+| Java | Everything is a reference | Value types by default |
+| All | Exceptions | `Result<T, E>` + `?` |
+
+### The Mindset Shift
+
+Rust will reject your first attempts. This is normal. The compiler is teaching you patterns that prevent bugs. Once you stop fighting it and start listening, code that compiles tends to work.
+
+Key realisation: **The compiler is your pair programmer.** Read the error messages - they usually tell you exactly what to fix.
+
+---
+
 ## Resources
 
 ### Official Documentation
@@ -6100,3 +6113,5 @@ impl PatternMatcher {
 - tracing: <https://docs.rs/tracing/>
 - rayon: <https://docs.rs/rayon/>
 - tokio: <https://docs.rs/tokio/>
+
+---
