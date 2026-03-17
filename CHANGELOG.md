@@ -1,3 +1,10 @@
+## [3.4.9](https://github.com/hyperi-io/hyperi-ai/compare/3.4.8...3.4.9) (2026-03-17)
+
+
+### Bug Fixes
+
+* make regenerate-rules job non-blocking, use default token ([377b41d](https://github.com/hyperi-io/hyperi-ai/commit/377b41d6c5b7e769a221acb8d474c1d9e7a06370))
+
 ## [3.4.8](https://github.com/hyperi-io/hyperi-ai/compare/3.4.7...3.4.8) (2026-03-17)
 
 
