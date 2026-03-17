@@ -1,17 +1,112 @@
 ---
-name: linear-tickets-standards
-description: Standards for creating, updating, and managing Linear tickets at HyperI. Includes format, labels, and AI assistant guidance.
+name: issue-tracking-standards
+description: Issue tracking standards for HyperI. GitHub Issues for bugs and repo-specific work, Linear for broader initiatives. Includes GH issue templates and Linear ticket format.
 ---
 
-# Linear Ticket Standard
+# Issue Tracking Standards
 
-Standards for creating, updating, and managing Linear tickets at HyperI.
-
-**Goal:** Read this file → ask your AI assistant to create/update/find Linear tickets.
+Two-tier issue tracking: **GitHub Issues first**, Linear for broader work.
 
 ---
 
-## Quick Start
+## The Rule
+
+| Type of Work | Track In | Why |
+|---|---|---|
+| Bugs, defects, repo-specific tasks | **GitHub Issues** (on the repo) | Close to the code, linked to PRs/commits |
+| Broader initiatives, epics, cross-repo work | **Linear** | Project-level view, sprint planning |
+| Collation of multiple GH Issues into a theme | **Linear** (with links to GH Issues) | Bird's-eye view |
+
+**Default: GitHub Issues.** If it's about one repo, it's a GitHub Issue.
+Linear is for when you need to see the bigger picture across repos.
+
+---
+
+## GitHub Issues — Best Practice
+
+### Issue Templates
+
+Every repo should have `.github/ISSUE_TEMPLATE/` with at least:
+
+**bug_report.md:**
+```yaml
+---
+name: Bug Report
+about: Report a defect
+labels: ["bug"]
+---
+
+## What happened?
+<!-- Clear, concise description -->
+
+## Expected behaviour
+<!-- What should have happened -->
+
+## Steps to reproduce
+1.
+2.
+3.
+
+## Environment
+- OS:
+- Version:
+- Relevant config:
+```
+
+**feature_request.md:**
+```yaml
+---
+name: Feature Request
+about: Suggest a new feature or improvement
+labels: ["enhancement"]
+---
+
+## Goal
+<!-- One sentence: what should this achieve? -->
+
+## Proposed approach
+<!-- How would you implement this? -->
+
+## Definition of Done
+- [ ]
+- [ ]
+```
+
+### GH Issue Rules
+
+- Use labels: `bug`, `enhancement`, `documentation`, `security`, `performance`
+- Link PRs to issues: `Fixes #123` in commit message
+- Close issues via PR merge — don't close manually
+- Reference in branch names: `fix/123/description`
+
+---
+
+## Linear — Broader Initiatives
+
+Linear is for project management, sprint planning, and cross-repo coordination.
+
+### When to Use Linear
+
+- Epic spanning multiple repositories
+- Sprint planning and velocity tracking
+- Product roadmap items
+- Collating multiple GH Issues into a deliverable
+
+### Linking to GitHub Issues
+
+Every Linear ticket that relates to code work **must link** to the relevant
+GitHub Issues. Use the Linear-GitHub integration or add URLs manually:
+
+```markdown
+## Related GitHub Issues
+- hyperi-io/dfe-engine#123 — Schema migration
+- hyperi-io/dfe-loader#456 — Parser update
+- hyperi-io/dfe-core#789 — Helm chart changes
+```
+
+---
+
+## Linear CLI Quick Start
 
 ```bash
 # Install Linear CLI
