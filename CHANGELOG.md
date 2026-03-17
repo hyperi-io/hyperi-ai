@@ -1,3 +1,10 @@
+## [3.3.0](https://github.com/hyperi-io/hyperi-ai/compare/3.2.1...3.3.0) (2026-03-17)
+
+
+### Features
+
+* LLM-powered compact rules generator (replaces bullet extractor) ([52ccb32](https://github.com/hyperi-io/hyperi-ai/commit/52ccb3275f4284a7b391ce52604f51dca3acf7d7))
+
 ## [3.2.1](https://github.com/hyperi-io/hyperi-ai/compare/3.2.0...3.2.1) (2026-03-17)
 
 
