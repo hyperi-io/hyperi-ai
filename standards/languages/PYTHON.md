@@ -34,25 +34,22 @@ paths:
 
 ## Table of Contents
 
-1. [HyperI Python Design Philosophy](#hyperi-python-design-philosophy) — why Python, when Python, when Rust
-2. [AI Anti-Patterns](#critical-ai-models-get-python-wrong) — deprecated packages, web-search-first, slopsquatting
-3. [hyperi-pylib](#hyperi-pylib) — org shared library (config, logging, metrics, HTTP, Kafka, secrets)
-4. [Quick Reference](#quick-reference) — CI commands
-5. [Python 3.12+ Features](#python-312-features-to-use) — generics, match/case, walrus, StrEnum, TaskGroup
-6. [Type Hints](#type-hints-required) — modern syntax, annotations
-7. [Code Style](#code-style-clarity-over-cleverness) — clarity rules, Google patterns, naming, formatting
-8. [Modern Patterns](#modern-patterns) — dataclasses, Pydantic, Protocols, DI, generators
-9. [Async & Concurrency](#async--concurrency) — asyncio, TaskGroup, threading, decision matrix
-10. [Container Deployment](#container-deployment-docker--k8s) — Docker, K8s, health checks, graceful shutdown
-11. [Dependencies (uv)](#dependencies-uv) — uv-first policy
-12. [Package Structure](#package-structure) — src layout, tests
-13. [Configuration and Logging](#configuration-and-logging-hyperi-pylib) — cascade, structured logging
-14. [Security](#security-standards) — bandit, SQL injection, secrets
-15. [Testing](#testing--no-mocks-policy) — no mocks, testcontainers, fixtures
-16. [Production Controls](#production-at-scale--controls) — CI enforcement, exceptions, Nuitka
-17. [Tooling](#ruff-configuration) — ruff, black, pyright/ty
-18. [For AI Assistants](#for-ai-code-assistants) — package verification, pitfalls
-19. [Resources](#resources)
+1. [Design Philosophy](#hyperi-python-design-philosophy) — why Python, when Rust instead
+2. [AI Anti-Patterns](#critical-ai-models-get-python-wrong) — deprecated packages, web-search-first
+3. [Quick Reference](#quick-reference) — CI commands
+4. [Python 3.12+ Features](#python-312-features-to-use) — generics, walrus, StrEnum, TaskGroup, tomllib
+5. [Type Hints](#type-hints-required) — modern syntax, annotations
+6. [Code Style](#code-style-clarity-over-cleverness) — naming, formatting, imports, clarity, Google rules
+7. [Modern Patterns](#modern-patterns) — dataclasses, Pydantic, Protocols, DI, generators
+8. [Async & Concurrency](#async--concurrency) — asyncio, TaskGroup, threading, decision matrix
+9. [Container Deployment](#container-deployment-docker--k8s) — Docker, K8s, health checks, shutdown
+10. [hyperi-pylib](#hyperi-pylib) — config, logging, metrics, HTTP, Kafka, secrets
+11. [Dependencies (uv)](#dependencies-uv) — uv-first, version pinning, update policy
+12. [Security](#security-standards) — bandit, SQL injection, secrets
+13. [Testing](#testing--no-mocks-policy) — no mocks, testcontainers, fixtures
+14. [Production Controls](#production-at-scale--controls) — CI enforcement, exceptions, Nuitka
+15. [For AI Assistants](#for-ai-code-assistants) — package verification, slopsquatting, pitfalls
+16. [Resources](#resources)
 
 ---
 
@@ -207,175 +204,17 @@ logger.info("Processing records", count=len(records))
 
 ---
 
-## hyperi-pylib
+## Quick Reference
 
-> **This section applies when `hyperi-pylib` is in `pyproject.toml`.**
-> For non-HyperI projects, skip this section and use the generic patterns.
+**Setup:** `uv tool install hyperi-ci && hyperi-ci init`
+**Dev:** `hyperi-ci check` (quality + test) or `make check`
+**Quality only:** `hyperi-ci check --quick` or `make quality`
+**Test:** `hyperi-ci run test` or `make test`
+**Build:** `hyperi-ci run build` or `make build`
 
-`hyperi-pylib` is the shared Python library for all HyperI Python projects.
-It provides config, logging, metrics, HTTP, Kafka, secrets, CLI framework,
-and more. Available on PyPI. **Use it — never roll bespoke versions of what
-it provides.**
-
-### Quick Start
-
-```toml
-# pyproject.toml
-[project]
-dependencies = [
-    "hyperi-pylib",                    # Core (logging, config, runtime, cli)
-    "hyperi-pylib[http,metrics]",      # With extras
-]
-```
-
-```python
-from hyperi_pylib.logger import logger
-from hyperi_pylib.config import settings
-from hyperi_pylib import build_database_url, get_runtime_paths
-
-# Config: 8-layer cascade is AUTOMATIC (ENV > .env > YAML > defaults)
-host = settings.database.host
-port = settings.api.port
-
-# Logging: auto-detects console vs container, masks sensitive fields
-logger.info("Service starting", version="1.0.0", host=host)
-
-# Database URLs from environment
-postgres_url = build_database_url("postgresql")
-```
-
-### Use This, Not That
-
-| ❌ Don't | ✅ Use hyperi-pylib | Module |
-|---|---|---|
-| Hand-rolled config loading | `settings.database.host` | `config` |
-| Raw `logging` / `print()` | `logger.info("msg", key=val)` | `logger` |
-| Build DB URLs manually | `build_database_url("postgresql")` | `database` |
-| Raw `httpx` with retry | `hyperi_pylib.http` (stamina retries) | `http` |
-| Raw prometheus-client | `create_metrics()` | `metrics` |
-| Raw confluent-kafka | `hyperi_pylib.kafka` | `kafka` |
-| Hand-rolled CLI with argparse | Subclass `DfeApp` | `cli` |
-| Direct Vault/AWS/GCP calls | `SecretsManager` | `secrets` |
-| Manual container detection | `get_runtime_paths()` | `runtime` |
-
-### Feature Extras
-
-```bash
-uv add "hyperi-pylib"                              # Core only
-uv add "hyperi-pylib[http,metrics]"                # Common
-uv add "hyperi-pylib[http,metrics,kafka]"          # + Kafka
-uv add "hyperi-pylib[http,metrics,kafka,opentelemetry]"  # + OTel
-```
-
-| Extra | Provides | Size |
-|---|---|---|
-| `http` | httpx + stamina retries | ~1 MB |
-| `metrics` | Prometheus client + psutil | ~1 MB |
-| `kafka` | confluent-kafka + schema inference | ~11 MB |
-| `expression` | CEL expression evaluation (Rust/PyO3) | ~6 MB |
-| `cache` | cashews + msgpack + psycopg pool | ~14 MB |
-| `opentelemetry` | OTel SDK + OTLP + Prometheus exporters | ~4 MB |
-| `secrets` | All backends (Vault + AWS + GCP + Azure) | varies |
-
----
-
-## Bash Minimalism — Call Python Instead
-
-> **"If it's getting complex, over 20 lines, or pipes to jq — it should
-> be Python."**
-
-Bash at HyperI is a thin caller wrapper only. Reasons:
-- Reliability: bash error handling is fragile
-- Portability: macOS ships bash 3.2 (2007), zsh by default — the "mac bash
-  problem"
-- Logging: Python has structured logging, bash has echo
-- Error handling: Python has exceptions, bash has `set -e` (which is unreliable)
-- Testing: Python has pytest, bash has BATS (limited)
-
-### What Bash Is For
-
-```bash
-#!/usr/bin/env bash
-# Check Python, call Python. That's it.
-set -euo pipefail
-command -v python3 >/dev/null 2>&1 || { echo "Python 3 required"; exit 1; }
-exec python3 "$(dirname "$0")/real_logic.py" "$@"
-```
-
-### What Bash Is NOT For
-
-- Parsing JSON/YAML (→ Python `json`/`pyyaml`)
-- Complex conditionals (→ Python)
-- String manipulation (→ Python)
-- Anything with `jq`, `sed`, `awk` pipelines (→ Python)
-- Anything over ~20 lines (→ Python)
-- Anything that needs to work reliably on macOS and Linux (→ Python)
-
-See `standards/languages/BASH.md` for bash standards when bash IS appropriate.
-
----
-
-## Production at Scale — Controls
-
-Python's flexibility is a risk. These controls keep "kinda works" code out of production.
-
-### Mandatory CI Enforcement
-
-| Tool | Purpose | Blocking? |
-|---|---|---|
-| `ruff` | Lint + format (replaces flake8, isort, black) | ✅ Yes |
-| `ty` / `pyright` | Type checking (catch runtime errors at dev time) | ⚠️ Warnings → ✅ Blocking |
-| `bandit` | Security static analysis (medium/high) | ✅ Yes |
-| `pip-audit` | CVE scanning of dependencies | ✅ Yes |
-| `pytest` | Test suite with coverage | ✅ Yes (80% min) |
-| `vulture` | Dead code detection | ✅ Yes |
-
-### Exception Handling (Hyperscaler Grade)
-
-```python
-# ❌ Generic exception swallowing — THE most common production failure
-try:
-    result = process(data)
-except Exception:
-    pass  # Silent failure → data loss → customer impact
-
-# ❌ Logging without raising — error is swallowed
-try:
-    result = process(data)
-except Exception as e:
-    logger.error(f"Failed: {e}")
-    # Where does execution go? What state is the system in?
-
-# ✅ Specific exception, log with context, re-raise or handle
-try:
-    result = process(data)
-except ValidationError as e:
-    logger.warning("Validation failed", input=data.id, error=str(e))
-    raise  # Let caller decide
-except ConnectionError as e:
-    logger.error("DB unreachable", host=settings.database.host, error=str(e))
-    raise ServiceUnavailableError("Database connection failed") from e
-```
-
-### Never Use print() in Production Code
-
-```python
-# ❌ print() — goes to stdout, no level, no structure, no masking
-print(f"Processing {user.email}")  # PII leak!
-
-# ✅ Structured logging — level-aware, JSON in containers, auto-masks secrets
-logger.info("Processing user", user_id=user.id)  # No PII
-```
-
-### Nuitka Compilation (Nice to Have)
-
-Nuitka can compile Python to native binaries. Benefits: faster startup,
-single-file distribution, no Python runtime dependency. Not a hard
-requirement, but consider for CLI tools and utilities.
-
-```bash
-nuitka --standalone --onefile my_tool.py
-```
+> See `standards/universal/CI.md` and the
+> [hyperi-ci repo](https://github.com/hyperi-io/hyperi-ci) for full
+> CLI reference. hyperi-ci evolves frequently — check its docs.
 
 ---
 
@@ -497,20 +336,6 @@ query = t"SELECT * FROM users WHERE id = {user_id}"
 
 ---
 
-## Quick Reference
-
-**Setup:** `uv tool install hyperi-ci && hyperi-ci init`
-**Dev:** `hyperi-ci check` (quality + test) or `make check`
-**Quality only:** `hyperi-ci check --quick` or `make quality`
-**Test:** `hyperi-ci run test` or `make test`
-**Build:** `hyperi-ci run build` or `make build`
-
-> See `standards/universal/CI.md` and the
-> [hyperi-ci repo](https://github.com/hyperi-io/hyperi-ci) for full
-> CLI reference. hyperi-ci evolves frequently — check its docs.
-
----
-
 ## Type Hints (Required)
 
 ### Modern Syntax (Python 3.12+)
@@ -567,166 +392,6 @@ def get_user(user_id: int) -> "User":  # String annotation
     from myapp.models import User  # Runtime import
     return User.get(user_id)
 ```
-
----
-
-## Code Quality Tools
-
-**Tools:** ruff (lint + format), ty/pyright (types), bandit (security), pip-audit (CVEs)
-
-```bash
-hyperi-ci run quality    # Runs all quality checks (ruff, ty, bandit, pip-audit)
-hyperi-ci run test       # Run test suite with coverage
-# Or individually:
-ruff check . && ruff format .
-ty check src/
-bandit -r src/ -ll
-```
-
-### CI Enforcement (via hyperi-ci)
-
-| Tool | Checks | Blocking? |
-|------|--------|-----------|
-| **ruff** | PEP 8, import sorting, naming, unused code, format | ✅ Yes |
-| **ty** | Type checking (Rust-based, replaces pyright) | ⚠️ Warnings → ✅ Blocking |
-| **bandit** | Security issues (medium/high) | ✅ Yes |
-| **pip-audit** | CVE scanning of dependencies | ✅ Yes |
-| **vulture** | Dead code | ✅ Yes |
-
----
-
-## Package Structure
-
-```text
-myproject/
-├── src/mypackage/
-│   ├── __init__.py      # __version__ synced
-│   └── module.py
-├── tests/
-│   ├── unit/            # Fast, isolated
-│   ├── integration/     # Component integration
-│   └── e2e/             # End-to-end
-├── pyproject.toml       # version synced
-├── VERSION              # Source of truth
-└── uv.lock              # Commit this
-```
-
-**src/ layout:** Forces installation, prevents working directory imports
-
----
-
-## Dependencies (uv)
-
-**uv is REQUIRED for all Python work.** Both humans and AI assistants must use uv instead of native Python commands.
-
-### uv-First Policy
-
-| Task | Use | NOT |
-|------|-----|-----|
-| Create venv | `uv venv` | `python -m venv` |
-| Install deps | `uv sync` | `pip install -r` |
-| Add package | `uv add <pkg>` | `pip install <pkg>` |
-| Add dev dep | `uv add --dev <pkg>` | `pip install <pkg>` |
-| Run script | `uv run python script.py` | `python script.py` |
-| Run module | `uv run -m pytest` | `python -m pytest` |
-| Update lock | `uv lock` | `pip-compile` |
-| Show deps | `uv tree` | `pip list` |
-
-### Common Commands
-
-```bash
-uv venv                        # Create virtual environment
-uv sync --locked               # Install from lock file
-uv add <pkg>                   # Add runtime dependency
-uv add --dev <pkg>             # Add dev dependency
-uv remove <pkg>                # Remove dependency
-uv lock                        # Update lock file
-uv run python script.py        # Run with project deps
-uv run -m pytest               # Run module with deps
-./ci/run dependency-update     # CI wrapper for lock update
-```
-
-### Version Pinning & Update Policy
-
-**General rule: use `>=` version ranges, pin only when forced.**
-
-```toml
-# pyproject.toml
-[project]
-dependencies = [
-    "httpx>=0.27",              # ✅ >= range (normal)
-    "pydantic>=2.0,<3",         # ✅ >= with upper bound (major version)
-    "hyperi-pylib>=2.24",       # ✅ >= range
-    "cryptography==44.0.1",     # ⚠️ Pinned — only when you MUST
-]
-```
-
-**Rules:**
-- `>=X.Y` — default for all dependencies. Accept patches and minors.
-- `>=X.Y,<Z` — when a known breaking major version exists
-- `==X.Y.Z` — pin ONLY when a specific version has a known issue or
-  you need reproducibility for a security-critical package. Document WHY.
-- `uv.lock` — always committed. This IS your reproducible pin. The
-  `pyproject.toml` ranges are for compatibility; the lock file is for builds.
-
-**Update cadence:**
-- Dependencies MUST be updated with every code review. Add `uv lock --upgrade`
-  to the review checklist. Stale deps are a security and compatibility risk.
-- `pip-audit` runs in CI — fails on known CVEs. Update or pin immediately.
-- When updating, run the full test suite. If tests pass, update is safe.
-
-```bash
-# Update all deps to latest compatible versions
-uv lock --upgrade
-
-# Update a specific package
-uv lock --upgrade-package httpx
-
-# Check for security issues
-uv run pip-audit
-```
-
-**Risk mitigation for `>=` ranges:**
-
-The risk of `>=` is that a breaking upstream release can break your build.
-We mitigate this with multiple layers:
-
-| Risk | Mitigation |
-|---|---|
-| Breaking upstream release | `uv.lock` pins exact versions — builds are reproducible even with `>=` ranges |
-| Security vulnerability | `pip-audit` in CI catches CVEs — blocks merge until resolved |
-| Incompatible transitive deps | `uv.lock` resolves the full dependency tree — conflicts caught at lock time, not runtime |
-| Stale deps accumulating risk | Mandatory `uv lock --upgrade` at every code review — deps never drift more than a few weeks |
-| Major version break | Use `>=X.Y,<Z` upper bound for dependencies with known breaking major versions |
-
-The key insight: `pyproject.toml` ranges express **compatibility intent**.
-`uv.lock` provides **reproducible builds**. CI provides **safety gates**.
-Together, these three layers make `>=` ranges safe and maintainable.
-
-**When to pin `==`:** only when a specific version has a known regression
-that the upstream hasn't fixed, OR for security-critical packages where
-you need audit traceability. Always add a comment explaining WHY.
-
-**Deprecation warnings MUST be fixed immediately.** If `pytest` or `ruff`
-or runtime output shows a deprecation warning, address it in the current
-PR — do not defer. Deprecations become removals and then your CI breaks
-on a Python minor release with no warning.
-
-**For AI assistants:** when adding a dependency, always use `>=` not `==`.
-When reviewing code, check if `uv.lock` is stale and suggest
-`uv lock --upgrade` if deps haven't been updated recently.
-Flag any deprecation warnings in test output as must-fix.
-
-### When Native Python is Acceptable
-
-Only use native `python` or `pip` when:
-
-- Working on external projects that don't use uv
-- Modifying/extending third-party codebases
-- System-level scripts outside project context
-- No alternative exists (rare)
-
-For HyperI projects, **always use uv**.
 
 ---
 
@@ -1164,177 +829,6 @@ names = [user.name for user in users]
 
 # ❌ Avoid nested/complex - break into explicit loops
 ```
-
----
-
-## Security Standards
-
-### Bandit Thresholds
-
-**Severity:** Medium/High enforced (fails CI)
-
-```bash
-bandit -r src/ -ll  # Medium/high only
-```
-
-### Dependency Scanning
-
-**pip-audit:** Scans deps against CVE database, fails on vulnerabilities
-
-### Common Security Issues
-
-```python
-# ❌ Bad - SQL injection
-query = f"SELECT * FROM users WHERE id = {user_id}"
-
-# ✅ Good - parameterized
-query = "SELECT * FROM users WHERE id = %s"
-cursor.execute(query, (user_id,))
-
-# ❌ Bad - generic exception swallowing
-try:
-    do_something()
-except Exception:
-    pass
-
-# ✅ Good - specific exception handling
-try:
-    do_something()
-except ValueError as e:
-    logger.warning(f"Invalid value: {e}")
-    raise
-```
-
----
-
-## Temporary Files
-
-### Development/CI Work
-
-**Use `./.tmp/` for project-scoped temp operations:**
-
-- Test projects, build artifacts, scratch files, CI work
-
-### Production/Runtime Code
-
-**Use Python tempfile module (NEVER hardcode /tmp):**
-
-```python
-import tempfile
-
-# Temporary file (auto-cleanup)
-with tempfile.NamedTemporaryFile(delete=True, suffix=".dat") as tmp:
-    tmp.write(data)
-    process(tmp.name)
-# File auto-deleted, secure permissions, random name
-
-# Temporary directory (auto-cleanup)
-with tempfile.TemporaryDirectory(prefix="myapp-") as tmpdir:
-    work_in(tmpdir)
-# Directory + contents auto-deleted
-
-# Persistent app temp directory
-from pathlib import Path
-app_temp = Path(tempfile.gettempdir()) / app_name
-app_temp.mkdir(exist_ok=True, mode=0o700)  # User-only
-```
-
-### Security Rules
-
-❌ **NEVER:** Hardcode "/tmp", use predictable names, skip cleanup
-✅ **ALWAYS:** Use context managers, random names, 0o700 permissions
-
----
-
-## Ruff Configuration
-
-```toml
-# pyproject.toml
-[tool.ruff]
-line-length = 88
-select = ["E", "F", "I", "N", "UP"]
-ignore = ["E501"]  # Black handles line length
-
-[tool.ruff.lint.isort]
-force-single-line = false
-```
-
-**Common rule series:**
-
-- **E/W:** PEP 8 errors
-- **F:** Logic errors (unused imports, undefined names)
-- **I:** Import sorting (replaces isort)
-- **N:** Naming conventions
-- **UP:** Modern syntax upgrades
-
----
-
-## Black Formatting
-
-**Black** is opinionated, zero-config formatting.
-
-**Settings:** 88 chars, double quotes, trailing commas, consistent spacing
-
-```bash
-black src/            # Format
-black --check src/    # Check only
-```
-
-**Accept Black's formatting** - no bikeshedding, consistent team style
-
----
-
-## Configuration and Logging (hyperi-pylib)
-
-**Python uses hyperi-pylib for zero-config cascade and logging.**
-
-### Configuration Cascade
-
-```python
-# Zero-config - cascade is AUTOMATIC via Dynaconf
-from hyperi_pylib.config import settings
-
-# Direct attribute access (Pythonic)
-host = settings.database.host         # Cascade automatic!
-port = settings.database.port         # ENV > .env > files > defaults
-
-# Dict-style with fallback
-host = settings.get("database.host", "localhost")
-timeout = settings.get("api.timeout", 30)
-```
-
-**ENV Key Auto-Generation:**
-
-```text
-database.host         → MYAPP_DATABASE_HOST
-api.timeout           → MYAPP_API_TIMEOUT
-```
-
-### Logging
-
-```python
-# Zero-config logging with RFC 3339, sensitive masking, auto-detect console
-from hyperi_pylib import logger
-
-logger.info("Processing", user_id=123)
-logger.error("Failed", error=str(e), exc_info=True)
-```
-
-**Console (dev):** Solarized colours, emojis for levels
-**Container/CI:** RFC 3339 JSON, ASCII-only
-
-### hyperi-pylib Imports
-
-| Need | Import |
-|------|--------|
-| Logging | `from hyperi_pylib import logger` |
-| Config | `from hyperi_pylib.config import settings` |
-| Runtime paths | `from hyperi_pylib import get_runtime_paths` |
-| Database URLs | `from hyperi_pylib import build_database_url` |
-| Metrics | `from hyperi_pylib import create_metrics` |
-| CLI | `from hyperi_pylib import Application` |
-
-**Why:** Zero-config, container-aware, production-ready, ENV-based
 
 ---
 
@@ -1795,19 +1289,527 @@ logger.info("Request processed", request_id=req_id, duration_ms=42)
 
 ---
 
-## Resources
+## hyperi-pylib
 
-**Official PEPs:**
+> **This section applies when `hyperi-pylib` is in `pyproject.toml`.**
+> For non-HyperI projects, skip this section and use the generic patterns.
 
-- PEP 8 - Style Guide: <https://peps.python.org/pep-0008/>
-- PEP 257 - Docstrings: <https://peps.python.org/pep-0257/>
-- PEP 484 - Type Hints: <https://peps.python.org/pep-0484/>
+`hyperi-pylib` is the shared Python library for all HyperI Python projects.
+It provides config, logging, metrics, HTTP, Kafka, secrets, CLI framework,
+and more. Available on PyPI. **Use it — never roll bespoke versions of what
+it provides.**
 
-**Tools:**
+### Quick Start
 
-- Black: <https://black.readthedocs.io/>
-- Ruff: <https://docs.astral.sh/ruff/>
-- pyright: <https://microsoft.github.io/pyright/>
+```toml
+# pyproject.toml
+[project]
+dependencies = [
+    "hyperi-pylib",                    # Core (logging, config, runtime, cli)
+    "hyperi-pylib[http,metrics]",      # With extras
+]
+```
+
+```python
+from hyperi_pylib.logger import logger
+from hyperi_pylib.config import settings
+from hyperi_pylib import build_database_url, get_runtime_paths
+
+# Config: 8-layer cascade is AUTOMATIC (ENV > .env > YAML > defaults)
+host = settings.database.host
+port = settings.api.port
+
+# Logging: auto-detects console vs container, masks sensitive fields
+logger.info("Service starting", version="1.0.0", host=host)
+
+# Database URLs from environment
+postgres_url = build_database_url("postgresql")
+```
+
+### Use This, Not That
+
+| ❌ Don't | ✅ Use hyperi-pylib | Module |
+|---|---|---|
+| Hand-rolled config loading | `settings.database.host` | `config` |
+| Raw `logging` / `print()` | `logger.info("msg", key=val)` | `logger` |
+| Build DB URLs manually | `build_database_url("postgresql")` | `database` |
+| Raw `httpx` with retry | `hyperi_pylib.http` (stamina retries) | `http` |
+| Raw prometheus-client | `create_metrics()` | `metrics` |
+| Raw confluent-kafka | `hyperi_pylib.kafka` | `kafka` |
+| Hand-rolled CLI with argparse | Subclass `DfeApp` | `cli` |
+| Direct Vault/AWS/GCP calls | `SecretsManager` | `secrets` |
+| Manual container detection | `get_runtime_paths()` | `runtime` |
+
+### Feature Extras
+
+```bash
+uv add "hyperi-pylib"                              # Core only
+uv add "hyperi-pylib[http,metrics]"                # Common
+uv add "hyperi-pylib[http,metrics,kafka]"          # + Kafka
+uv add "hyperi-pylib[http,metrics,kafka,opentelemetry]"  # + OTel
+```
+
+| Extra | Provides | Size |
+|---|---|---|
+| `http` | httpx + stamina retries | ~1 MB |
+| `metrics` | Prometheus client + psutil | ~1 MB |
+| `kafka` | confluent-kafka + schema inference | ~11 MB |
+| `expression` | CEL expression evaluation (Rust/PyO3) | ~6 MB |
+| `cache` | cashews + msgpack + psycopg pool | ~14 MB |
+| `opentelemetry` | OTel SDK + OTLP + Prometheus exporters | ~4 MB |
+| `secrets` | All backends (Vault + AWS + GCP + Azure) | varies |
+
+---
+
+## Configuration and Logging (hyperi-pylib)
+
+**Python uses hyperi-pylib for zero-config cascade and logging.**
+
+### Configuration Cascade
+
+```python
+# Zero-config - cascade is AUTOMATIC via Dynaconf
+from hyperi_pylib.config import settings
+
+# Direct attribute access (Pythonic)
+host = settings.database.host         # Cascade automatic!
+port = settings.database.port         # ENV > .env > files > defaults
+
+# Dict-style with fallback
+host = settings.get("database.host", "localhost")
+timeout = settings.get("api.timeout", 30)
+```
+
+**ENV Key Auto-Generation:**
+
+```text
+database.host         → MYAPP_DATABASE_HOST
+api.timeout           → MYAPP_API_TIMEOUT
+```
+
+### Logging
+
+```python
+# Zero-config logging with RFC 3339, sensitive masking, auto-detect console
+from hyperi_pylib import logger
+
+logger.info("Processing", user_id=123)
+logger.error("Failed", error=str(e), exc_info=True)
+```
+
+**Console (dev):** Solarized colours, emojis for levels
+**Container/CI:** RFC 3339 JSON, ASCII-only
+
+### hyperi-pylib Imports
+
+| Need | Import |
+|------|--------|
+| Logging | `from hyperi_pylib import logger` |
+| Config | `from hyperi_pylib.config import settings` |
+| Runtime paths | `from hyperi_pylib import get_runtime_paths` |
+| Database URLs | `from hyperi_pylib import build_database_url` |
+| Metrics | `from hyperi_pylib import create_metrics` |
+| CLI | `from hyperi_pylib import Application` |
+
+**Why:** Zero-config, container-aware, production-ready, ENV-based
+
+---
+
+## Dependencies (uv)
+
+**uv is REQUIRED for all Python work.** Both humans and AI assistants must use uv instead of native Python commands.
+
+### uv-First Policy
+
+| Task | Use | NOT |
+|------|-----|-----|
+| Create venv | `uv venv` | `python -m venv` |
+| Install deps | `uv sync` | `pip install -r` |
+| Add package | `uv add <pkg>` | `pip install <pkg>` |
+| Add dev dep | `uv add --dev <pkg>` | `pip install <pkg>` |
+| Run script | `uv run python script.py` | `python script.py` |
+| Run module | `uv run -m pytest` | `python -m pytest` |
+| Update lock | `uv lock` | `pip-compile` |
+| Show deps | `uv tree` | `pip list` |
+
+### Common Commands
+
+```bash
+uv venv                        # Create virtual environment
+uv sync --locked               # Install from lock file
+uv add <pkg>                   # Add runtime dependency
+uv add --dev <pkg>             # Add dev dependency
+uv remove <pkg>                # Remove dependency
+uv lock                        # Update lock file
+uv run python script.py        # Run with project deps
+uv run -m pytest               # Run module with deps
+./ci/run dependency-update     # CI wrapper for lock update
+```
+
+### Version Pinning & Update Policy
+
+**General rule: use `>=` version ranges, pin only when forced.**
+
+```toml
+# pyproject.toml
+[project]
+dependencies = [
+    "httpx>=0.27",              # ✅ >= range (normal)
+    "pydantic>=2.0,<3",         # ✅ >= with upper bound (major version)
+    "hyperi-pylib>=2.24",       # ✅ >= range
+    "cryptography==44.0.1",     # ⚠️ Pinned — only when you MUST
+]
+```
+
+**Rules:**
+- `>=X.Y` — default for all dependencies. Accept patches and minors.
+- `>=X.Y,<Z` — when a known breaking major version exists
+- `==X.Y.Z` — pin ONLY when a specific version has a known issue or
+  you need reproducibility for a security-critical package. Document WHY.
+- `uv.lock` — always committed. This IS your reproducible pin. The
+  `pyproject.toml` ranges are for compatibility; the lock file is for builds.
+
+**Update cadence:**
+- Dependencies MUST be updated with every code review. Add `uv lock --upgrade`
+  to the review checklist. Stale deps are a security and compatibility risk.
+- `pip-audit` runs in CI — fails on known CVEs. Update or pin immediately.
+- When updating, run the full test suite. If tests pass, update is safe.
+
+```bash
+# Update all deps to latest compatible versions
+uv lock --upgrade
+
+# Update a specific package
+uv lock --upgrade-package httpx
+
+# Check for security issues
+uv run pip-audit
+```
+
+**Risk mitigation for `>=` ranges:**
+
+The risk of `>=` is that a breaking upstream release can break your build.
+We mitigate this with multiple layers:
+
+| Risk | Mitigation |
+|---|---|
+| Breaking upstream release | `uv.lock` pins exact versions — builds are reproducible even with `>=` ranges |
+| Security vulnerability | `pip-audit` in CI catches CVEs — blocks merge until resolved |
+| Incompatible transitive deps | `uv.lock` resolves the full dependency tree — conflicts caught at lock time, not runtime |
+| Stale deps accumulating risk | Mandatory `uv lock --upgrade` at every code review — deps never drift more than a few weeks |
+| Major version break | Use `>=X.Y,<Z` upper bound for dependencies with known breaking major versions |
+
+The key insight: `pyproject.toml` ranges express **compatibility intent**.
+`uv.lock` provides **reproducible builds**. CI provides **safety gates**.
+Together, these three layers make `>=` ranges safe and maintainable.
+
+**When to pin `==`:** only when a specific version has a known regression
+that the upstream hasn't fixed, OR for security-critical packages where
+you need audit traceability. Always add a comment explaining WHY.
+
+**Deprecation warnings MUST be fixed immediately.** If `pytest` or `ruff`
+or runtime output shows a deprecation warning, address it in the current
+PR — do not defer. Deprecations become removals and then your CI breaks
+on a Python minor release with no warning.
+
+**For AI assistants:** when adding a dependency, always use `>=` not `==`.
+When reviewing code, check if `uv.lock` is stale and suggest
+`uv lock --upgrade` if deps haven't been updated recently.
+Flag any deprecation warnings in test output as must-fix.
+
+### When Native Python is Acceptable
+
+Only use native `python` or `pip` when:
+
+- Working on external projects that don't use uv
+- Modifying/extending third-party codebases
+- System-level scripts outside project context
+- No alternative exists (rare)
+
+For HyperI projects, **always use uv**.
+
+---
+
+## Package Structure
+
+```text
+myproject/
+├── src/mypackage/
+│   ├── __init__.py      # __version__ synced
+│   └── module.py
+├── tests/
+│   ├── unit/            # Fast, isolated
+│   ├── integration/     # Component integration
+│   └── e2e/             # End-to-end
+├── pyproject.toml       # version synced
+├── VERSION              # Source of truth
+└── uv.lock              # Commit this
+```
+
+**src/ layout:** Forces installation, prevents working directory imports
+
+---
+
+## Ruff Configuration
+
+```toml
+# pyproject.toml
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I", "N", "UP"]
+ignore = ["E501"]  # Black handles line length
+
+[tool.ruff.lint.isort]
+force-single-line = false
+```
+
+**Common rule series:**
+
+- **E/W:** PEP 8 errors
+- **F:** Logic errors (unused imports, undefined names)
+- **I:** Import sorting (replaces isort)
+- **N:** Naming conventions
+- **UP:** Modern syntax upgrades
+
+---
+
+## Black Formatting
+
+**Black** is opinionated, zero-config formatting.
+
+**Settings:** 88 chars, double quotes, trailing commas, consistent spacing
+
+```bash
+black src/            # Format
+black --check src/    # Check only
+```
+
+**Accept Black's formatting** - no bikeshedding, consistent team style
+
+---
+
+## Security Standards
+
+### Bandit Thresholds
+
+**Severity:** Medium/High enforced (fails CI)
+
+```bash
+bandit -r src/ -ll  # Medium/high only
+```
+
+### Dependency Scanning
+
+**pip-audit:** Scans deps against CVE database, fails on vulnerabilities
+
+### Common Security Issues
+
+```python
+# ❌ Bad - SQL injection
+query = f"SELECT * FROM users WHERE id = {user_id}"
+
+# ✅ Good - parameterized
+query = "SELECT * FROM users WHERE id = %s"
+cursor.execute(query, (user_id,))
+
+# ❌ Bad - generic exception swallowing
+try:
+    do_something()
+except Exception:
+    pass
+
+# ✅ Good - specific exception handling
+try:
+    do_something()
+except ValueError as e:
+    logger.warning(f"Invalid value: {e}")
+    raise
+```
+
+---
+
+## Testing — No Mocks Policy
+
+> **"Every time we have mocks and AI it always ends in tears."** — Derek
+
+**Do not use mocks. Test against real dependencies.**
+See `standards/universal/MOCKS-POLICY.md` for the full policy.
+
+```python
+# ❌ NEVER — no mock libraries, no patch, no MagicMock
+from unittest.mock import patch, MagicMock  # FORBIDDEN
+
+with patch('myapp.db.session') as mock_db:
+    mock_db.query.return_value = User(name="test")
+    # Tests nothing real
+
+# ✅ ALWAYS — real dependencies via testcontainers
+import pytest
+from testcontainers.postgres import PostgresContainer
+
+@pytest.fixture
+def db():
+    with PostgresContainer() as postgres:
+        yield create_connection(postgres.get_connection_url())
+
+def test_save_user(db):
+    user_id = save_user(db, {"name": "Alice"})
+    assert db.get_user(user_id).name == "Alice"  # Real DB
+
+# ✅ External APIs — use sandbox, not mock
+@pytest.mark.integration
+def test_payment():
+    result = process_payment(100.0, "tok_visa")  # Stripe test mode
+    assert result.success is True
+
+# ✅ If you can't test against real deps — skip, don't mock
+@pytest.mark.skip(reason="Needs Stripe sandbox — not mocking")
+def test_payment_integration():
+    ...
+```
+
+**The one exception:** freezing time is acceptable (`freezegun`).
+
+**Production code must be complete:** No TODOs, no `return True` placeholders, no `except: pass`.
+
+---
+
+## Production at Scale — Controls
+
+Python's flexibility is a risk. These controls keep "kinda works" code out of production.
+
+### Mandatory CI Enforcement
+
+| Tool | Purpose | Blocking? |
+|---|---|---|
+| `ruff` | Lint + format (replaces flake8, isort, black) | ✅ Yes |
+| `ty` / `pyright` | Type checking (catch runtime errors at dev time) | ⚠️ Warnings → ✅ Blocking |
+| `bandit` | Security static analysis (medium/high) | ✅ Yes |
+| `pip-audit` | CVE scanning of dependencies | ✅ Yes |
+| `pytest` | Test suite with coverage | ✅ Yes (80% min) |
+| `vulture` | Dead code detection | ✅ Yes |
+
+### Exception Handling (Hyperscaler Grade)
+
+```python
+# ❌ Generic exception swallowing — THE most common production failure
+try:
+    result = process(data)
+except Exception:
+    pass  # Silent failure → data loss → customer impact
+
+# ❌ Logging without raising — error is swallowed
+try:
+    result = process(data)
+except Exception as e:
+    logger.error(f"Failed: {e}")
+    # Where does execution go? What state is the system in?
+
+# ✅ Specific exception, log with context, re-raise or handle
+try:
+    result = process(data)
+except ValidationError as e:
+    logger.warning("Validation failed", input=data.id, error=str(e))
+    raise  # Let caller decide
+except ConnectionError as e:
+    logger.error("DB unreachable", host=settings.database.host, error=str(e))
+    raise ServiceUnavailableError("Database connection failed") from e
+```
+
+### Never Use print() in Production Code
+
+```python
+# ❌ print() — goes to stdout, no level, no structure, no masking
+print(f"Processing {user.email}")  # PII leak!
+
+# ✅ Structured logging — level-aware, JSON in containers, auto-masks secrets
+logger.info("Processing user", user_id=user.id)  # No PII
+```
+
+### Nuitka Compilation (Nice to Have)
+
+Nuitka can compile Python to native binaries. Benefits: faster startup,
+single-file distribution, no Python runtime dependency. Not a hard
+requirement, but consider for CLI tools and utilities.
+
+```bash
+nuitka --standalone --onefile my_tool.py
+```
+
+---
+
+## Temporary Files
+
+### Development/CI Work
+
+**Use `./.tmp/` for project-scoped temp operations:**
+
+- Test projects, build artifacts, scratch files, CI work
+
+### Production/Runtime Code
+
+**Use Python tempfile module (NEVER hardcode /tmp):**
+
+```python
+import tempfile
+
+# Temporary file (auto-cleanup)
+with tempfile.NamedTemporaryFile(delete=True, suffix=".dat") as tmp:
+    tmp.write(data)
+    process(tmp.name)
+# File auto-deleted, secure permissions, random name
+
+# Temporary directory (auto-cleanup)
+with tempfile.TemporaryDirectory(prefix="myapp-") as tmpdir:
+    work_in(tmpdir)
+# Directory + contents auto-deleted
+
+# Persistent app temp directory
+from pathlib import Path
+app_temp = Path(tempfile.gettempdir()) / app_name
+app_temp.mkdir(exist_ok=True, mode=0o700)  # User-only
+```
+
+### Security Rules
+
+❌ **NEVER:** Hardcode "/tmp", use predictable names, skip cleanup
+✅ **ALWAYS:** Use context managers, random names, 0o700 permissions
+
+---
+
+## Bash Minimalism — Call Python Instead
+
+> **"If it's getting complex, over 20 lines, or pipes to jq — it should
+> be Python."**
+
+Bash at HyperI is a thin caller wrapper only. Reasons:
+- Reliability: bash error handling is fragile
+- Portability: macOS ships bash 3.2 (2007), zsh by default — the "mac bash
+  problem"
+- Logging: Python has structured logging, bash has echo
+- Error handling: Python has exceptions, bash has `set -e` (which is unreliable)
+- Testing: Python has pytest, bash has BATS (limited)
+
+### What Bash Is For
+
+```bash
+#!/usr/bin/env bash
+# Check Python, call Python. That's it.
+set -euo pipefail
+command -v python3 >/dev/null 2>&1 || { echo "Python 3 required"; exit 1; }
+exec python3 "$(dirname "$0")/real_logic.py" "$@"
+```
+
+### What Bash Is NOT For
+
+- Parsing JSON/YAML (→ Python `json`/`pyyaml`)
+- Complex conditionals (→ Python)
+- String manipulation (→ Python)
+- Anything with `jq`, `sed`, `awk` pipelines (→ Python)
+- Anything over ~20 lines (→ Python)
+- Anything that needs to work reliably on macOS and Linux (→ Python)
+
+See `standards/languages/BASH.md` for bash standards when bash IS appropriate.
 
 ---
 
@@ -1870,52 +1872,6 @@ def get_user(user_id: int) -> User:
     except DatabaseError as e:
         raise UserNotFoundError(user_id) from e
 ```
-
----
-
-## Testing — No Mocks Policy
-
-> **"Every time we have mocks and AI it always ends in tears."** — Derek
-
-**Do not use mocks. Test against real dependencies.**
-See `standards/universal/MOCKS-POLICY.md` for the full policy.
-
-```python
-# ❌ NEVER — no mock libraries, no patch, no MagicMock
-from unittest.mock import patch, MagicMock  # FORBIDDEN
-
-with patch('myapp.db.session') as mock_db:
-    mock_db.query.return_value = User(name="test")
-    # Tests nothing real
-
-# ✅ ALWAYS — real dependencies via testcontainers
-import pytest
-from testcontainers.postgres import PostgresContainer
-
-@pytest.fixture
-def db():
-    with PostgresContainer() as postgres:
-        yield create_connection(postgres.get_connection_url())
-
-def test_save_user(db):
-    user_id = save_user(db, {"name": "Alice"})
-    assert db.get_user(user_id).name == "Alice"  # Real DB
-
-# ✅ External APIs — use sandbox, not mock
-@pytest.mark.integration
-def test_payment():
-    result = process_payment(100.0, "tok_visa")  # Stripe test mode
-    assert result.success is True
-
-# ✅ If you can't test against real deps — skip, don't mock
-@pytest.mark.skip(reason="Needs Stripe sandbox — not mocking")
-def test_payment_integration():
-    ...
-```
-
-**The one exception:** freezing time is acceptable (`freezegun`).
-
-**Production code must be complete:** No TODOs, no `return True` placeholders, no `except: pass`.
 
 ---
 
@@ -1994,3 +1950,23 @@ result = await coro()  # If already in async
 # or
 result = asyncio.run(coro())  # Only from sync entrypoint
 ```
+
+---
+
+## Resources
+
+**Official PEPs:**
+
+- PEP 8 - Style Guide: <https://peps.python.org/pep-0008/>
+- PEP 257 - Docstrings: <https://peps.python.org/pep-0257/>
+- PEP 484 - Type Hints: <https://peps.python.org/pep-0484/>
+
+**Tools:**
+
+- Black: <https://black.readthedocs.io/>
+- Ruff: <https://docs.astral.sh/ruff/>
+- pyright: <https://microsoft.github.io/pyright/>
+
+---
+
+
