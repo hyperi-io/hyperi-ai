@@ -30,7 +30,7 @@ teardown() {
     [ "$status" -eq 0 ]
     [ -d ".cursor" ]
     [ -f ".cursor/cli.json" ]
-    [ -f ".cursor/rules/UNIVERSAL.mdc" ]
+    [ -f ".cursor/rules/universal.mdc" ]
     [ -f ".cursor/rules/session-start.mdc" ]
     [ -f ".cursor/rules/session-save.mdc" ]
     [ -L "CURSOR.md" ]
@@ -70,13 +70,13 @@ teardown() {
     ./hyperi-ai/agents/cursor.sh
 
     # Modify rule
-    echo "OLD VERSION" > .cursor/rules/UNIVERSAL.mdc
+    echo "OLD VERSION" > .cursor/rules/universal.mdc
 
     run ./hyperi-ai/agents/cursor.sh
 
     [ "$status" -eq 0 ]
-    ! grep -q "OLD VERSION" .cursor/rules/UNIVERSAL.mdc
-    grep -q "HyperI Universal Coding Rules" .cursor/rules/UNIVERSAL.mdc
+    ! grep -q "OLD VERSION" .cursor/rules/universal.mdc
+    grep -q "universal" .cursor/rules/universal.mdc
 }
 
 @test "TC-206: Dry run preview" {

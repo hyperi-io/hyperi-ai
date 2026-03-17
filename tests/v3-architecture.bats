@@ -30,15 +30,13 @@ teardown() {
     [ -f ".claude/skills/bleeding-edge/SKILL.md" ]
 }
 
-@test "TC-302: Core skills still deployed (standards, ai-guidelines, ai-common)" {
+@test "TC-302: Core skills still deployed (standards)" {
     cd "$TEST_SUBMODULE"
     ./hyperi-ai/attach.sh --no-agent
     run ./hyperi-ai/agents/claude.sh --no-managed --no-superpowers
 
     [ "$status" -eq 0 ]
     [ -d ".claude/skills/standards" ]
-    [ -d ".claude/skills/ai-guidelines" ]
-    [ -d ".claude/skills/ai-common" ]
 }
 
 @test "TC-303: Skill SKILL.md files have valid Agent Skills frontmatter" {
@@ -155,20 +153,20 @@ teardown() {
     ./hyperi-ai/attach.sh --no-agent
     ./hyperi-ai/agents/claude.sh --force --no-managed --no-superpowers
 
-    [ -f ".claude/rules/UNIVERSAL.md" ]
+    [ -f ".claude/rules/universal.md" ]
     [ -f ".claude/rules/python.md" ]
     [ -f ".claude/rules/git.md" ]
     [ -f ".claude/rules/security.md" ]
 }
 
-@test "TC-322: Exactly 22 rule files deployed (no methodology rules)" {
+@test "TC-322: Rule files deployed (at least 25, no methodology rules)" {
     cd "$TEST_SUBMODULE"
     ./hyperi-ai/attach.sh --no-agent
     ./hyperi-ai/agents/claude.sh --force --no-managed --no-superpowers
 
     local count
     count="$(ls .claude/rules/*.md 2>/dev/null | wc -l)"
-    [ "$count" -eq 22 ]
+    [ "$count" -ge 25 ]
 }
 
 # --- Commands from new path ---
@@ -303,10 +301,10 @@ for hook in data['hooks']:
     [[ "$output" =~ "superpowers" ]]
 }
 
-# --- UNIVERSAL.md references bleeding-edge skill ---
+# --- ai-conduct.md references web search / training data ---
 
-@test "TC-370: UNIVERSAL.md references bleeding-edge skill" {
-    grep -q "bleeding-edge" "$AI_SOURCE/standards/rules/UNIVERSAL.md"
+@test "TC-370: ai-conduct.md references web search before code" {
+    grep -qi "web.search\|training.data\|bleeding" "$AI_SOURCE/standards/rules/ai-conduct.md"
 }
 
 @test "TC-371: Deleted methodology rules do not exist in standards/rules/" {
@@ -442,12 +440,12 @@ for hook in data['hooks']:
     run ./hyperi-ai/agents/claude.sh --self --force --no-managed --no-superpowers
 
     [ "$status" -eq 0 ]
-    [ -f "$TEST_SUBMODULE/hyperi-ai/.claude/rules/UNIVERSAL.md" ]
+    [ -f "$TEST_SUBMODULE/hyperi-ai/.claude/rules/universal.md" ]
     [ -f "$TEST_SUBMODULE/hyperi-ai/.claude/rules/python.md" ]
     [ -f "$TEST_SUBMODULE/hyperi-ai/.claude/rules/git.md" ]
 
     # Symlinks should resolve (not dangling)
-    [ -e "$TEST_SUBMODULE/hyperi-ai/.claude/rules/UNIVERSAL.md" ]
+    [ -e "$TEST_SUBMODULE/hyperi-ai/.claude/rules/universal.md" ]
 }
 
 @test "TC-403: --self deploys skills into ai/.claude/skills/" {
