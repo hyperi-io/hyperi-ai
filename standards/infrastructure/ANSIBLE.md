@@ -12,6 +12,11 @@ detect_markers:
   - "dir:playbooks"
   - "deep_file:ansible.cfg"
   - "deep_glob:playbook*.yml"
+paths:
+  - "**/playbook*.yml"
+  - "**/ansible.cfg"
+  - "**/roles/**/*.yml"
+  - "**/inventory/**/*"
 ---
 
 # Ansible Standards for HyperI Projects

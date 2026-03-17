@@ -11,6 +11,16 @@ rule_paths:
   - "**/settings*.yml"
   - "**/*.env"
   - "**/.env*"
+paths:
+  - "**/*.py"
+  - "**/*.rs"
+  - "**/*.go"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/settings*.yaml"
+  - "**/settings*.yml"
+  - "**/*.env"
+  - "**/.env*"
 ---
 
 # Configuration and Logging Standards

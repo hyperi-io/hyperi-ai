@@ -6,6 +6,8 @@ rule_paths:
 detect_markers:
   - "file:go.mod"
   - "deep_file:go.mod"
+paths:
+  - "**/*.go"
 ---
 
 # Go Standards for HyperI Projects

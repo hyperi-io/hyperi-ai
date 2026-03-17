@@ -1949,6 +1949,82 @@ cargo install cargo-instruments  # macOS
 cargo instruments -t Allocations --bin pipeline
 ```
 
+### NEVER Use Regex or Grok on Hot Paths
+
+> **"If you want to spot an amateur, look for a regex on the hot path."** — Derek
+
+**This is not a suggestion. Do not use `regex`, `fancy-regex`, or grok patterns on
+any code path that processes data at volume.** Regex is a compiled state machine with
+per-match overhead that destroys throughput. Every regex match allocates, branches
+unpredictably, and thrashes the instruction cache.
+
+Use direct string/byte operations instead. They are faster by 10-100x on the patterns
+that appear in data pipelines.
+
+```rust
+// ❌ NEVER — regex for simple field extraction
+use regex::Regex;
+let re = Regex::new(r"user_id=(\w+)").unwrap();
+let user_id = re.captures(line).and_then(|c| c.get(1)).map(|m| m.as_str());
+
+// ✅ ALWAYS — direct byte operations
+fn extract_field<'a>(line: &'a [u8], key: &[u8]) -> Option<&'a [u8]> {
+    let start = memchr::memmem::find(line, key)? + key.len();
+    let end = memchr::memchr2(b' ', b'\n', &line[start..])
+        .map(|i| start + i)
+        .unwrap_or(line.len());
+    Some(&line[start..end])
+}
+let user_id = extract_field(line, b"user_id=");
+```
+
+**Common regex patterns and their high-performance replacements:**
+
+| Regex Pattern | Replace With | Why |
+|---|---|---|
+| `Regex::new(r"\d+")` to find numbers | `memchr::memchr` + `is_ascii_digit()` loop | No compilation, no alloc |
+| `Regex::new(r"key=(\w+)")` for KV extraction | `memmem::find` + scan to delimiter | SIMD substring search |
+| `Regex::new(r"^\d{4}-\d{2}-\d{2}")` date prefix | `line.len() >= 10 && line[4] == b'-' && ...` | Constant-time check |
+| `Regex::new(r"\s+")` to split on whitespace | `split_ascii_whitespace()` or `memchr_iter` | Zero-alloc iterator |
+| `Regex::new(r"[,\t\|]")` delimiter detection | `memchr::memchr3(b',', b'\t', b'\|', data)` | SIMD 3-byte search |
+| Grok `%{IP:client}` patterns | `memchr` to find field boundaries + `&[u8]` slicing | Zero-copy extraction |
+| `line.contains("error")` on `&str` | `memchr::memmem::find(line, b"error")` | SIMD on bytes, not chars |
+
+```rust
+// ❌ Grok-style: parse syslog with regex
+let re = Regex::new(
+    r"<(\d+)>(\w+ +\d+ \S+) (\S+) (\S+)\[(\d+)\]: (.*)"
+).unwrap();
+
+// ✅ Positional parsing with memchr — zero-copy, zero-alloc
+fn parse_syslog(line: &[u8]) -> Option<SyslogFields<'_>> {
+    let pri_end = memchr::memchr(b'>', line)?;
+    let priority = &line[1..pri_end];
+    let rest = &line[pri_end + 1..];
+
+    // Timestamp ends at first hostname (after 2nd space)
+    let s1 = memchr::memchr(b' ', rest)?;
+    let s2 = memchr::memchr(b' ', &rest[s1 + 1..])? + s1 + 1;
+    let s3 = memchr::memchr(b' ', &rest[s2 + 1..])? + s2 + 1;
+    let timestamp = &rest[..s3];
+    let host = &rest[s3 + 1..memchr::memchr(b' ', &rest[s3 + 1..])? + s3 + 1];
+
+    Some(SyslogFields { priority, timestamp, host, /* ... */ })
+}
+```
+
+**When regex IS acceptable:**
+- Configuration parsing (runs once at startup, not on hot path)
+- User-facing search/filter features (user expects regex syntax)
+- Test assertions
+- Code that runs fewer than ~1000 times per second
+
+**When regex is NEVER acceptable:**
+- Per-event/per-record processing in data pipelines
+- Log parsing at ingest volume
+- Any `for record in stream` loop body
+- Anything inside `#[inline]` or hot-path functions
+
 ### Inlining Strategy
 
 ```rust

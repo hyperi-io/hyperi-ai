@@ -12,6 +12,11 @@ detect_markers:
   - "dir:certs"
   - "dir:ssl"
   - "dir:pki"
+paths:
+  - "**/certs/**/*"
+  - "**/ssl/**/*"
+  - "**/pki/**/*"
+  - "**/tls/**/*"
 ---
 
 # PKI and Cryptographic Standards

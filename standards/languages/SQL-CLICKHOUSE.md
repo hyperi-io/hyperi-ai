@@ -6,6 +6,8 @@ rule_paths:
 detect_markers:
   - "glob:*.sql"
   - "deep_glob:*.sql"
+paths:
+  - "**/*.sql"
 ---
 
 > **📌 ClickHouse Is Not PostgreSQL**

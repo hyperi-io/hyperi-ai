@@ -13,6 +13,11 @@ detect_markers:
   - "deep_file:Dockerfile"
   - "deep_file:docker-compose.yml"
   - "deep_file:docker-compose.yaml"
+paths:
+  - "**/Dockerfile"
+  - "**/Dockerfile.*"
+  - "**/docker-compose*.yml"
+  - "**/docker-compose*.yaml"
 ---
 
 # Docker Standards

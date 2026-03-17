@@ -11,6 +11,16 @@ rule_paths:
   - "**/*.cc"
   - "**/*.sh"
   - "**/*.sql"
+paths:
+  - "**/*.py"
+  - "**/*.rs"
+  - "**/*.go"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.cpp"
+  - "**/*.cc"
+  - "**/*.sh"
+  - "**/*.sql"
 ---
 
 # Code Style Standards

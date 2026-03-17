@@ -5,6 +5,10 @@ rule_paths:
   - "**/.github/**"
   - "**/.gitignore"
   - "**/CHANGELOG.md"
+paths:
+  - "**/.github/**"
+  - "**/.gitignore"
+  - "**/CHANGELOG.md"
 ---
 
 # Git Standards

@@ -12,6 +12,10 @@ detect_markers:
   - "dir:charts"
   - "deep_file:Chart.yaml"
   - "deep_file:values.yaml"
+paths:
+  - "**/Chart.yaml"
+  - "**/values.yaml"
+  - "**/templates/**/*.yaml"
 ---
 
 # Kubernetes Standards for HyperI Projects

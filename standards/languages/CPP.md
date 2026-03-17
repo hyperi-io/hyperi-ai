@@ -12,6 +12,12 @@ detect_markers:
   - "deep_file:CMakeLists.txt"
   - "deep_glob:*.cpp"
   - "deep_glob:*.hpp"
+paths:
+  - "**/*.cpp"
+  - "**/*.hpp"
+  - "**/*.cc"
+  - "**/*.h"
+  - "**/*.cxx"
 ---
 
 # C++ Standards for HyperI Projects

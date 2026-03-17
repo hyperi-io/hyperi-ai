@@ -11,6 +11,11 @@ detect_markers:
   - "file:package.json"
   - "deep_file:tsconfig.json"
   - "deep_file:package.json"
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
 ---
 
 # TypeScript Standards for HyperI Projects

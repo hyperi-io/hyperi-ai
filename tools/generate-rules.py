@@ -8,13 +8,19 @@
 """Generate compact rules files from source standards via LLM compression.
 
 Usage:
-    python tools/generate-rules.py [--check] [--verbose] [--file FILE]
+    python tools/generate-rules.py [--check] [--verbose] [--force] [--file FILE]
 
 Options:
-    --check     Validate frontmatter only — does NOT regenerate or compare content.
-                Used in CI to enforce structural compliance (frontmatter, paths, markers).
+    --check     Validate frontmatter only — does NOT regenerate or
+                compare content. Used in CI to enforce structure.
     --verbose   Print each file processed and compression stats.
+    --force     Regenerate ALL files (default: only changed since HEAD~1).
     --file FILE Process only the source file matching FILE (e.g. RUST.md).
+
+Default behaviour (no flags):
+    Only processes source files changed/added since HEAD~1 (git diff).
+    Deletes compact rules for removed source files.
+    Safe and cheap to run on every push.
 
 LLM compression:
     Sends each full source standard to Claude (Opus 4.6) with a compression
@@ -110,36 +116,33 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
 # ---------------------------------------------------------------------------
 
 _LLM_COMPRESS_PROMPT = """\
-You are a technical standards compressor. Your job is to compress a full coding \
+You are a technical standards compressor. Compress this full coding \
 standards document into a compact rules file optimised for LLM system prompts.
 
-CONSTRAINTS:
-- Maximum 190 lines of output
-- Target ~2,500 tokens
-- Output ONLY the compressed markdown — no preamble, no explanation, no wrapping
+OUTPUT: Only the compressed markdown. No preamble, no explanation, no wrapping.
 
-FORMAT RULES (these produce better LLM instruction-following):
-1. Use ❌/✅ pairs for wrong→right patterns — these anchor better than abstract bullets.
-   Example: ❌ `std::thread::sleep` — ✅ `tokio::time::sleep`
-2. Include 2-5 SHORT code blocks (3-8 lines each) showing the most critical patterns.
-   The consuming LLM will copy these patterns. No code = no pattern matching.
-3. Use "Use This, Not That" tables for substitution patterns:
-   | ❌ Don't | ✅ Do | Why |
-4. Maximum 5-7 bullet points per section. Dense bullet walls get skimmed.
-5. Tables over prose. Directives over explanations.
-6. Front-load: put the most common AI mistakes FIRST.
-7. No motivational language. No "best practices". Direct imperatives only.
-8. Keep section headings short (## Error Handling, not ## Error Handling Best Practices)
+FORMAT (these produce better LLM instruction-following):
+- ❌/✅ pairs for wrong→right patterns — anchor better than abstract bullets
+- SHORT code blocks (3-8 lines) for critical patterns — the consuming LLM copies these
+- "Use This, Not That" tables: | ❌ Don't | ✅ Do | Why |
+- Max 5-7 bullets per section. Dense walls get skimmed.
+- Tables over prose. Directives over explanations.
+- Front-load the most common AI mistakes.
+- No motivational language. Direct imperatives only.
 
-CONTENT PRIORITIES (what to keep vs cut):
-- KEEP: concrete patterns with code, ❌/✅ pairs, version-specific info, crate/package names, CLI commands
-- KEEP: "use X not Y" substitutions, config snippets, common mistakes
-- CUT: explanatory prose, motivation, history, "why" paragraphs
-- CUT: long code examples (shorten to 3-8 lines), edge cases, rarely-used patterns
-- CUT: anything already covered by UNIVERSAL.md (git conventions, file headers, security basics, error handling basics)
+CONTENT — CRITICAL:
+- KEEP every named tool, crate, library, CLI command, config file
+- KEEP every concrete pattern (shutdown, backpressure, config, health, etc.)
+- KEEP all deprecated crate/API warnings and version-specific info
+- KEEP build/CI commands and required tooling
+- SHORTEN but do NOT delete sections — every ## topic in the source \
+should appear in the output
+- CUT explanatory prose, motivation, history
+- CUT long code examples (shorten to 3-8 lines)
+- CUT anything already in UNIVERSAL.md (git, file headers, basic security)
 
-The compressed output will be injected into a 200K context window alongside other \
-standards. Every token matters. Be ruthlessly concise but preserve actionable patterns.
+The output is injected into a 200K LLM context window. Be concise \
+but preserve ALL actionable patterns and named tools.
 
 SOURCE DOCUMENT:
 """
@@ -175,9 +178,11 @@ def compress_with_llm(
 
     api_key = _load_anthropic_api_key()
     if not api_key:
-        return "", [
-            f"{source_path.name}: ANTHROPIC_API_KEY not found — skipping LLM compression"
-        ]
+        msg = (
+            f"{source_path.name}: ANTHROPIC_API_KEY not found"
+            " — skipping LLM compression"
+        )
+        return "", [msg]
 
     client = Anthropic(api_key=api_key)
     warnings: list[str] = []
@@ -186,23 +191,28 @@ def compress_with_llm(
         print(f"    LLM compressing {source_path.name}...", end="", flush=True)
 
     try:
-        response = client.messages.create(
+        # Use streaming to avoid timeout on large outputs
+        chunks: list[str] = []
+        with client.messages.stream(
             model="claude-opus-4-6",
-            max_tokens=4096,
+            max_tokens=32768,
             messages=[
                 {
                     "role": "user",
                     "content": _LLM_COMPRESS_PROMPT + body,
                 }
             ],
-        )
+        ) as stream:
+            for text in stream.text_stream:
+                chunks.append(text)
+        response = stream.get_final_message()
     except Exception as exc:
         msg = f"{source_path.name}: LLM call failed: {exc}"
         if verbose:
             print(f" FAILED: {exc}")
         return "", [msg]
 
-    compressed = response.content[0].text.strip()
+    compressed = "".join(chunks).strip()
 
     # Strip markdown fences if the model wrapped the output
     if compressed.startswith("```"):
@@ -212,16 +222,11 @@ def compress_with_llm(
         compressed = compressed[:-3].rstrip()
 
     lines = compressed.splitlines()
-    if len(lines) > 200:
-        warnings.append(
-            f"{source_path.name}: LLM output {len(lines)} lines (over 200), truncating"
-        )
-        compressed = "\n".join(lines[:200])
 
     if verbose:
         tokens_in = response.usage.input_tokens
         tokens_out = response.usage.output_tokens
-        print(f" done ({len(lines)} lines, {tokens_in}→{tokens_out} tokens)")
+        print(f" done ({len(lines)} lines, {tokens_in}\u2192{tokens_out} tokens)")
 
     return compressed + "\n", warnings
 
@@ -355,15 +360,90 @@ def process_file(
     return errors, warnings_count
 
 
+def _get_changed_sources(base_ref: str = "HEAD~1") -> set[Path]:
+    """Find source standards changed since base_ref using git diff.
+
+    Returns set of absolute Paths to changed/added source files.
+    Also handles deletions: removes compact rules for deleted sources.
+    """
+    import subprocess
+
+    changed: set[Path] = set()
+    deleted_sources: list[Path] = []
+
+    for source_dir in SOURCE_DIRS:
+        if not source_dir.is_dir():
+            continue
+        try:
+            rel = source_dir.relative_to(REPO_ROOT)
+        except ValueError:
+            continue
+
+        # Changed or added files
+        result = subprocess.run(
+            [
+                "git",
+                "diff",
+                "--name-only",
+                "--diff-filter=ACM",
+                base_ref,
+                "--",
+                str(rel),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+        if result.returncode == 0:
+            for line in result.stdout.strip().splitlines():
+                if line.endswith(".md"):
+                    changed.add(REPO_ROOT / line)
+
+        # Deleted files
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "--diff-filter=D", base_ref, "--", str(rel)],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+        if result.returncode == 0:
+            for line in result.stdout.strip().splitlines():
+                if line.endswith(".md"):
+                    deleted_sources.append(REPO_ROOT / line)
+
+    # Remove compact rules for deleted sources
+    for deleted in deleted_sources:
+        rules_name = source_to_rules_name(deleted)
+        rules_path = RULES_DIR / rules_name
+        if rules_path.exists():
+            rules_path.unlink()
+            print(f"  DEL  {rules_name} (source {deleted.name} removed)")
+
+    return changed
+
+
 def main() -> int:
     args = sys.argv[1:]
     check = "--check" in args
     verbose = "--verbose" in args or "-v" in args
+    force = "--force" in args
     file_filter = None
     if "--file" in args:
         idx = args.index("--file")
         if idx + 1 < len(args):
             file_filter = args[idx + 1]
+
+    # Default: only changed files. --force or --file: process all/specific.
+    changed_set: set[Path] = set()
+    delta_mode = not force and not file_filter and not check
+    if delta_mode:
+        changed_set = _get_changed_sources()
+        if verbose:
+            if changed_set:
+                names = ", ".join(p.name for p in changed_set)
+                print(f"Changed sources: {names}")
+            else:
+                print("No changed sources — nothing to do.")
 
     total_errors = 0
     total_warnings = 0
@@ -375,6 +455,8 @@ def main() -> int:
         for source_path in sorted(source_dir.glob("*.md")):
             if file_filter and source_path.name != file_filter:
                 continue
+            if delta_mode and source_path not in changed_set:
+                continue
             errors, warns = process_file(source_path, check=check, verbose=verbose)
             total_errors += errors
             total_warnings += warns
@@ -383,7 +465,9 @@ def main() -> int:
     if verbose or total_errors:
         mode = "CHECK" if check else "GENERATE"
         print(
-            f"\n[{mode}] {total_processed} files | {total_errors} errors | {total_warnings} warnings"
+            f"\n[{mode}] {total_processed} files"
+            f" | {total_errors} errors"
+            f" | {total_warnings} warnings"
         )
 
     return 1 if total_errors else 0

@@ -10,6 +10,8 @@ detect_markers:
   - "file:uv.lock"
   - "deep_file:pyproject.toml"
   - "deep_file:setup.py"
+paths:
+  - "**/*.py"
 ---
 
 # Python Standards for HyperI Projects

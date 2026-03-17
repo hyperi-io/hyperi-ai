@@ -8,6 +8,9 @@ detect_markers:
   - "glob:*.sh"
   - "glob:*.bats"
   - "deep_glob:*.sh"
+paths:
+  - "**/*.sh"
+  - "**/*.bats"
 ---
 
 # Bash Standards for HyperI Projects

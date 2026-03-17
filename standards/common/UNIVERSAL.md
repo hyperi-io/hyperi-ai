@@ -1,4 +1,9 @@
-<!-- override: manual -->
+---
+name: universal-standards
+description: Universal coding rules that apply to ALL code regardless of language.
+universal_source: true
+---
+
 # HyperI Universal Coding Rules
 
 Rules that apply to ALL code regardless of language. Language-specific

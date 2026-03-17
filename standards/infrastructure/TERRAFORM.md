@@ -7,6 +7,9 @@ rule_paths:
 detect_markers:
   - "glob:*.tf"
   - "deep_glob:*.tf"
+paths:
+  - "**/*.tf"
+  - "**/*.tfvars"
 ---
 
 # Terraform Standards for HyperI Projects
