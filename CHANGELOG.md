@@ -1,3 +1,10 @@
+## [3.4.13](https://github.com/hyperi-io/hyperi-ai/compare/3.4.12...3.4.13) (2026-03-17)
+
+
+### Bug Fixes
+
+* rebase before push in CI regen job to avoid semantic-release race ([bf60e0f](https://github.com/hyperi-io/hyperi-ai/commit/bf60e0f9b7f080251169cd10d56e84e0b8e81996))
+
 ## [3.4.12](https://github.com/hyperi-io/hyperi-ai/compare/3.4.11...3.4.12) (2026-03-17)
 
 
