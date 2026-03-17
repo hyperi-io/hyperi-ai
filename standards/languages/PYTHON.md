@@ -368,6 +368,84 @@ match command:
         raise ValueError(f"Unknown command: {command}")
 ```
 
+### Walrus Operator `:=` (3.8+, but underused)
+
+```python
+# ❌ Compute twice or use temp variable
+results = get_results()
+if results:
+    process(results)
+
+# ✅ Assign and test in one expression
+if results := get_results():
+    process(results)
+
+# ✅ In while loops
+while chunk := f.read(8192):
+    process(chunk)
+
+# ✅ In comprehensions with filter
+valid = [y for x in data if (y := transform(x)) is not None]
+```
+
+### StrEnum (3.11+)
+
+```python
+from enum import StrEnum
+
+class Status(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETE = "complete"
+    FAILED = "failed"
+
+# Works directly as string — no .value needed
+status = Status.RUNNING
+assert status == "running"  # True
+assert f"Status: {status}" == "Status: running"
+```
+
+### ExceptionGroup and TaskGroup (3.11+)
+
+```python
+import asyncio
+
+async def process_batch(items: list[str]) -> list[str]:
+    """Process items concurrently — collect ALL errors, not just first."""
+    results = []
+    async with asyncio.TaskGroup() as tg:
+        tasks = [tg.create_task(process(item)) for item in items]
+    # All tasks complete or ALL exceptions raised as ExceptionGroup
+    return [t.result() for t in tasks]
+
+# Handle exception groups
+try:
+    await process_batch(items)
+except* ValueError as eg:
+    for exc in eg.exceptions:
+        logger.error("Validation failed", error=str(exc))
+except* ConnectionError as eg:
+    logger.error("Connection failures", count=len(eg.exceptions))
+```
+
+Use `TaskGroup` over raw `asyncio.gather()` — it cancels remaining tasks
+on first failure and collects all exceptions via `ExceptionGroup`.
+
+### tomllib (3.11+ stdlib)
+
+```python
+import tomllib
+
+# ✅ Read TOML files without external deps
+with open("pyproject.toml", "rb") as f:
+    config = tomllib.load(f)
+
+version = config["project"]["version"]
+```
+
+No need for `toml` or `tomli` packages for reading — `tomllib` is in stdlib.
+For writing TOML, use `tomli-w`.
+
 ### Template Strings (3.14, when we adopt)
 
 ```python
@@ -1061,18 +1139,68 @@ logger.error("Failed", error=str(e), exc_info=True)
 
 ## Modern Patterns
 
-### Dataclasses
+### Dataclasses (with slots and frozen)
 
 ```python
 from dataclasses import dataclass, field
 
-@dataclass
+# ✅ Use slots=True for memory efficiency (no __dict__)
+@dataclass(slots=True)
 class User:
     id: int
     name: str
     email: str
     active: bool = True
     tags: list[str] = field(default_factory=list)
+
+# ✅ Use frozen=True for immutable value objects
+@dataclass(frozen=True, slots=True)
+class EventKey:
+    source: str
+    event_type: str
+    timestamp: float
+    # Hashable — can be used as dict key or set member
+```
+
+### Generators for Lazy Processing
+
+```python
+# ✅ Process large files without loading into memory
+def read_events(path: Path):
+    with path.open() as f:
+        for line in f:
+            if line.strip():
+                yield json.loads(line)
+
+# ✅ Chain generators for pipelines
+def pipeline(path: Path):
+    events = read_events(path)
+    valid = (e for e in events if e.get("type"))
+    enriched = (enrich(e) for e in valid)
+    for batch in itertools.batched(enriched, 1000):
+        send_batch(batch)
+```
+
+### functools.singledispatch
+
+```python
+from functools import singledispatch
+
+@singledispatch
+def serialize(obj) -> str:
+    raise TypeError(f"Cannot serialize {type(obj)}")
+
+@serialize.register
+def _(obj: dict) -> str:
+    return json.dumps(obj)
+
+@serialize.register
+def _(obj: datetime) -> str:
+    return obj.isoformat()
+
+@serialize.register
+def _(obj: Path) -> str:
+    return str(obj)
 ```
 
 ### Pydantic (Validation)
@@ -1256,6 +1384,36 @@ async def fetch_all(ids: list[int]) -> list[dict]:
 ## For AI Code Assistants
 
 The following sections are specific guidance for AI code assistants working with Python.
+
+### Slopsquatting Warning
+
+AI models hallucinate package names. If you suggest `pip install some-package`,
+verify it exists on PyPI first. Attackers register hallucinated package names
+with malicious code (supply chain attack called "slopsquatting"). 25-38% of
+AI-suggested dependencies point to deprecated or non-existent packages.
+
+**Before suggesting ANY import:** verify the package exists and is actively maintained.
+
+### Silent Failure — The Worst AI Anti-Pattern
+
+AI-generated code often fails silently instead of crashing. This is WORSE than
+a crash — silent data loss, corrupted state, incorrect results that look right.
+
+```python
+# ❌ AI often generates this — silently returns None/empty on error
+def get_user(user_id: int) -> User | None:
+    try:
+        return db.query(User).get(user_id)
+    except Exception:
+        return None  # Silent failure — caller has no idea
+
+# ✅ Fail explicitly — let the caller decide
+def get_user(user_id: int) -> User:
+    try:
+        return db.query(User).get(user_id)
+    except DatabaseError as e:
+        raise UserNotFoundError(user_id) from e
+```
 
 ---
 
