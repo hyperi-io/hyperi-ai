@@ -8,192 +8,167 @@ source: languages/RUST.md
 ---
 
 <!-- override: manual -->
-## Rust Version Policy
+## Rust Standards
 
-- Always use the latest stable Rust edition and compiler. **Never base version choices on LLM knowledge — always web-check.**
-- Check current stable: `rustup check` or <https://releases.rs/>
-- Minimum floor as of March 2026: **Edition 2024**, **rustc 1.94.0**
-- Set `edition` in `Cargo.toml` and `rustfmt.toml` to the latest stable edition
-- Pin `rust-toolchain.toml` to current stable — update regularly
+**Edition 2024 minimum, rustc 1.94.0+. NEVER trust LLM knowledge for Rust versions — `rustup check` or <https://releases.rs/>.**
 
-## Design Philosophy
-
-- **SIMD-first**: byte-volume operations (JSON parsing, string search, compression) use SIMD crates (`sonic-rs`, `memchr`, `simd-json`)
-- **Zero-copy by default**: `&[u8]`, `Cow<'_, str>`, `Bytes`, memory-mapped files — allocate only when ownership is needed
-- **Zero-allocation hot paths**: reuse buffers, arena allocators (`bumpalo`), pre-allocated pools
-- If it's scaling and on the hot path, it's in Rust. Otherwise Python/TypeScript are fine.
-
-## Edition 2024 Features
-
-- **Async closures**: `async || { ... }` with `AsyncFn`/`AsyncFnMut`/`AsyncFnOnce` traits — use instead of `Fn() -> impl Future`
-- **Let chains** (1.88.0+): `if let Some(x) = foo() && let Ok(y) = bar(x) && y > 0 { ... }`
-- **`array_windows::<N>()`** (1.94.0): compile-time sliding windows — prefer over `windows(N)` for auto-vectorisation
-- **`LazyLock::get()`** (1.87.0): non-blocking check if already initialised
-- **Const math**: `usize::div_ceil`, `next_power_of_two` usable in `const` contexts (1.90.0+)
-
-## Code Style
-
-- Write a macro when you have 3+ similar `impl` blocks — no copy-paste
-- Use `dbg!()` for debugging; remove before commit (CI: `clippy -D clippy::dbg_macro`)
-- No `TODO` comments — use `todo!("description")` so it compiles but panics if reached; use `unreachable!()` for impossible paths
-- Keep `main.rs` ~10 lines: parse args, load config, call `run()`
-- `lib.rs` is module root: re-export public API, declare `pub mod prelude` with common imports, keep modules private by default
-- Use `pub(crate)` over `pub` unless genuinely part of the external API
-- Mark functions with `#[must_use]` when return values shouldn't be ignored
-- Use "parse, don't validate" — newtype constructors that enforce invariants (e.g., `Port::new(value: u16) -> Result<Self>`)
-- Use type-state pattern (PhantomData + zero-sized state types) for compile-time state machine enforcement
-- Accept `impl AsRef<[u8]>`, `&str`, `&[T]` over owned types in function signatures
-- Use `impl Into<String>` for constructors taking string-like args
-
-## Required Tooling
-
-- Every project: `Cargo.toml`, `Cargo.lock` (committed), `rustfmt.toml`, `clippy.toml`, `deny.toml`, `rust-toolchain.toml`, `.cargo/config.toml`
-- rustfmt.toml: `edition="2024"`, `max_width=100`, `imports_granularity="Module"`, `group_imports="StdExternalCrate"`
-- Pin toolchain in `rust-toolchain.toml` with components `rustfmt, clippy, llvm-tools-preview`
-- Required tools: `cargo-nextest` (tests), `cargo-deny` (licenses/advisories), `cargo-tarpaulin` (coverage), `bacon` (continuous check), `cargo-chef` (Docker layer caching)
-- Use `cargo nextest run` instead of `cargo test`
-- CI must run: `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo deny check`, `cargo nextest run --all-features`
+**Design:** SIMD-first, zero-copy by default, zero-allocation hot paths. If it's scaling and on the hot path, it's in Rust.
 
 ## Error Handling
 
-- **Libraries:** `thiserror` for custom error enums; **Applications:** `anyhow` for prototyping, migrate to proper types later
-- Define `pub type Result<T> = std::result::Result<T, MyError>;`
-- Use `?` for propagation — never verbose `match` on Result to re-return
-- Use `.context()` / `.with_context(|| ...)` from anyhow for readable chains
-- Hot path errors: avoid allocation — use fieldless or small-field enum variants
-- Never `unwrap()` in production; `expect()` only for truly impossible cases with descriptive messages
+```rust
+// ✅ Libraries: thiserror for typed errors
+#[derive(Debug, thiserror::Error)]
+pub enum IngestError {
+    #[error("kafka: {0}")]
+    Kafka(#[from] rdkafka::error::KafkaError),
+    #[error("parse: {0}")]
+    Parse(String),
+}
+pub type Result<T> = std::result::Result<T, IngestError>;
 
-## Ownership & Borrowing
+// ✅ Propagate with ? and .context()
+let msg = consumer.recv().await.context("kafka recv")?;
+```
 
-- Prefer `&T` and `&[T]` over owned types in function params
-- Clone only when you genuinely need owned data — never to satisfy the borrow checker
-- Use `Cow<'a, str>` for conditional allocation (zero-copy when possible)
-
-## Traits & Generics
-
-- Use associated types for "one implementation per type"; generic params for "multiple implementations"
-- Prefer static dispatch (`impl Trait` / generics) for hot paths; `dyn Trait` for heterogeneous collections and plugin systems
-- **Sealed traits**: use `mod private { pub trait Sealed {} }` supertrait to prevent downstream impl — enables non-breaking method additions
-- **GATs**: use `type Item<'a> where Self: 'a` for lending iterators / zero-copy iteration over internal buffers
-- Extension traits add methods to foreign types — must be imported to use
-- Orphan rule: you need either the trait or the type to be local
+❌ `unwrap()` in production — ✅ `?` or `expect("reason")` for truly impossible cases only
+❌ `Box<dyn Error>` in libraries — ✅ typed errors with `thiserror`
+❌ verbose `match` on `Result` — ✅ `?` operator
 
 ## Async (Tokio)
 
-- **Never block in async code** — use `tokio::time::sleep`, `tokio::fs`, `tokio::task::spawn_blocking` for sync ops
-- Use `JoinSet` for concurrent task groups
-- Use `CancellationToken` + `tokio::select!` for graceful shutdown
-- Use bounded `mpsc` channels with backpressure (semaphore-based)
+```rust
+// ✅ Graceful shutdown pattern
+let token = CancellationToken::new();
+let mut set = JoinSet::new();
+set.spawn(worker(token.child_token()));
 
-## Testing
+tokio::select! {
+    _ = signal::ctrl_c() => token.cancel(),
+    _ = set.join_next() => {}
+}
+```
 
-- `#[cfg(test)] mod tests` for unit tests; `tests/` dir for integration
-- Use `proptest` for property-based testing; `criterion` for benchmarks (harness = false)
-- Use `tempfile::TempDir` for filesystem fixtures
+❌ `std::thread::sleep` — ✅ `tokio::time::sleep`
+❌ `std::fs::read` — ✅ `tokio::fs::read`
+❌ CPU work on async runtime — ✅ `spawn_blocking(|| heavy_compute())`
+❌ unbounded channels — ✅ `mpsc::channel(BOUND)` with backpressure
+
+## Ownership — Use This, Not That
+
+| ❌ Don't | ✅ Do | Why |
+|----------|-------|-----|
+| `fn process(s: String)` | `fn process(s: &str)` | Borrow, don't own |
+| `data.clone()` to fix borrow errors | Restructure lifetimes | Clone hides bugs |
+| `String` in hot-path structs | `Cow<'a, str>` or `compact_str::CompactString` | Zero-copy / stack-alloc |
+| `Vec<String>` for shared data | `Vec<Arc<str>>` | Share without copying |
+| `HashMap<K,V>` (internal) | `FxHashMap<K,V>` or `DashMap<K,V>` | Faster hash / concurrent |
+
+## hyperi-rustlib (when in Cargo.toml)
+
+```toml
+[dependencies]
+hyperi-rustlib = { version = ">=1.16", features = ["config", "logger", "metrics"] }
+```
+
+```rust
+// ✅ Config: 8-layer figment cascade (ENV > .env > YAML > defaults)
+hyperi_rustlib::config::setup(config::ConfigOptions {
+    env_prefix: "MYAPP".into(), ..Default::default()
+})?;
+// ✅ Logging: auto-detects container vs terminal, masks secrets
+hyperi_rustlib::logger::setup_default()?;
+```
+
+| ❌ Don't | ✅ Use hyperi-rustlib | Feature |
+|----------|----------------------|---------|
+| Hand-rolled config | `config::setup()` | `config` |
+| Raw tracing-subscriber | `logger::setup_default()` | `logger` |
+| Bespoke Prometheus | `counter!`, `gauge!`, `histogram!` | `metrics` |
+| Raw rdkafka | `transport-kafka` | `transport-kafka` |
+| Raw tonic gRPC | `transport-grpc` | `transport-grpc` |
+| Hand-rolled retry loops | tower-resilience circuit breaker + bulkhead | `resilience` |
+| Direct Vault/AWS SDK | `secrets::Manager` | `secrets-vault` / `secrets-aws` |
+| Raw OpenTelemetry setup | OTLP 0.31 via tonic | `otel` / `otel-metrics` |
 
 ## Performance — Hot Paths
 
-- Profile first: `cargo flamegraph`, `perf record`, `cargo instruments`
+```rust
+// ✅ Zero-copy JSON field extraction (SIMD)
+let value = sonic_rs::get_from_slice(payload, &["user_id"])?;
+
+// ✅ SIMD byte search — never iter().position()
+let newline = memchr::memchr(b'\n', data);
+
+// ✅ Compile-time sliding window (1.94.0)
+let matches: Vec<_> = data.array_windows::<4>()
+    .enumerate()
+    .filter(|(_, w)| *w == MAGIC)
+    .collect();
+
+// ✅ Arena allocator for batch-scoped work
+let arena = bumpalo::Bump::new();
+for batch in stream.chunks(BATCH_SIZE) {
+    process_batch(&arena, batch);
+    arena.reset();  // O(1) dealloc
+}
+```
+
 - `#[inline]` on small hot functions; `#[cold] #[inline(never)]` on error paths
-- Avoid allocations: write to caller-provided buffers, return `Cow`, reuse `Vec` with `.clear()`
-- Batch processing: `chunks(BATCH_SIZE)` with pre-allocated output vecs
 - Pre-allocate: `Vec::with_capacity`, `HashMap::with_capacity`
-- Use `FxHashMap`/`AHashMap` for internal hash maps; `DashMap` for concurrent access
-- Use `bumpalo::Bump` arena for batch-scoped allocations; `.reset()` between batches
-- Use object pools (`crossbeam::queue::ArrayQueue`) for hot-path buffer reuse
-- Use `memchr`/`memchr2`/`memmem` for SIMD byte searching — never `iter().position()`
-- Use `sonic_rs` over `serde_json` for SIMD JSON parsing; `get_from_slice` for zero-copy field extraction
-- Use `compact_str::CompactString` for short strings (≤24 bytes, stack-allocated)
-- Use `Arc<str>` for shared immutable strings across threads
+- `tikv-jemallocator` or `mimalloc` as global allocator for servers
+- Profile first: `cargo flamegraph`, `perf record`
 
-## Memory & Allocators
+## Build & Release
 
-- Use `tikv-jemallocator` or `mimalloc` as global allocator for long-running services
-- Memory-map large files with `memmap2`; process slices directly
-- Columnar batch layout for cache-friendly processing of homogeneous fields
+```toml
+[profile.release]
+lto = "thin"          # Link-time optimisation
+codegen-units = 1     # Better optimisation
+strip = true          # Remove debug symbols
+panic = "abort"       # No unwinding overhead
+opt-level = 3         # Maximum optimisation
+```
 
-## Concurrency
-
-- `parking_lot::Mutex`/`RwLock` over `std::sync` equivalents (faster)
-- `AtomicU64` with `Ordering::Relaxed` for stats counters
-- `rayon::par_iter()` for CPU-bound parallel iteration
-- `crossbeam::queue::SegQueue` for lock-free work queues
-
-## FFI & Unsafe
-
-- `#![forbid(unsafe_code)]` in application crates; all FFI via wrapper crates
-- Minimal `unsafe` blocks — one operation per block
-- Every `unsafe` block must have a `// SAFETY:` comment documenting invariants
-- Every `pub unsafe fn` must have `# Safety` doc section listing preconditions
-- Use `catch_unwind` in `extern "C"` functions to prevent panic unwinding across FFI
-- Use `repr(C)` for FFI-shared structs; opaque handle pattern for complex types
-- Use `bindgen` (C→Rust) and `cbindgen` (Rust→C) for binding generation
-- Run `cargo +nightly miri test` on any unsafe code
-
-## Clippy & Lints
-
-- `clippy.toml`: `too-many-arguments-threshold = 7`, `cognitive-complexity-threshold = 25`
-- In `lib.rs`: `#![warn(clippy::all, clippy::pedantic, clippy::nursery)]`, `#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]`
-- `#![allow(clippy::module_name_repetitions)]`
-- `[lints.rust] unsafe_code = "forbid"` in `Cargo.toml`
-
-## Cargo.toml
-
-- Set `rust-version`, `edition = "2024"`, `license`
-- `[profile.release]`: `lto = "thin"`, `codegen-units = 1`, `strip = true`, `panic = "abort"`, `opt-level = 3`
-- `[profile.bench]`: `lto = "thin"`, `codegen-units = 1`
-- Use `[lints.clippy]` table for project-wide lint config
-- **Build perf**: LLD is default on Linux x86_64 since 1.90 (40% faster linking). mold is faster but verify with C++ deps (ClickHouse is a known issue). Use `sccache` for CI. `cargo-pgo` for PGO+BOLT (15-35% runtime improvement on stable hot paths).
-
-## hyperi-rustlib (when `hyperi-rustlib` is in Cargo.toml)
-
-- Use `hyperi_rustlib::config` (8-layer figment cascade) instead of hand-rolled config
-- Use `hyperi_rustlib::logger` (sensitive field masking, JSON/pretty auto-detect) instead of raw tracing-subscriber
-- Use `hyperi_rustlib::metrics` (Prometheus) or `otel-metrics` (OpenTelemetry) instead of bespoke metrics
-- Use `transport-kafka`/`transport-grpc`/`transport-memory` instead of raw rdkafka/tonic
-- Use `resilience` (tower-resilience circuit breaker/bulkhead/retry) instead of hand-rolled retry loops
-- Use `secrets`/`secrets-vault`/`secrets-aws` instead of direct Vault/AWS SDK calls
-- Feature flags are additive — enable only what you need: `hyperi-rustlib = { version = ">=1.16", features = ["config", "logger", "metrics"] }`
+- LLD is default linker on Linux x86_64 since 1.90 (40% faster). mold is faster but verify with C++ deps (ClickHouse is a known issue).
+- `sccache` for CI build caching. `cargo-pgo` for PGO+BOLT (15-35% runtime improvement).
 
 ## Observability
 
-- **Tracing**: `tracing` + `tracing-subscriber` (JSON in containers, pretty on terminals); `#[instrument]` on async functions
-- **OpenTelemetry**: hyperi-rustlib `otel` feature (OTLP 0.31 via tonic); `otel-metrics` for OTel metrics export
-- **Prometheus**: hyperi-rustlib `metrics` feature; `counter!`, `gauge!`, `histogram!` macros
-- **Health checks**: atomic `HealthState` (Starting→Ready→Draining→Stopped) exposed on `/healthz` and `/readyz`
-- **Graceful shutdown**: `CancellationToken` + `tokio::signal` for SIGTERM; drain period (default 15s) before closing connections
+- `#[instrument(skip(large_args), fields(key = value))]` on all async functions
+- Health: atomic `HealthState` (Starting→Ready→Draining→Stopped) on `/healthz`, `/readyz`
+- Shutdown: `CancellationToken` + `tokio::signal` for SIGTERM; 15s drain period
 
-## Logging
+## Traits (Advanced)
 
-- Use `tracing` with `tracing-subscriber`; JSON + RFC 3339 in containers, pretty + ANSI on terminals
-- Use `#[instrument(skip(large_args), fields(key = value))]` on async functions
-- Use `debug!` in hot paths — disabled in release
+- Associated types for "one impl per type"; generic params for "multiple impls"
+- **Sealed traits**: `mod private { pub trait Sealed {} }` — prevents external impl, enables non-breaking API additions
+- **GATs**: `type Item<'a> where Self: 'a` — lending iterators, zero-copy internal buffer iteration
+- Static dispatch on hot paths; `dyn Trait` only for heterogeneous collections
 
-## AI-Specific Pitfalls
+## Required Tooling
 
-> **CRITICAL: Web-search FIRST for ANY Rust crate before using it.** AI models are
-> consistently out of date with Rust crates. Check crates.io for current versions,
-> check if the crate is deprecated, and check for better modern alternatives.
+- Every project: `Cargo.toml`, `Cargo.lock`, `rustfmt.toml`, `clippy.toml`, `deny.toml`, `rust-toolchain.toml`
+- CI: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo deny check && cargo nextest run`
+- `#![forbid(unsafe_code)]` in application crates; all FFI via wrapper crates
 
-- Never generate `unwrap()` or `expect()` without justification
-- Never clone to work around borrow checker — restructure or borrow
-- Never use `String` params where `&str` suffices
-- Never block in async (`std::thread::sleep`, `std::fs`) — use tokio equivalents
-- Never use `panic!` for error handling — return `Result`
-- Never use `Box<dyn Error>` in library code — define typed errors with `thiserror`
-- Always add lifetime params to structs holding references
-- Verify crate names on crates.io — do not hallucinate crate names
-- Prefer pure Rust crates: `rustls` over openssl, `prost` over protobuf-native, `lz4_flex` over C lz4
+## AI Pitfalls
 
-### Deprecated Crates — Do NOT Use
+> **CRITICAL: Web-search FIRST for ANY Rust crate.** AI models are consistently out of date. Check crates.io for current versions AND check for deprecated/superseded crates.
 
-| Dead | Use Instead | Why |
-|------|-------------|-----|
+| ❌ Dead Crate | ✅ Use Instead | Why |
+|--------------|----------------|-----|
 | `serde_yaml` | `serde_yaml_ng` | Unmaintained since 2023 |
 | `atty` | `std::io::IsTerminal` | In std since 1.70 |
-| `actix-web` | `axum` | axum is the ecosystem standard |
+| `actix-web` | `axum` (0.8+, `/{param}` syntax) | Ecosystem standard |
 | `thiserror` v1 | `thiserror` >=2.0 | v2 removes proc-macro overhead |
-| `warp` | `axum` | Warp is in maintenance mode |
-| `structopt` | `clap` 4+ derive | structopt merged into clap |
-| `dotenv` | `dotenvy` | dotenv is unmaintained |
-| `chrono` (new code) | `time` or `jiff` | Lighter, no C dependency |
+| `warp` | `axum` | Maintenance mode |
+| `structopt` | `clap` 4+ derive | Merged into clap |
+| `dotenv` | `dotenvy` | Unmaintained |
+| `chrono` (new) | `time` or `jiff` | Lighter, no C dependency |
+
+❌ Hallucinate crate names — ✅ verify on crates.io before suggesting
+❌ `String` params where `&str` works — ✅ borrow by default
+❌ `.clone()` to fix borrow errors — ✅ restructure ownership
+❌ Block in async — ✅ `spawn_blocking` for CPU/sync work
+❌ `panic!` for errors — ✅ return `Result`
