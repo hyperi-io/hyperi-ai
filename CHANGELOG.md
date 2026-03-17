@@ -1,3 +1,20 @@
+## [3.4.2](https://github.com/hyperi-io/hyperi-ai/compare/3.4.1...3.4.2) (2026-03-17)
+
+
+### Bug Fixes
+
+* add evolution notice to CI.md, check repo for updates ([8cb143f](https://github.com/hyperi-io/hyperi-ai/commit/8cb143fcf2ffec9338a2ceef5caa8409b0454570))
+* add org library preference to CONFIG-AND-LOGGING.md (rustlib/pylib first) ([1d227a6](https://github.com/hyperi-io/hyperi-ai/commit/1d227a6f29dc473b7e49cc80addff7bfa508770e))
+* correct schema SSOT reference to dfe-schemas (not dfe-engine) ([5c606bb](https://github.com/hyperi-io/hyperi-ai/commit/5c606bbc2ec78ddba17af7acdbe7b28c2dc64441))
+* rework LINEAR-TICKETS.md → ISSUE-MANAGEMENT.md ([24b4a42](https://github.com/hyperi-io/hyperi-ai/commit/24b4a4248196ed7f2474cfe920a8d2123ced196d))
+* tighten mocks policy, update commands for universal/ paths ([409ccb1](https://github.com/hyperi-io/hyperi-ai/commit/409ccb15f71f2f87afb9077b935bb881be9c65ca))
+* update stale ai/ path references to hyperi-ai/ ([a100623](https://github.com/hyperi-io/hyperi-ai/commit/a100623d548157f99293196c11e221f17e526e28))
+
+
+### Documentation
+
+* Phase 2 source standard updates ([59c7fe2](https://github.com/hyperi-io/hyperi-ai/commit/59c7fe2abedc6b1981e1607b20caf002af25f9e1))
+
 ## [3.4.1](https://github.com/hyperi-io/hyperi-ai/compare/3.4.0...3.4.1) (2026-03-17)
 
 
