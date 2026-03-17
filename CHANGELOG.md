@@ -1,3 +1,10 @@
+## [3.4.10](https://github.com/hyperi-io/hyperi-ai/compare/3.4.9...3.4.10) (2026-03-17)
+
+
+### Bug Fixes
+
+* use GitHub App auth for regenerate-rules CI job ([23ca4b7](https://github.com/hyperi-io/hyperi-ai/commit/23ca4b7ce7160fafcefa193222e3e39279ac3706))
+
 ## [3.4.9](https://github.com/hyperi-io/hyperi-ai/compare/3.4.8...3.4.9) (2026-03-17)
 
 
