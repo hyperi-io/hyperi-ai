@@ -1,3 +1,10 @@
+## [3.4.3](https://github.com/hyperi-io/hyperi-ai/compare/3.4.2...3.4.3) (2026-03-17)
+
+
+### Bug Fixes
+
+* update ClickHouse build specifics from repo analysis (Clang 19+/21, LLD only, Praktika CI) ([0012f3f](https://github.com/hyperi-io/hyperi-ai/commit/0012f3f7d254f9d44724ed7e685e942c5672ec9b))
+
 ## [3.4.2](https://github.com/hyperi-io/hyperi-ai/compare/3.4.1...3.4.2) (2026-03-17)
 
 
