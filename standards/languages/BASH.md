@@ -15,7 +15,40 @@ paths:
 
 # Bash Standards for HyperI Projects
 
-**Shell scripting standards for CI/CD, automation, and infrastructure scripts**
+> **"If it's getting complex, over 20 lines, or pipes to jq — it should
+> be Python."** — Derek
+>
+> Bash at HyperI is a **thin caller wrapper** and nothing more. Reasons:
+> reliability (bash error handling is fragile), portability (macOS ships
+> bash 3.2 from 2007), logging (echo vs structured), error handling
+> (set -e is unreliable), and testing (pytest >> BATS).
+>
+> Write the minimum bash needed to check for Python and call it.
+> All real logic lives in Python 3 + stdlib.
+
+**When bash IS appropriate:**
+
+- Thin wrapper scripts (~10-20 lines) that check for Python and call it
+- CI/CD pipeline glue where a shell is the only option
+- One-liner file operations that don't justify a Python script
+- Init scripts, Dockerfiles, Makefiles
+
+**When bash is NOT appropriate (use Python instead):**
+
+- Parsing JSON/YAML (→ `json`/`pyyaml`)
+- Complex conditionals or error handling
+- String manipulation beyond simple variable expansion
+- Anything with `jq`, `sed`, `awk` pipelines
+- Anything over ~20 lines of logic
+- Anything that needs to work reliably on macOS AND Linux
+
+```bash
+#!/usr/bin/env bash
+# The ideal bash script: check Python exists, call Python.
+set -euo pipefail
+command -v python3 >/dev/null 2>&1 || { echo "Python 3 required"; exit 1; }
+exec python3 "$(dirname "$0")/real_logic.py" "$@"
+```
 
 ---
 

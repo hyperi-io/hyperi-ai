@@ -16,9 +16,366 @@ paths:
 
 # Python Standards for HyperI Projects
 
-**Comprehensive Python coding standards for DevOps, DataOps, and DevSecOps projects**
+> **HyperI Python Philosophy**
+>
+> Python is for everything that isn't the hot path. If performance matters,
+> it's in Rust. Python can't be a pig or sluggish, but we're optimising for
+> expressiveness, library ecosystem, and recruitability — not microseconds.
+>
+> The trade-off: Python's flexibility means decades of "kinda works" code in
+> training data. Every AI model will produce outdated patterns. Every Google
+> result leads to 2018-era code. The CI and these standards are the guardrails.
+>
+> **March 2026 update:** Major revision. Added hyperi-pylib section, deprecated
+> packages table, production-at-scale controls, and bash minimalism rules.
 
-**Minimum Python Version: 3.12+** (other versions supported by exception only)
+**Minimum Python Version: 3.12+** (lockstep across all projects — update together)
+
+---
+
+## HyperI Python Design Philosophy
+
+> **"Python is for everything that isn't the hot path. It can't be a pig
+> or sluggish though."** — Derek
+
+1. **Expressiveness over performance** — leverage Python's huge library ecosystem
+   and readable syntax. Hot paths belong in Rust.
+2. **Recruitability** — Python is easier to hire for than Rust. Broader staff
+   recruitment and outsourcing is a factor. Code must be easy to understand.
+3. **Production at hyperscaler size** — but this is still production code running
+   at scale. Flexibility without controls catches you in prod.
+4. **Promote to hyperi-pylib** — patterns common across projects should be
+   considered for promotion into the shared library.
+5. **Single version lockstep** — all projects use the same Python version
+   (currently 3.12). Update all together to avoid version conflict agony.
+6. **uv and Astral tooling** — always use uv and Astral tools (ruff, ty) over
+   alternatives unless there is a compelling reason not to.
+7. **System utilities: Python 3 + stdlib** — scripts that run bare on an OS
+   use only stdlib. Everything else uses uv and .venv.
+
+### What Python Is Used For
+
+- Orchestration and control planes (dfe-engine, dfe-discovery)
+- Generalist APIs (FastAPI)
+- AI/ML work
+- Integration code (not hot path)
+- Utilities and tooling (hyperi-ci, deploy scripts)
+- System automation (where bash gets complex)
+
+### What Python Is NOT Used For
+
+- Hot path data processing (→ Rust)
+- High-throughput ingest pipelines (→ Rust)
+- Anything where microsecond latency matters (→ Rust)
+
+---
+
+## CRITICAL: AI Models Get Python Wrong
+
+> **Web search for EVERY Python library before using it.** AI models are trained
+> on decades of Python code. Most of it is outdated, deprecated, or just bad.
+> This is WORSE than Rust because there's so much more old Python in training data.
+
+### Deprecated Packages — Do NOT Use
+
+| ❌ Dead / Old | ✅ Use Instead | Why |
+|---|---|---|
+| `psycopg2` / `psycopg2-binary` | `psycopg[binary]` (psycopg 3) | psycopg2 is legacy, build issues |
+| `python-jose` | `joserfc` or `PyJWT` | python-jose is unmaintained |
+| `requests` (new async code) | `httpx` | Async, HTTP/2, typed, modern API |
+| `flask` (new APIs) | `fastapi` or `litestar` | Async-native, auto-docs, Pydantic |
+| `datetime.utcnow()` | `datetime.now(UTC)` | Deprecated since 3.12 |
+| `pkg_resources` | `importlib.metadata` | Deprecated, slow startup |
+| `distutils` | `setuptools` or `hatchling` | Removed in 3.12 |
+| `setup.py` / `setup.cfg` | `pyproject.toml` | PEP 517/518 standard |
+| `cgi` / `cgitb` | FastAPI or any ASGI framework | Removed in 3.13 |
+| `unittest.mock` (internal) | Real deps (testcontainers) | No mocks policy |
+| `asyncio.ensure_future()` | `asyncio.create_task()` | Superseded |
+| `typing.List/Dict/Optional` | `list[str]`, `str \| None` | Built-in generics since 3.9+ |
+| `os.path` (new code) | `pathlib.Path` | Object-oriented, cleaner API |
+| `json.loads(f.read())` | `json.load(f)` | Direct file loading |
+| `print()` for logging | `logger.info()` | Structured, maskable, level-aware |
+| `subprocess.run(shell=True)` | `subprocess.run([...])` (list args) | Injection risk |
+| `pip install` | `uv add` | uv is the standard |
+| `python -m venv` | `uv venv` | uv is the standard |
+| `requirements.txt` (primary) | `pyproject.toml` + `uv.lock` | Modern packaging |
+
+### Patterns AI Models Always Get Wrong
+
+```python
+# ❌ Old typing imports (EVERY model does this)
+from typing import List, Dict, Optional, Union, Tuple
+# ✅ Built-in generics (Python 3.12+)
+list[str], dict[str, int], str | None, tuple[int, ...]
+
+# ❌ Old generic syntax
+from typing import TypeVar
+T = TypeVar("T")
+def first(items: list[T]) -> T | None: ...
+# ✅ Python 3.12+ generic syntax
+def first[T](items: list[T]) -> T | None: ...
+
+# ❌ datetime.utcnow() (deprecated)
+from datetime import datetime
+now = datetime.utcnow()
+# ✅ Timezone-aware
+from datetime import datetime, UTC
+now = datetime.now(UTC)
+
+# ❌ requests (blocking, no async)
+import requests
+r = requests.get("https://api.example.com")
+# ✅ httpx (async + sync, HTTP/2, typed)
+import httpx
+async with httpx.AsyncClient() as client:
+    r = await client.get("https://api.example.com")
+
+# ❌ os.path everywhere
+import os
+path = os.path.join(base_dir, "config", "settings.yaml")
+if os.path.exists(path):
+    with open(path) as f: ...
+# ✅ pathlib
+from pathlib import Path
+path = Path(base_dir) / "config" / "settings.yaml"
+if path.exists():
+    data = path.read_text()
+
+# ❌ Bare except / swallowed exceptions
+try:
+    do_something()
+except Exception:
+    pass  # NEVER
+# ✅ Specific exceptions, always handle
+try:
+    do_something()
+except ValueError as e:
+    logger.error("Invalid input", error=str(e))
+    raise
+
+# ❌ Mutable default arguments (classic trap)
+def process(items=[]):  # Shared mutable state!
+# ✅ None default
+def process(items: list[str] | None = None):
+    items = items or []
+
+# ❌ print() for operational output
+print(f"Processing {len(records)} records")
+# ✅ Structured logging
+logger.info("Processing records", count=len(records))
+```
+
+---
+
+## hyperi-pylib
+
+> **This section applies when `hyperi-pylib` is in `pyproject.toml`.**
+> For non-HyperI projects, skip this section and use the generic patterns.
+
+`hyperi-pylib` is the shared Python library for all HyperI Python projects.
+It provides config, logging, metrics, HTTP, Kafka, secrets, CLI framework,
+and more. Available on PyPI. **Use it — never roll bespoke versions of what
+it provides.**
+
+### Quick Start
+
+```toml
+# pyproject.toml
+[project]
+dependencies = [
+    "hyperi-pylib",                    # Core (logging, config, runtime, cli)
+    "hyperi-pylib[http,metrics]",      # With extras
+]
+```
+
+```python
+from hyperi_pylib.logger import logger
+from hyperi_pylib.config import settings
+from hyperi_pylib import build_database_url, get_runtime_paths
+
+# Config: 8-layer cascade is AUTOMATIC (ENV > .env > YAML > defaults)
+host = settings.database.host
+port = settings.api.port
+
+# Logging: auto-detects console vs container, masks sensitive fields
+logger.info("Service starting", version="1.0.0", host=host)
+
+# Database URLs from environment
+postgres_url = build_database_url("postgresql")
+```
+
+### Use This, Not That
+
+| ❌ Don't | ✅ Use hyperi-pylib | Module |
+|---|---|---|
+| Hand-rolled config loading | `settings.database.host` | `config` |
+| Raw `logging` / `print()` | `logger.info("msg", key=val)` | `logger` |
+| Build DB URLs manually | `build_database_url("postgresql")` | `database` |
+| Raw `httpx` with retry | `hyperi_pylib.http` (stamina retries) | `http` |
+| Raw prometheus-client | `create_metrics()` | `metrics` |
+| Raw confluent-kafka | `hyperi_pylib.kafka` | `kafka` |
+| Hand-rolled CLI with argparse | Subclass `DfeApp` | `cli` |
+| Direct Vault/AWS/GCP calls | `SecretsManager` | `secrets` |
+| Manual container detection | `get_runtime_paths()` | `runtime` |
+
+### Feature Extras
+
+```bash
+uv add "hyperi-pylib"                              # Core only
+uv add "hyperi-pylib[http,metrics]"                # Common
+uv add "hyperi-pylib[http,metrics,kafka]"          # + Kafka
+uv add "hyperi-pylib[http,metrics,kafka,opentelemetry]"  # + OTel
+```
+
+| Extra | Provides | Size |
+|---|---|---|
+| `http` | httpx + stamina retries | ~1 MB |
+| `metrics` | Prometheus client + psutil | ~1 MB |
+| `kafka` | confluent-kafka + schema inference | ~11 MB |
+| `expression` | CEL expression evaluation (Rust/PyO3) | ~6 MB |
+| `cache` | cashews + msgpack + psycopg pool | ~14 MB |
+| `opentelemetry` | OTel SDK + OTLP + Prometheus exporters | ~4 MB |
+| `secrets` | All backends (Vault + AWS + GCP + Azure) | varies |
+
+---
+
+## Bash Minimalism — Call Python Instead
+
+> **"If it's getting complex, over 20 lines, or pipes to jq — it should
+> be Python."**
+
+Bash at HyperI is a thin caller wrapper only. Reasons:
+- Reliability: bash error handling is fragile
+- Portability: macOS ships bash 3.2 (2007), zsh by default — the "mac bash
+  problem"
+- Logging: Python has structured logging, bash has echo
+- Error handling: Python has exceptions, bash has `set -e` (which is unreliable)
+- Testing: Python has pytest, bash has BATS (limited)
+
+### What Bash Is For
+
+```bash
+#!/usr/bin/env bash
+# Check Python, call Python. That's it.
+set -euo pipefail
+command -v python3 >/dev/null 2>&1 || { echo "Python 3 required"; exit 1; }
+exec python3 "$(dirname "$0")/real_logic.py" "$@"
+```
+
+### What Bash Is NOT For
+
+- Parsing JSON/YAML (→ Python `json`/`pyyaml`)
+- Complex conditionals (→ Python)
+- String manipulation (→ Python)
+- Anything with `jq`, `sed`, `awk` pipelines (→ Python)
+- Anything over ~20 lines (→ Python)
+- Anything that needs to work reliably on macOS and Linux (→ Python)
+
+See `standards/languages/BASH.md` for bash standards when bash IS appropriate.
+
+---
+
+## Production at Scale — Controls
+
+Python's flexibility is a risk. These controls keep "kinda works" code out of production.
+
+### Mandatory CI Enforcement
+
+| Tool | Purpose | Blocking? |
+|---|---|---|
+| `ruff` | Lint + format (replaces flake8, isort, black) | ✅ Yes |
+| `ty` / `pyright` | Type checking (catch runtime errors at dev time) | ⚠️ Warnings → ✅ Blocking |
+| `bandit` | Security static analysis (medium/high) | ✅ Yes |
+| `pip-audit` | CVE scanning of dependencies | ✅ Yes |
+| `pytest` | Test suite with coverage | ✅ Yes (80% min) |
+| `vulture` | Dead code detection | ✅ Yes |
+
+### Exception Handling (Hyperscaler Grade)
+
+```python
+# ❌ Generic exception swallowing — THE most common production failure
+try:
+    result = process(data)
+except Exception:
+    pass  # Silent failure → data loss → customer impact
+
+# ❌ Logging without raising — error is swallowed
+try:
+    result = process(data)
+except Exception as e:
+    logger.error(f"Failed: {e}")
+    # Where does execution go? What state is the system in?
+
+# ✅ Specific exception, log with context, re-raise or handle
+try:
+    result = process(data)
+except ValidationError as e:
+    logger.warning("Validation failed", input=data.id, error=str(e))
+    raise  # Let caller decide
+except ConnectionError as e:
+    logger.error("DB unreachable", host=settings.database.host, error=str(e))
+    raise ServiceUnavailableError("Database connection failed") from e
+```
+
+### Never Use print() in Production Code
+
+```python
+# ❌ print() — goes to stdout, no level, no structure, no masking
+print(f"Processing {user.email}")  # PII leak!
+
+# ✅ Structured logging — level-aware, JSON in containers, auto-masks secrets
+logger.info("Processing user", user_id=user.id)  # No PII
+```
+
+### Nuitka Compilation (Nice to Have)
+
+Nuitka can compile Python to native binaries. Benefits: faster startup,
+single-file distribution, no Python runtime dependency. Not a hard
+requirement, but consider for CLI tools and utilities.
+
+```bash
+nuitka --standalone --onefile my_tool.py
+```
+
+---
+
+## Python 3.12+ Features to Use
+
+### Generic Syntax (3.12+)
+
+```python
+# ✅ New syntax (use this)
+type Point = tuple[float, float]
+type UserID = int
+
+def first[T](items: list[T]) -> T | None:
+    return items[0] if items else None
+
+class Stack[T]:
+    def __init__(self) -> None:
+        self._items: list[T] = []
+```
+
+### Match/Case (3.10+)
+
+```python
+match command:
+    case {"action": "create", "name": str(name)}:
+        create_resource(name)
+    case {"action": "delete", "id": int(id)}:
+        delete_resource(id)
+    case _:
+        raise ValueError(f"Unknown command: {command}")
+```
+
+### Template Strings (3.14, when we adopt)
+
+```python
+# t-strings produce Template objects, not strings — safe for SQL/HTML
+from string.templatelib import Template
+query = t"SELECT * FROM users WHERE id = {user_id}"
+# query is a Template, not a string — can be escaped before execution
+```
 
 ---
 
