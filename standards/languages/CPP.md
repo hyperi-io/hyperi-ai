@@ -1033,26 +1033,34 @@ these exceptions and requirements override the general C++ standards above.
 
 ### Compiler Requirements
 
-- **C++ Standard:** C++23 (`CMAKE_CXX_STANDARD 23`)
+- **C++ Standard:** C++23 (`CMAKE_CXX_STANDARD 23`, extensions OFF)
 - **CMake:** ≥3.25
-- **Compiler:** Clang only (GCC is not officially supported for ClickHouse builds)
-- **Clang version:** Check the CI docker images for the current pinned version (typically Clang 18+)
-- **Linker:** LLD default. **mold does NOT work** with ClickHouse C++ — known backward compatibility issues with some ClickHouse C++ codegen. Do not switch to mold.
+- **Compiler:** Clang ONLY — GCC is not supported
+- **Clang minimum:** 19 (enforced by CMake fatal error in `cmake/tools.cmake`)
+- **Clang in CI:** 21 (`clang-21` / `clang++-21` pinned in `ci/defs/defs.py`)
+- **Linker:** LLD ONLY (`ld.lld`). **Gold linker is explicitly forbidden** (CMake fatal error). **mold is NOT supported.**
+- **Required LLVM tools:** `llvm-ar`, `llvm-ranlib`, `llvm-objcopy`, `llvm-strip` (version-matched to clang)
 
 ### Build Oddities
 
-- ClickHouse uses WebKit-based `.clang-format` — different from typical LLVM style
-- Build includes `clang_tidy.cmake` — tidy checks are CI-enforced
-- `-Xclang -fuse-ctor-homing` flag is required (debug info optimisation)
-- ThinLTO is used for release builds (`-flto=thin`)
-- `ENABLE_CHECK_HEAVY_BUILDS` option exists to prevent excessively large translation units
+- `.clang-format` is WebKit-based (140 char columns, 4-space tabs) — NOT the usual LLVM style
+- `.clang-tidy` enables all checks then disables ~50 impractical ones. `WarningsAsErrors: '*'`
+- `-Xclang -fuse-ctor-homing` flag (debug info size reduction)
+- `-falign-functions=64` and `-mbranches-within-32B-boundaries` for stable benchmarks
+- ThinLTO for Release/RelWithDebInfo on Linux — but there's a known clang bug where `.debug_aranges` isn't emitted with ThinLTO (CI ships a custom `ld.lld` wrapper as workaround)
+- `_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE` in Debug builds
+- `-ffile-prefix-map` for reproducible builds
+- `ENABLE_CHECK_HEAVY_BUILDS` prevents excessively large translation units
 
 ### CI Enforcement
 
-- CI runs in Docker containers from `ci/docker/` with pinned toolchains
-- Integration tests, fuzz tests, performance tests, and Jepsen tests all run in CI
+- Uses **Praktika** (custom Python-based CI orchestration, not standard GitHub Actions)
+- CI runs in Docker (`clickhouse/binary-builder`, `clickhouse/fasttest`)
+- Build types: DEBUG, RELEASE, ASAN, TSAN, MSAN, UBSAN, TIDY, COVERAGE
+- Cross-platform: AMD64, ARM64, Darwin, FreeBSD, musl, RISCV64, PPC64LE, S390X
+- Uses `sccache` for compilation caching
 - PRs require CLA signature via bot
-- Build times are long (~30min+ for full build) — use ccache/sccache
+- Build times ~30min+ (full build) — always use sccache
 
 ### Contributing (HyperI Fork)
 
