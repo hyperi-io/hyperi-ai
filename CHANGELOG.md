@@ -1,3 +1,10 @@
+## [3.4.8](https://github.com/hyperi-io/hyperi-ai/compare/3.4.7...3.4.8) (2026-03-17)
+
+
+### Bug Fixes
+
+* update remaining UNIVERSAL.md refs to lowercase/QUICKSTART.md in agents and commands ([e607340](https://github.com/hyperi-io/hyperi-ai/commit/e6073409defd7f144eaac528a72822c7229166f3))
+
 ## [3.4.7](https://github.com/hyperi-io/hyperi-ai/compare/3.4.6...3.4.7) (2026-03-17)
 
 
