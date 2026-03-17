@@ -1385,14 +1385,40 @@ async def fetch_all(ids: list[int]) -> list[dict]:
 
 The following sections are specific guidance for AI code assistants working with Python.
 
-### Slopsquatting Warning
+### Package Verification — MANDATORY Before Every Suggestion
 
-AI models hallucinate package names. If you suggest `pip install some-package`,
-verify it exists on PyPI first. Attackers register hallucinated package names
-with malicious code (supply chain attack called "slopsquatting"). 25-38% of
-AI-suggested dependencies point to deprecated or non-existent packages.
+AI models hallucinate package names. Attackers register hallucinated names
+with malicious code ("slopsquatting"). 25-38% of AI-suggested dependencies
+point to deprecated or non-existent packages.
 
-**Before suggesting ANY import:** verify the package exists and is actively maintained.
+**Before suggesting ANY `import` or `uv add`:**
+
+1. **Verify it exists** — web search `<package> pypi` or check `https://pypi.org/project/<package>/`
+2. **Check it's actively maintained:**
+   - Last release within 12 months
+   - Open issues responded to (not 500+ ignored)
+   - More than one maintainer (bus factor)
+3. **Check it's widely used:**
+   - PyPI download stats (`https://pypistats.org/packages/<package>`)
+   - Minimum ~10K downloads/month for production dependencies
+   - Known ecosystem presence (referenced in docs, tutorials, other projects)
+4. **Check for superseding packages:**
+   - Has it been replaced? (psycopg2 → psycopg, requests → httpx)
+   - Is there a stdlib equivalent now? (tomli → tomllib, dateutil → zoneinfo)
+5. **Check license compatibility** — no GPL/AGPL/SSPL
+
+**Definition of "actively maintained":**
+- Commit activity in the last 6 months
+- Releases in the last 12 months
+- Security issues addressed (not ignored)
+- Python 3.12+ support confirmed
+
+**Red flags — do NOT use:**
+- Last release >18 months ago
+- "Looking for new maintainer" in README
+- Pinned to Python 3.8 or lower
+- No type stubs or py.typed marker
+- Single maintainer with no recent activity
 
 ### Silent Failure — The Worst AI Anti-Pattern
 
