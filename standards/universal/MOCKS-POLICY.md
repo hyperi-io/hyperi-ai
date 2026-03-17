@@ -15,6 +15,8 @@ rule_paths:
 
 # Mock-Aware Testing Policy
 
+> **"Every time we have mocks and AI it always ends in tears."** — Derek
+
 **Mocks are scaffolding, not testing. A test suite with only mocked tests is untested.**
 
 ---

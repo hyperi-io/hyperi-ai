@@ -1,67 +1,137 @@
-# HyperI Coding Standards — Quick Reference Index
+---
+name: hyperi-standards
+description: HyperI coding standards and best practices. Use when writing code, reviewing code, making commits, or when quality and consistency matter.
+---
 
-This file is a router/index to the HyperI coding standards library.
-Standards content is in the files referenced below — not in this file.
+# HyperI Coding Standards
 
-## Standards Architecture
+Standards for all HyperI projects. Delivered as a git submodule (`hyperi-ai/`)
+and automatically injected into AI assistant context at session start.
 
-Standards are delivered in three layers:
+---
 
-1. **Universal Rules** — `hyperi-ai/standards/rules/UNIVERSAL.md` (~137 lines)
-   Cross-cutting rules for ALL code: git, style, errors, security, testing, licensing.
-   Always load this first.
+## Directory Structure
 
-2. **Path-Scoped Rules** — `hyperi-ai/standards/rules/<topic>.md`
-   Auto-injected when editing matching file types.
+```
+standards/
+├── universal/           Cross-cutting standards (all code, all projects)
+├── languages/           Language-specific (Python, Rust, Go, TypeScript, C++, Bash, SQL)
+├── infrastructure/      Infrastructure (Docker, K8S, Terraform, Ansible)
+└── rules/               Compact rules (LLM-generated from above, auto-injected)
+```
 
-3. **Full Standards** — `hyperi-ai/standards/languages/`, `hyperi-ai/standards/infrastructure/`,
-   `hyperi-ai/standards/universal/`
-   Complete unabridged standards for deep reference, code review, and simplification.
+---
 
-## Available Rules
+## How Standards Are Delivered
 
-### Universal (always relevant, no path scope)
+Standards are injected automatically via hooks — no manual loading needed.
 
-| File | Topic |
-|------|-------|
-| `rules/UNIVERSAL.md` | Git, style, errors, security, testing, licensing |
-| `rules/testing.md` | Test structure, frameworks, test-first development |
-| `rules/error-handling.md` | Security-first error handling |
-| `rules/security.md` | Input validation, secrets, OWASP |
-| `rules/design-principles.md` | SOLID, DRY, KISS, YAGNI |
-| `rules/mocks-policy.md` | Mock-aware testing policy |
+**Compact tier** (200K context, default): LLM-compressed rules from `standards/rules/`.
+**Full tier** (1M+ context, auto-detected): Complete source standards from `standards/{universal,languages,infrastructure}/`.
 
-### Language-Specific (auto-injected by file type)
+Detection is automatic (VS Code model selection or `HYPERI_CONTEXT_TIER` env var).
 
-| Marker Files | Language | Rule File |
-|--------------|----------|-----------|
-| pyproject.toml, setup.py, requirements.txt, uv.lock | Python | `rules/python.md` |
-| go.mod | Go | `rules/golang.md` |
-| tsconfig.json, package.json | TypeScript/JS | `rules/typescript.md` |
-| Cargo.toml | Rust | `rules/rust.md` |
-| CMakeLists.txt, *.cpp, *.hpp | C++ | `rules/cpp.md` |
-| *.sh | Bash | `rules/bash.md` |
-| *.sql + MergeTree | ClickHouse SQL | `rules/clickhouse-sql.md` |
+---
 
-### Infrastructure (auto-injected by file type)
+## For AI Code Assistants (Claude Code, Cursor, Copilot, Gemini, Codex)
 
-| Marker Files | Technology | Rule File |
-|--------------|-----------|-----------|
-| Dockerfile, docker-compose*.yml | Docker | `rules/docker.md` |
-| Chart.yaml, values.yaml | Kubernetes | `rules/k8s.md` |
-| *.tf, *.tfvars | Terraform | `rules/terraform.md` |
-| ansible.cfg, playbook.yml | Ansible | `rules/ansible.md` |
-| certs/, ssl/, pki/, tls/ | PKI/TLS | `rules/pki.md` |
+### What Gets Loaded Automatically
 
-## For AI Code Assistants
-
-### Session Start
-
-1. Read `TODO.md` and `STATE.md`
-2. Read `hyperi-ai/standards/rules/UNIVERSAL.md`
-3. Language/infra rules are auto-injected by your agent when editing matching files
+1. **Universal rules** — collation of all `standards/universal/*.md` (always)
+2. **Detected tech rules** — matched by project files (Cargo.toml → Rust, pyproject.toml → Python, etc.)
+3. **Skills** — verification, bleeding-edge protection, documentation
 
 ### When You Need Full Detail
 
-Read the full standard from `hyperi-ai/standards/languages/` or `hyperi-ai/standards/infrastructure/`.
-Appropriate for code review, simplification, or complex implementation decisions.
+Read the complete standard from `standards/languages/` or `standards/infrastructure/`.
+Use for: code review, simplification, complex implementation decisions.
+
+### Session Start
+
+1. Standards are auto-injected — no action needed
+2. Read `TODO.md` and `STATE.md` for project context
+3. Language/infrastructure rules match automatically by file type
+
+---
+
+## Quick Reference — What's Where
+
+### Universal (apply to all code)
+
+| Standard | Covers |
+|----------|--------|
+| AI-CONDUCT.md | Communication style, AI code of conduct, three-iteration rule |
+| CHARS-POLICY.md | Spelling split (American code / Australian docs), character restrictions |
+| CI.md | hyperi-ci, semantic-release, GitHub Actions |
+| CODE-HEADER.md | File header format (all languages) |
+| CODE-STYLE.md | Clarity, naming, CLI tools, temporary files |
+| CONFIG-AND-LOGGING.md | 7-layer config cascade, RFC 3339 logging |
+| DESIGN-PRINCIPLES.md | SOLID, DRY, KISS, YAGNI |
+| ERROR-HANDLING.md | Security-first error handling |
+| GIT.md | Commit types, branch naming, semantic-release alignment |
+| LICENSING.md | FSL-1.1-ALv2 default, no GPL/AGPL/SSPL |
+| LINEAR-TICKETS.md | Issue tracking (GH Issues + Linear) |
+| MOCKS-POLICY.md | No mocks — test against real dependencies |
+| PKI.md | TLS, SSH, certificates, CNSA 2.0 |
+| REPO-NAMING.md | Repository naming by product scope |
+| SECURITY.md | Input validation, secrets management |
+| TESTING.md | Test-first development, 80% coverage |
+
+### Languages (auto-detected by marker files)
+
+| Marker | Language | File |
+|--------|----------|------|
+| `Cargo.toml` | Rust | `languages/RUST.md` |
+| `pyproject.toml`, `setup.py` | Python | `languages/PYTHON.md` |
+| `go.mod` | Go | `languages/GOLANG.md` |
+| `tsconfig.json`, `package.json` | TypeScript/JS | `languages/TYPESCRIPT.md` |
+| `CMakeLists.txt`, `*.cpp` | C++ | `languages/CPP.md` |
+| `*.sh` | Bash | `languages/BASH.md` |
+| `*.sql` | ClickHouse SQL | `languages/SQL-CLICKHOUSE.md` |
+
+### Infrastructure (auto-detected by marker files)
+
+| Marker | Technology | File |
+|--------|-----------|------|
+| `Dockerfile` | Docker | `infrastructure/DOCKER.md` |
+| `Chart.yaml` | Kubernetes/Helm | `infrastructure/K8S.md` |
+| `*.tf` | Terraform | `infrastructure/TERRAFORM.md` |
+| `ansible.cfg` | Ansible | `infrastructure/ANSIBLE.md` |
+
+---
+
+## Source of Truth
+
+| Data | Source | NOT From |
+|------|--------|----------|
+| Version | `git describe --tags` or `VERSION` | STATE.md, agent memory |
+| Tasks | `TODO.md` | STATE.md, agent memory |
+| History | `git log` | STATE.md, agent memory |
+| Changelog | `CHANGELOG.md` (semantic-release) | STATE.md, agent memory |
+| Project context | `STATE.md` (symlinked as CLAUDE.md, etc.) | agent memory |
+
+---
+
+## Tool-Specific Notes
+
+### Claude Code
+
+Standards injected via `hooks/inject_standards.py` at session start and on
+context compaction. Auto-memory at `~/.claude/projects/<hash>/memory/` —
+do not duplicate STATE.md content there.
+
+### Cursor IDE
+
+Rules deployed to `.cursor/rules/*.mdc`. Notepads are ephemeral — do not
+rely on them for shared context.
+
+### Gemini Code
+
+Settings in `.gemini/`. Same principle: do not duplicate STATE.md into
+agent-local storage.
+
+### Copilot / Codex / Others
+
+Read this quickstart file, then the relevant standards for your project's
+languages and infrastructure. Standards are plain markdown — any tool that
+reads markdown files can use them.
