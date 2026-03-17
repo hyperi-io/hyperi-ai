@@ -1,6 +1,11 @@
 ---
 name: rust-standards
 description: Rust coding standards using Cargo, clippy, and idiomatic patterns. Use when writing Rust code, reviewing Rust, or setting up Rust projects.
+paths:
+  - "**/*.rs"
+detect_markers:
+  - "file:Cargo.toml"
+  - "deep_file:Cargo.toml"
 ---
 
 > **📌 Derek's Hot Path Hard Lessons**

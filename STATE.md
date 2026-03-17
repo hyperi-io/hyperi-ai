@@ -107,6 +107,24 @@ Consumer Project/
 **Decision:** All work flows through main -> PR -> release. Never commit directly to release.
 **Rationale:** Release branch triggers deployment/publishing. Direct commits bypass review and CI.
 
+### Tiered Context Injection (compact vs full)
+
+**Decision:** Standards injection auto-detects context window size and selects the appropriate tier.
+**Rationale:** 1M context is Pro Max only. Most users have 200K. Full source standards consume ~48% of 200K but only ~8% of 1M.
+
+| Tier | Window | Source | Budget |
+|------|--------|--------|--------|
+| `compact` | 200K (default) | `standards/rules/` | ~12K tokens (~6%) |
+| `full` | 1M+ (auto-detected) | `standards/{languages,common,infrastructure}/` | ~83K tokens (~8%) |
+
+**Detection:** `HYPERI_CONTEXT_TIER` env var > VS Code `claudeCode.selectedModel` `[1m]` suffix > default `compact`.
+
+### Compact Rules: Generated Output, NOT Hand-Edited
+
+**Decision:** Compact rules in `standards/rules/` are OUTPUT of `tools/generate-rules.py`. Never hand-edit them.
+**Rationale:** Hand edits get overwritten on regeneration. To improve compact rules, fix the generator or the source document structure. Currently all files have `<!-- override: manual -->` because the generator only extracts bullets — it needs to be improved to preserve code blocks, tables, and ❌/✅ pairs.
+**Status:** Generator improvement is a pending task. See `docs/TOKEN-ENGINEERING.md`.
+
 ---
 
 ## API Keys and Token Counting
@@ -117,22 +135,8 @@ Consumer Project/
 - `CONTEXT7_API_KEY` — for Context7 MCP live docs
 
 **Token counting:** Use the Anthropic `count_tokens` API (free, no cost) for
-accurate Claude token measurements. Available via `anthropic` SDK in `~/.venv`:
-
-```python
-from anthropic import Anthropic
-client = Anthropic()  # reads ANTHROPIC_API_KEY from env
-result = client.messages.count_tokens(
-    model="claude-sonnet-4-20250514",
-    messages=[{"role": "user", "content": text}]
-)
-print(result.input_tokens)
-```
-
-**Key insight:** Compact markdown tokenises at approximately 3 bytes per token
-on Claude, not the commonly assumed 0.75-1.3. Always measure with the API,
-never estimate from byte counts. The full CAG payload is approximately 24K
-tokens (~2.4% of the 1M context window).
+accurate Claude token measurements. Available via `anthropic` SDK in `~/.venv`.
+See `docs/TOKEN-ENGINEERING.md` for measured budgets per tier.
 
 ---
 
