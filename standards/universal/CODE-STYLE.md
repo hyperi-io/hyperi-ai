@@ -489,6 +489,20 @@ Use modern CLI tools when available. Fall back to standard tools if not installe
 
 ---
 
+## Deprecation Warnings — Fix Immediately
+
+**All deprecation warnings MUST be addressed in the current PR.**
+
+Do not defer. Do not suppress. Do not add `# noqa` or `#[allow(deprecated)]`.
+Deprecations become removals — fix them now while the fix is small,
+not later when your CI breaks with no warning on a minor version bump.
+
+This applies to all languages, all tools, all CI output. If you see a
+deprecation warning in test output, linter output, or build output —
+fix it before merging.
+
+---
+
 ## Temporary Files
 
 - Dev/CI: `./.tmp/` (project-scoped, gitignored)

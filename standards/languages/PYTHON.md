@@ -707,9 +707,15 @@ Together, these three layers make `>=` ranges safe and maintainable.
 that the upstream hasn't fixed, OR for security-critical packages where
 you need audit traceability. Always add a comment explaining WHY.
 
+**Deprecation warnings MUST be fixed immediately.** If `pytest` or `ruff`
+or runtime output shows a deprecation warning, address it in the current
+PR — do not defer. Deprecations become removals and then your CI breaks
+on a Python minor release with no warning.
+
 **For AI assistants:** when adding a dependency, always use `>=` not `==`.
 When reviewing code, check if `uv.lock` is stale and suggest
 `uv lock --upgrade` if deps haven't been updated recently.
+Flag any deprecation warnings in test output as must-fix.
 
 ### When Native Python is Acceptable
 

@@ -3443,6 +3443,11 @@ cargo audit
 cargo deny check
 ```
 
+**Deprecation warnings MUST be fixed immediately.** If `cargo clippy`,
+`cargo build`, or test output shows a deprecation warning, address it
+in the current PR — do not defer. Deprecations become compile errors
+on the next Rust edition or dependency major release.
+
 **Risk mitigation for `>=` ranges:**
 
 | Risk | Mitigation |
