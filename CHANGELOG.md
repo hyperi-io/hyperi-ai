@@ -1,3 +1,10 @@
+## [3.2.0](https://github.com/hyperi-io/hyperi-ai/compare/3.1.6...3.2.0) (2026-03-17)
+
+
+### Features
+
+* tiered context injection — auto-detect 200K vs 1M context windows ([f35e150](https://github.com/hyperi-io/hyperi-ai/commit/f35e150e324f5a106862df21a2c27594f1d6ed89))
+
 ## [3.1.6](https://github.com/hyperi-io/hyperi-ai/compare/3.1.5...3.1.6) (2026-03-17)
 
 
