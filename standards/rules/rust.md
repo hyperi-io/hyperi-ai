@@ -16,6 +16,21 @@ source: languages/RUST.md
 - Set `edition` in `Cargo.toml` and `rustfmt.toml` to the latest stable edition
 - Pin `rust-toolchain.toml` to current stable — update regularly
 
+## Design Philosophy
+
+- **SIMD-first**: byte-volume operations (JSON parsing, string search, compression) use SIMD crates (`sonic-rs`, `memchr`, `simd-json`)
+- **Zero-copy by default**: `&[u8]`, `Cow<'_, str>`, `Bytes`, memory-mapped files — allocate only when ownership is needed
+- **Zero-allocation hot paths**: reuse buffers, arena allocators (`bumpalo`), pre-allocated pools
+- If it's scaling and on the hot path, it's in Rust. Otherwise Python/TypeScript are fine.
+
+## Edition 2024 Features
+
+- **Async closures**: `async || { ... }` with `AsyncFn`/`AsyncFnMut`/`AsyncFnOnce` traits — use instead of `Fn() -> impl Future`
+- **Let chains** (1.88.0+): `if let Some(x) = foo() && let Ok(y) = bar(x) && y > 0 { ... }`
+- **`array_windows::<N>()`** (1.94.0): compile-time sliding windows — prefer over `windows(N)` for auto-vectorisation
+- **`LazyLock::get()`** (1.87.0): non-blocking check if already initialised
+- **Const math**: `usize::div_ceil`, `next_power_of_two` usable in `const` contexts (1.90.0+)
+
 ## Code Style
 
 - Write a macro when you have 3+ similar `impl` blocks — no copy-paste
@@ -58,6 +73,8 @@ source: languages/RUST.md
 
 - Use associated types for "one implementation per type"; generic params for "multiple implementations"
 - Prefer static dispatch (`impl Trait` / generics) for hot paths; `dyn Trait` for heterogeneous collections and plugin systems
+- **Sealed traits**: use `mod private { pub trait Sealed {} }` supertrait to prevent downstream impl — enables non-breaking method additions
+- **GATs**: use `type Item<'a> where Self: 'a` for lending iterators / zero-copy iteration over internal buffers
 - Extension traits add methods to foreign types — must be imported to use
 - Orphan rule: you need either the trait or the type to be local
 
@@ -126,6 +143,25 @@ source: languages/RUST.md
 - `[profile.release]`: `lto = "thin"`, `codegen-units = 1`, `strip = true`, `panic = "abort"`, `opt-level = 3`
 - `[profile.bench]`: `lto = "thin"`, `codegen-units = 1`
 - Use `[lints.clippy]` table for project-wide lint config
+- **Build perf**: LLD is default on Linux x86_64 since 1.90 (40% faster linking). mold is faster but verify with C++ deps (ClickHouse is a known issue). Use `sccache` for CI. `cargo-pgo` for PGO+BOLT (15-35% runtime improvement on stable hot paths).
+
+## hyperi-rustlib (when `hyperi-rustlib` is in Cargo.toml)
+
+- Use `hyperi_rustlib::config` (8-layer figment cascade) instead of hand-rolled config
+- Use `hyperi_rustlib::logger` (sensitive field masking, JSON/pretty auto-detect) instead of raw tracing-subscriber
+- Use `hyperi_rustlib::metrics` (Prometheus) or `otel-metrics` (OpenTelemetry) instead of bespoke metrics
+- Use `transport-kafka`/`transport-grpc`/`transport-memory` instead of raw rdkafka/tonic
+- Use `resilience` (tower-resilience circuit breaker/bulkhead/retry) instead of hand-rolled retry loops
+- Use `secrets`/`secrets-vault`/`secrets-aws` instead of direct Vault/AWS SDK calls
+- Feature flags are additive — enable only what you need: `hyperi-rustlib = { version = ">=1.16", features = ["config", "logger", "metrics"] }`
+
+## Observability
+
+- **Tracing**: `tracing` + `tracing-subscriber` (JSON in containers, pretty on terminals); `#[instrument]` on async functions
+- **OpenTelemetry**: hyperi-rustlib `otel` feature (OTLP 0.31 via tonic); `otel-metrics` for OTel metrics export
+- **Prometheus**: hyperi-rustlib `metrics` feature; `counter!`, `gauge!`, `histogram!` macros
+- **Health checks**: atomic `HealthState` (Starting→Ready→Draining→Stopped) exposed on `/healthz` and `/readyz`
+- **Graceful shutdown**: `CancellationToken` + `tokio::signal` for SIGTERM; drain period (default 15s) before closing connections
 
 ## Logging
 
@@ -134,6 +170,10 @@ source: languages/RUST.md
 - Use `debug!` in hot paths — disabled in release
 
 ## AI-Specific Pitfalls
+
+> **CRITICAL: Web-search FIRST for ANY Rust crate before using it.** AI models are
+> consistently out of date with Rust crates. Check crates.io for current versions,
+> check if the crate is deprecated, and check for better modern alternatives.
 
 - Never generate `unwrap()` or `expect()` without justification
 - Never clone to work around borrow checker — restructure or borrow
@@ -144,3 +184,16 @@ source: languages/RUST.md
 - Always add lifetime params to structs holding references
 - Verify crate names on crates.io — do not hallucinate crate names
 - Prefer pure Rust crates: `rustls` over openssl, `prost` over protobuf-native, `lz4_flex` over C lz4
+
+### Deprecated Crates — Do NOT Use
+
+| Dead | Use Instead | Why |
+|------|-------------|-----|
+| `serde_yaml` | `serde_yaml_ng` | Unmaintained since 2023 |
+| `atty` | `std::io::IsTerminal` | In std since 1.70 |
+| `actix-web` | `axum` | axum is the ecosystem standard |
+| `thiserror` v1 | `thiserror` >=2.0 | v2 removes proc-macro overhead |
+| `warp` | `axum` | Warp is in maintenance mode |
+| `structopt` | `clap` 4+ derive | structopt merged into clap |
+| `dotenv` | `dotenvy` | dotenv is unmaintained |
+| `chrono` (new code) | `time` or `jiff` | Lighter, no C dependency |
