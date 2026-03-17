@@ -1,3 +1,21 @@
+## [3.4.7](https://github.com/hyperi-io/hyperi-ai/compare/3.4.6...3.4.7) (2026-03-17)
+
+
+### Bug Fixes
+
+* align PYTHON.md testing section with no-mocks policy (no mock libraries, testcontainers only) ([3da84c6](https://github.com/hyperi-io/hyperi-ai/commit/3da84c6d9178020e351fea83b2ba64dde84479e6))
+* restructure PYTHON.md sections into logical reading order, remove duplicates ([eea81ea](https://github.com/hyperi-io/hyperi-ai/commit/eea81ea89ebe5d338aa31f5cb0e16b2b56f9d848))
+* restructure RUST.md sections into logical reading order ([049bbfc](https://github.com/hyperi-io/hyperi-ai/commit/049bbfc51bfbcdbd36b720e5be64382552e0a696))
+
+
+### Documentation
+
+* add async/concurrency + container deployment to PYTHON.md ([292ce97](https://github.com/hyperi-io/hyperi-ai/commit/292ce97c5828046b4541964576231b91dafc7e39))
+* add remaining Google style rules (no power features, single-clause comprehensions, immutable defaults, module imports) ([8f6dce2](https://github.com/hyperi-io/hyperi-ai/commit/8f6dce25dcbdb4f90193222c93f1658cfbff27ef))
+* add Rust version pinning policy (>= default, cargo update at every review) ([c7b8c62](https://github.com/hyperi-io/hyperi-ai/commit/c7b8c62bf7e63d59044689dc6f2d379cb6fa9c8c))
+* add version pinning policy (>= default, pin only when forced) ([6b5fa3d](https://github.com/hyperi-io/hyperi-ai/commit/6b5fa3d638606d2ba49e1cad8594efc981ec23c0))
+* deprecation warnings must be fixed immediately (universal + Python + Rust) ([d27fd20](https://github.com/hyperi-io/hyperi-ai/commit/d27fd20154e69a203bffce96fb255aa103dd65e6))
+
 ## [3.4.6](https://github.com/hyperi-io/hyperi-ai/compare/3.4.5...3.4.6) (2026-03-17)
 
 
