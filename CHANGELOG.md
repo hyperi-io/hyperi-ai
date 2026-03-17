@@ -1,3 +1,15 @@
+## [3.4.5](https://github.com/hyperi-io/hyperi-ai/compare/3.4.4...3.4.5) (2026-03-17)
+
+
+### Bug Fixes
+
+* update tests for renamed rules (UNIVERSAL→universal, no code-assistant) ([3f1fdaf](https://github.com/hyperi-io/hyperi-ai/commit/3f1fdafc5fcf70ed0bffb25ee19d7a092afed37f))
+
+
+### Documentation
+
+* add package verification procedure with maintenance/usage criteria ([35d2311](https://github.com/hyperi-io/hyperi-ai/commit/35d231193c7110e3616e658d49754687ab0104e9))
+
 ## [3.4.4](https://github.com/hyperi-io/hyperi-ai/compare/3.4.3...3.4.4) (2026-03-17)
 
 
