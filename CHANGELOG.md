@@ -1,3 +1,10 @@
+## [3.4.0](https://github.com/hyperi-io/hyperi-ai/compare/3.3.0...3.4.0) (2026-03-17)
+
+
+### Features
+
+* LLM-powered compact rules generator, regex hot path rules, full regen ([25d92d8](https://github.com/hyperi-io/hyperi-ai/commit/25d92d84d645f7459eca4718d3a0ace032bba997))
+
 ## [3.3.0](https://github.com/hyperi-io/hyperi-ai/compare/3.2.1...3.3.0) (2026-03-17)
 
 
