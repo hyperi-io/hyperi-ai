@@ -1091,6 +1091,120 @@ class UserCreate(BaseModel):
         return v
 ```
 
+### Pydantic Settings (Configuration)
+
+```python
+from pydantic_settings import BaseSettings
+
+class AppSettings(BaseSettings):
+    database_host: str = "localhost"
+    database_port: int = 5432
+    api_key: str  # Required — no default
+
+    model_config = {"env_prefix": "MYAPP_"}
+
+# Reads from MYAPP_DATABASE_HOST, MYAPP_API_KEY, etc.
+settings = AppSettings()
+```
+
+Note: For HyperI projects, use `hyperi_pylib.config.settings` instead — it
+provides a richer 8-layer cascade. Pydantic settings is for non-HyperI projects.
+
+### Protocols (Structural Typing)
+
+```python
+from typing import Protocol
+
+class Sendable(Protocol):
+    def send(self, data: bytes) -> None: ...
+
+class KafkaProducer:
+    def send(self, data: bytes) -> None: ...
+
+class HttpSender:
+    def send(self, data: bytes) -> None: ...
+
+# Both work — no inheritance needed, just matching interface
+def dispatch(sender: Sendable, payload: bytes) -> None:
+    sender.send(payload)
+```
+
+Use `Protocol` over `ABC` for interface definitions. It's structural (duck
+typing with type checking) rather than nominal (requires inheritance).
+
+### FastAPI Dependency Injection
+
+```python
+from fastapi import FastAPI, Depends
+from typing import Annotated
+
+app = FastAPI()
+
+async def get_db():
+    db = await connect_db()
+    try:
+        yield db
+    finally:
+        await db.close()
+
+DB = Annotated[Database, Depends(get_db)]
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: int, db: DB) -> User:
+    return await db.fetch_user(user_id)
+```
+
+### Context Managers
+
+```python
+from contextlib import contextmanager, asynccontextmanager
+
+@contextmanager
+def managed_connection(url: str):
+    conn = connect(url)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+# Usage — cleanup guaranteed even on exception
+with managed_connection("postgres://...") as conn:
+    conn.execute(query)
+
+# Async version
+@asynccontextmanager
+async def managed_session():
+    session = await create_session()
+    try:
+        yield session
+    finally:
+        await session.close()
+```
+
+### Testing with Fixtures
+
+```python
+import pytest
+from testcontainers.postgres import PostgresContainer
+
+@pytest.fixture
+def db():
+    """Real PostgreSQL via testcontainers — no mocks."""
+    with PostgresContainer() as postgres:
+        yield create_connection(postgres.get_connection_url())
+
+def test_save_user(db):
+    user_id = save_user(db, {"name": "Alice"})
+    assert db.get_user(user_id).name == "Alice"
+
+@pytest.fixture
+def client(db):
+    """FastAPI test client with real DB."""
+    app.dependency_overrides[get_db] = lambda: db
+    with TestClient(app) as c:
+        yield c
+```
+
 ### Async/Await
 
 ```python
