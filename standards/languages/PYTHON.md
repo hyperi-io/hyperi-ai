@@ -26,10 +26,33 @@ paths:
 > training data. Every AI model will produce outdated patterns. Every Google
 > result leads to 2018-era code. The CI and these standards are the guardrails.
 >
-> **March 2026 update:** Major revision. Added hyperi-pylib section, deprecated
-> packages table, production-at-scale controls, and bash minimalism rules.
+> **March 2026 update:** Major revision. Post Derek Dump of 5k lines, geez!
+> Added hyperi-pylib section, deprecated packages table, production-at-scale
+> controls, and bash minimalism rules.
 
 **Minimum Python Version: 3.12+** (lockstep across all projects — update together)
+
+## Table of Contents
+
+1. [HyperI Python Design Philosophy](#hyperi-python-design-philosophy) — why Python, when Python, when Rust
+2. [AI Anti-Patterns](#critical-ai-models-get-python-wrong) — deprecated packages, web-search-first, slopsquatting
+3. [hyperi-pylib](#hyperi-pylib) — org shared library (config, logging, metrics, HTTP, Kafka, secrets)
+4. [Quick Reference](#quick-reference) — CI commands
+5. [Python 3.12+ Features](#python-312-features-to-use) — generics, match/case, walrus, StrEnum, TaskGroup
+6. [Type Hints](#type-hints-required) — modern syntax, annotations
+7. [Code Style](#code-style-clarity-over-cleverness) — clarity rules, Google patterns, naming, formatting
+8. [Modern Patterns](#modern-patterns) — dataclasses, Pydantic, Protocols, DI, generators
+9. [Async & Concurrency](#async--concurrency) — asyncio, TaskGroup, threading, decision matrix
+10. [Container Deployment](#container-deployment-docker--k8s) — Docker, K8s, health checks, graceful shutdown
+11. [Dependencies (uv)](#dependencies-uv) — uv-first policy
+12. [Package Structure](#package-structure) — src layout, tests
+13. [Configuration and Logging](#configuration-and-logging-hyperi-pylib) — cascade, structured logging
+14. [Security](#security-standards) — bandit, SQL injection, secrets
+15. [Testing](#mock-aware-testing-policy) — no-mocks, testcontainers, fixtures
+16. [Production Controls](#production-at-scale--controls) — CI enforcement, exceptions, Nuitka
+17. [Tooling](#ruff-configuration) — ruff, black, pyright/ty
+18. [For AI Assistants](#for-ai-code-assistants) — package verification, pitfalls
+19. [Resources](#resources)
 
 ---
 
@@ -1461,14 +1484,243 @@ async def fetch_all(ids: list[int]) -> list[dict]:
 
 ---
 
-## Commit Types
+## Async & Concurrency
 
-**Standard conventional commits (no Python-specific):**
+### The Decision Matrix
 
-- `fix:` - Fixes, improvements, refactors (PATCH)
-- `feat:` - New features (MINOR)
-- `perf:` - Performance improvements (PATCH)
-- `docs:`, `test:`, `chore:` - No version bump
+| Workload | Use | Why |
+|---|---|---|
+| **I/O-bound, async libs** | `asyncio` | Lightweight, scales to 100K+ connections |
+| **I/O-bound, blocking libs** | `threading` / `ThreadPoolExecutor` | Sync libs need threads |
+| **CPU-bound** | `multiprocessing` / `ProcessPoolExecutor` | Bypasses GIL |
+| **Mixed blocking + async** | `asyncio` + `asyncio.to_thread()` | Bridge sync into async |
+| **At HyperI: CPU-bound** | **Rust** (not Python) | Don't fight the language |
+
+### TaskGroup — The Modern Standard (3.11+)
+
+```python
+import asyncio
+
+async def process_batch(urls: list[str]) -> list[dict]:
+    """Process URLs concurrently — collect ALL errors, not just first."""
+    results = []
+    async with asyncio.TaskGroup() as tg:
+        tasks = [tg.create_task(fetch(url), name=url) for url in urls]
+    return [t.result() for t in tasks]
+    # If ANY task fails, ALL others are cancelled and
+    # exceptions are raised as ExceptionGroup
+```
+
+Use `TaskGroup` over `asyncio.gather()` — it cancels on failure and
+propagates all exceptions. Name your tasks for debuggability.
+
+### Concurrency Limiting
+
+```python
+import asyncio
+
+async def fetch_all(urls: list[str], max_concurrent: int = 50):
+    """Limit concurrent requests with semaphore."""
+    sem = asyncio.Semaphore(max_concurrent)
+
+    async def limited_fetch(url: str) -> dict:
+        async with sem:
+            return await fetch(url)
+
+    async with asyncio.TaskGroup() as tg:
+        tasks = [tg.create_task(limited_fetch(url)) for url in urls]
+    return [t.result() for t in tasks]
+```
+
+❌ Never `asyncio.gather(*[fetch(url) for url in million_urls])` — OOM.
+✅ Always limit concurrency with `Semaphore` or `asyncio.Queue` worker pool.
+
+### Common Async Pitfalls
+
+```python
+# ❌ Forgetting to await — silently does nothing
+async def bad():
+    fetch_data()  # Returns coroutine, never executes!
+
+# ✅ Always await or create_task
+async def good():
+    await fetch_data()
+    # or
+    task = asyncio.create_task(fetch_data())
+
+# ❌ Sequential awaits — no concurrency
+async def sequential():
+    a = await fetch("url1")  # Waits for this...
+    b = await fetch("url2")  # ...then this. Serial!
+
+# ✅ Concurrent with TaskGroup
+async def concurrent():
+    async with asyncio.TaskGroup() as tg:
+        t1 = tg.create_task(fetch("url1"))
+        t2 = tg.create_task(fetch("url2"))
+    a, b = t1.result(), t2.result()  # Ran in parallel
+
+# ❌ Blocking call in async — freezes event loop
+async def blocks():
+    data = requests.get(url)  # BLOCKS entire loop!
+
+# ✅ Use async library or to_thread
+async def non_blocking():
+    data = await asyncio.to_thread(requests.get, url)  # Bridge
+    # Better: use httpx.AsyncClient
+```
+
+### Free-Threaded Python (3.14+, Optional GIL Removal)
+
+Python 3.14 officially supports free-threaded builds (PEP 779). The GIL
+can now be disabled, enabling true multi-core parallelism with threads.
+Single-thread overhead is ~5-10%.
+
+**At HyperI:** We don't use free-threaded Python yet. Our CPU-bound work
+is in Rust. Monitor ecosystem readiness before adopting. When we do, the
+decision matrix above changes — `threading` becomes viable for CPU work.
+
+### Timeouts
+
+```python
+# ✅ Always set timeouts on I/O operations
+async with asyncio.timeout(30):
+    result = await fetch_data()
+
+# ✅ httpx has built-in timeouts
+async with httpx.AsyncClient(timeout=30.0) as client:
+    response = await client.get(url)
+```
+
+---
+
+## Container Deployment (Docker + K8s)
+
+95% of HyperI Python services run inside containers on Kubernetes.
+Use `hyperi-pylib` — it provides container detection, health endpoints,
+structured logging, and graceful shutdown out of the box.
+
+### Dockerfile Pattern
+
+```dockerfile
+# Multi-stage build — small, secure, reproducible
+FROM python:3.12-slim AS builder
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN pip install uv && uv sync --frozen --no-dev
+
+FROM python:3.12-slim
+WORKDIR /app
+COPY --from=builder /app/.venv /app/.venv
+COPY src/ ./src/
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Non-root user (K8s policy enforcement)
+RUN useradd -r -u 10001 appuser
+USER appuser
+
+# Exec form for proper SIGTERM forwarding
+CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+**Rules:**
+- Multi-stage builds always (build deps stay out of runtime image)
+- Non-root user always (`USER appuser`)
+- Exec form for CMD always (signal forwarding for graceful shutdown)
+- Pin Python version (no `python:latest`)
+- Install deps first for layer caching
+
+### Health Check Endpoints
+
+```python
+from fastapi import FastAPI
+from hyperi_pylib.runtime import is_container
+
+app = FastAPI()
+
+@app.get("/health")
+async def liveness():
+    """Liveness probe — is the process alive?"""
+    return {"status": "ok"}
+
+@app.get("/ready")
+async def readiness():
+    """Readiness probe — are dependencies connected?"""
+    checks = {
+        "database": await check_db(),
+        "redis": await check_redis(),
+    }
+    ok = all(checks.values())
+    return {"status": "ready" if ok else "not_ready", "checks": checks}
+```
+
+Map to K8s probes:
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 5
+```
+
+### Graceful Shutdown
+
+```python
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: init resources
+    app.state.db = await connect_db()
+    app.state.kafka = await connect_kafka()
+    logger.info("Service started")
+
+    yield  # App runs here
+
+    # Shutdown: clean up in reverse order
+    logger.info("Shutting down — draining connections")
+    await app.state.kafka.close()
+    await app.state.db.close()
+    logger.info("Shutdown complete")
+
+app = FastAPI(lifespan=lifespan)
+```
+
+K8s sends SIGTERM → uvicorn stops accepting new requests → lifespan
+cleanup runs → pod terminates. Set `terminationGracePeriodSeconds: 30`
+in your deployment spec.
+
+### Structured Logging in Containers
+
+```python
+# hyperi-pylib auto-detects container vs terminal
+from hyperi_pylib.logger import logger
+
+# Container: JSON to stdout (machine-parseable)
+# {"timestamp": "2026-03-17T12:00:00Z", "level": "info",
+#  "message": "Request processed", "request_id": "abc123"}
+
+# Terminal: human-readable with colours
+# 12:00:00 INFO  Request processed (request_id=abc123)
+
+logger.info("Request processed", request_id=req_id, duration_ms=42)
+```
+
+**Rules:**
+- Log to stdout always (K8s collects via DaemonSet)
+- JSON format in containers (parseable by Loki/Elasticsearch)
+- Include correlation/request IDs for distributed tracing
+- Never log secrets (hyperi-pylib auto-masks)
+- Use `hyperi_pylib.logger` — it handles all of this
 
 ---
 
