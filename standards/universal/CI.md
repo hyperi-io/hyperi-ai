@@ -169,6 +169,39 @@ specific — the changelog is auto-generated from these messages.
 - Use `vars.*` for non-secret configuration, `secrets.*` for credentials
 - Default runner: `${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}`
 
+### Authentication — Prefer GitHub Apps
+
+**Use GitHub App tokens over PATs for CI push-back and cross-repo access.**
+
+```yaml
+- name: Generate GitHub App token
+  id: app-token
+  uses: actions/create-github-app-token@v2
+  with:
+    app-id: ${{ secrets.GH_APP_ID }}
+    private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+- uses: actions/checkout@v4
+  with:
+    token: ${{ steps.app-token.outputs.token }}
+```
+
+App tokens are scoped, auditable, and don't expire with a person's account.
+PATs (`GIT_TOKEN`) are fallback only.
+
+### Python Type Checking — ty first, pyright fallback
+
+hyperi-ci uses **ty** (Astral's Rust-based type checker) as the primary
+type checker, with pyright as fallback if ty is not available. Both are
+configured via `.hyperi-ci.yaml`:
+
+```yaml
+quality:
+  python:
+    ty: blocking       # Primary (Astral, Rust-based, fast)
+    pyright: disabled   # Fallback only if ty unavailable
+```
+
 ## Legacy CI Submodule (Upgrade Path)
 
 **Detection:** A `ci/` directory that is a git submodule (typically
