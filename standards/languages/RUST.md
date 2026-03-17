@@ -675,6 +675,13 @@ cargo install cargo-tarpaulin    # Code coverage
 cargo install bacon              # Background checker (like cargo-watch)
 cargo install cargo-chef         # Docker layer caching
 
+# Profiling (see Performance Tuning Lifecycle)
+cargo install hyperfine          # Whole-binary benchmarking
+cargo install flamegraph         # CPU flame graphs
+# dhat: add as optional dep in Cargo.toml, not installed globally
+cargo install tokio-console      # Async task dashboard
+cargo install oha                # HTTP load testing
+
 # Optional but recommended
 cargo install cargo-audit        # Security audit
 cargo install cargo-outdated     # Check for outdated deps
@@ -2580,21 +2587,129 @@ Hot paths are code sections that execute frequently and dominate runtime. In dat
 - **Hash lookups** - dictionary encoding, deduplication
 - **Serialization** - writing output
 
-### Profiling First
+### Performance Tuning Lifecycle
+
+> **"Premature optimization is the root of all evil"** — but the full Knuth
+> quote continues: *"Yet we should not pass up the opportunities in that
+> critical 3%."* The problem isn't optimisation — it's optimising the wrong
+> thing.
+
+The lifecycle is a loop: **Measure → Isolate → Optimize → Repeat.**
+
+1. **Measure** — establish a baseline. Use `hyperfine` for whole-binary
+   timing, `criterion` for micro-benchmarks.
+2. **Isolate** — find WHERE time/memory is spent. Use `cargo flamegraph`
+   for CPU, `dhat` for heap allocations. Don't guess.
+3. **Optimize** — fix the specific bottleneck identified in step 2.
+4. **Repeat** — re-measure to confirm improvement. One cycle often reveals
+   the next bottleneck. Stop when the numbers meet requirements.
+
+### Profiling Toolchain
+
+All tools below are cross-platform and Rust-powered.
+
+**Whole-binary benchmarking (hyperfine):**
 
 ```bash
-# CPU profiling with perf
+cargo install hyperfine
+
+# Establish baseline — run binary with realistic input
+hyperfine './target/release/pipeline data/logs.txt'
+
+# Compare two implementations
+hyperfine './target/release/pipeline-v1 data/logs.txt' \
+          './target/release/pipeline-v2 data/logs.txt'
+
+# Warmup runs to avoid cold-cache bias
+hyperfine --warmup 3 './target/release/pipeline data/logs.txt'
+```
+
+**CPU profiling (flame graphs):**
+
+```bash
+cargo install flamegraph
+
+# Generate flame graph — requires debug symbols in release builds
+# (see Profiling Profile in Cargo.toml Best Practices)
+cargo flamegraph --bin pipeline -- data/logs.txt
+
+# Opens as SVG in browser — wide bars = hot code
+```
+
+**CPU profiling (perf — Linux):**
+
+```bash
 perf record --call-graph dwarf ./target/release/pipeline
 perf report
-
-# Flame graphs
-cargo install flamegraph
-cargo flamegraph --bin pipeline
-
-# Memory profiling
-cargo install cargo-instruments  # macOS
-cargo instruments -t Allocations --bin pipeline
 ```
+
+**Heap profiling (dhat):**
+
+```toml
+# Cargo.toml
+[dependencies]
+dhat = { version = "0.3", optional = true }
+
+[features]
+dhat-heap = ["dep:dhat"]
+```
+
+```rust
+// main.rs — conditional dhat allocator
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
+fn main() {
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::new_heap();
+
+    // ... application code ...
+}
+```
+
+```bash
+# Run with heap profiling enabled
+cargo run --features dhat-heap --release -- data/logs.txt
+
+# Produces dhat-heap.json — view at https://nnethercote.github.io/dh_view/dh_view.html
+# Shows: total bytes allocated, allocation sites, allocation counts
+```
+
+**Async profiling (tokio-console + tracing-chrome):**
+
+```bash
+cargo install tokio-console
+
+# tokio-console: real-time dashboard for async task execution
+# Shows when tasks are spawned, woken, completed — spots stuck futures
+# Requires tracing subscriber configured with console_subscriber
+
+# tracing-chrome: generates Chrome trace JSON for async visualisation
+# Open in chrome://tracing or https://ui.perfetto.dev/
+```
+
+**HTTP load testing (oha):**
+
+```bash
+cargo install oha
+
+# Load test an HTTP endpoint
+oha -n 10000 -c 100 http://localhost:8080/api/ingest
+```
+
+### LLM-Assisted Profiling
+
+Feed profiler output to LLMs for analysis — useful as a starting point
+when you're unfamiliar with a codebase's performance characteristics.
+
+- **Flame graph SVG** — paste or describe the widest bars. Ask the LLM
+  which functions dominate and what optimisation strategies apply.
+- **dhat JSON** — share the top allocation sites. Ask the LLM to identify
+  unnecessary allocations and suggest zero-copy alternatives.
+
+This is a starting point, not a substitute for understanding the code.
+Always verify LLM suggestions with measurement.
 
 ### NEVER Use Regex or Grok on Hot Paths
 
@@ -2671,6 +2786,71 @@ fn parse_syslog(line: &[u8]) -> Option<SyslogFields<'_>> {
 - Log parsing at ingest volume
 - Any `for record in stream` loop body
 - Anything inside `#[inline]` or hot-path functions
+
+### Avoid Unnecessary `.collect()` in Loops
+
+One of the most common performance killers: calling `.collect()` inside a
+loop to create a temporary `Vec` when you can navigate the iterator directly.
+If your loop runs N times, you create N vectors — expensive in both CPU and
+memory.
+
+```rust
+// ❌ Bad — creates a Vec per line (N allocations for N lines)
+for line in input.lines() {
+    let parts: Vec<&str> = line.split(',').collect();
+    let timestamp = parts[0];
+    let level = parts[1];
+    let message = parts[2];
+    process(timestamp, level, message);
+}
+
+// ✅ Good — navigate the iterator directly, zero allocations
+for line in input.lines() {
+    let mut parts = line.split(',');
+    let timestamp = parts.next().unwrap_or_default();
+    let level = parts.next().unwrap_or_default();
+    let message = parts.next().unwrap_or_default();
+    process(timestamp, level, message);
+}
+
+// ✅ Also good — use splitn for bounded splits
+for line in input.lines() {
+    let mut parts = line.splitn(3, ',');
+    if let (Some(ts), Some(level), Some(msg)) = (parts.next(), parts.next(), parts.next()) {
+        process(ts, level, msg);
+    }
+}
+```
+
+**When `.collect()` IS fine:**
+- Outside loops (one-time collection)
+- When you need random access (indexing) into the collected result
+- When the collected data outlives the iterator source
+- In non-hot-path code (startup, config parsing)
+
+### Filter Early — Skip Unnecessary Work
+
+The cheapest work is work you don't do. If you know certain input can be
+skipped, filter it before processing — not after.
+
+```rust
+// ❌ Bad — parses everything, then filters
+let results: Vec<Record> = input.lines()
+    .map(|line| parse_record(line))     // Expensive parse on ALL lines
+    .filter(|r| r.is_relevant())         // Filter AFTER parsing
+    .collect();
+
+// ✅ Good — filter before expensive work
+let results: Vec<Record> = input.lines()
+    .filter(|line| !line.starts_with('#'))    // Skip comments (cheap check)
+    .filter(|line| !is_internal_ip(line))     // Skip dev traffic (cheap check)
+    .map(|line| parse_record(line))           // Only parse what matters
+    .collect();
+```
+
+**Apply this pattern at every stage of a pipeline:** network → deserialise →
+transform → serialise → sink. The earlier you filter, the less work every
+subsequent stage does.
 
 ### Inlining Strategy
 
@@ -4700,6 +4880,14 @@ codegen-units = 1
 strip = true
 panic = "abort"
 
+# Profiling profile: release speed with debug symbols for flamegraph/dhat
+# Build with: cargo build --profile profiling
+# Required for readable flame graphs and dhat output
+[profile.profiling]
+inherits = "release"
+debug = true          # Keep debug symbols for profiler output
+strip = false         # Don't strip — profilers need symbols
+
 [profile.bench]
 lto = true
 codegen-units = 1
@@ -6106,6 +6294,11 @@ Key realisation: **The compiler is your pair programmer.** Read the error messag
 
 - The Rust Performance Book: <https://nnethercote.github.io/perf-book/>
 - Criterion Benchmarking: <https://bheisler.github.io/criterion.rs/book/>
+- Hyperfine (whole-binary benchmarking): <https://github.com/sharkdp/hyperfine>
+- DHAT (heap profiling): <https://docs.rs/dhat/>
+- Cargo Flamegraph: <https://github.com/flamegraph-rs/flamegraph>
+- Tokio Console (async debugging): <https://github.com/tokio-rs/console>
+- Oha (HTTP load testing): <https://github.com/hatoo/oha>
 
 ### Crate Documentation
 
