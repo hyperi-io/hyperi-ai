@@ -12,6 +12,7 @@ source: universal/GIT.md
 # Git Standards
 
 ## Default Branch
+
 Use `main`. Never `master`. All CI, semantic-release, and branch protection assume `main`.
 
 ## Branch Flow
@@ -21,30 +22,38 @@ feature-branch → merge → main → PR → release
 ```
 
 | ❌ Don't | ✅ Do | Why |
-|---|---|---|
+|----------|-------|-----|
 | Commit directly to `release` | PR from `main` → `release` | `release` is protected |
-| Force-push/rebase `release` | Only update via PR | Preserves release history |
-| Skip PR for "quick fixes" | Always `main` → PR → `release` | No exceptions |
+| Force-push/rebase `release` | Fast-forward merges only | Preserves release history |
+| Skip PR for "quick fixes" | Always `main → PR → release` | No exceptions |
 
 - `main` and `release` are protected
+- Feature work on topic branches off `main`
 - Semantic-release runs on `release` (or `main` per project config)
 - Hotfixes: branch from `main` → merge to `main` → PR to `release`
 
 ## Branch Naming
 
 ```
-<type>/<issue-ref>/<short-description>   # e.g. feat/AI-123/add-cursor-support
-<type>/<short-description>               # e.g. fix/memory-leak
+<type>/<issue-ref>/<short-description>   # With issue tracking
+<type>/<short-description>                # Without issue tracking
 ```
 
 **Types:** `feat fix docs test chore ci cleanup data debt design infra meta ops perf refactor review sec spike ui hotfix`
 
-- Include ticket ID when using issue trackers; omit for quick fixes
+```bash
+feat/AI-123/add-cursor-support
+fix/PROJ-456/null-pointer-exception
+fix/memory-leak
+docs/update-readme
+```
+
+- Include ticket ID when using issue trackers; omit for quick fixes/solo work
 - 2-4 word descriptions, hyphen-separated
 
 ## Commit Messages
 
-**Format:** Conventional Commits
+Format: [Conventional Commits](https://www.conventionalcommits.org/)
 
 ```
 <type>: <description>
@@ -54,36 +63,55 @@ feature-branch → merge → main → PR → release
 [optional footer]
 ```
 
-### Version Bump Types
+### Types → Version Bumps
 
-| Type | Bump | Type | Bump |
-|---|---|---|---|
-| `feat:` | MINOR | `docs:` `test:` `chore:` `ci:` `refactor:` | None |
-| `fix:` `perf:` `sec:` `hotfix:` | PATCH | `BREAKING CHANGE:` footer | MAJOR |
+Aligned with `.releaserc.json` — authoritative list.
 
-### Rules
-- Subject: ≤50 chars, lowercase after type, no period, imperative mood
+| Type | Bump | Note |
+|------|------|------|
+| `feat:` | MINOR | **RARELY** — AI overuses this. Probably a `fix:` |
+| `fix:` | PATCH | **DEFAULT** — use most of the time |
+| `perf:` | PATCH | |
+| `refactor:` | PATCH | |
+| `hotfix:` | PATCH | |
+| `sec:` | PATCH | |
+
+**No bump:** `docs: test: chore: ci: infra: ops: cleanup: debt: spike: review: ui: design: data: meta:`
+
+**Breaking changes:** `BREAKING CHANGE:` in footer → MAJOR bump. **NEVER write automatically** — require explicit human confirmation.
+
+### Subject Line Rules
+
+| ❌ Don't | ✅ Do |
+|----------|-------|
+| `Fix: Added the new feature.` | `fix: handle missing template file` |
+| 80-char subject | ≤50 chars |
+| Past tense ("added") | Imperative ("add") |
+| Period at end | No period |
+| Emojis 🚀 | Never. Ever. |
+
 - Body: explain WHY not WHAT, wrap 72 chars, blank line after subject
 - Footer: `Fixes #123`, `Refs #456`, `BREAKING CHANGE:`
 
 ### AI Attribution
-Git hooks auto-strip `Co-Authored-By: Claude`, `Generated with Claude Code`, etc. No manual action needed.
+
+Git hooks auto-strip `Co-Authored-By: Claude`, `Generated with Claude Code`, etc. No manual removal needed.
 
 ## AI Assistant Guidance
 
 ### Commits
 
-| ❌ Don't | ✅ Do | Why |
-|---|---|---|
-| Multi-line verbose messages | Human-like, short, 1 line (3 max for huge changes) | Humans don't write essays in commits |
-| Use emojis in commits | Plain text only | Never. Ever. |
-| Auto-commit without asking | Show message, request approval (mature projects) | User controls commits |
-| Default to `feat:` | Default to `fix:` — AI exaggerates importance | Conservatism in type selection |
-
-**Approval flow:** Offer **Yes** / **No** / **Change** (revise + re-approve).
+- **ALWAYS** show proposed message and get approval before committing (mature projects; skip for fast/spike)
+- **ALWAYS** write human-like, Australian low-key, short concise messages — 1 line preferred, 3 max
+- **ALWAYS** err conservative on type: if you think `feat:`, it's probably `fix:`
+- Offer 3 options: **Yes** / **No** / **Change** (revise then re-approve)
 
 ### Pushing
 
-- **ALWAYS** `git pull --rebase` before push (semantic-release creates version commits)
-- **ALWAYS** seek approval before ANY push — show commit list + projected version bump
+```bash
+git pull --rebase   # ALWAYS before push — semantic-release creates version commits
+```
+
+- **ALWAYS** seek approval before ANY push
+- Show: (1) commit list, (2) projected version bump (e.g., `1.8.2 → 1.8.3`)
 - **NEVER** push without explicit approval

@@ -32,23 +32,14 @@ ansible-playbook --check --diff playbook.yml
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
 | `apt: name: nginx` | `ansible.builtin.apt: name: nginx` | FQCN required for all modules |
-| Task without `name:` | Every task gets descriptive `name:` | `name[missing]` lint rule |
-| `copy:` without `mode:` | Always set `mode: "0644"`, `owner:`, `group:` | Security + lint compliance |
-| `shell: ./setup.sh` (no guard) | `shell: ./setup.sh` + `creates:` or `changed_when:` | Idempotence required |
-| `shell:` for simple commands | `ansible.builtin.command:` + `changed_when: false` | `no-changed-when` lint rule |
+| Task without `name:` | Every task has descriptive `name:` | Lint rule `name[missing]` |
+| `copy:` without `mode:` | Always set `mode: "0644"` on file ops | Lint + security |
+| `shell: ./setup.sh` (bare) | Add `creates:` or `changed_when:` | Idempotence required |
+| `shell:` for simple cmds | `ansible.builtin.command:` | Use simplest module possible |
 | `when: enable_feature` | `when: enable_feature \| bool` | String "false" is truthy |
 | `config_path: /etc/app` | `myapp_config_path: /etc/app` | Role-prefix all variables |
 | Hardcoded single-platform `apt:` | Platform conditional with `when: ansible_os_family` | Multi-platform support |
-| Hallucinated collection modules | Verify against Galaxy; stick to known collections | See list below |
-
-## Known Collections
-
-```yaml
-# Safe to use:
-ansible.builtin, ansible.posix, community.general,
-community.docker, community.postgresql, amazon.aws
-# Verify anything else on Galaxy before using
-```
+| `command: myapp --version` | Add `changed_when: false` | Lint rule `no-changed-when` |
 
 ## Project Structure
 
@@ -66,8 +57,8 @@ project/
 │   └── group_vars/all.yml
 └── roles/
     └── role_name/
-        ├── defaults/main.yml   # Lowest-priority vars
-        ├── tasks/main.yml      # Orchestrator
+        ├── defaults/main.yml   # User-overridable vars (lowest priority)
+        ├── tasks/main.yml      # Task orchestrator
         ├── handlers/main.yml
         ├── templates/*.j2
         ├── files/
@@ -86,8 +77,10 @@ interpreter_python = /usr/bin/python3
 retry_files_enabled = false
 stdout_callback = yaml
 forks = 5
+
 [ssh_connection]
 pipelining = true
+
 [privilege_escalation]
 become = true
 become_method = sudo
@@ -109,12 +102,19 @@ all:
     ansible_python_interpreter: /usr/bin/python3
 ```
 
-Localhost: `ansible_connection: local`
+```yaml
+# inventories/localhost/inventory.yml
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+      ansible_python_interpreter: /usr/bin/python3
+```
 
 ## Playbook Patterns
 
 ```yaml
-# site.yml
+# playbooks/site.yml
 - name: Configure all servers
   hosts: all
   become: true
@@ -128,16 +128,22 @@ Localhost: `ansible_connection: local`
   roles: [common, security, monitoring]
 ```
 
-| Pattern | Use |
-|---------|-----|
-| `ansible.builtin.import_role:` | Static — parsed at load time |
-| `ansible.builtin.include_role:` | Dynamic — supports `when:` at runtime |
-| `ansible.builtin.import_tasks:` | Static subtask files |
-| `ansible.builtin.include_vars:` + `with_first_found:` | OS-specific variable loading |
+### Role Import vs Include
+
+```yaml
+# Static (parse time) — use for unconditional roles
+- ansible.builtin.import_role:
+    name: security
+
+# Dynamic (runtime) — use with conditionals
+- ansible.builtin.include_role:
+    name: monitoring
+  when: monitoring_enabled | default(false)
+```
 
 ## Role Conventions
 
-### tasks/main.yml — orchestrate subtasks
+### tasks/main.yml — orchestrator pattern
 
 ```yaml
 - name: Include OS-specific variables
@@ -152,11 +158,11 @@ Localhost: `ansible_connection: local`
   ansible.builtin.import_tasks: install.yml
 ```
 
-### defaults/main.yml — role-prefixed, documented
+### defaults/main.yml — role-prefixed, typed
 
 ```yaml
 myapp_version: "1.0.0"
-myapp_service_enabled: true
+myapp_service_enabled: true    # Booleans: explicit true/false
 myapp_listen_port: 8080
 myapp_ssl_enabled: false
 ```
@@ -179,36 +185,24 @@ defaults/main.yml → group_vars/all → group_vars/{group} → host_vars/{host}
 (lowest)                                                                      (highest)
 ```
 
-- Booleans: explicit `true`/`false`
-- Strings: quote if special chars
-- Always role-prefix: `rolename_varname`
-
-## Task Naming
+## FQCN Reference
 
 ```yaml
-# ✅ Descriptive, present tense
-- name: Install nginx package
-- name: Configure SSH baseline settings
-- name: Install Docker CE (Fedora)
+# Core — always ansible.builtin.*
+ansible.builtin.{apt,dnf,yum,package,copy,template,file,service}
+ansible.builtin.{command,shell,user,group,lineinfile,blockinfile}
+ansible.builtin.{debug,fail,assert,set_fact,include_vars,service_facts}
 
-# ❌ Bad
-- apt: {name: nginx}          # No name
-- name: Do stuff               # Vague
-```
-
-Use section comment blocks: `# === PACKAGE INSTALLATION ===`
-
-## FQCN — Required for All Modules
-
-```yaml
-# ❌ copy:     ✅ ansible.builtin.copy:
-# ❌ apt:      ✅ ansible.builtin.apt:
-# ❌ command:  ✅ ansible.builtin.command:
+# Community — verify on Galaxy before using
+community.general.{flatpak,homebrew,homebrew_cask}
+community.docker.docker_container
+community.postgresql.postgresql_db
+ansible.posix.*
 ```
 
 ## File Modification Patterns
 
-### lineinfile — key-value settings with loop
+### lineinfile with loop
 
 ```yaml
 - name: Configure SSH baseline settings
@@ -217,25 +211,33 @@ Use section comment blocks: `# === PACKAGE INSTALLATION ===`
     regexp: '^#?{{ item.key }}'
     line: "{{ item.key }} {{ item.value }}"
   loop:
+    - { key: 'PasswordAuthentication', value: 'no' }
     - { key: 'PermitRootLogin', value: 'no' }
   notify: Reload sshd
 ```
 
-### blockinfile — multi-line with marker
+### blockinfile with marker
 
 ```yaml
-- name: Ensure managed block
+- name: Ensure managed config block
   ansible.builtin.blockinfile:
     path: /etc/ssh/sshd_config
     marker: "# {mark} ANSIBLE MANAGED BLOCK (HyperI)"
     block: |
       Match Address {{ allowed_ips | join(',') }}
-        PasswordAuthentication no
+        PubkeyAuthentication no
+  when: allowed_ips | length > 0
+  notify: Reload sshd
 ```
 
-### sysctl — merge + template + reload
+### sysctl pattern — merge + template + reload
 
 ```yaml
+- name: Merge sysctl parameters
+  ansible.builtin.set_fact:
+    merged_sysctl_settings: >-
+      {{ (merged_sysctl_settings | default({}))
+         | combine(network_sysctl_settings) }}
 - name: Deploy sysctl configuration
   ansible.builtin.template:
     src: zzz-50-hyperi-sysctl.conf.j2
@@ -251,6 +253,7 @@ Use section comment blocks: `# === PACKAGE INSTALLATION ===`
 ```jinja2
 # Managed by Ansible - DO NOT EDIT MANUALLY
 server:
+  host: {{ myapp_listen_address }}
   port: {{ myapp_listen_port }}
 {% if myapp_ssl_enabled %}
   ssl:
@@ -268,29 +271,26 @@ server:
   notify: Reload nginx
 ```
 
-## Conditionals & Loops
+## Platform Conditionals
 
 ```yaml
-# Platform block
+# Prefer block for multi-step platform logic
 - name: Configure Docker on Fedora
   when: ansible_distribution == 'Fedora'
   block:
-    - name: Add Docker repository
-      ansible.builtin.yum_repository: ...
-    - name: Install Docker packages
-      ansible.builtin.dnf: ...
+    - name: Add Docker repository (Fedora)
+      ansible.builtin.command:
+        cmd: dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo
+        creates: /etc/yum.repos.d/docker-ce.repo
+    - name: Install Docker packages (Fedora)
+      ansible.builtin.dnf:
+        name: [docker-ce, docker-ce-cli, containerd.io]
 
-# Multi-platform: use ansible_os_family or ansible_distribution
-# macOS: community.general.homebrew_cask, become: false
-```
-
-```yaml
-# Loop with dict2items
-- name: Configure sysctl settings
-  ansible.builtin.sysctl:
-    name: "{{ item.key }}"
-    value: "{{ item.value }}"
-  loop: "{{ sysctl_settings | dict2items }}"
+- name: Install Docker Desktop (macOS)
+  community.general.homebrew_cask:
+    name: docker
+  become: false
+  when: ansible_distribution == 'MacOSX'
 ```
 
 ## Error Handling
@@ -300,20 +300,25 @@ server:
 - name: Wait for apt lock
   ansible.builtin.apt:
     update_cache: true
+  register: apt_result
   retries: 12
   delay: 10
   until: apt_result is success
-  register: apt_result
 
-# Soft-fail check
+# Check-then-act (ignore errors selectively)
 - name: Check if legacy service exists
   ansible.builtin.command: systemctl status legacy-app
   register: legacy_check
   failed_when: false
   changed_when: false
+- name: Stop legacy service if running
+  ansible.builtin.service:
+    name: legacy-app
+    state: stopped
+  when: legacy_check.rc == 0
 ```
 
-## Validation
+## Validation Tasks
 
 ```yaml
 - name: Assert required variables
@@ -323,7 +328,7 @@ server:
       - myapp_api_key | length > 0
     fail_msg: "myapp_api_key must be defined and non-empty"
 
-- name: Fail on unsupported OS
+- name: Validate supported OS
   ansible.builtin.fail:
     msg: "Unsupported: {{ ansible_distribution }}"
   when: ansible_distribution not in supported_distributions
@@ -331,13 +336,19 @@ server:
 
 ## Idempotence
 
-| ❌ Non-idempotent | ✅ Idempotent |
-|---|---|
-| `command: /usr/bin/myapp --init` | `command: ... creates: /var/lib/myapp/.initialized` |
-| `shell: ./setup.sh` | Add `creates:` or `changed_when:` |
-| Missing `changed_when` on read commands | `changed_when: false` on checks |
-
 ```yaml
+# ✅ creates guard for command/shell
+- name: Initialize application (once)
+  ansible.builtin.command:
+    cmd: /usr/bin/myapp --init
+    creates: /var/lib/myapp/.initialized
+
+# ✅ changed_when for read-only commands
+- name: Check application version
+  ansible.builtin.command: myapp --version
+  changed_when: false
+
+# ✅ Custom change detection
 - name: Apply database migrations
   ansible.builtin.command: myapp migrate
   register: migrate_result
@@ -354,8 +365,6 @@ warn_list: [experimental]
 exclude_paths: [.cache/, .git/, roles/external/]
 ```
 
-**Always run `ansible-lint` before committing. Zero warnings required.**
-
 ## Vault
 
 ```bash
@@ -365,50 +374,65 @@ ansible-playbook site.yml --vault-password-file ~/.vault_pass
 ```
 
 ```yaml
-# vault.yml (encrypted): vault_db_password: "secret"
-# vars.yml (plain):      db_password: "{{ vault_db_password }}"
+# group_vars/prod/vault.yml (encrypted)
+vault_db_password: "s3cr3t"
+# group_vars/prod/vars.yml (plaintext, references vault)
+db_password: "{{ vault_db_password }}"
 ```
 
 ## Testing
 
 ```bash
 ansible-playbook site.yml --check --diff --limit webservers
-```
-
-### Molecule
-
-```bash
 molecule init scenario -r my_role -d docker
-molecule test    # Full: create → converge → verify → destroy
-molecule converge  # Just run playbook
+molecule test    # full: create → converge → verify → destroy
 ```
 
 ```yaml
 # molecule.yml
+driver:
+  name: docker
 platforms:
   - name: ubuntu2404
     image: geerlingguy/docker-ubuntu2404-ansible
     pre_build_image: true
+provisioner:
+  name: ansible
+verifier:
+  name: ansible
 ```
 
 ```yaml
 # verify.yml
-- name: Check service is running
-  ansible.builtin.service:
-    name: myapp
-    state: started
-  check_mode: true
-  register: service_check
-  failed_when: service_check.changed
+- name: Verify
+  hosts: all
+  tasks:
+    - name: Check service is running
+      ansible.builtin.service:
+        name: myapp
+        state: started
+      check_mode: true
+      register: service_check
+      failed_when: service_check.changed
 ```
 
-## Production Completeness Policy
+## Collection Verification
 
-- ❌ No placeholder tasks (`# TODO: implement`)
-- ❌ No hardcoded example IPs
-- ❌ No missing error handling
-- ✅ Complete role: defaults + tasks + handlers
-- ✅ Role-prefixed variables
-- ✅ Platform conditionals where needed
-- ✅ Molecule tests for complex roles
-- ✅ `ansible-lint` clean
+```yaml
+# ✅ Known-good collections:
+# ansible.builtin, ansible.posix, community.general,
+# community.docker, community.postgresql, amazon.aws
+
+# ❌ Verify unknown modules on Galaxy before using
+# AI may hallucinate module names
+```
+
+## Production Completeness
+
+| ❌ Never | ✅ Always |
+|----------|----------|
+| `# TODO: implement` placeholder tasks | Complete role: defaults + tasks + handlers |
+| Hardcoded example IPs (`192.168.1.1`) | Variables with role prefix |
+| Missing error handling | `failed_when`, `retries`, `creates` guards |
+| Non-idempotent operations | Molecule tests for complex roles |
+| Skipping lint | `ansible-lint` with zero warnings |

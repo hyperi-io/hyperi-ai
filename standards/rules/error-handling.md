@@ -15,68 +15,96 @@ source: universal/ERROR-HANDLING.md
 
 # Error Handling Standards
 
-## Security-First: Never Expose Internals
+## Security-First Error Handling
+
+**NEVER expose implementation details to users.**
 
 | ❌ Don't | ✅ Do | Why |
 |---|---|---|
 | `return {"error": str(e)}` | `return {"error": "Unable to retrieve user"}` | Leaks DB schemas, paths, versions |
-| Show stack traces to users | Log full traces server-side only | Reveals internal logic |
-| Expose file paths in responses | Return generic "Configuration error" | Leaks system structure |
-| Return raw exception messages | Map to user-safe error codes | Prevents info disclosure |
+| Show stack traces to users | Log full traces server-side only | Attack surface reduction |
+| `return {"error": str(FileNotFoundError)}` | `return {"error": "Configuration error"}` | Hides file paths |
+| Log then swallow silently | Log then re-raise or return generic msg | Silent failures mask bugs |
 
 ```python
-# ✅ Pattern: every catch block
+# ✅ Secure pattern — every catch block
+try:
+    result = db.query(sql, user_id)
 except DatabaseError as e:
     logger.error("DB query failed", user_id=user_id, error=str(e), exc_info=True)
-    return {"error": "Unable to retrieve user"}  # generic
+    return {"error": "Unable to retrieve user"}
 ```
 
-## Required Error Log Context
+## Comprehensive Error Logging
 
-Every `logger.error()` call MUST include:
+**Required context on every `logger.error`:**
 
-- **Who**: user/session ID (never passwords)
-- **What**: operation name
-- **When**: timestamp (RFC3339 + timezone)
-- **Trace**: request_id / transaction_id
-- **Stack**: `exc_info=True`
+| Field | Example | Required? |
+|---|---|---|
+| User/session ID (NOT secrets) | `user_id=user_id` | ✅ |
+| Operation name | `operation="update_profile"` | ✅ |
+| Timestamp (RFC3339+tz) | `timestamp=datetime.now()` | ✅ |
+| Request/transaction ID | `request_id=request_id` | ✅ |
+| Full stack trace | `exc_info=True` | ✅ |
+| Client IP (hashed) | `ip_hash=hash(ip)` | Optional |
+| Sanitized input params | | Optional |
 
-Optional: hashed client IP, user agent, sanitized input params, system state.
+## Exception Handling Best Practices
 
-## Exception Handling
-
-- Catch **specific exceptions first**, generic `Exception` last
-- **Never swallow exceptions** — `except: pass` is forbidden
-- Create **domain-specific exception hierarchies**
-- Re-raise if you cannot handle: `logger.exception("..."); raise`
+**Catch specific → generic. Never swallow.**
 
 ```python
-# ✅ Correct order: specific → generic
+# ✅ Correct order
 try:
-    operation()
+    process_payment(amount)
 except InsufficientFundsError as e:
     logger.warning(f"Insufficient funds: {e}")
     return {"error": "Insufficient funds"}
 except PaymentGatewayError as e:
     logger.error(f"Gateway error: {e}", exc_info=True)
-    return {"error": "Service unavailable"}
+    return {"error": "Payment processing unavailable"}
 except Exception as e:
     logger.critical(f"Unexpected: {e}", exc_info=True)
     return {"error": "An error occurred"}
 ```
 
+| ❌ Don't | ✅ Do | Why |
+|---|---|---|
+| `except Exception: pass` | `except Exception: logger.exception(...); raise` | Never swallow errors |
+| Bare `except:` first | Most-specific exception first | Shadows specific handling |
+| One giant `except Exception` | Domain-specific exception hierarchy | Enables targeted recovery |
+
+**Create domain-specific exceptions:**
+
+```python
+class PaymentError(Exception): pass
+class InsufficientFundsError(PaymentError): pass
+class PaymentGatewayError(PaymentError): pass
+class InvalidCardError(PaymentError): pass
+```
+
 ## Sensitive Data in Logs
 
-**❌ NEVER log**: passwords, tokens, API keys, credit card numbers, CVV, SSN, private keys, JWTs, PII.
+**❌ NEVER log:** passwords, tokens, API keys, credit card numbers, CVV, SSN, private keys, JWTs, PII.
 
 | ❌ Don't | ✅ Do |
 |---|---|
 | `logger.info(f"password={password}")` | `logger.info(f"login attempt: user={username}")` |
-| `logger.info(f"card={card_number}")` | `logger.info(f"card=****-****-****-{card[-4:]}")` |
+| `logger.info(f"card={card_number}")` | `logger.info(f"card=****-****-****-{card_number[-4:]}")` |
 
-**Use `hyperi_pylib.logger`** — auto-masks: `password=`, `api_key=`, `token=`, `Bearer`, DB URLs, AWS keys (`AKIA...`), `card_number=`, `cvv=`.
+**Use `hyperi_pylib.logger` for automatic masking:**
 
-## Error Response Format (HTTP APIs)
+```python
+from hyperi_pylib import logger
+logger.info("Login", username="alice", password="secret123")
+# Output: password="***MASKED***"
+```
+
+Auto-masks: `password=`, `pwd=`, `api_key=`, `token=`, `Bearer ...`, DB URLs (`postgresql://user:pass@`), AWS keys (`AKIA...`), `card_number=`, `cvv=`.
+
+## Error Response Standards
+
+### HTTP API Error Format
 
 ```json
 {
@@ -88,14 +116,22 @@ except Exception as e:
 }
 ```
 
-Standard codes: `INVALID_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`, `GATEWAY_TIMEOUT`.
+**Standard error codes:**
+
+| Code | HTTP | Code | HTTP |
+|---|---|---|---|
+| `INVALID_REQUEST` | 400 | `INTERNAL_ERROR` | 500 |
+| `UNAUTHORIZED` | 401 | `SERVICE_UNAVAILABLE` | 503 |
+| `FORBIDDEN` | 403 | `GATEWAY_TIMEOUT` | 504 |
+| `NOT_FOUND` | 404 | | |
+
+**Global exception handler (FastAPI):**
 
 ```python
-# ✅ FastAPI global handler
 @app.exception_handler(Exception)
 async def global_handler(request: Request, exc: Exception):
     logger.exception("Unhandled", path=request.url.path,
-                     request_id=request.headers.get("X-Request-ID"))
+                     method=request.method, request_id=request.headers.get("X-Request-ID"))
     return JSONResponse(status_code=500, content={
         "error": {"message": "An error occurred", "code": "INTERNAL_ERROR",
                   "request_id": request.headers.get("X-Request-ID")}})
@@ -103,79 +139,86 @@ async def global_handler(request: Request, exc: Exception):
 
 ## Monitoring and Alerting
 
-Use `hyperi_pylib.metrics.create_metrics("myapp")` to track `requests_total` with `status` label.
+**Track error rates with `hyperi_pylib.metrics`:**
 
-| Threshold | Severity |
-|---|---|
-| Error rate > 1% | Warning |
-| Error rate > 5% | Critical |
-| Error rate change > 50% | Anomaly |
+```python
+metrics = create_metrics("myapp")
+metrics.counter("requests_total", labels={"status": "error"}).inc()
+```
 
-## Go Error Handling
+**Alert thresholds:**
+- Warning: error rate > 1%
+- Critical: error rate > 5%
+- Anomaly: error rate change > 50%
+- Spike on specific error types
+
+## Multi-Language Patterns
+
+### Go
 
 - Errors are values — use `errors.Is()` / `errors.As()` for checking
-- Define sentinel errors: `var ErrInsufficientFunds = errors.New("insufficient funds")`
-- Wrap with context via custom `PaymentError` struct implementing `Error()` + `Unwrap()`
-- Log full details with `slog.Error(...)`, return generic `PaymentError` to caller
+- Wrap with `fmt.Errorf("context: %w", err)` or custom types implementing `Unwrap()`
+- Log full detail with `slog`, return generic `PaymentError{Code, Message}` to callers
 
 ```go
-if err != nil {
-    logger.Error("Payment failed", slog.String("user_id", userID),
-        slog.Float64("amount", amount), slog.String("error", err.Error()))
-    if errors.Is(err, stripe.ErrCardDeclined) {
-        return nil, &PaymentError{Code: "CARD_DECLINED", Message: "Card was declined"}
-    }
-    return nil, &PaymentError{Code: "PAYMENT_FAILED", Message: "Payment could not be processed"}
+var (
+    ErrInsufficientFunds  = errors.New("insufficient funds")
+    ErrGatewayUnavailable = errors.New("payment gateway unavailable")
+)
+
+type PaymentError struct {
+    Code, Message string
+    Err           error
 }
+func (e *PaymentError) Error() string { return fmt.Sprintf("%s: %s", e.Code, e.Message) }
+func (e *PaymentError) Unwrap() error { return e.Err }
 ```
 
-## TypeScript Error Handling
+### TypeScript
 
-- Extend `AppError` base class with `code`, `statusCode`
-- Subclass: `ValidationError` (400), `PaymentError` (402)
-- Express middleware: log full stack server-side, return `AppError` fields or generic 500
+- Custom error hierarchy extending `AppError(code, message, statusCode)`
+- Express middleware: log full stack, return `{ error: { code, message, requestId } }`
+- Unknown errors → `500 INTERNAL_ERROR`, never expose `.stack` to client
 
 ```typescript
-// ✅ Express error handler
-if (err instanceof AppError) {
-  res.status(err.statusCode).json({
-    error: { code: err.code, message: err.message, requestId: req.headers['x-request-id'] }
-  });
-} else {
-  res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' } });
+class AppError extends Error {
+  constructor(public code: string, message: string, public statusCode = 500) {
+    super(message);
+  }
+}
+class ValidationError extends AppError {
+  constructor(msg: string) { super('VALIDATION_ERROR', msg, 400); }
 }
 ```
 
-## Rust Error Handling
+### Rust
 
-- Use `thiserror::Error` for custom error enums
-- Implement `From<DomainError> for ApiError` — map internals to safe responses
-- Use `?` operator with error conversion: `.map_err(ApiError::from)?`
-- Log with `tracing::error!` including structured fields
+- Use `thiserror::Error` for domain error enums, `tracing::error!()` for logging
+- `impl From<DomainError> for ApiError` to strip internals at boundary
+- Propagate with `?` + `.map_err(ApiError::from)`
 
 ```rust
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum PaymentError {
-    #[error("Card was declined")]
-    CardDeclined,
-    #[error("Service temporarily unavailable")]
-    ServiceUnavailable,
-    #[error("Payment could not be processed")]
-    ProcessingFailed(#[source] Box<dyn std::error::Error + Send + Sync>),
+    #[error("Card was declined")] CardDeclined,
+    #[error("Service temporarily unavailable")] ServiceUnavailable,
+    #[error("Payment could not be processed")] ProcessingFailed(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 ```
 
-## Bash Error Handling
+### Bash
 
-- Always start with `set -euo pipefail`
-- Define exit codes: `E_SUCCESS=0`, `E_INVALID_INPUT=1`, `E_FILE_NOT_FOUND=2`, `E_PERMISSION_DENIED=3`, `E_NETWORK_ERROR=4`, `E_UNKNOWN=99`
-- Trap errors: `trap 'error_handler ${LINENO}' ERR`
-- Use `die()` pattern: log full details, show generic message to user via `>&2`
+- `set -euo pipefail` at top of every script
+- `trap 'error_handler ${LINENO}' ERR` for cleanup
+- Define exit codes as `readonly E_INVALID_INPUT=1` etc.
+- `die()` pattern: log full detail, show generic message to stderr
 
 ```bash
+set -euo pipefail
+readonly E_INVALID_INPUT=1 E_FILE_NOT_FOUND=2 E_PERMISSION_DENIED=3
 die() {
-    local code="${1}" internal_msg="${2}" user_msg="${3:-An error occurred}"
-    log_error "${internal_msg}"
-    echo "Error: ${user_msg}" >&2
-    exit "${code}"
+    local code="$1" internal="$2" user_msg="${3:-An error occurred}"
+    log_error "${internal}"
+    echo "Error: ${user_msg}" >&2; exit "${code}"
 }
+trap 'error_handler ${LINENO}' ERR

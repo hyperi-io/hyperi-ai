@@ -15,143 +15,118 @@ paths:
 source: universal/MOCKS-POLICY.md
 ---
 
-# Mock-Aware Testing Policy
+# No Mocks Policy
 
-**Mocks are scaffolding, not testing. Mock-only coverage = untested.**
+## Core Rule
 
-Rule: every mocked boundary must have a corresponding integration test against the real thing.
+**No mocks. Test against real dependencies. No exceptions (except time).**
+
+### Banned Libraries — All Languages
+
+| Language | ❌ Banned |
+|---|---|
+| Python | `unittest.mock`, `patch()`, `MagicMock`, `Mock()` |
+| JS/TS | `jest.mock()`, `jest.fn()`, `jest.spyOn()` with fake returns |
+| Go | `gomock`, `testify/mock`, `mockgen` |
+| Rust | `mockall`, `mockito` |
+| Any | Hand-rolled fakes simulating dependency behaviour |
+
+### ✅ Time Is the ONE Exception
+
+`freezegun`, `tokio::time::pause`, `jest.useFakeTimers` — acceptable.
 
 ---
 
-## Mock Usage: Permitted, Not Sufficient
+## What To Use Instead
 
-| Mock Target | Mock in Unit? | Integration Test Required? |
-|---|---|---|
-| Internal functions/classes | ❌ Never mock | N/A — test real code |
-| External APIs (Stripe, AWS, GCP) | ✅ | ✅ sandbox/staging |
-| Databases (PostgreSQL, Redis, ClickHouse) | ✅ | ✅ testcontainers |
-| Kubernetes API | ✅ | ✅ kind/k3s cluster |
-| File system, network | ✅ | ✅ real FS/network in CI |
-| Time/clock | ✅ | Optional |
+| Dependency | Real Alternative |
+|---|---|
+| Databases | Testcontainers (real Postgres/Redis/ClickHouse in Docker) |
+| External APIs | Sandbox/staging endpoints (Stripe test mode, LocalStack) |
+| Kubernetes | `kind` or `k3s` in CI |
+| File system | Real files in `tempfile.TemporaryDirectory` |
+| Network | Real HTTP to local test server or actual endpoint |
 
 ```python
-# ❌ Mocking internal code — tests nothing real
-with patch('myapp.services.calculate_total') as m:
-    m.return_value = 100.0  # circular: tests the mock
+# ❌ NEVER
+with patch('myapp.db.session') as mock_db:
+    mock_db.query.return_value = User(name="test")  # proves nothing
 
-# ✅ Mock external boundary, test real internal logic
-with patch('myapp.clients.stripe.charge') as m:
-    m.return_value = ChargeResult(success=True)
-    result = process_order(order)
-    assert result.total == 85.0  # real calculation
-```
-
----
-
-## Two-Layer Testing Requirement
-
-**A feature is not tested until both layers exist.**
-
-### Layer 1: Unit Tests (mocks allowed)
-- Mock external boundaries only, never internal code
-- Test real logic paths
-- 80% coverage minimum — necessary but NOT sufficient
-
-### Layer 2: Integration Tests (no mocks)
-- testcontainers for databases (PostgreSQL, Redis, ClickHouse)
-- Sandbox/staging endpoints for external APIs
-- kind/k3s for Kubernetes
-- Real FS/network in CI
-
-| Status | Meaning |
-|---|---|
-| "Unit tests pass (mocked)" | Fast feedback, not proof |
-| "Integration tests pass" | Boundaries verified |
-| "Both pass" | Actually tested |
-
----
-
-## AI Assistant Directives
-
-1. Write unit tests with mocks for fast feedback — **you are NOT done**
-2. Write ≥1 integration test per mocked boundary
-3. If integration tests impossible, explicitly state: `"Integration tests needed for: [list boundaries]"`
-4. **Never** report "all tests pass, production ready" with only mocked tests
-
-### Completion Checklist
-
-- [ ] Unit tests pass with mocked external boundaries
-- [ ] Integration tests pass against real/realistic dependencies
-- [ ] No `TODO`/`FIXME`/`HACK`/`XXX` in production code
-- [ ] No placeholder returns (`return True`, `return {}`, `return None`)
-- [ ] No hardcoded example data ("John Doe", "test@example.com")
-- [ ] Error handling covers failure paths, not just happy path
-- [ ] Input validation complete at system boundaries
-
-### Red Flags — REJECT and Complete
-
-| ❌ If you catch yourself writing… | ✅ Do instead |
-|---|---|
-| "Here's a simple example…" | Write the real implementation |
-| "For demonstration purposes…" | Implement production logic |
-| "This should work for most cases…" | Handle all cases |
-| "TODO: Add error handling" | Add the error handling now |
-| "TODO: Connect to database" | Connect to the database now |
-
----
-
-## Preferred Testing Patterns
-
-### Database: testcontainers
-```python
+# ✅ ALWAYS
 @pytest.fixture
 def db():
     with PostgresContainer() as pg:
         yield create_connection(pg.get_connection_url())
 
-def test_save_user(db):  # Real DB, no mocks
-    uid = save_user(db, {"name": "Alice", "email": "alice@example.com"})
-    assert db.get_user(uid).name == "Alice"
+def test_save_user(db):
+    uid = save_user(db, {"name": "Alice", "email": "a@b.com"})
+    assert db.get_user(uid).name == "Alice"  # real SQL, real DB
 ```
 
-### External API: mock unit + sandbox integration
-```python
-# Unit (fast, mocked)
-@patch('myapp.clients.stripe_client')
-def test_payment_unit(mock_stripe):
-    mock_stripe.create_charge.return_value = Charge(id="ch_123")
-    assert process_payment(100.0, "tok_visa").transaction_id == "ch_123"
+---
 
-# Integration (real sandbox)
-@pytest.mark.integration
+## Cannot Test Against Real Deps? Skip, Don't Mock
+
+```python
+@pytest.mark.skip(reason="Needs Stripe sandbox — not mocking")
 def test_payment_integration():
-    result = process_payment(100.0, "tok_visa")  # Stripe test mode
-    assert result.success and result.transaction_id.startswith("ch_")
+    ...
 ```
 
-### Kubernetes: mock unit + kind integration
-```python
-@pytest.mark.integration
-def test_create_secret_integration(k8s_client):
-    create_app_secret("test-secret", {"key": "value"})
-    secret = k8s_client.read_namespaced_secret("test-secret", "default")
-    assert secret.data["key"] is not None
-```
+A skipped test is honest. A mocked test lies about coverage.
+
+---
+
+## Coverage Accounting
+
+- Tests using mocks **do NOT count** toward production readiness
+- Only tests against real dependencies count
+
+---
+
+## AI Code Assistant Directives
+
+1. Never import any mock library
+2. Never patch/monkey-patch any function, method, or module
+3. Never create fake objects simulating real dependency behaviour
+4. Never create `mock_*.py` or `*_mock.py` files
+5. If real deps unavailable, say: `"Cannot test [boundary] — needs [setup]. Skipping, not mocking."`
+6. If existing mocks found, flag: `"This test uses mocks — results unreliable. Needs migration."` Do not extend.
+
+---
+
+## Production Code Requirements
+
+| ❌ Don't | ✅ Do |
+|---|---|
+| `TODO`/`FIXME`/`HACK`/`XXX` in `src/` | Complete implementation with error handling |
+| `return True`, `return {}`, `return None` placeholders | Real logic with validated inputs |
+| "Proof of concept" as production feature | Complete functionality + unit + integration tests |
 
 ---
 
 ## Enforcement
 
-### Pre-commit hook
+### Pre-commit Hook
+
 ```bash
 if git diff --cached --name-only | grep "^src/" | \
    xargs grep -n "TODO:\|FIXME:\|HACK:\|XXX:"; then
-    echo "ERROR: Placeholder comments in src/"; exit 1
+    echo "ERROR: Placeholder comments found in src/"; exit 1
 fi
 ```
 
-### CI requirements
+### CI Requirements
+
 - 80%+ line coverage (unit + integration combined)
 - Integration test suite must exist and pass
-- Static analysis: `bandit`, `semgrep`
-- Reviewer verifies both test layers for new features
+- Static analysis (`bandit`, `semgrep`) for security
+- Reviewer verifies both test layers exist for new features
+
+### Completion Checklist
+
+- [ ] Tests pass against real dependencies (not mocks)
+- [ ] No TODO/FIXME/HACK in production code
+- [ ] No placeholder returns
+- [ ] Error handling covers failure paths
+- [ ] Input validation complete

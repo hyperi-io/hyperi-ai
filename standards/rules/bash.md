@@ -14,6 +14,19 @@ source: languages/BASH.md
 
 # Bash Standards — HyperI Projects
 
+## Core Philosophy
+
+> **If it's >20 lines, parses JSON/YAML, or pipes to `jq`/`sed`/`awk` — use Python.**
+
+Bash is a **thin caller wrapper only**. Check for Python, call Python.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+command -v python3 >/dev/null 2>&1 || { echo "Python 3 required"; exit 1; }
+exec python3 "$(dirname "$0")/real_logic.py" "$@"
+```
+
 ## Quick Reference
 
 | Tool | Command |
@@ -23,31 +36,11 @@ source: languages/BASH.md
 | Test | `bats tests/` |
 | Debug | `bash -x script.sh` |
 
-**Non-negotiable:** ShellCheck zero warnings, macbash zero warnings, BATS for scripts >50 lines, Bash 3.2+ compat, `set -euo pipefail`, quote all variables.
-
----
-
-## Top AI Mistakes
-
-| ❌ Don't | ✅ Do | Why |
-|----------|-------|-----|
-| `#!/bin/bash` without strict mode | `#!/usr/bin/env bash` + `set -euo pipefail` | Portability + fail-fast |
-| `echo $variable` | `echo "${variable}"` | SC2086 globbing/splitting |
-| `` result=`cmd` `` | `result=$(cmd)` | Nestable, readable |
-| `temp="/tmp/myapp.txt"` | `temp=$(mktemp); trap 'rm -f "${temp}"' EXIT` | Race condition |
-| `eval "${user_input}"` | `cmd=("${prog}" "${args[@]}"); "${cmd[@]}"` | Command injection |
-| `declare -A map` | Use `case` statement | Bash 4+ breaks macOS |
-| `${var^^}` / `${var,,}` | `echo "${var}" \| tr '[:lower:]' '[:upper:]'` | Bash 4+ |
-| `mapfile -t lines < file` | `while IFS= read -r line; do lines+=("$line"); done < file` | Bash 4+ |
-| `command &> /dev/null` | `command > /dev/null 2>&1` | Bash 4+ |
-| `function myfunction {` | `myfunction() {` | POSIX compat |
-| `[ "$a" == "$b" ]` | `[[ "${a}" == "${b}" ]]` | `==` not portable in `[` |
-| `local var=$(command)` | `local var; var=$(command)` | SC2155 |
-| `for f in $(ls *.txt)` | `for f in "${dir}"/*.txt; do [[ -f "$f" ]] \|\| continue` | Word splitting |
-
----
+**Non-negotiable:** ShellCheck zero warnings, macbash zero warnings, BATS for scripts >50 lines, Bash 3.2+ compat, `#!/usr/bin/env bash`, `set -euo pipefail`, quote all variables.
 
 ## Strict Mode (Required)
+
+Every script starts with:
 
 ```bash
 #!/usr/bin/env bash
@@ -60,109 +53,99 @@ set -euo pipefail
 | `-u` | Error on undefined variables |
 | `-o pipefail` | Catch pipeline errors |
 
----
-
 ## Bash 3.2 Compatibility (macOS)
 
-### Banned (Bash 4+)
+| ❌ Don't (Bash 4+) | ✅ Do (Bash 3.2) | Why |
+|---|---|---|
+| `declare -A map` | Use `case` statement | Associative arrays = Bash 4+ |
+| `${var^^}` / `${var,,}` | `echo "${var}" \| tr '[:lower:]' '[:upper:]'` | Case modification = Bash 4+ |
+| `command &> /dev/null` | `command > /dev/null 2>&1` | `&>` = Bash 4+ |
+| `mapfile -t lines < file` | `while IFS= read -r line; do lines+=("$line"); done < file` | mapfile = Bash 4+ |
+| `coproc myproc { cmd; }` | Avoid | coproc = Bash 4+ |
 
-`declare -A`, `${var^^}`, `${var,,}`, `&>`, `coproc`, `mapfile`/`readarray`
-
-### Safe (Bash 3.2)
-
-Indexed arrays, `$()`, `${var#pattern}`, `${var%pattern}`, `${var:-default}`, `${var:+alt}`, here-docs, `[[ ]]`
-
----
+**Safe in 3.2:** indexed arrays, `$()`, `${var#pattern}`, `${var:-default}`, heredocs, `[[ ]]`.
 
 ## Variable Handling
 
+| ❌ Don't | ✅ Do | Why |
+|---|---|---|
+| `cp $src $dst` | `cp "${src}" "${dst}"` | Word splitting/globbing |
+| `local var=$(cmd)` | `local var; var=$(cmd)` | SC2155: separate declare/assign |
+| No default for `$1` | `name="${1:-default}"` | Fails with `set -u` |
+
 ```bash
-# Naming: lowercase local, UPPERCASE constants/exports
-local file_path="value"
+# Naming: local=lowercase, constants=UPPERCASE
+local file_path="x"
 readonly MAX_RETRIES=3
-export DATABASE_URL
-
-# Defaults
-name="${1:-default_name}"
-name="${1:?'Name required'}"
-: "${CONFIG_PATH:=/etc/myapp/config}"
+: "${CONFIG_PATH:=/etc/myapp/config}"  # Assign default if unset
+name="${1:?'Name required'}"           # Error if unset
 ```
-
----
 
 ## Conditionals
 
-- Use `[[ ]]` not `[ ]`
-- Numeric: `(( count > 0 ))` or `[[ "${count}" -gt 0 ]]`
-- Regex: `[[ "${var}" =~ ^[0-9]+$ ]]`
+| ❌ Don't | ✅ Do | Why |
+|---|---|---|
+| `[ "$var" = "val" ]` | `[[ "${var}" == "val" ]]` | `[[` handles spaces/globs |
+| `[ "$a" == "$b" ]` | `[[ "${a}" == "${b}" ]]` | `==` not portable in `[` |
 
----
+Numeric: `(( count > 0 ))`. File: `[[ -f "${path}" ]]`, `-d`, `-e`, `-r`, `-w`, `-x`, `-s`. String: `-z` (empty), `-n` (non-empty).
 
 ## Functions
 
-```bash
-# Helper-first, main at bottom, entry point last
-validate_input() { [[ -n "${1:-}" ]] || return 1; }
-die() { echo "ERROR: ${1}" >&2; exit "${2:-1}"; }
-require_command() { command -v "${1}" >/dev/null 2>&1 || die "${1} not found"; }
+| ❌ Don't | ✅ Do | Why |
+|---|---|---|
+| `function myfunc {` | `myfunc() {` | `function` keyword less portable |
 
+**Helper-first ordering:** helpers at top, `main()` at bottom, `main "$@"` last line.
+
+```bash
+die() { echo "ERROR: ${1}" >&2; exit "${2:-1}"; }
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] ${1}" >&2; }
+require_command() { command -v "${1}" >/dev/null 2>&1 || die "${1} not found"; }
+```
+
+Return data via stdout + capture: `result=$(get_timestamp)`.
+
+## Input Validation & Option Parsing
+
+```bash
 main() {
-    local input="${1:-}"
-    validate_input "${input}" || die "Input required"
+    [[ $# -ge 2 ]] || { echo "Usage: ${0} <input> <output>" >&2; exit 1; }
+    [[ -f "${1}" ]] || die "File not found: ${1}"
+    while [[ $# -gt 0 ]]; do
+        case "${1}" in
+            -v|--verbose) VERBOSE=true; shift ;;
+            -o|--output) OUTPUT="${2}"; shift 2 ;;
+            --) shift; break ;; -*) die "Unknown: ${1}" ;; *) break ;;
+        esac
+    done
 }
 main "$@"
 ```
 
----
+## Configuration Cascade
 
-## Option Parsing
-
-```bash
-while [[ $# -gt 0 ]]; do
-    case "${1}" in
-        -v|--verbose) VERBOSE=true; shift ;;
-        -o|--output)  OUTPUT="${2}"; shift 2 ;;
-        -h|--help)    show_help; exit 0 ;;
-        --)           shift; break ;;
-        -*)           die "Unknown option: ${1}" ;;
-        *)            break ;;
-    esac
-done
-```
-
----
-
-## Configuration Cascade (HyperI Standard)
-
-Priority: **CLI > ENV > .env > config.{env}.sh > config.sh > defaults > hardcoded**
+Priority: **CLI > ENV > `.env` > `config.{env}.sh` > `config.sh` > defaults > hardcoded**
 
 ```bash
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_PORT="8080"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [[ -f "${SCRIPT_DIR}/config.sh" ]] && source "${SCRIPT_DIR}/config.sh"
 APP_ENV="${APP_ENV:-development}"
 [[ -f "${SCRIPT_DIR}/config.${APP_ENV}.sh" ]] && source "${SCRIPT_DIR}/config.${APP_ENV}.sh"
 [[ -f "${SCRIPT_DIR}/.env" ]] && source "${SCRIPT_DIR}/.env"
 PORT="${MYAPP_PORT:-${PORT:-${DEFAULT_PORT}}}"
-# CLI --port=X overrides in main()
+# CLI args override in main() via case statement
 ```
 
----
+## Logging
 
-## Logging (HyperI Standard)
-
-- RFC 3339 timestamps: `date -u +"%Y-%m-%dT%H:%M:%S.%3NZ"`
-- Levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
-- Log priority via `case` (no associative arrays)
-- Console (`-t 2`): coloured human output to stderr
-- Container/pipe: JSON to stderr `{"timestamp":"...","level":"...","message":"..."}`
-
-```bash
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] ${1}" >&2; }
-die() { echo "ERROR: ${1}" >&2; exit "${2:-1}"; }
-```
-
----
+- **RFC 3339 timestamps required:** `date -u +"%Y-%m-%dT%H:%M:%S.%3NZ"`
+- **Levels:** DEBUG, INFO, WARNING, ERROR, CRITICAL
+- **All log output to stderr** (`>&2`)
+- **Console** (`[[ -t 2 ]]`): coloured human-friendly
+- **Container/pipe**: JSON `{"timestamp":"...","level":"...","message":"..."}`
+- Use `case` + `get_log_priority()` for level filtering (Bash 3.2 compatible — no associative arrays)
 
 ## Error Handling
 
@@ -176,66 +159,58 @@ trap cleanup EXIT
 TEMP_DIR=$(mktemp -d)
 ```
 
-- All errors to stderr (`>&2`)
-- Use `command -v` to check prerequisites
-
----
-
-## Command Execution
-
-```bash
-# Use arrays for arguments with spaces
-args=(-f "${config_file}" --output "${output_dir}")
-some_command "${args[@]}"
-```
-
----
+- All errors to stderr: `echo "ERROR: ..." >&2`
+- Use `$()` not backticks for command substitution
+- Check command existence: `command -v docker >/dev/null 2>&1 || die "Docker not installed"`
+- Use arrays for args with spaces: `args=(-f "${cfg}"); cmd "${args[@]}"`
 
 ## Loops and Iteration
 
-Prefer `fd`, `parallel`, `xargs -0` over bash loops (see COMMON.md).
+| ❌ Don't | ✅ Do | Why |
+|---|---|---|
+| `for f in $(ls *.txt)` | `fd -e txt -x process {}` | Word splitting on spaces |
+| Hand-written loops | `fd`/`parallel`/`xargs -0` | Faster, safer |
 
 ```bash
-fd -e txt -x process {}                              # fd + exec
-find "${dir}" -name "*.txt" -print0 | xargs -0 cmd   # find + xargs
-diff <(sort file1) <(sort file2)                      # Process substitution
+# Fallback bash loop (handle no matches)
+for file in "${dir}"/*.txt; do
+    [[ -f "${file}" ]] || continue
+    process "${file}"
+done
 ```
-
----
 
 ## ShellCheck (Required)
 
 ```bash
-shellcheck -s bash script.sh
-shellcheck -f json scripts/*.sh   # CI output
+shellcheck -s bash script.sh       # Single file
+shellcheck -f json scripts/*.sh    # CI JSON output
 ```
 
-Key fixes: SC2086 (quote vars), SC2046 (quote subst), SC2155 (separate declare/assign), SC2034 (prefix unused with `_`).
+| SC Code | Fix |
+|---------|-----|
+| SC2086 | Quote: `"${var}"` |
+| SC2046 | Quote: `"$(cmd)"` |
+| SC2034 | Prefix unused: `_unused_var` |
+| SC2155 | Separate: `local v; v=$(cmd)` |
 
-Disable sparingly: `# shellcheck disable=SC2086`
-
----
+Disable sparingly: `# shellcheck disable=SC2086`. Prefer fixing.
 
 ## macbash — macOS/BSD Portability (Required)
 
-[github.com/hyperi-io/macbash](https://github.com/hyperi-io/macbash)
+[github.com/hyperi-io/macbash](https://github.com/hyperi-io/macbash) — run alongside ShellCheck, zero warnings before merge.
 
 ```bash
 macbash script.sh          # Check
-macbash -w script.sh       # Auto-fix
-macbash -w --dry-run script.sh  # Preview
+macbash -w script.sh       # Auto-fix in place
+macbash -w --dry-run script.sh  # Preview fixes
 ```
 
 | ❌ GNU-only | ✅ Portable |
-|------------|------------|
+|---|---|
 | `echo -e` | `printf "%b\n"` |
 | `sed -i ''` (macOS) vs `sed -i` (GNU) | `sed -i'' -e '...'` |
 | `grep -P` | `grep -E` |
-| `date -d` | Platform-conditional |
-
-Both `shellcheck` and `macbash` must pass zero warnings before merge.
-
----
+| `date -d` | Conditional per platform |
 
 ## BATS Testing
 
@@ -246,68 +221,39 @@ Required for scripts >50 lines.
 setup()    { TEMP_DIR=$(mktemp -d); export TEMP_DIR; }
 teardown() { rm -rf "${TEMP_DIR}"; }
 
-@test "script requires arguments" {
+@test "requires arguments" {
     run ./script.sh
     [ "$status" -eq 1 ]
     [[ "$output" =~ "Usage:" ]]
 }
 ```
 
-```bash
-bats tests/              # Run all
-bats --tap tests/        # TAP output for CI
-bats --verbose-run tests/
-```
-
----
-
-## Source Guard Pattern
-
-```bash
-# Enable sourcing for BATS testing
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
-fi
-```
-
-```bash
-# In BATS:
-setup() { source "${BATS_TEST_DIRNAME}/../script.sh"; }
-@test "validate rejects empty" { run validate_input ""; [ "$status" -eq 1 ]; }
-```
-
----
+Run: `bats tests/` | Verbose: `bats --verbose-run tests/` | CI: `bats --tap tests/`
 
 ## Script Template
 
 ```bash
 #!/usr/bin/env bash
+# Project: <NAME> | File: <FILENAME> | Purpose: <One sentence>
+# License: FSL-1.1-ALv2 | Copyright: (c) <YEAR> HYPERI PTY LIMITED
 set -euo pipefail
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_NAME="$(basename "${0}")"
 : "${LOG_LEVEL:=info}"
-: "${DRY_RUN:=false}"
 
 log() { echo "[${SCRIPT_NAME}] ${1}" >&2; }
 die() { log "ERROR: ${1}"; exit "${2:-1}"; }
 
-check_requirements() { command -v jq >/dev/null 2>&1 || die "jq not found"; }
-
 main() {
-    check_requirements
     [[ $# -ge 1 ]] || die "Usage: ${SCRIPT_NAME} <command>"
-    local command="${1}"; shift
-    case "${command}" in
-        build) do_build "$@" ;; test) do_test "$@" ;;
-        *) die "Unknown command: ${command}" ;;
+    case "${1}" in
+        build) do_build "${@:2}" ;; *) die "Unknown: ${1}" ;;
     esac
 }
 main "$@"
 ```
 
----
-
-## Portable Patterns (macOS + Linux)
+## Portable Patterns
 
 ```bash
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -317,25 +263,14 @@ else
 fi
 ```
 
----
-
 ## Security
 
-- Never `eval` user input — use arrays for dynamic commands
-- `mktemp` for temp files/dirs + `trap cleanup EXIT`
-- No passwords on CLI (`ps` visible) — use env vars or `chmod 600` config files
-- `grep -F --` for user-supplied patterns
-
----
-
-## Mock-Aware Testing Policy
-
-- ❌ Don't stub internal functions with fakes
-- ✅ Mock external commands (`curl`, `kubectl`, `aws`) in BATS unit tests
-- ✅ Integration tests use real commands against test infra
-- **No** `# TODO`, no `exit 0` without logic, no hardcoded example paths
-
----
+| ❌ Don't | ✅ Do | Why |
+|---|---|---|
+| `eval "${user_input}"` | `echo "${user_input}"` | Command injection |
+| `bash -c "echo ${input}"` | `grep -F -- "${input}" file` | Injection via interpolation |
+| `temp="/tmp/myapp_$$"` | `temp=$(mktemp); trap 'rm -f "${temp}"' EXIT` | Race condition |
+| `mysql -p"${PASS}"` | `export MYSQL_PWD="${PASS}"; mysql` | Visible in `ps` |
 
 ## CI Integration
 
@@ -353,3 +288,23 @@ fi
   hooks:
     - id: shellcheck
       args: [-x]
+```
+
+## Source Guard Pattern (Testability)
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+validate_input() { [[ -n "${1:-}" ]] || return 1; }
+main() { validate_input "${1:-}" || exit 1; echo "Processing..."; }
+# Only run if not sourced (enables BATS testing)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then main "$@"; fi
+```
+
+## Mock-Aware Testing Policy
+
+- ❌ Don't stub internal functions with fakes
+- ✅ Mock external commands (`curl`, `kubectl`, `aws`) in BATS unit tests
+- ✅ Integration tests exercise real commands against test infra
+- **No `# TODO`, no `exit 0` stubs, no hardcoded example paths in production scripts**
+- **Required:** error handling, cleanup traps, idempotence, ShellCheck, BATS (>50 lines)

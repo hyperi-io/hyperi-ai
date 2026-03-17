@@ -25,8 +25,9 @@ source: infrastructure/DOCKER.md
 docker build -t myapp .
 docker compose up
 docker scout cves myapp              # Scan vulnerabilities
-docker run --rm -i hadolint/hadolint < Dockerfile  # Lint
-export DOCKER_BUILDKIT=1             # Always enable
+hadolint Dockerfile                  # Lint
+docker run --rm -i hadolint/hadolint < Dockerfile  # Lint in CI
+export DOCKER_BUILDKIT=1
 ```
 
 ## Base Images
@@ -38,17 +39,23 @@ export DOCKER_BUILDKIT=1             # Always enable
 | Go | `golang:1.23-alpine` | `scratch` or `alpine` |
 | Rust | `rust:1.83-alpine` | `scratch` or `alpine` |
 
+### Prohibited Sources
+
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| `FROM bitnami/*` | `FROM postgres:16-alpine` | Non-standard paths, custom entrypoints |
-| `FROM tutum/*` | Official images (no namespace) | Abandoned ~2016, unpatched CVEs |
-| `FROM dockercloud/*` | Verified publishers | Abandoned 2018 |
-| `FROM randomuser/thing` | `gcr.io/distroless/*`, `registry.example.com/*` | No security guarantees |
-| `FROM linuxserver/*` (K8s) | Official images | PUID/PGID conflicts with K8s securityContext, runs supervisord |
+| `bitnami/*` | Official images (no namespace) | Non-standard paths, custom entrypoints |
+| `tutum/*` | `postgres:16-alpine` | Abandoned ~2016, unpatched CVEs |
+| `dockercloud/*` | `redis:7-alpine` | Abandoned 2018 |
+| Random user images | Verified publishers | No security guarantees |
+| `linuxserver/*` (prod K8s) | Official images | PUID/PGID conflicts with K8s securityContext, supervisord |
 
-**HyperI standard images:** `postgres:16-alpine`, `clickhouse/clickhouse-server`, AutoMQ or `apache/kafka`, `timberio/vector`, `redis:7-alpine`, `quay.io/argoproj/argocd`
+**Approved sources:** Docker Official (no prefix), Verified Publishers (`hashicorp/vault`, `grafana/grafana`, `prom/prometheus`), `gcr.io/distroless/*`, your own registry.
+
+**HyperI standard images:** `postgres:16-alpine` / CloudNativePG, `clickhouse/clickhouse-server`, AutoMQ / `apache/kafka`, `timberio/vector`, `redis:7-alpine`, `quay.io/argoproj/argocd`
 
 ## Multi-Stage Builds (Required)
+
+**Always** separate build from runtime.
 
 ### Python
 
@@ -106,7 +113,7 @@ CMD ["node", "dist/index.js"]
 
 ## Security
 
-### Non-Root User (Required)
+### Non-Root (Required)
 
 ```dockerfile
 # Debian:  RUN useradd --create-home --shell /bin/bash appuser && USER appuser
@@ -119,34 +126,42 @@ CMD ["node", "dist/index.js"]
 | ❌ Don't | ✅ Do |
 |----------|-------|
 | `FROM python:latest` | `FROM python:3.12-slim` |
-| Mutable tag only | `FROM python:3.12-slim@sha256:abc123...` (best) |
+| Mutable tags only | `FROM python:3.12-slim@sha256:abc123...` (best) |
 
 ### No Secrets in Images
 
-| ❌ Don't | ✅ Do |
-|----------|-------|
-| `COPY .env /app/.env` | Pass via env vars / volume mounts at runtime |
-| `ENV API_KEY=secret123` | `docker build --secret id=npm_token,src=.npm_token .` |
-
 ```dockerfile
+# ❌ COPY .env /app/.env / ENV API_KEY=secret123
+# ✅ Build-time secrets via BuildKit:
 RUN --mount=type=secret,id=npm_token \
     NPM_TOKEN=$(cat /run/secrets/npm_token) npm ci
 ```
 
-### Scanning & Linting
+```bash
+docker build --secret id=npm_token,src=.npm_token .
+```
+
+### Scanning (CI Required)
 
 ```bash
-docker scout cves myapp:latest        # Built-in scanner
-trivy image myapp:latest              # Open source
-hadolint Dockerfile                   # Linter
+docker scout cves myapp:latest
+trivy image myapp:latest
 ```
 
 ## Layer Optimization
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| `COPY . .` then `RUN uv sync` | Copy lockfiles → install → copy src | Cache deps separately |
-| Separate `RUN apt-get update` / `install` / `clean` | Single `RUN` with `&& rm -rf /var/lib/apt/lists/*` | Single layer, cleaned |
+| `COPY . .` then `RUN install` | Copy lockfiles → install → copy source | Cache deps separately |
+| Separate `RUN apt-get update` / `install` / `clean` | Single combined `RUN` with `rm -rf /var/lib/apt/lists/*` | Fewer layers, actual cleanup |
+
+### BuildKit Cache Mounts
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
+RUN --mount=type=cache,target=/root/.npm npm ci
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+```
 
 ### .dockerignore (Required)
 
@@ -162,17 +177,9 @@ Dockerfile*
 docker-compose*
 ```
 
-### BuildKit Cache Mounts
-
-```dockerfile
-RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
-RUN --mount=type=cache,target=/root/.npm npm ci
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
-```
-
 ## Debug Utilities
 
-**Include** `curl`, `netcat-openbsd` (2-5% size cost, high debug value).
+**Include** `curl`, `netcat-openbsd` in production images (2-5% size, high debug value).
 **Exclude** build tools, package managers, editors, bash.
 
 ## Health Checks
@@ -191,25 +198,25 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 ## Docker Compose
 
-### Dev Setup Pattern
+### Dev
 
 ```yaml
 services:
   app:
     build: { context: ., target: builder }
+    ports: ["8000:8000"]
     volumes: [".:/app", "/app/.venv"]
-    depends_on:
-      db: { condition: service_healthy }
+    depends_on: { db: { condition: service_healthy } }
   db:
     image: postgres:16-alpine
-    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    volumes: [postgres_data:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d mydb"]
 volumes:
   postgres_data:
 ```
 
-### Prod-Like Setup — Resource Limits
+### Prod-Like (Resource Limits)
 
 ```yaml
 services:
@@ -235,7 +242,7 @@ docker buildx build --push -t registry.example.com/myapp:1.2.3 .
 
 | Endpoint | K8s Probe | Purpose |
 |----------|-----------|---------|
-| `/health/live` | livenessProbe | Process alive? Restart if failing |
+| `/health/live` | livenessProbe | Process alive? Restart if fail |
 | `/health/ready` | readinessProbe | Can handle traffic? Remove from LB |
 | `/health/startup` | startupProbe | Init done? Delay other probes |
 
@@ -251,33 +258,44 @@ async def readiness():
     return {"status": "ready"}
 ```
 
-### Graceful Shutdown (SIGTERM)
+### Exec Form for Signals
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| `CMD python -m myapp serve` | `CMD ["python", "-m", "myapp", "serve"]` | Shell form doesn't forward SIGTERM |
+| `CMD python -m myapp serve` | `CMD ["python", "-m", "myapp", "serve"]` | Shell form eats SIGTERM |
+
+### Graceful Shutdown
 
 ```python
+import signal, sys
+def handle_sigterm(signum, frame):
+    cleanup()
+    sys.exit(0)
 signal.signal(signal.SIGTERM, handle_sigterm)
 ```
 
-### Config via Environment Variables
+### Bind Address
 
-```dockerfile
-ENV LOG_LEVEL=info
-ENV DATABASE_HOST=localhost
-CMD ["python", "-m", "myapp", "serve"]
-```
+| ❌ Don't | ✅ Do |
+|----------|-------|
+| `--host localhost` / `127.0.0.1` | `--host 0.0.0.0` |
 
-Config cascade: CLI args → **ENV vars (primary)** → config files → code defaults
+### K8s-Ready Checklist
 
-### Network
+- [ ] All three health endpoints implemented
+- [ ] Non-root user (UID 1000+)
+- [ ] All config via environment variables
+- [ ] No secrets in image
+- [ ] Binds to `0.0.0.0`
+- [ ] Handles SIGTERM gracefully
+- [ ] Resource limits tested
+- [ ] Logs to stdout/stderr only
+- [ ] Stateless (external storage/cache)
+- [ ] Single process per container (no supervisord)
 
-**Always bind to `0.0.0.0`** — `localhost`/`127.0.0.1` won't work in K8s.
+### Project Structure
 
-### K8s-Ready Directory Structure
-
-```
+```text
 my-service/
 ├── Dockerfile
 ├── .dockerignore
@@ -291,15 +309,3 @@ my-service/
 │   ├── main.py
 │   └── health.py
 └── pyproject.toml
-```
-
-### K8s-Ready Checklist
-
-- [ ] All three health endpoints implemented
-- [ ] Non-root user (UID 1000+)
-- [ ] All config via ENV, no secrets in image
-- [ ] Binds `0.0.0.0`, not localhost
-- [ ] Handles SIGTERM gracefully
-- [ ] Resource limits tested (matches K8s limits)
-- [ ] Logs to stdout/stderr only
-- [ ] Stateless, single process per container

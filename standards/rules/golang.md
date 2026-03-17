@@ -16,18 +16,18 @@ source: languages/GOLANG.md
 
 ```bash
 go build ./...              # Build
-go test ./...               # Test
-go test -race ./...         # Race detector
+go test -race ./...         # Test (always use -race)
 golangci-lint run           # Lint
 go mod tidy                 # Clean deps
 govulncheck ./...           # Vulnerability scan
-go test -bench=. -benchmem  # Benchmarks
 ```
 
 ## Project Structure
 
-**Standard layout:** `cmd/<app>/main.go`, `internal/`, `pkg/`, `go.mod`, `Makefile`
-**Simple agents:** flat structure — `config/`, `helpers/`, `httpclient/`, `main.go` at root.
+| Type | Layout |
+|------|--------|
+| Standard service | `cmd/myapp/main.go`, `internal/`, `pkg/`, `go.mod`, `Makefile` |
+| Simple agent | Flat: `config/`, `helpers/`, `httpclient/`, `main.go`, `go.mod` |
 
 Use flat structure for simple projects. No forced `cmd/internal/pkg`.
 
@@ -35,96 +35,106 @@ Use flat structure for simple projects. No forced `cmd/internal/pkg`.
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| `return nil, err` | `return nil, fmt.Errorf("reading config %s: %w", path, err)` | Context for debugging |
+| `return nil, err` | `return nil, fmt.Errorf("reading config %s: %w", path, err)` | Context + chain |
+| `fmt.Errorf("failed: %s", err)` | `fmt.Errorf("failed: %w", err)` | `%w` preserves unwrap chain |
 | `return errors.New("invalid config")` | `return fmt.Errorf("fileTail index %d missing 'name'", i)` | Actionable messages |
-| `fmt.Errorf("failed: %s", err)` | `fmt.Errorf("failed: %w", err)` | `%w` preserves error chain |
 | `panic(err)` | `return nil, fmt.Errorf("op failed: %w", err)` | Never panic in library code |
-| Nested `if/else` error handling | Early returns, flat flow | Reduce nesting |
+| `result, _ := doSomething()` | Handle every error | Never ignore errors |
 
-```go
-// Custom error types
-type ConfigError struct {
-    Path, Message string
-    Err           error
-}
-func (e *ConfigError) Error() string  { return fmt.Sprintf("config error in %s: %s", e.Path, e.Message) }
-func (e *ConfigError) Unwrap() error  { return e.Err }
-```
+- Early returns to reduce nesting — check-and-bail, not nested if/else
+- Custom error types: implement `Error() string` + `Unwrap() error`
 
 ## Testing
 
-- **Table-driven tests** with `[]struct{name, input, expected, expectError, errorContains}`
-- Use `t.Run(tt.name, ...)` for subtests
+- **Table-driven tests** with `[]struct{ name string; ... }` and `t.Run(tt.name, ...)`
+- **Naming**: `TestFunction_Scenario` or `TestFunction_Scenario_SubScenario`
 - Use `t.Helper()` in helpers, `t.TempDir()` for temp files
-- **Naming:** `TestFunction_Scenario` or `TestFunction_Scenario_SubScenario`
-- **testify:** `require` (stops on fail) for setup, `assert` (continues) for checks
 
 ```go
-require.NoError(t, err)
-require.NotNil(t, result)
-assert.Equal(t, expected, actual)
+require.NoError(t, err)       // stops on failure
+assert.Equal(t, expected, actual) // continues on failure
 assert.Contains(t, err.Error(), "not found")
-assert.Len(t, items, 3)
+```
+
+| Package | Use |
+|---------|-----|
+| `github.com/stretchr/testify/require` | Fatal assertions |
+| `github.com/stretchr/testify/assert` | Non-fatal assertions |
+
+### Benchmarks
+
+```bash
+go test -bench=. -benchmem ./...
+go tool pprof cpu.prof
+```
+
+```go
+func BenchmarkX(b *testing.B) {
+    b.ResetTimer()
+    for i := 0; i < b.N; i++ { /* ... */ }
+}
 ```
 
 ## Configuration (HyperI 7-Layer Cascade)
 
-Priority (high→low): CLI flags → ENV vars → `.env` → `settings.{env}.yaml` → `settings.yaml` → `defaults.yaml` → hard-coded defaults
-
-**Libraries:** `github.com/spf13/viper`, `github.com/spf13/cobra`
+Priority (highest→lowest): CLI flags → ENV vars → `.env` → `settings.{env}.yaml` → `settings.yaml` → `defaults.yaml` → hard-coded defaults
 
 ```go
+// Uses viper + cobra
 viper.SetDefault("database.port", 5432)
 viper.SetEnvPrefix("MYAPP")
 viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 viper.AutomaticEnv()
 ```
 
-- Use `yaml:"fieldName"` and `yaml:"field,omitempty"` struct tags
+- YAML struct tags: `yaml:"fieldName,omitempty"`
 - Set defaults in `processAndSetDefaults()`, validate with clear error messages
-- Use `validLevels` map pattern for enum validation
+- Use `strings.TrimSpace` before validation
 
 ## Logging (HyperI Standard)
 
-- **RFC 3339 timestamps required** — use `time.RFC3339Nano` format, UTC
-- **`log/slog`** (Go 1.21+) for structured logging
-- JSON output for containers, text for terminals (auto-detect via `os.ModeCharDevice`)
-- Standard `log` package acceptable for simple projects
+- **RFC 3339 timestamps required** (`time.RFC3339Nano`)
+- Use `log/slog` (Go 1.21+) for structured logging
 
 ```go
 logger.Info("processing request",
-    "user_id", userID,
-    "request_id", requestID,
-)
+    "user_id", userID, "request_id", reqID)
 ```
 
-| ❌ Don't | ✅ Do | Why |
-|----------|-------|-----|
-| Custom timestamp formats | `time.RFC3339Nano` in UTC | HyperI standard |
-| Always JSON | Auto-detect terminal vs container | Developer experience |
+| Context | Handler |
+|---------|---------|
+| Terminal | `slog.NewTextHandler(os.Stderr, opts)` |
+| Container/CI | `slog.NewJSONHandler(os.Stderr, opts)` |
+
+Detect with `os.File.Stat().Mode() & os.ModeCharDevice`.
+
+Simple projects: `log.Printf(...)` is acceptable.
 
 ## Naming Conventions
 
 | Element | Convention | Example |
 |---------|-----------|---------|
-| Unexported | `camelCase` | `userCount`, `calculateTotal()` |
-| Exported | `PascalCase` | `UserCount`, `CalculateTotal()` |
+| Unexported | camelCase | `userCount`, `calculateTotal()` |
+| Exported | PascalCase | `UserCount`, `CalculateTotal()` |
 | Acronyms | Uppercase | `httpClient`, `userID`, `HTTPClient` |
-| Constants | `PascalCase` | `DefaultConfigName`, `MaxRetries` |
-| Files | `snake_case` | `config_test.go`, `parse_xml_event.go` |
-| Receivers | Short, consistent | `func (c *Config)` not `func (config *Config)` |
-| Enums | Iota | `LogLevelDebug LogLevel = iota` |
+| Constants | PascalCase | `DefaultConfigName`, `MaxRetries` |
+| Files | snake_case | `config_test.go`, `parse_xml_event.go` |
+| Receivers | Short, 1-2 char | `func (c *Config)` not `func (config *Config)` |
+
+Use `iota` for enum constants.
 
 ## Code Style
 
 - **Early returns** over nested if/else
-- **Small interfaces** — compose with embedding
-- Never use `this`/`self` as receiver names
+- **Small interfaces** (1-2 methods), compose with embedding
+- Short receiver names (`c`, `s`), never `this`/`self`
 
 ## Dependencies
 
 ```go
 // go.mod — use Go 1.24.2+
+module myproject
+go 1.24.2
 ```
 
 | Package | Purpose |
@@ -132,9 +142,11 @@ logger.Info("processing request",
 | `gopkg.in/yaml.v3` | YAML parsing |
 | `github.com/stretchr/testify` | Test assertions |
 | `gopkg.in/natefinch/lumberjack.v2` | Log rotation |
-| `github.com/spf13/cobra` | CLI |
-| `github.com/spf13/viper` | Configuration |
+| `github.com/spf13/cobra` | CLI framework |
+| `github.com/spf13/viper` | Config cascade |
 | `golang.org/x/sync/errgroup` | Concurrent error handling |
+
+❌ **Deprecated**: `io/ioutil` (since Go 1.16) → use `os.ReadFile`, `io.ReadAll`
 
 ## Linting — golangci-lint
 
@@ -147,85 +159,91 @@ linters-settings:
   govet: { check-shadowing: true }
 issues:
   exclude-rules:
-    - { path: _test\.go, linters: [errcheck] }
+    - path: _test\.go
+      linters: [errcheck]
 ```
 
 ```bash
-golangci-lint run --fix  # Auto-fix where possible
+golangci-lint run --fix    # Auto-fix
 ```
 
 ## Concurrency
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| `result, _ := doSomething()` | Always handle errors | Silent failures |
-| Naked `go func(){}()` | `errgroup` or `sync.WaitGroup` | Track completion/errors |
-| `var cache map[string]V` (concurrent) | `sync.Map` or mutex-protected map | Race condition |
-| Close channel from receiver | Sender closes channel | Panic on double-close |
-| Hold mutex during slow ops | Copy data, release lock, then process | Contention |
-| Unbuffered chan in fire-and-forget | Buffered channel or context select | Goroutine leak |
+| Naked `go func(){}()` | `errgroup.WithContext` or `sync.WaitGroup` | Track completion + errors |
+| `var cache map[string]V` (concurrent) | `sync.Map` or mutex-guarded map | Race condition |
+| Close channel from receiver | Sender closes: `defer close(ch)` | Ownership semantics |
+| Hold mutex during slow ops | Copy under lock, release, then process | Lock contention |
+| Unbuffered chan nobody reads | Buffered chan or context-guarded send | Goroutine leak |
+
+Key patterns:
+- `errgroup.WithContext` + `g.SetLimit(n)` for bounded concurrency
+- `sync.Once` for lazy init
+- `sync.RWMutex` — `RLock` for reads, `Lock` for writes
+- Always `defer cancel()` after `context.WithTimeout`
+
+### Loop Variable Capture
 
 ```go
-// errgroup with concurrency limit
-g, ctx := errgroup.WithContext(ctx)
-g.SetLimit(limit)
+// ✅ Pass as parameter (works all versions)
 for _, item := range items {
-    item := item
-    g.Go(func() error { return processItem(ctx, item) })
+    go func(item Item) { process(item) }(item)
 }
-return g.Wait()
+// Go 1.22+ fixes this, but explicit param is clearer
 ```
-
-- `sync.Once` for lazy initialization
-- `sync.RWMutex` — `RLock` for reads, `Lock` for writes
 
 ## Context Best Practices
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| `func fetch() (Data, error)` | `func fetch(ctx context.Context) (Data, error)` | Propagate cancellation |
-| Store `ctx` in struct | Pass `ctx` per-call | Context should flow |
-| `context.Background()` mid-function | Accept from caller | Loses parent cancellation |
-| `context.TODO()` in production | Proper context chain | TODO is for refactoring only |
+| `context.Background()` mid-function | Accept `ctx context.Context` as first param | Loses parent cancellation |
+| `context.TODO()` in production | Proper context from caller | TODO is for refactoring only |
+| Store `ctx` in struct field | Pass `ctx` per method call | Context should flow, not be stored |
 
 - Typed keys for context values: `type contextKey string`
-- Always `defer cancel()` after `context.WithTimeout`
-- Use `http.NewRequestWithContext(ctx, ...)` for HTTP calls
+- Check `ctx.Err()` early in long operations
 
 ## Security
 
-- `govulncheck ./...` in CI
-- `exec.Command("grep", pattern, file)` not `exec.Command("sh", "-c", "grep "+pattern)`
+```go
+// ✅ exec.Command with separate args
+cmd := exec.Command("grep", pattern, filename)
+// ❌ Shell injection risk
+cmd := exec.Command("sh", "-c", "grep "+pattern+" "+filename)
+```
+
 - File perms: `0644` files, `0755` dirs
-- Validate/trim all inputs with length limits
+- `govulncheck ./...` in CI
+- Validate all input: trim, length check, allowed values
 
 ## HTTP Clients
 
 ```go
-func NewHTTPClient() *http.Client {
-    return &http.Client{
-        Timeout: 30 * time.Second,
-        Transport: &http.Transport{
-            MaxIdleConns: 100, MaxIdleConnsPerHost: 10,
-            IdleConnTimeout: 90 * time.Second,
-        },
-    }
+client := &http.Client{
+    Timeout: 30 * time.Second,
+    Transport: &http.Transport{
+        MaxIdleConns: 100, MaxIdleConnsPerHost: 10,
+        IdleConnTimeout: 90 * time.Second,
+    },
 }
 ```
 
-- Always use `http.NewRequestWithContext`
-- `defer resp.Body.Close()` after error check
+- Always `http.NewRequestWithContext(ctx, ...)`
+- Always `defer resp.Body.Close()`
 - Read error bodies with `io.LimitReader(resp.Body, 1024)`
-- Retry with exponential backoff, cap at 10s, skip retries on 4xx
+- Retry with exponential backoff, cap at 10s, skip 4xx retries
 
-## JSON and XML
+## JSON / XML
 
-- Use struct tags: `json:"field,omitempty"`, `xml:"Field,attr"`
-- `json.NewDecoder(r).Decode()` for streaming
+- JSON struct tags: `json:"field,omitempty"`
+- Use `json.NewDecoder(r)` for streaming large files
+- XML: `xml:"Name,attr"` for attributes, `xml:",chardata"` for text content
 - Validate required fields after unmarshal
-- XML: `encoding/xml` for Windows Event Log parsing (`xml:"Name,attr"`, `xml:",chardata"`)
 
 ## Graceful Shutdown
+
+### HTTP Server
 
 ```go
 quit := make(chan os.Signal, 1)
@@ -236,27 +254,48 @@ defer cancel()
 server.Shutdown(ctx)
 ```
 
-- HTTP server: set `ReadTimeout`, `WriteTimeout`, `IdleTimeout`
-- Workers: `done` channel + `sync.WaitGroup`, close `done` to signal stop
+Set `ReadTimeout`, `WriteTimeout`, `IdleTimeout` on `http.Server`.
+
+### Worker Pattern
+
+Use `done` channel + `sync.WaitGroup`. Select on `<-w.done` vs `<-w.tasks`.
 
 ## File Operations
 
-- **Atomic writes:** temp file in same dir → `Sync()` → `Chmod` → `os.Rename`
-- **File tailing:** track offset, detect truncation/rotation (size < offset → seek to 0), `bufio.NewReader`
+- **Atomic writes**: temp file → `Sync()` → `Chmod` → `os.Rename`
+- **File tailing**: detect truncation/rotation by comparing `Size() < offset`
+- Use `bufio.NewReader` for line-by-line reading
+
+## Dependency Injection
+
+- Define small interfaces for deps (`Logger`, `ConfigLoader`, `Exporter`)
+- Constructor: `NewAgent(logger, config, exporter) *Agent`
+- Mock implementations for testing
 
 ## Common Patterns
 
-- **Functional options:** `type Option func(*Config)`, `WithTimeout(d)`, `NewClient(opts...)`
-- **Constructor functions:** `NewConfig(path)` → load → validate → return
-- **Interface-based DI:** define interfaces, inject via constructor, mock in tests
+### Functional Options
 
-## Deprecated APIs
+```go
+type Option func(*Config)
+func WithTimeout(d time.Duration) Option { return func(c *Config) { c.Timeout = d } }
+func NewClient(opts ...Option) *Client {
+    cfg := defaultConfig()
+    for _, opt := range opts { opt(&cfg) }
+    return &Client{config: cfg}
+}
+```
 
-| ❌ Deprecated | ✅ Replacement | Since |
-|--------------|---------------|-------|
-| `io/ioutil` | `os.ReadFile`, `io.ReadAll` | Go 1.16 |
+## Common Pitfalls
 
-## Build and Release
+| Pitfall | Fix |
+|---------|-----|
+| `defer f.Close()` in loop | Extract to function, defer there |
+| nil slice → `null` in JSON | `make([]string, 0)` for `[]` |
+| Goroutine leak (blocked send) | Buffered channel or context guard |
+| `ioutil.*` usage | `os.ReadFile`, `io.ReadAll` |
+
+## Build & Release
 
 ```makefile
 LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildTime=$(DATE)
@@ -268,30 +307,5 @@ lint:
 	golangci-lint run
 ```
 
-- Build tags: `//go:build windows` or `//go:build linux || darwin`
-- Version embedding via `-ldflags -X main.version=...`
-- Profiling: `runtime/pprof`, analyze with `go tool pprof cpu.prof`
-
-## Common Pitfalls
-
-| ❌ Don't | ✅ Do | Why |
-|----------|-------|-----|
-| `defer f.Close()` inside loop | Extract to function with its own `defer` | Defers accumulate until function returns |
-| Loop var capture in goroutine (pre-1.22) | Pass as parameter: `go func(item Item){...}(item)` | All goroutines see last value |
-| Assume nil slice = empty in JSON | `make([]string, 0)` when you need `[]` not `null` | JSON marshaling difference |
-| Unbuffered chan nobody reads | Buffered chan or context-aware select | Goroutine leak |
-
-## Benchmarking
-
-```go
-func BenchmarkParseEvent(b *testing.B) {
-    data := []byte(`{"id":"test"}`)
-    b.ResetTimer()
-    for i := 0; i < b.N; i++ {
-        _, _ = ParseEvent(data)
-    }
-}
-```
-
-```bash
-go test -bench=. -benchmem -benchtime=5s -count=3 ./...
+- Build tags: `//go:build windows`, `//go:build linux || darwin`
+- Embed version via `-ldflags "-X main.version=..."`

@@ -20,8 +20,6 @@ source: languages/CPP.md
 
 **Target: C++20** (C++23 where clang supports)
 
----
-
 ## Quick Reference
 
 ```bash
@@ -34,54 +32,37 @@ cmake -B build-tsan -DSANITIZE=thread -GNinja && ninja -C build-tsan
 cmake -B build-ubsan -DSANITIZE=undefined -GNinja && ninja -C build-ubsan
 ```
 
----
-
 ## AI Pitfalls — Check First
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| `new`/`delete` | `std::make_unique<T>()` | Leak-proof RAII |
-| `(int)ptr` C-cast | `static_cast<int>(ptr)` | Type safety |
+| `new Node()` / `delete` | `std::make_unique<Node>()` | RAII, leak-proof |
+| `(int)ptr` | `static_cast<int>(ptr)` | Type-safe cast |
 | `NULL` / `0` | `nullptr` | Type-safe null |
-| `int arr[], size_t n` | `std::span<int>` | Bounds + zero-copy |
-| `std::endl` | `'\n'` | Avoids flush overhead |
-| `catch (std::exception e)` | `catch (const std::exception & e)` | Avoid slicing |
-| `std::bind(...)` | Lambda | Clearer, faster |
-| `return local_ref;` | Return by value | Dangling reference |
-| `result = result + s` in loop | `result += s` with `reserve()` | O(n²) → O(n) |
-| Allocate in hot loop | Pre-allocate, reuse | Allocation tax |
-| `#include <format>` | Use `fmt` library | Not all compilers |
-| `std::string::contains()` | `str.find(x) != npos` | C++23 only |
-| `std::ranges::to<>()` | Manual collect | C++23 only |
-| `std::expected` | `tl::expected` or check clang support | C++23 only |
+| `int arr[], size_t size` | `std::span<int>` | Bounds, zero-copy |
+| `std::endl` | `'\n'` | Avoids flush |
+| `catch (std::exception e)` | `catch (const std::exception & e)` | Avoids slicing |
+| `std::bind(...)` | Lambda | Cleaner, faster |
+| `result = result + s` in loop | `result.reserve(); result += s` | O(n) not O(n²) |
+| `std::vector<int> v(sz)` in hot loop | Pre-allocate, reuse with `clear()`/`fill()` | Avoid alloc churn |
+| Return `std::string_view` to local | Return `std::string` (move semantics) | Dangling reference |
+| `std::string_view v = std::string("tmp")` | Keep owning string alive | Dangling |
+| `process(std::move(ptr)); ptr->x` | Don't use after move | UB |
+| Modify container while range-for | `std::erase_if()` or manual iterator | Iterator invalidation |
+| `~Base() {}` (polymorphic) | `virtual ~Base() = default;` | Correct cleanup |
+| `static int c; c++` (threaded) | `std::atomic<int>` | Race condition |
+| Double-checked lock without atomic | `std::call_once` or atomic+acquire/release | Broken pattern |
 
-### Thread Safety Traps
-
-```cpp
-// ❌ Non-atomic shared counter
-static int counter = 0; counter++;
-// ✅
-static std::atomic<int> counter{0};
-counter.fetch_add(1, std::memory_order_relaxed);
-
-// ❌ Broken double-checked locking
-// ✅ std::call_once(flag, [&]{ value = compute(); });
-```
-
-### Memory Safety Traps
+### Verify Before Suggesting
 
 ```cpp
-// ❌ Dangling string_view
-std::string_view view = std::string("temp"); // dangling!
-
-// ❌ Use after move
-auto p = std::make_unique<X>(); process(std::move(p)); p->val; // UB
-
-// ❌ Missing virtual destructor on polymorphic base
-// ✅ virtual ~Base() = default;
+// C++23 only — check support or use alternatives:
+// std::expected     → tl::expected
+// std::format       → fmt::format
+// str.contains()    → str.find(x) != npos
+// std::ranges::to   → manual construction
+// <generator>       → C++23 only
 ```
-
----
 
 ## Zero-Copy by Default
 
@@ -93,13 +74,10 @@ auto p = std::make_unique<X>(); process(std::move(p)); p->val; // UB
 | Array slice | `std::span<T>` |
 
 ```cpp
-// ✅ Zero-copy parse
+// ✅ Zero-copy parsing
 void parseField(std::string_view data) {
     auto field = data.substr(0, data.find(','));
-}
-// ❌ Unnecessary copy
-void parseField(const std::string & data) {
-    std::string field = data.substr(0, data.find(',')); // allocates
+    process(field);
 }
 ```
 
@@ -111,83 +89,47 @@ class Arena {
     size_t offset = 0;
 public:
     explicit Arena(size_t cap) : buffer(cap) {}
-    char * allocate(size_t sz) { /* bump pointer */ }
-    void reset() { offset = 0; } // instant free-all
+    char* allocate(size_t sz) { /* bump pointer */ }
+    void reset() { offset = 0; }  // Instant batch free
 };
 ```
-
----
 
 ## SIMD
 
-**Libraries (prefer over raw intrinsics):** Highway (Google), xsimd, simdjson
+**Libraries:** Highway (Google, recommended), xsimd (header-only), simdjson (JSON-specific)
 
 ```cpp
-// ✅ Highway — portable SIMD
+// ✅ Highway for portable SIMD
 #include <hwy/highway.h>
-namespace hn = hwy::HWY_NAMESPACE;
-void sum(const float* in, float* out, size_t n) {
-    const hn::ScalableTag<float> d;
-    for (size_t i = 0; i < n; i += hn::Lanes(d))
-        hn::Store(hn::Load(d, in + i), d, out + i);
-}
+const hn::ScalableTag<float> d;
+auto v = hn::Load(d, input + i);
 ```
 
-- Use `alignas(32)` or `std::aligned_alloc(32, ...)` for SIMD buffers
-- Always handle tail with scalar loop after SIMD loop
+- Use `alignas(32)` or `std::aligned_alloc(32, ...)` for buffers
+- Always handle tail elements with scalar loop after SIMD loop
 - Prefer aligned loads (`_mm256_load_ps`) over unaligned (`_mm256_loadu_ps`)
-
----
 
 ## Memory Management
 
-**RAII everywhere. No manual `new`/`delete`.**
-
-| Ownership | Type | Use Case |
-|-----------|------|----------|
-| Unique | `std::unique_ptr<T>` | Single owner (default) |
-| Shared | `std::shared_ptr<T>` | Multiple owners, ref-counted |
-| Non-owning | `T*` or `T&` | Borrowed, no lifetime mgmt |
-| Weak ref | `std::weak_ptr<T>` | Break cycles |
-
-```cpp
-// ✅ RAII wrapper for C resources
-class FileHandle {
-    FILE * file;
-public:
-    explicit FileHandle(const char* p) : file(fopen(p,"r")) { if(!file) throw...; }
-    ~FileHandle() { if(file) fclose(file); }
-    FileHandle(const FileHandle&) = delete;
-    FileHandle(FileHandle&& o) noexcept : file(o.file) { o.file=nullptr; }
-};
-```
-
-- `std::array<char,256>` for small stack buffers
-- `std::make_unique<char[]>(size)` for dynamic buffers
-
----
+- **RAII everywhere** — wrap C resources in RAII classes (non-copyable, movable)
+- `std::unique_ptr<T>` — single owner (default)
+- `std::shared_ptr<T>` — multiple owners
+- Raw `T*` / `T&` — non-owning borrowed access only
+- `std::weak_ptr<T>` — break cycles
+- `std::array<T,N>` for small stack allocations
 
 ## Error Handling
 
-- **Exceptions** for errors with context: `throw Exception(ErrorCodes::X, "msg: {}", val);`
-- **`std::optional<T>`** for expected failures (e.g., parse attempts)
-- **`std::expected<T,E>`** (C++23) for recoverable errors with monadic ops — use `tl::expected` if unavailable
-- Catch at boundaries, not everywhere. Catch by `const &`.
-- **Never throw in destructors** — log errors instead with `noexcept` dtor
+- **Exceptions** for errors with context: `throw Exception(ErrorCodes::X, "msg: {}", val)`
+- **`std::optional`** for expected lookup failures
+- **`std::expected`** (C++23) for recoverable errors with monadic chaining
+- Catch at boundaries, not everywhere
+- **Never throw from destructors** — log instead with `noexcept`
 
-```cpp
-std::optional<int64_t> tryParseInt(std::string_view str) {
-    int64_t v; auto [ptr, ec] = std::from_chars(str.begin(), str.end(), v);
-    return ec == std::errc{} ? std::optional{v} : std::nullopt;
-}
-```
+## Naming (ClickHouse-Compatible)
 
----
-
-## Naming Conventions (ClickHouse-Compatible)
-
-| Element | Convention | Example |
-|---------|------------|---------|
+| Element | Style | Example |
+|---------|-------|---------|
 | Variables, members | `snake_case` | `max_block_size` |
 | Functions, methods | `camelCase` | `getName()` |
 | Classes, structs | `CamelCase` | `DataTypeString` |
@@ -195,64 +137,52 @@ std::optional<int64_t> tryParseInt(std::string_view str) {
 | Template params | `T`, `TValue` | `typename T` |
 | Namespaces | lowercase | `DB`, `detail` |
 
-- Variables: lowercase abbreviations (`mysql_connection` ✅, `mySQL_connection` ❌)
-- Classes: preserve abbreviation case (`HTTPClient` ✅, `HttpClient` ❌)
-- Constructor params: underscore suffix (`input_`) to disambiguate from members
-
----
+- Class abbreviations: `HTTPClient` ✅, `HttpClient` ❌
+- Variable abbreviations: `mysql_connection` ✅, `mySQL_connection` ❌
+- Constructor params: underscore suffix (`input_`, `strict_mode_`)
+- No member prefix needed
 
 ## Formatting
 
-- **4 spaces**, no tabs. Line limit ~120-140.
-- **Allman braces** (own line). Single-statement getters can be one-line.
-- **`const` before type:** `const char * pos` ✅, `char const * pos` ❌
-- **Pointer/ref:** spaces both sides: `const char * pos`, `const Block & block`
-- Operators on new line: `&& secondCondition`
-- Use `.clang-format` with `BasedOnStyle: LLVM`, `IndentWidth: 4`, `BreakBeforeBraces: Allman`, `PointerAlignment: Middle`
-
----
+- **4 spaces**, no tabs. Line limit ~120-140
+- **Allman braces** (own line). Single-statement functions may be one line
+- **`const` before type**: `const char * pos` ✅, `char const * pos` ❌
+- **Pointer/ref spacing**: `const char * pos`, `const Block & block`
+- Operators on new line when wrapping: `&& secondCondition`
+- `.clang-format`: LLVM base, `IndentWidth: 4`, `ColumnLimit: 120`, `BreakBeforeBraces: Allman`, `PointerAlignment: Middle`
 
 ## Concurrency
 
-| Pattern | Use When |
-|---------|----------|
-| `std::lock_guard<std::mutex>` | Simple exclusive access |
-| `std::shared_mutex` + `shared_lock`/`unique_lock` | Read-heavy workloads |
-| `std::atomic<T>` with memory ordering | Counters, flags |
-| Thread pool + `submit()` | Parallel work |
-| `std::call_once` | One-time init |
-
 ```cpp
-// ✅ Thread pool — don't spawn raw threads
-pool.submit([&task]() { processTask(task); });
-pool.wait();
-
-// ❌ Raw thread spawning
-std::vector<std::thread> threads;
-for (...) threads.emplace_back([&]{ ... });
+// Read-heavy: std::shared_mutex + shared_lock/unique_lock
+// Simple counters: std::atomic with memory_order_relaxed
+// One-time init: std::call_once or atomic acquire/release pattern
 ```
 
----
+| ❌ Don't | ✅ Do | Why |
+|----------|-------|-----|
+| Spawn raw `std::thread` | Submit to ThreadPool | Resource management |
+| `lock()` / `unlock()` manually | `std::lock_guard` / `std::scoped_lock` | Exception safety |
+| Double-checked lock without atomic | `std::call_once(flag, fn)` | Broken without fences |
 
 ## Testing — GoogleTest
 
-- Test files: `src/Module/tests/gtest_*.cpp`
-- Naming: `TEST_F(ParserTest, ParsesValidJSON)`
-- Use fixtures (`::testing::Test`) for shared setup
-- Use parameterised tests (`TestWithParam`) for multiple inputs
-- Link with `GTest::gtest_main`, discover with `gtest_discover_tests()`
-
-```cmake
-add_executable(gtest_parser tests/gtest_parser.cpp)
-target_link_libraries(gtest_parser PRIVATE module1 GTest::gtest_main)
-gtest_discover_tests(gtest_parser)
+```cpp
+class ParserTest : public ::testing::Test {
+protected:
+    void SetUp() override { parser = std::make_unique<Parser>(); }
+    std::unique_ptr<Parser> parser;
+};
+TEST_F(ParserTest, ParsesValidJSON) { /* ASSERT/EXPECT */ }
 ```
 
----
+- Test files: `src/Module/tests/gtest_*.cpp`
+- Naming: `Test_Scenario` or `Test_Scenario_ExpectedResult`
+- Use `TEST_P` + `INSTANTIATE_TEST_SUITE_P` for parameterised tests
 
 ## Sanitizers
 
-Build presets: `asan`, `tsan`, `ubsan`, `msan` via `-DSANITIZE=<type>`.
+Build presets: `SANITIZE=address|thread|undefined|memory`
 
 ```cmake
 if(SANITIZE STREQUAL "address")
@@ -260,111 +190,95 @@ if(SANITIZE STREQUAL "address")
 endif()
 ```
 
-- Run all four in CI (ASan, TSan, UBSan, MSan)
+- CI runs ASan, TSan, UBSan builds separately
 - Suppress false positives: `__attribute__((no_sanitize("address")))` or suppression files
-- `ASAN_OPTIONS=suppressions=asan_suppressions.txt ./program`
-
----
+- `ASAN_OPTIONS=suppressions=asan_suppressions.txt`
 
 ## Static Analysis
 
 ### clang-tidy
 
-Enable: `bugprone-*`, `clang-analyzer-*`, `cppcoreguidelines-*`, `modernize-*`, `performance-*`, `readability-*`
-Disable: `-modernize-use-trailing-return-type`, `-readability-identifier-naming`, `-*-magic-numbers`
-Set `WarningsAsErrors: '*'`, cognitive complexity threshold: 25.
+Enabled: `bugprone-*`, `clang-analyzer-*`, `cppcoreguidelines-*`, `modernize-*`, `performance-*`, `readability-*`
+Disabled: `-modernize-use-trailing-return-type`, `-readability-identifier-naming`, `-*-magic-numbers`
+`WarningsAsErrors: '*'`, cognitive complexity threshold: 25
 
 ### Compiler Warnings
 
 ```cmake
--Wall -Wextra -Werror -Wpedantic -Wshadow -Wcast-align -Wconversion
--Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2
--Wold-style-cast -Woverloaded-virtual -Wnon-virtual-dtor
+-Wall -Wextra -Werror -Wcast-qual -Wconversion -Wdouble-promotion
+-Wformat=2 -Wnull-dereference -Wold-style-cast -Wshadow
+-Wsign-conversion -Wunused -Woverloaded-virtual -Wnon-virtual-dtor
 ```
-
----
 
 ## Modern C++20/23 Features
 
-### Concepts
-
-```cpp
-template<typename T>
-concept Numeric = std::integral<T> || std::floating_point<T>;
-
-template<Numeric T>
-T sum(std::span<const T> values);
-```
-
-### Ranges
-
-```cpp
-auto result = values
-    | std::views::filter([](int v) { return v > 0; })
-    | std::views::transform([](int v) { return v * 2; })
-    | std::views::take(10);
-```
-
-### Structured Bindings
-
-```cpp
-auto [iter, inserted] = map.insert({key, value});
-for (const auto & [name, col] : columns) { ... }
-```
-
-### constexpr
-
-Use for compile-time computation: block sizes, alignment, lookup tables.
-
----
+- **Concepts**: Constrain templates — `template<Numeric T> T sum(std::span<const T>)`
+- **Ranges**: Lazy pipelines — `values | views::filter(f) | views::transform(g) | views::take(10)`
+- **Structured bindings**: `auto [iter, inserted] = map.insert({k, v})`
+- **`constexpr`**: Compile-time lookup tables, alignment helpers
+- **`std::expected`** (C++23): `loadConfig(path).and_then(validate).transform(apply).or_else(fallback)`
 
 ## Performance Patterns
 
-- **SoA over AoS** — contiguous arrays, not vectors of pointers
-- **Pre-allocate buffers** in parser/processor classes, `.clear()` + reuse
-- **`likely()`/`unlikely()`** hints: `__builtin_expect(!!(x), 1)`
-- **Iterator invalidation:** use `std::erase_if()` or `it = vec.erase(it)`
-- **Move into containers:** `cache[std::move(key)] = std::move(value);`
+- **SoA over AoS** — contiguous `std::vector<int64_t>` beats `vector<unique_ptr<Value>>`
+- **Pre-allocate buffers** as class members, `clear()` + reuse per call
+- **`likely()`/`unlikely()`**: `__builtin_expect(!!(x), 1)` for branch hints
+- **Prefetch**: `__builtin_prefetch(ptr, 0, 3)` — consider adaptive distance tuning
+- **Small memcpy**: Unrolled switch for 1/2/4/8 bytes; 16-byte SSE for larger
 
----
+## Common Pitfalls
 
-## Advanced Patterns (ClickHouse-Derived)
+- **Dangling `string_view`**: Never return `string_view` to a local `std::string`
+- **Iterator invalidation**: Use `std::erase_if` or `it = vec.erase(it)` pattern
+- **Use after move**: Treat moved-from objects as empty — don't access
+- **Exception in destructor**: Always `noexcept`, log errors, never throw
+- **Virtual destructor**: Required for any polymorphic base class
+
+## ClickHouse Fork Specifics
+
+| Setting | Value |
+|---------|-------|
+| C++ Standard | **C++23** (`CMAKE_CXX_STANDARD 23`) |
+| CMake | ≥3.25 |
+| Compiler | **Clang only** (GCC unsupported) |
+| Clang minimum | 19 (CI uses clang-21) |
+| Linker | **LLD only** (gold forbidden, mold unsupported) |
+| LLVM tools | `llvm-ar`, `llvm-ranlib`, `llvm-objcopy`, `llvm-strip` (version-matched) |
+| CI system | **Praktika** (custom Python, not GitHub Actions) |
+| CI Docker | `clickhouse/binary-builder`, `clickhouse/fasttest` |
+| Compilation cache | **sccache** (required — full build ~30min+) |
+| Build types | DEBUG, RELEASE, ASAN, TSAN, MSAN, UBSAN, TIDY, COVERAGE |
+| Platforms | AMD64, ARM64, Darwin, FreeBSD, musl, RISCV64, PPC64LE, S390X |
+
+- `.clang-format`: WebKit-based, 140 char columns, 4-space tabs
+- `.clang-tidy`: All checks enabled, ~50 disabled, `WarningsAsErrors: '*'`
+- `-Xclang -fuse-ctor-homing`, `-falign-functions=64`, `-mbranches-within-32B-boundaries`
+- ThinLTO for Release/RelWithDebInfo (known `.debug_aranges` bug — custom `ld.lld` wrapper)
+- `_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE` in Debug
+- `ENABLE_CHECK_HEAVY_BUILDS` prevents oversized TUs
+- HyperI patches: clearly marked, minimal, rebasing-friendly
+
+## Advanced Patterns (ClickHouse Battle-Tested)
 
 ### COW Smart Pointers
 
-`boost::intrusive_ptr<const Derived>` (immutable, shareable) / `intrusive_ptr<Derived>` (mutable). Clone-on-mutate via `mutate()` which clones only if `use_count() > 1`. Use for large shared objects (columns, blocks).
+`boost::intrusive_ptr<const Derived>` (immutable, shareable) / `intrusive_ptr<Derived>` (mutable). `mutate()` clones only if refcount > 1. Use for columns/blocks shared across pipeline.
 
 ### PODArray
 
-No-init array with SIMD right-padding (64 bytes). Non-copyable. Safe SIMD overread past end. Type alias: `PaddedPODArray<T>`.
+No-init vector for POD types. Right padding (64B) for SIMD overread safety. Left padding for -1 element access. Non-copyable. Type alias: `PaddedPODArray<T>`.
 
 ### Arena Allocator
 
-Bump allocator with hybrid growth: exponential below 128MB, linear above. Integrates with ASan (`ASAN_POISON/UNPOISON_MEMORY_REGION`). Supports `alignedAlloc()`.
-
-### ArenaWithFreeLists
-
-16 free lists (sizes 16B–512KB). Sizes >64KB bypass arena via `::operator new`. Enables memory reuse within arena.
+Bump allocator with hybrid growth: exponential below 128MB, linear above. ASAN integration (`ASAN_POISON/UNPOISON_MEMORY_REGION`). `alignedAlloc()` for SIMD buffers. `ArenaWithFreeLists`: 16 free lists for sizes 16B–64KB; larger bypass arena.
 
 ### Stack-First Allocator
 
-`AllocatorWithStackMemory<Base, 256>` — uses `alignas` stack buffer for small allocs, falls back to heap.
+`AllocatorWithStackMemory<Base, N>` — uses `alignas` stack buffer for ≤N bytes, falls back to heap. Use for small aggregate states.
 
 ### Multi-Target SIMD Dispatch
 
-`DECLARE_MULTITARGET_CODE(...)` macro generates Default/SSE42/AVX2/AVX512 namespaces. Runtime dispatch via `CPU::hasAVX512()` etc.
-
-### Adaptive Prefetch
-
-`__builtin_prefetch(ptr, 0, 3)` with auto-tuned look-ahead (4–32) based on measured iteration latency.
-
-### Small memcpy
-
-`memcpySmallAllowReadWriteOverflow15()` — 16-byte SSE copies. `memcpySmall()` — switch-based unrolled copies for 1/2/4/8 bytes.
-
-### Exception with Stack Capture
-
-`Exception(code, fmt, args...)` using `fmt::format_string`. Captures stack frames at throw. `markLogged()` prevents duplicate logging.
+`DECLARE_MULTITARGET_CODE(...)` generates `TargetSpecific::{Default,SSE42,AVX2,AVX512}` namespaces. Runtime dispatch via `CPU::hasAVX512()` etc.
 
 ### assert_cast
 
@@ -374,46 +288,45 @@ Debug: `dynamic_cast` + throw. Release: zero-overhead `static_cast`.
 
 ```cpp
 SCOPE_EXIT( cleanup(); );
-SCOPE_EXIT_SAFE( cleanup(); );        // catches exceptions
-SCOPE_EXIT_MEMORY( cleanup(); );      // blocks memory-limit exceptions
-SCOPE_EXIT_MEMORY_SAFE( cleanup(); ); // both protections
+SCOPE_EXIT_SAFE( cleanup(); );  // catches exceptions, logs
+SCOPE_EXIT_MEMORY( cleanup(); );  // blocks memory-limit exceptions
 ```
 
----
+### Exception with Stack Capture
 
-## Project Structure
+`Exception(code, fmt, args...)` — captures stack frames at throw site. `markLogged()` prevents duplicate logging. Uses `fmt::format`.
+
+## Project Structure (Greenfield)
 
 ```
-myproject/
-├── .vscode/{settings,launch,tasks,c_cpp_properties,extensions}.json
-├── cmake/{CompilerWarnings,Sanitizers}.cmake
-├── contrib/{googletest,fmt,simdjson}/    # git submodules
-├── src/{Common,Core,Module1,...}/        # each with tests/ subdir
-├── programs/{server,client}/main.cpp
-├── tests/{integration,benchmark}/
-├── CMakeLists.txt
-├── CMakePresets.json                     # debug/release/relwithdebinfo/asan/tsan
-├── .clang-format
-└── .clang-tidy
+src/{Module}/           # .h, .cpp
+src/{Module}/tests/     # gtest_*.cpp
+contrib/                # git submodules: googletest, fmt, simdjson
+cmake/                  # CompilerWarnings.cmake, Sanitizers.cmake
+programs/{name}/main.cpp
+tests/integration/
+tests/benchmark/
+CMakePresets.json       # debug, release, relwithdebinfo, asan, tsan
+.clang-format
+.clang-tidy
 ```
 
-### CMakePresets.json
+### CMake
 
-Presets: `debug` (O0), `release` (O3 -march=native), `relwithdebinfo` (O2 -g), `asan` (O1 + address,undefined), `tsan` (O1 + thread). Generator: Ninja. C++20 required. Export compile commands ON.
+```cmake
+cmake_minimum_required(VERSION 3.25)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+# Ninja generator, CMakePresets.json for configurations
+# GoogleTest: gtest_discover_tests(target)
+# set_project_warnings(target) per library
+```
 
 ### VSCode
 
 - Extensions: `cpptools`, `cmake-tools`, `vscode-clangd`, `vscode-lldb`, `clang-format`
-- clangd args: `--background-index --clang-tidy --completion-style=detailed --header-insertion=iwyu`
-- `editor.formatOnSave: true`, `editor.rulers: [120]`
-
-### Module CMake Pattern
-
-```cmake
-add_library(module1 Parser.cpp)
-target_link_libraries(module1 PUBLIC common core fmt::fmt)
-set_project_warnings(module1)
-# Tests
-add_executable(gtest_parser tests/gtest_parser.cpp)
-target_link_libraries(gtest_parser PRIVATE module1 GTest::gtest_main)
-gtest_discover_tests(gtest_parser)
+- `clangd` args: `--background-index --clang-tidy --completion-style=detailed --header-insertion=iwyu`
+- `CMakePresets.json` for debug/release/asan/tsan presets
+- `launch.json`: LLDB configs for program, unit tests, ASan
+- `settings.json`: `formatOnSave: true`, `rulers: [120]`, clang-format from file

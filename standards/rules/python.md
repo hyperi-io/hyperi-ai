@@ -16,90 +16,296 @@ source: languages/PYTHON.md
 
 # Python Standards — HyperI Projects
 
-**Python 3.12+ required.** `uv` required for all dependency management.
-
-## Quick Reference
-
-```bash
-./ci/bootstrap install              # Setup
-./ci/run check|test|build|dependency-update  # Dev
-./ci/run release [--dry-run|--no-push]       # Release
-```
-
-CI enforces venv at `ci-local/.venv` · 80% coverage min · version synced via pre-commit hook.
+**Min Version: 3.12+** (lockstep all projects)
 
 ---
 
-## AI Pitfalls — Check First
+## AI Gets Python Wrong — Verify Everything
 
-| ❌ Don't | ✅ Do | Why |
-|----------|-------|-----|
-| `from typing import List, Dict, Optional` | `list[str]`, `dict[str, int]`, `str \| None` | 3.12+ built-ins required |
-| `except Exception: pass` | `except ValueError as e: logger.error(…); raise` | Hides bugs |
-| `def f(items=[])` | `def f(items: list[str] \| None = None)` | Shared mutable state |
-| `f"SELECT … {user_id}"` | `cursor.execute("… %s", (user_id,))` | SQL injection |
-| `eval(user_input)` | `ast.literal_eval(data)` or don't | Code execution |
-| `pickle.loads(user_bytes)` | `json.loads(user_string)` | RCE risk |
-| `httpx.get(url)` inside `async def` | `async with httpx.AsyncClient() as c: await c.get(url)` | Blocking in async |
-| `asyncio.run()` inside async context | `await coro()` | Already in event loop |
-| `from pydantic_ai import …` | Verify package exists before suggesting | AI hallucinated packages |
+> **Web search EVERY library before using it.** AI training data is full of deprecated Python.
+
+### Deprecated Packages — Do NOT Use
+
+| ❌ Dead / Old | ✅ Use Instead | Why |
+|---|---|---|
+| `psycopg2` / `psycopg2-binary` | `psycopg[binary]` (v3) | Legacy, build issues |
+| `python-jose` | `joserfc` or `PyJWT` | Unmaintained |
+| `requests` (async code) | `httpx` | Async, HTTP/2, typed |
+| `flask` (new APIs) | `fastapi` or `litestar` | Async-native, Pydantic |
+| `datetime.utcnow()` | `datetime.now(UTC)` | Deprecated 3.12 |
+| `pkg_resources` | `importlib.metadata` | Deprecated, slow |
+| `distutils` | `setuptools` or `hatchling` | Removed 3.12 |
+| `setup.py` / `setup.cfg` | `pyproject.toml` | PEP 517/518 |
+| `cgi` / `cgitb` | ASGI framework | Removed 3.13 |
+| `unittest.mock` (internal) | testcontainers / real deps | No mocks policy |
+| `asyncio.ensure_future()` | `asyncio.create_task()` | Superseded |
+| `typing.List/Dict/Optional` | `list[str]`, `str \| None` | Built-in generics 3.9+ |
+| `os.path` (new code) | `pathlib.Path` | Cleaner API |
+| `print()` for logging | `logger.info()` | Structured, maskable |
+| `subprocess.run(shell=True)` | `subprocess.run([...])` | Injection risk |
+| `pip install` | `uv add` | uv is standard |
+| `python -m venv` | `uv venv` | uv is standard |
+| `requirements.txt` | `pyproject.toml` + `uv.lock` | Modern packaging |
+
+### Patterns AI Always Gets Wrong
+
+```python
+# ❌ Old typing imports (EVERY model does this)
+from typing import List, Dict, Optional, Union
+# ✅ Built-in generics (3.12+)
+list[str], dict[str, int], str | None, tuple[int, ...]
+
+# ❌ Old TypeVar syntax
+T = TypeVar("T")
+# ✅ 3.12+ generic syntax
+def first[T](items: list[T]) -> T | None: ...
+```
+
+```python
+# ❌ datetime.utcnow()
+now = datetime.utcnow()
+# ✅ Timezone-aware
+from datetime import datetime, UTC
+now = datetime.now(UTC)
+```
+
+```python
+# ❌ requests (blocking)
+r = requests.get(url)
+# ✅ httpx async
+async with httpx.AsyncClient() as client:
+    r = await client.get(url)
+```
+
+```python
+# ❌ Bare except / swallowed exceptions
+except Exception:
+    pass  # NEVER
+# ✅ Specific, log, re-raise
+except ValueError as e:
+    logger.error("Invalid input", error=str(e))
+    raise
+```
+
+```python
+# ❌ Mutable default argument
+def process(items=[]):
+# ✅ None default
+def process(items: list[str] | None = None):
+    items = items or []
+```
+
+```python
+# ❌ print() in production
+print(f"Processing {user.email}")  # PII leak!
+# ✅ Structured logging
+logger.info("Processing user", user_id=user.id)
+```
+
+```python
+# ❌ os.path
+path = os.path.join(base_dir, "config", "settings.yaml")
+# ✅ pathlib
+path = Path(base_dir) / "config" / "settings.yaml"
+```
+
+### Package Verification Required
+
+```python
+# ❌ Common AI hallucinations:
+from pydantic_ai import ...       # DOES NOT EXIST
+from fastapi_utils import ...     # Often wrong
+# ✅ Verify before suggesting. Prefer stdlib + well-known packages.
+```
+
+---
+
+## hyperi-pylib
+
+> Use when `hyperi-pylib` is in `pyproject.toml`. Never roll bespoke versions.
+
+```toml
+dependencies = ["hyperi-pylib[http,metrics]"]
+```
+
+```python
+from hyperi_pylib.logger import logger
+from hyperi_pylib.config import settings
+from hyperi_pylib import build_database_url, get_runtime_paths
+
+host = settings.database.host  # 8-layer cascade automatic (ENV > .env > YAML > defaults)
+logger.info("Starting", version="1.0.0", host=host)
+postgres_url = build_database_url("postgresql")
+```
+
+| ❌ Don't | ✅ Use hyperi-pylib | Module |
+|---|---|---|
+| Hand-rolled config | `settings.database.host` | `config` |
+| Raw `logging`/`print()` | `logger.info("msg", key=val)` | `logger` |
+| Build DB URLs manually | `build_database_url("postgresql")` | `database` |
+| Raw `httpx` with retry | `hyperi_pylib.http` (stamina retries) | `http` |
+| Raw prometheus-client | `create_metrics()` | `metrics` |
+| Raw confluent-kafka | `hyperi_pylib.kafka` | `kafka` |
+| argparse CLI | Subclass `DfeApp` | `cli` |
+| Direct Vault/AWS/GCP calls | `SecretsManager` | `secrets` |
+| Manual container detection | `get_runtime_paths()` | `runtime` |
+
+### Feature Extras
+
+| Extra | Provides | Size |
+|---|---|---|
+| `http` | httpx + stamina retries | ~1 MB |
+| `metrics` | Prometheus client + psutil | ~1 MB |
+| `kafka` | confluent-kafka + schema inference | ~11 MB |
+| `expression` | CEL evaluation (Rust/PyO3) | ~6 MB |
+| `cache` | cashews + msgpack + psycopg pool | ~14 MB |
+| `opentelemetry` | OTel SDK + OTLP + Prometheus | ~4 MB |
+| `secrets` | All backends (Vault+AWS+GCP+Azure) | varies |
+
+```bash
+uv add "hyperi-pylib[http,metrics,kafka,opentelemetry]"
+```
+
+### hyperi-pylib Imports
+
+| Need | Import |
+|---|---|
+| Logging | `from hyperi_pylib import logger` |
+| Config | `from hyperi_pylib.config import settings` |
+| Runtime paths | `from hyperi_pylib import get_runtime_paths` |
+| Database URLs | `from hyperi_pylib import build_database_url` |
+| Metrics | `from hyperi_pylib import create_metrics` |
+| CLI | `from hyperi_pylib import Application` |
+
+---
+
+## Bash Minimalism
+
+> If >20 lines, pipes to `jq`, or needs `sed`/`awk` → rewrite in Python.
+
+Bash is a thin wrapper only:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+command -v python3 >/dev/null 2>&1 || { echo "Python 3 required"; exit 1; }
+exec python3 "$(dirname "$0")/real_logic.py" "$@"
+```
+
+**Bash NOT for:** JSON/YAML parsing, complex conditionals, string manipulation, cross-platform reliability. See `BASH.md` for bash-appropriate standards.
+
+---
+
+## Production Controls — CI Enforcement
+
+| Tool | Purpose | Blocking? |
+|---|---|---|
+| `ruff` | Lint + format (replaces flake8, isort, black) | ✅ Yes |
+| `ty` / `pyright` | Type checking | ⚠️ → ✅ Blocking |
+| `bandit` | Security static analysis (medium/high) | ✅ Yes |
+| `pip-audit` | CVE scanning | ✅ Yes |
+| `pytest` | Tests + coverage | ✅ Yes (80% min) |
+| `vulture` | Dead code detection | ✅ Yes |
+
+### Exception Handling (Hyperscaler Grade)
+
+```python
+# ❌ Generic swallow — THE most common prod failure
+except Exception:
+    pass
+
+# ❌ Log without raise — error swallowed
+except Exception as e:
+    logger.error(f"Failed: {e}")
+
+# ✅ Specific, contextual, re-raise
+except ValidationError as e:
+    logger.warning("Validation failed", input=data.id, error=str(e))
+    raise
+except ConnectionError as e:
+    logger.error("DB unreachable", host=settings.database.host)
+    raise ServiceUnavailableError("Database connection failed") from e
+```
+
+### Nuitka Compilation (Nice to Have)
+
+```bash
+nuitka --standalone --onefile my_tool.py  # Single binary, faster startup
+```
+
+---
+
+## Python 3.12+ Features — Use These
+
+```python
+# Type aliases + generics (3.12+)
+type Point = tuple[float, float]
+type UserID = int
+
+def first[T](items: list[T]) -> T | None:
+    return items[0] if items else None
+
+class Stack[T]:
+    def __init__(self) -> None:
+        self._items: list[T] = []
+```
+
+```python
+# Match/case (3.10+)
+match command:
+    case {"action": "create", "name": str(name)}:
+        create_resource(name)
+    case _:
+        raise ValueError(f"Unknown command: {command}")
+```
+
+**Template strings (3.14, future):** `t"SELECT * FROM users WHERE id = {user_id}"` produces `Template`, not `str`.
 
 ---
 
 ## Type Hints (Required)
 
 ```python
-# ✅ 3.12+ syntax — REQUIRED
+# ✅ Modern (REQUIRED)
 def process(items: list[str]) -> dict[str, int]: ...
 def optional(value: str | None = None) -> str | None: ...
-type Point = tuple[float, float]
-type Handler[T] = Callable[[T], None]
-def first[T](items: list[T]) -> T | None: ...
-class Stack[T]: ...
 
-# ❌ NEVER: from typing import List, Dict, Optional, Union, TypeVar
+# ✅ 3.12+ generics
+type Handler[T] = Callable[[T], None]
+
+# ❌ NEVER in new code
+from typing import List, Dict, Optional, Union, TypeVar
 ```
 
-- All public functions require type hints
-- Use `TYPE_CHECKING` guard + string annotations to break circular imports
-- Variable annotations for non-obvious types: `users: list[User] = []`
+- All public functions need type hints
+- Annotate non-obvious variables: `users: list[User] = []`
+- Use `TYPE_CHECKING` for circular imports:
 
----
-
-## Code Quality Tools
-
-| Tool | Scope | Blocks CI? |
-|------|-------|-----------|
-| **ruff** | PEP 8, imports (I rules), naming, unused code | ✅ |
-| **black** | Formatting (88 char, double quotes) | ✅ |
-| **pyright** | Type checking | ⚠️ Warnings |
-| **bandit** | Security (medium/high) | ✅ |
-| **vulture** | Dead code | ✅ |
-| **pip-audit** | CVE scanning | ✅ |
-
-```bash
-ruff check . && ruff format .   # Lint + format
-mypy src/                       # Type check
-bandit -r src/ -ll              # Security scan
-black --check src/              # Format check
+```python
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from myapp.models import User
+def get_user(user_id: int) -> "User": ...
 ```
 
 ---
 
 ## Dependencies (uv)
 
+**uv is REQUIRED.** Always use uv over native Python commands.
+
 | Task | ✅ Use | ❌ Not |
-|------|--------|--------|
+|---|---|---|
 | Create venv | `uv venv` | `python -m venv` |
 | Install deps | `uv sync --locked` | `pip install -r` |
 | Add package | `uv add <pkg>` | `pip install <pkg>` |
-| Add dev dep | `uv add --dev <pkg>` | — |
+| Add dev dep | `uv add --dev <pkg>` | manual edit |
 | Run script | `uv run python script.py` | `python script.py` |
 | Run module | `uv run -m pytest` | `python -m pytest` |
-| Update lock | `uv lock` / `./ci/run dependency-update` | `pip-compile` |
-| Show tree | `uv tree` | `pip list` |
+| Update lock | `uv lock` | `pip-compile` |
+| Show deps | `uv tree` | `pip list` |
 
-Native `python`/`pip` only for external non-uv projects or system-level scripts.
+Native `python`/`pip` only for: external non-uv projects, system-level scripts outside project context.
 
 ---
 
@@ -107,44 +313,72 @@ Native `python`/`pip` only for external non-uv projects or system-level scripts.
 
 ```text
 myproject/
-├── src/mypackage/        # src/ layout required
-│   ├── __init__.py       # __version__ synced
+├── src/mypackage/
+│   ├── __init__.py      # __version__ synced
 │   └── module.py
-├── tests/{unit,integration,e2e}/
-├── pyproject.toml        # version synced
-├── VERSION               # Source of truth
-└── uv.lock               # Commit this
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── pyproject.toml       # version synced
+├── VERSION              # Source of truth
+└── uv.lock              # Commit this
 ```
+
+**src/ layout mandatory** — forces install, prevents working-dir imports.
 
 ---
 
-## Naming (PEP 8)
+## Code Quality Tools
+
+```bash
+ruff check . && ruff format .   # Lint + format
+bandit -r src/ -ll               # Security (medium/high)
+./ci/run check|test|build        # Full CI suite
+```
+
+### Ruff Configuration
+
+```toml
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I", "N", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+force-single-line = false
+```
+
+Rule series: **E/W** PEP 8 · **F** logic errors · **I** imports · **N** naming · **UP** modern syntax
+
+---
+
+## PEP 8 Naming
 
 | Element | Convention | Example |
-|---------|-----------|---------|
+|---|---|---|
 | Variables/functions | `snake_case` | `user_count`, `calculate_total()` |
 | Classes | `PascalCase` | `UserProfile`, `HTTPClient` |
-| Constants | `UPPER_SNAKE_CASE` | `MAX_RETRIES`, `API_TIMEOUT` |
+| Constants | `UPPER_SNAKE_CASE` | `MAX_RETRIES = 3` |
 | Private | `_prefix` | `self._internal`, `def _helper()` |
 
 ---
 
 ## Formatting
 
-- **4 spaces** — never tabs
-- **88 char** line length (Black default)
+- **4 spaces** (NEVER tabs)
+- **88 char line length** (Black default)
 - **Trailing commas** in multi-line constructs
-- **Two blank lines** between top-level definitions, one between methods
-- `black src/` — accept its output, no bikeshedding
+- **Accept Black's formatting** — no bikeshedding
 
 ```python
-# ✅ Multi-line break at logical points
+# Multi-line break at logical points
 result = some_function(
     argument1,
     argument2,
 )
 
-# ✅ Chained methods
+# Chained methods
 result = (
     dataframe
     .filter(col("age") > 18)
@@ -156,46 +390,45 @@ result = (
 
 ## Imports
 
-Three groups, blank line between, alphabetical within. Ruff I rules enforce automatically.
+Three groups, blank line between, alphabetical within. Ruff `I` rules enforce.
 
 ```python
-import os                          # stdlib
+# Standard library
+import os
 from pathlib import Path
 
-import httpx                       # third-party
+# Third-party
+import httpx
 from fastapi import FastAPI
 
-from hyperi_pylib import logger    # local
+# Local
+from hyperi_pylib import logger
 from myapp.models import User
 ```
 
-❌ Never use wildcard imports (`from x import *`)
+❌ No wildcard imports (`from x import *`)
 
 ---
 
 ## Whitespace
 
-```python
-# ✅
-x = 1; z = x + y; func(arg1=1)   # Spaces around =, none in kwargs
-my_list[0]; my_dict["key"]        # No spaces inside brackets
-
-# ❌
-x=1; func(arg1 = 1); my_list[ 0 ]
-```
+- Spaces around `=` assignments, operators
+- No spaces in kwargs: `func(arg1=1)`
+- No spaces inside brackets: `my_list[0]`, `{"key": "value"}`
+- Two blank lines between top-level defs, one between methods
 
 ---
 
-## Comments & Docstrings
+## Comments and Docstrings
 
-- Comments explain **WHY**, not WHAT
-- **Never number** comments (breaks on reorder)
+- Explain **WHY**, not WHAT
+- **NEVER** number comments (breaks on reorder)
 - **Imperative mood** in docstrings: "Save user" not "Saves user"
-- PEP 257 format: Args/Returns/Raises sections
 
 ```python
 def calculate_discount(price: float, percent: float) -> float:
-    """Calculate discounted price.
+    """
+    Calculate discounted price.
 
     Args:
         price: Original price
@@ -211,128 +444,194 @@ def calculate_discount(price: float, percent: float) -> float:
 
 ---
 
-## Code Style: Clarity Over Cleverness
+## Clarity Over Cleverness
 
 ```python
 # ❌ Dense nested comprehension
 result = [x for sub in [[y**2 for y in range(n) if y % 2] for n in data] for x in sub if x > 10]
 
-# ✅ Clear steps with intermediate variables
-odd_numbers = [y for y in range(n) if y % 2]
-squared = [y**2 for y in odd_numbers]
-result = [x for x in squared if x > 10]
+# ✅ Clear steps
+for n in data:
+    odd_squares = [y**2 for y in range(n) if y % 2]
+    result.extend(x for x in odd_squares if x > 10)
 ```
 
-- Single-level comprehensions OK: `squares = [x**2 for x in range(10)]`
-- Break compound boolean logic into named variables
-- No dense lambda chains — use list comprehensions
+```python
+# ❌ Unexplained compound logic
+if (a and b) or (c and not d): process()
+
+# ✅ Named conditions
+both_met = a and b
+special_case = c and not d
+if both_met or special_case: process()
+```
+
+- Simple single-level comprehensions OK: `[x**2 for x in range(10)]`
+- Break nested/complex into explicit loops
 
 ---
 
 ## Security
 
-- **bandit** medium/high blocks CI: `bandit -r src/ -ll`
-- **pip-audit** fails on known CVEs
-- Parameterized queries only — never f-string SQL
-- Specific exception handling — never bare `except`
-- No `eval`/`exec`/`pickle` with external input
+```bash
+bandit -r src/ -ll  # Medium/high blocks CI
+```
+
+```python
+# ❌ SQL injection
+query = f"SELECT * FROM users WHERE id = {user_id}"
+# ✅ Parameterized
+cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+
+# ❌ eval/exec with external input — NEVER
+result = eval(user_expression)
+# ✅ ast.literal_eval for data literals only
+result = ast.literal_eval(user_data)
+
+# ❌ pickle with untrusted data — RCE risk
+data = pickle.loads(user_bytes)
+# ✅ JSON
+data = json.loads(user_string)
+```
 
 ---
 
 ## Temporary Files
 
-| Context | Method |
-|---------|--------|
-| Dev/CI scratch | `./.tmp/` directory |
-| Runtime code | `tempfile.NamedTemporaryFile` / `tempfile.TemporaryDirectory` |
-
 ```python
-with tempfile.NamedTemporaryFile(delete=True, suffix=".dat") as tmp:
+# ✅ Production/runtime — tempfile module, NEVER hardcode /tmp
+with tempfile.NamedTemporaryFile(suffix=".dat") as tmp:
     tmp.write(data)
 with tempfile.TemporaryDirectory(prefix="myapp-") as tmpdir:
     work_in(tmpdir)
 ```
 
-❌ Never hardcode `/tmp`, use predictable names, or skip cleanup
-✅ Always use context managers, random names, `0o700` permissions
+- Dev/CI scratch: `./.tmp/`
+- Always use context managers, random names, `0o700` permissions
 
 ---
 
-## Ruff Configuration
-
-```toml
-[tool.ruff]
-line-length = 88
-select = ["E", "F", "I", "N", "UP"]
-ignore = ["E501"]
-
-[tool.ruff.lint.isort]
-force-single-line = false
-```
-
-Rule series: **E/W** PEP 8 · **F** logic errors · **I** import sorting · **N** naming · **UP** modern syntax
-
----
-
-## Configuration & Logging (hyperi-pylib)
+## Configuration and Logging (hyperi-pylib)
 
 ```python
-from hyperi_pylib.config import settings     # Dynaconf cascade: ENV > .env > files > defaults
-host = settings.database.host               # Auto: MYAPP_DATABASE_HOST
-host = settings.get("database.host", "localhost")
+# Config: 8-layer cascade automatic via Dynaconf
+from hyperi_pylib.config import settings
+host = settings.database.host          # ENV > .env > files > defaults
+host = settings.get("database.host", "localhost")  # With fallback
+# ENV auto-gen: database.host → MYAPP_DATABASE_HOST
 
-from hyperi_pylib import logger             # Zero-config, RFC 3339, sensitive masking
-logger.info("Processing", user_id=123)
-logger.error("Failed", error=str(e), exc_info=True)
+# Logging: auto-detects console vs container
+from hyperi_pylib import logger
+logger.info("Processing", user_id=123)  # Console: colors+emoji, Container: RFC 3339 JSON
 ```
-
-| Need | Import |
-|------|--------|
-| Logging | `from hyperi_pylib import logger` |
-| Config | `from hyperi_pylib.config import settings` |
-| Runtime paths | `from hyperi_pylib import get_runtime_paths` |
-| Database URLs | `from hyperi_pylib import build_database_url` |
-| Metrics | `from hyperi_pylib import create_metrics` |
-| CLI | `from hyperi_pylib import Application` |
-
-Console/dev: Solarized + emojis · Container/CI: RFC 3339 JSON, ASCII-only
 
 ---
 
 ## Modern Patterns
 
+### Dataclasses
+
 ```python
-# Dataclasses
 @dataclass
 class User:
     id: int
     name: str
     tags: list[str] = field(default_factory=list)
+```
 
-# Pydantic validation
+### Pydantic (Validation)
+
+```python
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
+    age: int
+
     @field_validator("age")
     @classmethod
     def validate_age(cls, v: int) -> int:
         if v < 18: raise ValueError("Must be 18+")
         return v
+```
 
-# Async concurrency
-async def fetch_all(ids: list[int]) -> list[dict]:
+### Pydantic Settings (non-HyperI projects only)
+
+```python
+class AppSettings(BaseSettings):
+    database_host: str = "localhost"
+    api_key: str  # Required
+    model_config = {"env_prefix": "MYAPP_"}
+```
+
+For HyperI projects, use `hyperi_pylib.config.settings` instead.
+
+### Protocols over ABC
+
+```python
+class Sendable(Protocol):
+    def send(self, data: bytes) -> None: ...
+
+def dispatch(sender: Sendable, payload: bytes) -> None:
+    sender.send(payload)  # Structural typing, no inheritance
+```
+
+### FastAPI Dependency Injection
+
+```python
+async def get_db():
+    db = await connect_db()
+    try: yield db
+    finally: await db.close()
+
+DB = Annotated[Database, Depends(get_db)]
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: int, db: DB) -> User:
+    return await db.fetch_user(user_id)
+```
+
+### Context Managers
+
+```python
+@contextmanager
+def managed_connection(url: str):
+    conn = connect(url)
+    try: yield conn
+    finally: conn.close()
+```
+
+### Async Patterns
+
+```python
+# ❌ Blocking call in async function
+async def fetch():
+    response = httpx.get(url)  # WRONG
+# ✅ Async client
+async def fetch():
     async with httpx.AsyncClient() as client:
-        return await asyncio.gather(*[client.get(f"/users/{id}") for id in ids])
+        response = await client.get(url)
+
+# ❌ asyncio.run() in already-async context
+result = asyncio.run(coro())
+# ✅ await directly if already async; asyncio.run() only from sync entrypoint
+```
+
+```python
+# Concurrent requests
+async def fetch_all(ids: list[int]) -> list[dict]:
+    return await asyncio.gather(*[fetch_user(id) for id in ids])
 ```
 
 ---
 
-## Mock-Aware Testing
+## Testing
 
-| Mock Target | Unit Test? | Integration Test Required? |
-|-------------|-----------|---------------------------|
-| Internal functions | ❌ Never mock | N/A — test real code |
-| External APIs/DBs/network | ✅ Mock OK | ✅ Against sandbox/testcontainers |
+### Mock Policy
+
+| Mock Target | Unit Tests? | Integration Test Required? |
+|---|---|---|
+| Internal functions/classes | ❌ Never mock | N/A — test real code |
+| External APIs, DBs, network | ✅ OK | ✅ Yes — testcontainers/sandbox |
 
 ```python
 # ❌ Mocking internal code
@@ -341,10 +640,38 @@ with patch('myapp.utils.calculate') as m: ...
 with patch('myapp.clients.stripe.charge') as m: ...
 ```
 
+### Testcontainers
+
+```python
+@pytest.fixture
+def db():
+    with PostgresContainer() as postgres:
+        yield create_connection(postgres.get_connection_url())
+
+def test_save_user(db):
+    user_id = save_user(db, {"name": "Alice"})
+    assert db.get_user(user_id).name == "Alice"
+```
+
 **Production code must be complete:** No TODOs, no `return True` placeholders, no `except: pass`.
+
+---
+
+## Quick Reference
+
+```bash
+./ci/bootstrap install                    # Setup
+./ci/run check|test|build                 # Dev
+./ci/run dependency-update                # Lock update
+./ci/run release [--dry-run|--no-push]    # Release
+```
+
+- Venv: CI enforces `ci-local/.venv`
+- Coverage: 80% min
+- Types: 3.12+ syntax only
 
 ---
 
 ## Commit Types
 
-`fix:` PATCH · `feat:` MINOR · `perf:` PATCH · `docs:`/`test:`/`chore:` no bump
+`fix:` PATCH · `feat:` MINOR · `perf:` PATCH · `docs:` `test:` `chore:` no bump

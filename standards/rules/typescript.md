@@ -20,84 +20,122 @@ source: languages/TYPESCRIPT.md
 ## CLI Commands
 
 ```bash
-pnpm install / build / test / lint / typecheck
-turbo run build                 # cached build
+pnpm install          # Install deps
+pnpm build            # Build all packages
+pnpm test             # Run tests
+pnpm lint             # Lint all packages
+pnpm typecheck        # Type check only
+turbo run build       # Build with caching
 ```
 
-## Top AI Mistakes
+## Top AI Mistakes — Stop Before Generating
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| `any` type | `unknown` or generics | Type safety |
-| `data as User` | `Schema.decodeUnknownSync(User)(data)` | Runtime validation |
-| `obj.property!` | `obj.property ?? default` | No crash on null |
-| `throw` inside `Effect.sync` | `yield* Effect.fail(new MyError())` | Breaks Effect fiber |
-| `await` inside `Effect.gen` | `yield* Effect.tryPromise(() => p)` | Paradigm mismatch |
+| `any` type anywhere | `unknown`, generics, or proper types | Type safety |
+| `obj.property!` (non-null assertion) | `obj.property ?? default` or `if` check | Runtime crash |
+| `data as User` (type assertion) | `Schema.decodeUnknownSync(User)(data)` or type guard | Unsafe cast |
+| `throw` inside `Effect.sync` | `yield* Effect.fail(new MyError())` | Breaks Effect |
+| `await` inside `Effect.gen` | `yield* Effect.tryPromise(() => fn())` | Mixed paradigms |
 | `Effect.gen(() => {` | `Effect.gen(function* () {` | Must be generator |
-| `fetchData()` (floating) | `await fetchData()` or `void fetchData()` | Unhandled rejection |
-| `items.push(x); setItems(items)` | `setItems(prev => [...prev, x])` | React immutability |
-| `useEffect(() => {}, )` missing deps | `useEffect(() => {}, [userId])` | Runs every render |
-| `import from "ts-migrate-parser"` | Verify `npm view pkg versions` | AI hallucinated pkg |
+| Floating promise `fetchData()` | `await fetchData()` or `void fetchData()` | Unhandled rejection |
+| `useEffect(() => { ... })` no deps | `useEffect(() => { ... }, [deps])` | Runs every render |
+| Mutate state `items.push(x)` | `setItems(prev => [...prev, x])` | No re-render |
+| Hallucinated packages | `npm view package-name versions` to verify | Doesn't exist |
 
-## Project Structure (Turborepo + pnpm)
+## Monorepo Layout (Turborepo + pnpm)
 
 ```text
-apps/web/          # React frontend (Vite)
-apps/server/       # Node.js backend
-packages/shared/   # Shared types/utils
-packages/eslint-config/   # base.js, react.js
-packages/typescript-config/ # base.json, react.json
-pnpm-workspace.yaml
-turbo.json
+myproject/
+├── apps/web/          # React frontend (Vite)
+├── apps/server/       # Node.js backend
+├── packages/shared/   # Shared types/utilities
+├── packages/eslint-config/   # base.js, react.js
+├── packages/typescript-config/ # base.json, react.json
+├── pnpm-workspace.yaml
+└── turbo.json
 ```
 
-## Package.json Conventions
+### pnpm-workspace.yaml
+
+```yaml
+packages:
+  - "apps/*"
+  - "packages/*"
+```
+
+### package.json Conventions
 
 - Scope: `@repo/mypackage`, version `"0.0.0"` (semantic-release manages versions)
-- `"type": "module"`, exports point to `./src/index.ts`
+- `"type": "module"`, use `exports` field for entry points
 - Scripts: `build: tsc -b`, `test: vitest run`, `lint: eslint .`, `typecheck: tsc --noEmit`
 - Semantic-release plugins: `commit-analyzer`, `release-notes-generator`, `npm`, `github`
 
 ## TypeScript Configuration
 
-### Base (strict required)
+### Base (Strict Required)
 
 ```json
 {
   "compilerOptions": {
     "target": "ES2022", "lib": ["ES2023"],
     "module": "NodeNext", "moduleResolution": "NodeNext",
-    "strict": true, "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true, "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true, "noUncheckedSideEffectImports": true,
-    "verbatimModuleSyntax": true, "moduleDetection": "force",
-    "declaration": true, "declarationMap": true, "sourceMap": true, "skipLibCheck": true
+    "strict": true, "noUnusedLocals": true, "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true, "noUncheckedIndexedAccess": true,
+    "noUncheckedSideEffectImports": true, "verbatimModuleSyntax": true,
+    "declaration": true, "declarationMap": true, "sourceMap": true,
+    "skipLibCheck": true, "moduleDetection": "force", "resolveJsonModule": true
   }
 }
 ```
 
-### React/Vite tsconfig
+### React/Vite Override
 
-- `module: "ESNext"`, `moduleResolution: "bundler"`, `jsx: "react-jsx"`, `noEmit: true`
-- `lib: ["ES2023","DOM","DOM.Iterable"]`, `paths: {"@/*":["./src/*"]}`
+```json
+{
+  "compilerOptions": {
+    "module": "ESNext", "moduleResolution": "bundler",
+    "jsx": "react-jsx", "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "paths": { "@/*": ["./src/*"] }
+  }
+}
+```
 
 | Setting | Purpose |
 |---------|---------|
-| `noUncheckedIndexedAccess` | `arr[0]` → `T \| undefined` |
+| `noUncheckedIndexedAccess` | `arr[0]` returns `T \| undefined` |
 | `verbatimModuleSyntax` | Preserves imports for bundlers |
 | `moduleResolution: bundler` | For Vite/esbuild only |
+| `noEmit: true` | React: bundler handles output |
 
 ## ESLint (Flat Config)
 
-- **Base**: `@eslint/js` recommended + `eslint-config-prettier` + `typescript-eslint` recommended + `eslint-plugin-turbo`
-- **React**: adds `eslint-plugin-react`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`
-- Unused vars rule: `argsIgnorePattern: "^_"`, `varsIgnorePattern: "^_"`, `caughtErrorsIgnorePattern: "^_"`
-- App config: `import baseConfig from "@repo/eslint-config/react"`
-- Ignore: `dist/**`, `node_modules/**`
+### Base — `packages/eslint-config/base.js`
+
+Plugins/extends: `@eslint/js` recommended, `eslint-config-prettier`, `typescript-eslint` recommended, `eslint-plugin-turbo`. Rule: `turbo/no-undeclared-env-vars: warn`. Ignore `dist/**`, `node_modules/**`.
+
+### React — `packages/eslint-config/react.js`
+
+Extends base. Plugins: `eslint-plugin-react`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`.
+
+```javascript
+rules: {
+  "react/react-in-jsx-scope": "off",
+  "react-hooks/rules-of-hooks": "error",
+  "react-hooks/exhaustive-deps": "warn",
+  "@typescript-eslint/no-unused-vars": ["error", {
+    argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_"
+  }],
+}
+```
+
+App-level: `import baseConfig from "@repo/eslint-config/react"` + `globalIgnores(["dist"])`.
 
 ## Effect-TS Patterns
 
-### Service Definition (Context.Tag)
+### Service Definition
 
 ```typescript
 export class DatabaseClient extends Context.Tag("DatabaseClient")<
@@ -105,30 +143,32 @@ export class DatabaseClient extends Context.Tag("DatabaseClient")<
   { readonly query: <T>(sql: string, params: unknown[]) => Effect.Effect<T[], DatabaseError> }
 >() {}
 
-export const DatabaseClientLive = Layer.effect(DatabaseClient, Effect.gen(function* () {
-  const url = yield* Config.string("DATABASE_URL");
-  return { query: (sql, params) => Effect.tryPromise({ try: () => pool.query(sql, params), catch: (e) => new DatabaseError({ cause: e }) }) };
-}));
+export const DatabaseClientLive = Layer.effect(DatabaseClient,
+  Effect.gen(function* () {
+    const url = yield* Config.string("DATABASE_URL");
+    const pool = createPool(url);
+    return { query: (sql, params) => Effect.tryPromise({ try: () => pool.query(sql, params), catch: (e) => new DatabaseError({ cause: e }) }) };
+  })
+);
 ```
 
 ### Effect.gen vs pipe
 
 - `Effect.gen(function* () { ... })` — complex logic with multiple `yield*`
-- `pipe(effect, Effect.map(...), Effect.withSpan(...))` — simple transforms
+- `pipe(effect, Effect.map(...), Effect.withSpan(...))` — simple transformations
 
-### Error Handling (Schema.TaggedError + Match)
+### Error Handling — Schema.TaggedError + Match.exhaustive
 
 ```typescript
 export class NotFoundError extends Schema.TaggedError<NotFoundError>()(
   "NotFoundError", { resource: Schema.String, id: Schema.String }
 ) {}
 
-const handleError = (error: DomainError) => pipe(
-  Match.type<DomainError>(),
-  Match.tag("NotFoundError", (e) => ({ status: 404, message: `${e.resource} not found` })),
-  Match.tag("ValidationError", (e) => ({ status: 400, message: e.message })),
-  Match.exhaustive,
-)(error);
+const handleError = (error: DomainError) =>
+  pipe(Match.type<DomainError>(),
+    Match.tag("NotFoundError", (e) => ({ status: 404, message: `${e.resource} not found: ${e.id}` })),
+    Match.tag("ValidationError", (e) => ({ status: 400, message: `Invalid ${e.field}: ${e.message}` })),
+    Match.exhaustive)(error);
 ```
 
 ### Layer Composition
@@ -150,22 +190,30 @@ export const User = Schema.Struct({
   role: Schema.Union(Schema.Literal("admin"), Schema.Literal("user"), Schema.Literal("guest")),
   createdAt: Schema.Date,
 });
-export type User = typeof User.Type;       // decoded
-export type UserInput = typeof User.Encoded; // input
+export type User = typeof User.Type;       // Decoded
+export type UserInput = typeof User.Encoded; // Before transform
 ```
 
-- **Transforms**: `Schema.transform(From, To, { decode, encode })`
-- **Runtime**: `Schema.decodeUnknown(User)` returns `Effect`, `Schema.decodeUnknownSync(User)` throws
-- **API errors**: use `HttpApiSchema.annotations({ status: 401 })` on `Schema.TaggedError`
+- **Transform:** `Schema.transform(From, To, { decode, encode })`
+- **Runtime validate:** `Schema.decodeUnknown(User)` returns Effect; `Schema.decodeUnknownSync(User)` throws
+- **API errors:** Use `Schema.TaggedError` + `HttpApiSchema.annotations({ status: 401 })`
 
-## SQL Injection Prevention
+## SQL Injection Prevention (CRITICAL)
 
 ```typescript
 // ❌ `SELECT * FROM users WHERE id = '${userId}'`
-// ✅ `SELECT * FROM users WHERE id = $1` + params array
+// ✅ `SELECT * FROM users WHERE id = $1`, [userId]
 ```
 
-**ClickHouse placeholders**: `{name:Identifier}` (columns), `{name:String}`, `{name:Int32}`, `{name:DateTime}`, `{name:Array(String)}`
+### ClickHouse Placeholders
+
+| Placeholder | Use For |
+|-------------|---------|
+| `{name:Identifier}` | Column/table names |
+| `{name:String}` | String values |
+| `{name:Int32}` | Integer values |
+| `{name:DateTime}` | Date/time values |
+| `{name:Array(String)}` | Array values |
 
 ## Testing (Vitest)
 
@@ -194,7 +242,11 @@ it("finds user", async () => {
 });
 ```
 
-- **Schema tests**: decode valid → check types, reject invalid → `expect(() => ...).toThrow()`, roundtrip encode/decode
+### Schema Testing
+
+- Decode valid input → check transformed types (e.g., `Date` instances)
+- Reject invalid input → `expect(() => Schema.decodeUnknownSync(User)(bad)).toThrow()`
+- Isomorphic: encode then decode should equal original
 
 ## React Patterns
 
@@ -215,40 +267,63 @@ type AsyncState<T, E = Error> =
   | { status: "error"; error: E; data?: T } | { status: "success"; data: T };
 ```
 
-### Error Boundary — use `Runtime.isFiberFailure(error)` → `error[Runtime.FiberFailureCauseId]` → `Match.tag(...)` per error type
+### Error Boundary with Effect
 
-## Turborepo Config
+Use `Runtime.isFiberFailure(error)` → access `error[Runtime.FiberFailureCauseId]` → `Match.value(cause.error)` by tag.
+
+## Turborepo Configuration
 
 ```json
 { "tasks": {
-  "build": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$",".env*"], "outputs": ["dist/**",".next/**"] },
+  "build": { "dependsOn": ["^build"], "inputs": ["$TURBO_DEFAULT$", ".env*"], "outputs": ["dist/**", ".next/**"] },
   "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] },
   "lint": { "dependsOn": ["^build"], "outputs": [] },
+  "typecheck": { "dependsOn": ["^build"], "outputs": [] },
   "dev": { "cache": false, "persistent": true }
 }}
 ```
-
-`pnpm-workspace.yaml`: `packages: ["apps/*", "packages/*"]`
 
 ## Naming Conventions
 
 | Kind | Convention | Example |
 |------|-----------|---------|
-| Variables/functions | camelCase | `calculateTotal` |
-| Types/interfaces/classes | PascalCase | `UserProfile` |
-| Constants | UPPER_SNAKE_CASE | `MAX_RETRIES` |
-| Files (general) | kebab-case | `user-service.ts` |
-| React components | PascalCase | `UserCard.tsx` |
-| Tests | `.test.ts` / `.test.tsx` suffix | `user-service.test.ts` |
+| Variables, functions | camelCase | `userCount`, `calculateTotal` |
+| Types, interfaces, classes | PascalCase | `UserProfile`, `OrderService` |
+| Constants | UPPER_SNAKE_CASE | `MAX_RETRIES`, `API_BASE_URL` |
 | Private convention | `_` prefix | `_internalCache` |
+| Files (general) | kebab-case | `user-service.ts` |
+| Files (React components) | PascalCase | `UserCard.tsx` |
+| Test files | `.test.ts` / `.test.tsx` suffix | `user-service.test.ts` |
 
 ## Common Pitfalls
 
-- **Array index**: with `noUncheckedIndexedAccess`, use `items[0] ?? default` or `.at(0)` + check
-- **Null**: use `?.` + `??`, never `!`
-- **Type narrowing**: prefer `Schema.decodeUnknownSync` or type guards over `as`
-- **Promises**: always `await`, `void`, or `.catch()` — no floating promises
-- **`== null`**: only acceptable for combined null/undefined check; otherwise use `===`
+### Type Narrowing
+
+```typescript
+// ❌ const user = data as User;
+// ✅ const user = Schema.decodeUnknownSync(User)(data);
+```
+
+### Null Handling
+
+```typescript
+// ❌ user!.name
+// ✅ user?.name ?? "Unknown"
+```
+
+### Array Index Access (`noUncheckedIndexedAccess: true`)
+
+```typescript
+const first = items[0];     // string | undefined
+const first = items[0] ?? "default"; // ✅
+```
+
+### Promise Handling
+
+```typescript
+// ❌ fetchData();  (floating)
+// ✅ await fetchData();  OR  void fetchData();
+```
 
 ## Build Configuration
 
@@ -258,7 +333,7 @@ type AsyncState<T, E = Error> =
 export default defineConfig({
   plugins: [react()],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
-  build: { sourcemap: true, rollupOptions: { output: { manualChunks: { vendor: ["react","react-dom"] } } } },
+  build: { sourcemap: true, rollupOptions: { output: { manualChunks: { vendor: ["react", "react-dom"] } } } },
 });
 ```
 
@@ -272,22 +347,31 @@ esbuild src/main.ts --bundle --platform=node --target=node20 \
 ## HTTP Client (@effect/platform)
 
 ```typescript
-const fetchUser = (id: string) => pipe(
-  HttpClientRequest.get(`/api/users/${id}`),
+const fetchUser = (userId: string) => pipe(
+  HttpClientRequest.get(`/api/users/${userId}`),
   HttpClient.execute,
   Effect.andThen((r) => r.json),
   Effect.andThen(Schema.decodeUnknown(User)),
-  Effect.withSpan("fetchUser", { attributes: { id } }),
+  Effect.withSpan("fetchUser", { attributes: { userId } }),
 );
 ```
 
-- **Retry**: `Effect.retry(Schedule.exponential("100 millis").pipe(Schedule.compose(Schedule.recurs(3)), Schedule.jittered))`
-- **Timeout**: `Effect.timeout("30 seconds")` + `Effect.catchTag("TimeoutException", ...)`
-- **Auth client**: `HttpClient.mapRequest(HttpClientRequest.setHeader("Authorization", ...))` + `HttpClient.filterStatusOk`
+### Retry + Timeout
 
-## Configuration (7-Layer Cascade)
+```typescript
+Effect.retry(Schedule.exponential("100 millis").pipe(
+  Schedule.compose(Schedule.recurs(3)), Schedule.jittered)),
+Effect.timeout("30 seconds"),
+Effect.catchTag("TimeoutException", () => Effect.fail(new RequestTimeoutError({ url }))),
+```
 
-**Priority**: CLI args → ENV → .env (dotenv) → config.{env}.json → config.json → code defaults → hard-coded fallbacks
+### Authenticated Client
+
+Use `HttpClient.mapRequest(HttpClientRequest.setHeader("Authorization", ...))` + `HttpClient.filterStatusOk` in a `Layer.effect`.
+
+## Configuration Management (7-Layer Cascade)
+
+**Priority:** CLI args → ENV vars → `.env` file → `config.{env}.json` → `config.json` → code defaults → hard-coded fallbacks
 
 ```typescript
 const AppConfig = Config.all({
@@ -297,90 +381,98 @@ const AppConfig = Config.all({
 });
 ```
 
-- `.env` loading: `PlatformConfigProvider.layerDotEnvAdd(".env")`
-- **Secrets**: `Config.secret("DB_PASSWORD")` → `Secret.value(s)` to unwrap (never logged)
+- Load `.env`: `PlatformConfigProvider.layerDotEnvAdd(".env")`
+- Secrets: `Config.secret("DB_PASSWORD")` → `Secret.value(s)` to unwrap. Never logged.
 
-## Logging
+## Logging (HyperI Standard)
 
 | Context | Format | Colours |
 |---------|--------|---------|
-| Dev console | Human-friendly | Yes |
+| Console (dev) | Human-friendly | Yes |
 | Container/CI | RFC 3339 JSON | No |
 | File | RFC 3339 plain | No |
 
 ```typescript
-yield* Effect.logInfo("Processing", { orderId });
-yield* Effect.logDebug("Detail", { count: 5 });
+yield* Effect.log("Processing started");
+yield* Effect.logDebug("detail", { key: "val" });
+yield* Effect.logWarning("slow", { latency: 500 });
+yield* Effect.logError("failed", { error: "timeout" });
 ```
 
-- **JSON logger (prod)**: `Logger.replace(Logger.defaultLogger, Logger.json)`
-- **Log level**: `Logger.withMinimumLogLevel(LogLevel.Debug)`
-- **Spans**: `Effect.withSpan("opName", { attributes: { key: val } })`
+- Production: `Logger.replace(Logger.defaultLogger, Logger.json)`
+- Spans: `Effect.withSpan("opName", { attributes: { ... } })`
+- Log level: `Logger.withMinimumLogLevel(LogLevel.Debug)`
 
 ## Stream Processing
 
 ```typescript
-const processEvents = Stream.fromAsyncIterable(client.stream(query), (e) => new DbError({ cause: e })).pipe(
+const stream = Stream.fromAsyncIterable(
+  client.stream("SELECT * FROM events"),
+  (e) => new DatabaseError({ cause: e }),
+);
+stream.pipe(
   Stream.map((row) => row.json()),
-  Stream.mapEffect((evt) => processEvent(evt)),
+  Stream.mapEffect((e) => processEvent(e)),
   Stream.grouped(100),
   Stream.mapEffect((batch) => saveBatch(batch)),
   Stream.runDrain,
 );
 ```
 
-- **Rate limit**: `Stream.schedule(Schedule.spaced(Duration.millis(100)))`
+- Rate limiting: `Stream.schedule(Schedule.spaced(Duration.millis(100)))`
 
 ## Caching
 
-- **TTL cache**: `Effect.cachedWithTTL(fetchEffect, Duration.hours(24))`
-- **Request dedup/batching**: `Request.tagged<GetUser>("GetUser")` + `RequestResolver.makeBatched(...)`
+```typescript
+const CachedKeys = Effect.cachedWithTTL(fetchJWKS(), Duration.hours(24));
+const keys = yield* CachedKeys; // cached or fresh
+```
+
+### Request Deduplication
+
+Use `Request.tagged`, `RequestResolver.makeBatched` for batched DB lookups.
 
 ## Middleware (@effect/platform)
 
 ```typescript
-const LoggingMiddleware = HttpMiddleware.make((app) => Effect.gen(function* () {
-  const req = yield* HttpServerRequest.HttpServerRequest;
-  yield* Effect.logInfo("Request", { method: req.method, url: req.url });
-  return yield* app;
-}));
+const LoggingMiddleware = HttpMiddleware.make((app) =>
+  Effect.gen(function* () {
+    const req = yield* HttpServerRequest.HttpServerRequest;
+    yield* Effect.logInfo("Request", { method: req.method, url: req.url });
+    return yield* app;
+  })
+);
 ```
 
-- **Auth middleware**: extract Bearer token → `verifyToken` → `Effect.provideService(CurrentUser, user)`
+Auth middleware: extract bearer token → `verifyToken` → `Effect.provideService(CurrentUser, user)`.
 
-## Error Recovery
+## Error Recovery Patterns
 
-- **Fallback**: `Effect.orElseSucceed(() => defaultValue)`
-- **Circuit breaker**: track failure count, open after `maxFailures`, reset after timeout
-- **Graceful degradation**: `Effect.catchAll(() => Effect.succeed([]))` + `Effect.timeout("2 seconds")` for optional deps
+- **Fallback:** `Effect.orElseSucceed(() => defaultValue)`
+- **Circuit breaker:** Track failure count, open after `maxFailures`, reset after timeout
+- **Graceful degradation:** `Effect.catchAll(() => Effect.succeed([]))` + `Effect.timeout("2 seconds")` + catch `TimeoutException`
 
 ## Type Utilities
 
-### Branded Types
+### Branded Types (Effect)
 
 ```typescript
 type UserId = string & Brand.Brand<"UserId">;
 const UserId = Brand.nominal<UserId>();
-type Email = string & Brand.Brand<"Email">;
-const Email = Brand.refined<Email>((s) => /^[^\s@]+@[^\s@]+$/.test(s), (s) => Brand.error(`Invalid: ${s}`));
+getUser(UserId("user-123")); // ✅
+getUser("raw-string");       // ❌ type error
 ```
 
 ### Discriminated Unions
 
-```typescript
-class Success extends Schema.TaggedClass<Success>()("Success", { data: Schema.Unknown }) {}
-class Failure extends Schema.TaggedClass<Failure>()("Failure", { error: Schema.String }) {}
-const Result = Schema.Union(Success, Failure);
-// Match: Match.value(r).pipe(Match.tag("Success", ...), Match.tag("Failure", ...), Match.exhaustive)
-```
+Use `Schema.TaggedClass` + `Match.value(result).pipe(Match.tag("Success", ...), Match.exhaustive)`.
 
 ## Dependencies
 
 | Category | Packages |
 |----------|----------|
 | Core | `effect`, `@effect/schema`, `@effect/platform`, `typescript` |
-| React | `react`, `react-dom`, `@tanstack/react-query`, `vite` |
-| Test | `vitest`, `@testing-library/react`, `happy-dom` |
-| Build | `turborepo`, `pnpm`, `esbuild`, `@vitejs/plugin-react` |
+| React | `react`, `react-dom`, `@tanstack/react-query`, `vite`, `@vitejs/plugin-react` |
+| Testing | `vitest`, `@testing-library/react`, `happy-dom` |
 | Lint | `@eslint/js`, `typescript-eslint`, `eslint-config-prettier`, `eslint-plugin-turbo`, `eslint-plugin-react`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh` |
-| Release | `@semantic-release/commit-analyzer`, `release-notes-generator`, `npm`, `github` |
+| Monorepo | `turbo`, `pnpm` |

@@ -26,7 +26,7 @@ tests/
 └── e2e/           # End-to-end
 ```
 
-- **80% coverage minimum** — enforced by CI
+- **80% minimum coverage** (CI-enforced)
 - Unit tests for core logic, integration tests for external deps
 - Tests run before every build/release
 
@@ -34,35 +34,37 @@ tests/
 
 | Language | Framework | Notes |
 |----------|-----------|-------|
-| Python | pytest | fixtures in `conftest.py` |
-| Go | testing + testify | `assert`, `require`, table-driven |
-| JS/TS | Jest / Vitest | `describe`/`it` blocks |
-| Rust | cargo test | `#[cfg(test)]` inline modules |
-| Bash | BATS | source guard pattern required |
+| Python | pytest | `conftest.py` for fixtures |
+| Go | testing + `testify` | `assert`, `require` packages |
+| JS/TS | Jest / Vitest | |
+| Rust | `cargo test` | `#[cfg(test)]` modules |
+| Bash | BATS | Source guard pattern required |
 
-## Test-First Workflow
+## Test-First Development
 
-1. Write tests for existing behaviour (must not break)
-2. Write tests for new behaviour (must fail initially)
-3. Run tests — confirm expected failures
-4. Implement changes
-5. Run tests — all pass → commit
+Use for: refactoring, bug fixes, adding features to existing code.
+Skip for: greenfield (use TDD), prototypes, one-off scripts.
+
+**Workflow:** Write tests defining success → run (expect failures) → implement → run (expect pass) → commit.
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| Let AI write your tests | Write tests yourself, let AI implement code to pass them | Tests ARE your spec |
-| Write 10 tests → implement → run all | Write 1 test → implement → run → pass → repeat | Isolate failures |
-| Test implementation details | Test observable behaviour | Refactor-proof |
+| Write 10 tests → implement → run all | Write 1 test → implement → run → pass → repeat | Isolates failures |
+| Let AI write your tests | Write tests yourself, let AI implement | Tests are YOUR specification |
+| Test implementation details | Test observable behaviour | Avoids brittle tests |
 
-**When to use test-first:** refactoring, bug fixes, adding features to existing code.
-**Not suitable:** greenfield (use TDD), prototypes, one-off scripts.
+## Test Naming & Scope
+
+- Clear, descriptive names explaining WHAT is tested
+- 3-7 tests per function: happy path, errors, edge cases, business rules
+- Reference bug IDs in regression tests: `test_bug_123_float_quantities`
 
 ## Critical Patterns
 
 ### ❌ Testing implementation
 
 ```python
-def test_bad():
+def test_calculate_total_uses_loop():
     source = inspect.getsource(calculate_total)
     assert "for" in source  # Brittle!
 ```
@@ -70,37 +72,33 @@ def test_bad():
 ### ✅ Testing behaviour
 
 ```python
-def test_good():
+def test_calculate_total_sums_items():
     items = [{"price": 10, "quantity": 2}]
     assert calculate_total(items) == 20.0
 ```
 
-### Regression tests — reference bug ID
+### Edge cases to always cover
 
 ```python
-def test_bug_123_float_quantities():
-    """Regression: bug #123 float quantities crash."""
-    items = [{"price": 10.0, "quantity": 2.5}]
-    assert calculate_total(items) == 25.0
+def test_empty_items():
+    assert calculate_total([]) == 0.0
+
+def test_zero_price():
+    assert calculate_total([{"price": 0.0, "quantity": 10}]) == 0.0
 ```
 
-### Edge cases — always cover
+### Bash source guard (required for BATS)
 
-- Empty input, zero values, max/large values
-- Happy path, error conditions, business rules
-- **3–7 tests per function** is the target
-
-### Behaviour documentation
-
-```python
-def test_discount_rounding():
-    """Discounts round to 2 decimal places (business rule)."""
-    assert calculate_discount(10.00, 33.33) == 6.67
+```bash
+# Only run main if not sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
 ```
 
-## Language Patterns
+## Language Examples
 
-### Python — pytest fixtures
+### Python — fixtures + error testing
 
 ```python
 @pytest.fixture
@@ -108,15 +106,17 @@ def db_session():
     session = create_test_session()
     yield session
     session.rollback()
+
+def test_rejects_invalid_email(self):
+    with pytest.raises(ValueError, match="Invalid email"):
+        create_user(email="invalid", name="Test")
 ```
 
 ### Go — table-driven tests
 
 ```go
 tests := []struct {
-    name    string
-    email   string
-    wantErr bool
+    name string; email string; wantErr bool
 }{
     {"valid", "user@example.com", false},
     {"missing @", "userexample.com", true},
@@ -129,40 +129,40 @@ for _, tt := range tests {
 }
 ```
 
-### Rust — inline test module
+### Rust — error assertions
 
 ```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_create_user_invalid_email() {
-        let result = create_user("invalid", "Test");
-        assert!(result.unwrap_err().to_string().contains("invalid email"));
-    }
+#[test]
+fn test_invalid_email() {
+    let result = create_user("invalid", "Test");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("invalid email"));
 }
 ```
 
-### Bash — source guard for BATS
+### BATS — setup/teardown
 
 ```bash
-main() { validate_input "${1:-}" || exit 1; echo "Processing..."; }
-
-# Only run main if not sourced (enables BATS testing)
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then main "$@"; fi
-```
-
-```bash
-# tests/script.bats
 setup() { source "${BATS_TEST_DIRNAME}/../script.sh"; TEMP_DIR=$(mktemp -d); }
 teardown() { rm -rf "${TEMP_DIR}"; }
-@test "validate_input rejects empty" { run validate_input ""; [ "$status" -eq 1 ]; }
+
+@test "validate_input rejects empty" {
+    run validate_input ""
+    [ "$status" -eq 1 ]
+}
 ```
+
+## AI-Assisted Workflow
+
+1. **You** write tests as specification
+2. Prompt AI: `"Implement X to pass these tests"`
+3. Run tests — iterate until green
+4. Never accept AI code that hasn't passed your tests
 
 ## CI Integration
 
 ```bash
-./ci/run build   # Tests fail → build fails
+./ci/run build   # Tests must pass or build fails
 ```
 
 ```yaml

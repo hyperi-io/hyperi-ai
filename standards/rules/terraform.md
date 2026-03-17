@@ -13,14 +13,15 @@ source: infrastructure/TERRAFORM.md
 
 # Terraform Standards — HyperI Projects
 
-## Quick Reference
+## CLI Quick Reference
 
 ```bash
-terraform init      # Initialize
-terraform plan      # Preview (ALWAYS review before apply)
-terraform apply     # Apply
-terraform fmt       # Format
-terraform validate  # Validate syntax
+terraform init          # Initialize
+terraform plan          # Preview (always review before apply)
+terraform fmt           # Format
+terraform validate      # Validate syntax
+terraform apply         # Apply (never -auto-approve in prod)
+terraform destroy       # Destroy
 ```
 
 ## Project Structure
@@ -36,38 +37,39 @@ terraform/
 
 ## Provider Configuration
 
-- Pin `required_version = ">= 1.5.0"`
-- Required providers: `hashicorp/aws ~> 5.0`, `hashicorp/kubernetes ~> 2.23`, `hashicorp/helm ~> 2.11`
-- S3 backend with `encrypt = true` + `dynamodb_table` for locking
-- Use `default_tags` on provider for common tags
-
 ```hcl
-backend "s3" {
-  bucket         = "myorg-terraform-state"
-  key            = "env/prod/terraform.tfstate"
-  region         = "us-east-1"
-  encrypt        = true
-  dynamodb_table = "terraform-locks"
+terraform {
+  required_version = ">= 1.5.0"
+  required_providers {
+    aws        = { source = "hashicorp/aws",        version = "~> 5.0" }
+    kubernetes = { source = "hashicorp/kubernetes",  version = "~> 2.23" }
+    helm       = { source = "hashicorp/helm",        version = "~> 2.11" }
+  }
+  backend "s3" {
+    bucket = "myorg-terraform-state"
+    key    = "env/prod/terraform.tfstate"
+    region = "us-east-1"
+    encrypt = true
+    dynamodb_table = "terraform-locks"
+  }
 }
 ```
+
+- Always set `default_tags` on the AWS provider via `local.common_tags`
 
 ## Variables
 
 - Always add `description`, `type`, and `validation` blocks
-- Use `object()` for complex configs (e.g., `cluster_config` with nested `map(object(...))`)
-- Environment variable must validate: `contains(["dev", "staging", "prod"], var.environment)`
-
-| ❌ Don't | ✅ Do | Why |
-|----------|-------|-----|
-| `type = any` | Explicit `type = object({...})` | Catch errors early |
-| Bare defaults with no validation | `validation { condition = ... }` | Prevent invalid input |
+- Use `object()` / `map(object())` for complex configs (e.g. `cluster_config` with `node_groups`)
+- Use `contains()` validations for enum-like vars (environment, region)
+- Environment tfvars live at `environments/<env>/terraform.tfvars`
 
 ## Local Values
 
 ```hcl
 locals {
   name_prefix     = "${var.environment}-${var.project_name}"
-  common_tags     = merge(var.tags, { Environment = var.environment, ManagedBy = "terraform" })
+  common_tags     = merge(var.tags, { Environment = var.environment, ManagedBy = "terraform", Project = var.project_name })
   azs             = slice(data.aws_availability_zones.available.names, 0, 3)
   private_subnets = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i)]
   public_subnets  = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i + 4)]
@@ -77,66 +79,54 @@ locals {
 ## Module Pattern
 
 - Each module: `main.tf`, `variables.tf`, `outputs.tf`
-- Name main resource `this` inside modules
-- Mark sensitive outputs: `sensitive = true`
-- Reference modules with relative paths: `source = "../../modules/eks-cluster"`
-
-```hcl
-module "eks" {
-  source          = "../../modules/eks-cluster"
-  cluster_name    = local.name_prefix
-  cluster_version = var.cluster_config.version
-  subnet_ids      = module.vpc.private_subnet_ids
-  public_access   = false
-  tags            = local.common_tags
-}
-```
+- Name primary resource `this` (e.g. `aws_eks_cluster.this`)
+- Mark sensitive outputs: `sensitive = true` (e.g. cluster CA cert)
+- Call modules with explicit source paths: `source = "../../modules/eks-cluster"`
+- Set `public_access = false` by default for EKS clusters
 
 ## State Management
 
 | Backend | Config |
-|---------|--------|
-| S3 | `bucket` + `key` + `region` + `encrypt = true` + `dynamodb_table` for locking |
-| Terraform Cloud | `cloud { organization = "myorg"; workspaces { tags = [...] } }` |
+|---|---|
+| **S3** (preferred) | S3 bucket + DynamoDB lock table (`terraform-locks`, hash key `LockID`, PAY_PER_REQUEST) + `encrypt = true` |
+| **Terraform Cloud** | `cloud { organization = "myorg"; workspaces { tags = ["app:myapp"] } }` |
 
-State locking DynamoDB table: `billing_mode = "PAY_PER_REQUEST"`, hash_key `LockID` (type `S`).
+- **Always** use state locking to prevent concurrent modifications
 
 ## Data Sources
 
-Use for: `aws_caller_identity`, `aws_availability_zones`, `aws_ami` (EKS node), existing VPCs by tag.
+Use `data` blocks for: `aws_caller_identity`, `aws_availability_zones`, `aws_ami` (EKS node AMI), existing VPCs. Never hardcode account IDs or AZ names.
 
 ## Outputs
 
 - Add `description` to every output
-- Mark secrets `sensitive = true`
-- Provide helper outputs (e.g., `kubeconfig_command`)
+- Mark DB endpoints and certs `sensitive = true`
+- Provide helper outputs (e.g. `kubeconfig_command`)
 
 ## Sensitive Data
 
 | ❌ Don't | ✅ Do | Why |
-|----------|-------|-----|
-| `password = "hardcoded"` | `variable "db_password" { sensitive = true }` | Secret leak |
-| Secrets in `.tfvars` committed to git | `aws_secretsmanager_secret_version` data source | Audit + rotation |
+|---|---|---|
+| `password = "mysecretpassword"` | `variable "db_password" { sensitive = true }` | Secrets in state/repo |
+| Inline secrets | `data "aws_secretsmanager_secret_version"` lookup | Rotate without TF changes |
+| Commit `.tfvars` with secrets | Pass via env vars / CI secrets | Leak prevention |
 
 ## Naming Conventions
 
-Pattern: `${environment}-${project}-${component}` → `prod-myapp-eks`
-
-| Resource Type | Convention |
-|---------------|------------|
-| Variables | `snake_case` |
-| Resources | `snake_case` |
-| Modules | `kebab-case` |
-| Outputs | `snake_case` |
+| Type | Convention | Example |
+|---|---|---|
+| Variables / Resources / Outputs | `snake_case` | `cluster_name` |
+| Modules | `kebab-case` | `eks-cluster` |
+| Resource names | `{env}-{project}-{component}` | `prod-myapp-eks` |
 
 ## Best Practices
 
 | ❌ Don't | ✅ Do | Why |
-|----------|-------|-----|
-| `version = ">= 5.0"` | `version = "~> 5.0"` | Prevent breaking upgrades |
-| `count` for named collections | `for_each` | Stable resource keys |
+|---|---|---|
+| `version = ">= 5.0"` | `version = "~> 5.0"` | Pin providers to minor range |
+| `count` for keyed collections | `for_each` | Stable resource addresses |
 | `terraform apply -auto-approve` in prod | Review `terraform plan` output first | Safety |
-| Skip tagging | Tag all resources via `local.common_tags` | Cost tracking, ownership |
+| Skip tagging | Tag all resources via `common_tags` | Cost tracking / ownership |
 
 ### Lifecycle Rules
 
@@ -168,3 +158,10 @@ projects:
     dir: environments/prod
     autoplan:
       when_modified: ["*.tf", "../../modules/**/*.tf"]
+```
+
+## References
+
+- Terraform Docs: https://developer.hashicorp.com/terraform/docs
+- AWS Provider: https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+- Best Practices: https://www.terraform-best-practices.com/

@@ -17,51 +17,76 @@ source: universal/CONFIG-AND-LOGGING.md
 
 # Configuration and Logging Standards
 
-## Configuration Cascade — 7-Layer Priority
+## Org Libraries (Use First)
 
-| Pri | Source | Example |
-|-----|--------|---------|
+| Language | Config | Logging |
+|---|---|---|
+| **Python** | `hyperi_pylib.config.settings` (Dynaconf) | `hyperi_pylib.logger` (auto-detect, masking) |
+| **Rust** | `hyperi_rustlib::config` (figment 8-layer) | `hyperi_rustlib::logger` (JSON/pretty, masking) |
+
+```python
+from hyperi_pylib.config import settings
+from hyperi_pylib import logger
+host = settings.database.host  # ENV > .env > YAML > defaults
+```
+
+```rust
+hyperi_rustlib::config::setup(config::ConfigOptions {
+    env_prefix: "MYAPP".into(), ..Default::default()
+})?;
+hyperi_rustlib::logger::setup_default()?;
+```
+
+Only go bespoke for: languages without org lib (Go, TS), open-source projects, pre-adoption prototypes.
+
+---
+
+## Configuration Cascade (8-Layer, Highest→Lowest)
+
+| # | Source | Example |
+|---|---|---|
 | 1 | CLI args | `--host=X --port=Y` |
 | 2 | ENV variables | `MYAPP_DATABASE_HOST=prod.db.com` |
 | 3 | `.env` file | gitignored, never commit |
 | 4 | `settings.{env}.yaml` | `settings.production.yaml` |
 | 5 | `settings.yaml` | Team defaults |
 | 6 | `defaults.yaml` | Safe fallback |
-| 7 | Hard-coded | Code fallback values |
+| 7 | Org library defaults | Built-in sensible defaults |
+| 8 | Hard-coded | Code fallback values |
 
 ### ENV Key Auto-Generation
 
 ```text
 database.host         → MYAPP_DATABASE_HOST
+api.timeout           → MYAPP_API_TIMEOUT
 cache.redis.enabled   → MYAPP_CACHE_REDIS_ENABLED
 ```
 
 ---
 
-## .env File Format
+## `.env` File Format
 
-**All values MUST be double-quoted. No exceptions.**
+### Always Double-Quote Values — No Exceptions
 
 Applies to: `.env`, `.env.example`, `.env.sample`, `.env.{environment}`
 
 | ❌ Don't | ✅ Do | Why |
-|----------|-------|-----|
+|---|---|---|
 | `DATABASE_HOST=localhost` | `DATABASE_HOST="localhost"` | Consistency |
 | `APP_NAME=My Application` | `APP_NAME="My Application"` | Breaks at space |
 | `VALUE=secret#123` | `VALUE="secret#123"` | `#` starts comment |
-| `` URL=`pg://host` `` | `URL="pg://host"` | Backticks not portable |
+| `` URL=`http://x` `` | `URL="http://x"` | Backticks not portable |
+| `'single quotes'` (for vars needing expansion) | `"double quotes"` | Double = most portable |
+
+### Escaping
 
 ```bash
-# ✅ Correct .env format
-DATABASE_HOST="localhost"
-DATABASE_PORT="5432"
-API_KEY="sk-1234567890abcdef"
-EMPTY_VALUE=""
-# Escape: MESSAGE="He said \"Hello\""
-# Dollar: PRICE="Cost is \$100"
+MESSAGE="He said \"Hello\""    # Escape inner double quotes
+PRICE="Cost is \$100"          # Escape $ in double quotes
+PRICE='Cost is $100'           # Or use single quotes (no expansion)
 ```
 
-### .env.example Template
+### `.env.example` Template
 
 ```bash
 DATABASE_HOST="localhost"
@@ -76,18 +101,17 @@ LOG_LEVEL="INFO"
 
 ## Multi-Language Config Implementation
 
-### Python — `hyperi-pylib` / Dynaconf
+### Python — `hyperi_pylib` / Dynaconf
 
 ```python
 from hyperi_pylib.config import settings
-host = settings.database.host           # Cascade automatic
+host = settings.database.host
 host = settings.get("database.host", "localhost")
 ```
 
 ### Go — Viper
 
 ```go
-import "github.com/spf13/viper"
 viper.SetDefault("database.host", "localhost")
 viper.SetConfigName("defaults"); viper.AddConfigPath("."); viper.ReadInConfig()
 viper.SetConfigName("settings"); viper.MergeInConfig()
@@ -96,40 +120,41 @@ viper.SetEnvPrefix("MYAPP"); viper.AutomaticEnv()
 viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 ```
 
-### TypeScript — `dotenv` + `yaml`
+### TypeScript — dotenv + yaml
 
 ```typescript
 import { config } from 'dotenv';
 import * as yaml from 'yaml';
-const merged = {
-  ...defaults, ...loadYaml('defaults.yaml'), ...loadYaml('settings.yaml'),
-  ...loadYaml(`settings.${env}.yaml`),
-};
-config(); // Priority 3: .env → process.env
-if (process.env.MYAPP_DATABASE_HOST) merged.database.host = process.env.MYAPP_DATABASE_HOST;
-```
-
-### Rust — `config-rs`
-
-```rust
-use config::{Config, Environment, File};
-let s = Config::builder()
-    .set_default("database.host", "localhost")?
-    .add_source(File::with_name("defaults").required(false))
-    .add_source(File::with_name("settings").required(false))
-    .add_source(File::with_name(&format!("settings.{}", env)).required(false))
-    .add_source(Environment::with_prefix("MYAPP").separator("_").try_parsing(true))
-    .build()?;
+const defaults = { database: { host: 'localhost', port: 5432 } };
+let merged = { ...defaults, ...loadYaml('defaults.yaml'),
+  ...loadYaml('settings.yaml'), ...loadYaml(`settings.${env}.yaml`) };
+config(); // loads .env into process.env
+// ENV overrides from process.env.MYAPP_*
 ```
 
 ### Bash
 
 ```bash
+set -euo pipefail
+DEFAULT_HOST="localhost"; DEFAULT_PORT="8080"
 [[ -f "${SCRIPT_DIR}/defaults.sh" ]] && source "${SCRIPT_DIR}/defaults.sh"
 [[ -f "${SCRIPT_DIR}/config.sh" ]] && source "${SCRIPT_DIR}/config.sh"
 [[ -f "${SCRIPT_DIR}/config.${APP_ENV}.sh" ]] && source "${SCRIPT_DIR}/config.${APP_ENV}.sh"
 [[ -f "${SCRIPT_DIR}/.env" ]] && source "${SCRIPT_DIR}/.env"
 HOST="${MYAPP_HOST:-${HOST:-${DEFAULT_HOST}}}"
+# CLI args parsed in main() with --host=* pattern
+```
+
+### Rust — `config-rs`
+
+```rust
+Config::builder()
+    .set_default("database.host", "localhost")?
+    .add_source(File::with_name("defaults").required(false))
+    .add_source(File::with_name("settings").required(false))
+    .add_source(File::with_name(&format!("settings.{}", env)).required(false))
+    .add_source(Environment::with_prefix("MYAPP").separator("_").try_parsing(true))
+    .build()?.try_deserialize()
 ```
 
 ---
@@ -139,7 +164,7 @@ HOST="${MYAPP_HOST:-${HOST:-${DEFAULT_HOST}}}"
 ### Output Modes
 
 | Context | Format | Colours | Emojis |
-|---------|--------|---------|--------|
+|---|---|---|---|
 | Console (dev) | Human-friendly | Solarized | CHARS-POLICY approved |
 | Container/CI | RFC 3339 JSON | None | ASCII equivalents |
 | File | RFC 3339 plain | None | None |
@@ -151,41 +176,40 @@ HOST="${MYAPP_HOST:-${HOST:-${DEFAULT_HOST}}}"
 2025-01-20T03:30:00.123Z        # UTC
 ```
 
-⚠️ **Never omit timezone offset** — `2025-01-20T14:30:00` is ambiguous.
+⚠️ **Never omit timezone offset** — bare `2025-01-20T14:30:00` is ambiguous.
 
 ### Log Levels
 
 | Level | Use | Emoji (console) | ASCII (machine) |
-|-------|-----|-----------------|-----------------|
+|---|---|---|---|
 | CRITICAL | Irrecoverable | 💥 | `[FATAL]` |
-| ERROR | Blocking | ❌ | `[ERROR]` |
+| ERROR | Blocking issue | ❌ | `[ERROR]` |
 | WARNING | Non-blocking | ⚠️ | `[WARN]` |
-| INFO | Normal | - | - |
-| SUCCESS | Complete | ✅ | `[SUCCESS]` |
-| DEBUG | Debug | - | - |
+| INFO | Normal ops | — | — |
+| SUCCESS | Op complete | ✅ | `[SUCCESS]` |
+| DEBUG | Debug info | — | — |
 
 ---
 
 ## Multi-Language Logging
 
-### Python — `hyperi-pylib` / Loguru
+### Python — `hyperi_pylib` / Loguru
 
 ```python
 from hyperi_pylib import logger
 logger.info("Processing", user_id=123)
-logger.error("Failed", error=str(e), operation="update_profile",
-             request_id=request_id, exc_info=True)
+logger.error("Failed", error=str(e), request_id=rid, exc_info=True)
 ```
 
 ### Go — `slog`
 
 ```go
-import "log/slog"
-// JSON: slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{...})
-// Text: slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{...})
-logger.Info("Processing", slog.Int("user_id", 123), slog.String("operation", "update_profile"))
-logger.Error("Failed", slog.String("error", err.Error()), slog.String("request_id", requestID))
+logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{...}))
+logger.Info("Processing", slog.Int("user_id", 123))
+logger.Error("Failed", slog.String("error", err.Error()))
 ```
+
+Auto-detect: `LOG_FORMAT=json` → JSON handler, else text handler. Use `time.RFC3339Nano` for timestamps.
 
 ### TypeScript — `pino`
 
@@ -194,34 +218,25 @@ import pino from 'pino';
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
   timestamp: () => `,"time":"${new Date().toISOString()}"`,
-  transport: isProduction ? undefined : { target: 'pino-pretty', options: { colorize: true } },
+  transport: isProduction ? undefined : { target: 'pino-pretty' },
 });
-logger.info({ userId: 123, operation: 'update_profile' }, 'Processing');
-```
-
-### Rust — `tracing` + `tracing-subscriber`
-
-```rust
-use tracing::{info, error};
-use tracing_subscriber::{fmt, EnvFilter};
-// JSON: fmt().json().with_env_filter(filter).init();
-// Text: fmt().with_env_filter(filter).init();
-info!(user_id, operation = "update_profile", "Processing");
-error!(error = %e, user_id, "Operation failed");
+logger.info({ userId: 123 }, 'Processing');
 ```
 
 ### Bash
 
-```bash
-log_message() {
-  local level="$1" message="$2"
-  local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
-  if [[ -t 2 ]]; then  # Console: coloured text
-    printf "%s [%s] %s\n" "$timestamp" "$level" "$message" >&2
-  else  # Container: JSON
-    printf '{"timestamp":"%s","level":"%s","message":"%s"}\n' "$timestamp" "$level" "$message" >&2
-  fi
-}
+- Auto-detect: `[[ -t 2 ]]` → coloured console, else JSON to stderr
+- Use `date -u +"%Y-%m-%dT%H:%M:%S.%3NZ"` for RFC 3339
+- Bash 3.2 compatible: use `case` for level priority, no associative arrays
+
+### Rust — `tracing` + `tracing-subscriber`
+
+```rust
+let filter = EnvFilter::try_from_default_env()
+    .unwrap_or_else(|_| EnvFilter::new("info"));
+if is_json { fmt().json().with_env_filter(filter).init(); }
+else { fmt().with_env_filter(filter).init(); }
+info!(user_id, operation = "update_profile", "Processing");
 ```
 
 ---
@@ -232,11 +247,11 @@ log_message() {
 
 - User/session ID (NOT passwords)
 - Operation name
-- Timestamp (RFC 3339 + timezone)
+- RFC 3339 timestamp with timezone
 - Request/transaction ID
 - Full stack trace for errors
 
-### Recommended
+### Recommended Context
 
 - Client IP (hashed), user agent, sanitised input params, system state
 
@@ -244,22 +259,22 @@ log_message() {
 
 ## Sensitive Data Masking
 
-**ALWAYS mask in logs:** passwords, tokens, API keys, credit cards, CVV, SSN, PII, private keys, JWTs.
+**ALWAYS mask:** passwords, tokens, API keys, credit cards, CVV, SSN, PII, private keys, certs, JWTs.
 
 ```python
-# hyperi-pylib auto-masks sensitive patterns
-logger.info("Connecting", password="secret123")  # → password="***MASKED***"
+# hyperi-pylib auto-masks:
+logger.info("Connecting", password="secret123")  # → "***MASKED***"
 ```
 
-Auto-masked patterns: `password=`, `pwd=`, `api_key=`, `token=`, `Bearer ...`, DB URLs with credentials, AWS keys (`AKIA...`), `card_number=`, `cvv=`
+**Auto-masked patterns:** `password=`, `pwd=`, `api_key=`, `token=`, `Authorization: Bearer`, DB URLs (`user:password@`), AWS keys (`AKIA...`), `card_number=`, `cvv=`.
 
 ---
 
 ## Logging ENV Variables
 
 ```bash
-LOG_LEVEL=DEBUG                  # DEBUG|INFO|WARNING|ERROR|CRITICAL
-LOG_FORMAT=json                  # json|text|console|logfmt
-LOG_OUTPUT=stdout                # stdout|stderr|file
-NO_COLOR=1                       # Disable colours (standard)
-LOG_TIMESTAMP_FORMAT=rfc3339     # iso8601|rfc3339|unix
+LOG_LEVEL="DEBUG"                # DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_FORMAT="json"                # json, text, console, logfmt
+LOG_OUTPUT="stdout"              # stdout, stderr, file
+NO_COLOR="1"                     # Disable colours (standard)
+LOG_TIMESTAMP_FORMAT="rfc3339"   # iso8601, rfc3339, unix

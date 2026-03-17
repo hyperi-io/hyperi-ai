@@ -12,25 +12,26 @@ source: languages/SQL-CLICKHOUSE.md
 
 # ClickHouse SQL Standards — HyperI Projects
 
+> **Schema SSOT:** Column definitions in `dfe-schemas` (common-header, hunt-results). DDL generation in `dfe-engine`. Always check `dfe-schemas` first.
+
 **Current stable:** v26.1 | **LTS:** v25.8 | **Previous LTS:** v25.3
+
+---
 
 ## Mental Model Reset
 
-| PostgreSQL habit | ClickHouse rule |
+| PostgreSQL habit | ClickHouse reality |
 |---|---|
-| `BEGIN`/`COMMIT` transactions | No transactions. Each INSERT is atomic. Design idempotent inserts. |
-| `INSERT ... ON CONFLICT UPDATE` | No UPSERT. Use `ReplacingMergeTree` — insert new row, old deduped on merge. |
-| CTEs materialised | CTEs **re-executed every reference**. 3 refs = 3 full scans. Use temp tables. |
-| Big table first in JOIN | **Dimension (small) on RIGHT**. Right table → hash table in RAM. Reverse = OOM. |
-| `SELECT *` | **Never.** Each column = separate file. 200 cols = 200 file reads. Name columns. |
+| `BEGIN`/`COMMIT` transactions | No transactions. Each INSERT atomic. Design idempotent. |
+| `INSERT ... ON CONFLICT UPDATE` | No UPSERT. Use `ReplacingMergeTree`. |
+| CTEs materialised | CTEs **re-executed every reference**. Use temp tables. |
+| Big table first in JOIN | **Dimension (small) on RIGHT**. Right table → hash table in RAM. |
+| `SELECT *` | **Never.** Each column = separate file. Name columns. |
 | `DISTINCT` for uniques | `GROUP BY` — 4.5x faster (1.3s vs 5.8s on 1.8B rows). |
-| `Nullable` freely | 2x perf penalty (229M→98M rows/s). Use defaults instead. |
-| B-tree indexes | Sparse primary index on ORDER BY (~8192 rows/entry) + skip indexes on granules. |
-| Normalise 3NF + FKs | **Denormalise.** Wide flat tables. Dictionaries for dimension lookups. No FKs. |
-| Update rows in place | Rows immutable. Use `ReplacingMergeTree`, `CollapsingMergeTree`, or lightweight `DELETE`. |
-| `CASE`/`if()` short-circuits | **All branches evaluated** (vectorised). Use `nullIf()`/`*OrZero` for safe division. |
-
-Architecture: columnar, immutable **parts** (sorted by ORDER BY), background merges combine parts. Each INSERT = new part. Small frequent inserts → "Too many parts" at 300+ active parts/partition.
+| `Nullable` freely | 2x perf penalty (229M→98M rows/s). Use defaults. |
+| B-tree indexes | Sparse primary index on ORDER BY (~8192 rows/entry) + skip indexes. |
+| Normalise 3NF | **Denormalise.** Wide flat tables. Dictionaries for dimensions. |
+| Update rows in place | Immutable. Use ReplacingMergeTree / CollapsingMergeTree / lightweight DELETE. |
 
 ---
 
@@ -46,59 +47,53 @@ Default: `ReplicatedMergeTree` (self-hosted) or `SharedMergeTree` (Cloud). Alway
 | Deduplicate by key (CDC) | `ReplacingMergeTree(version)` |
 | Pre-aggregate additive metrics | `SummingMergeTree` |
 | Complex pre-agg (MV target) | `AggregatingMergeTree` |
-| Mutable, single-thread insert | `CollapsingMergeTree(sign)` |
+| Mutable, single-thread | `CollapsingMergeTree(sign)` |
 | Mutable, multi-thread/CDC | `VersionedCollapsingMergeTree(sign, ver)` |
 
 ### ORDER BY / Primary Key
 
-**Immutable after creation.** Single most important decision.
+**Immutable after creation. Most important decision.**
 
 - 3–5 columns max
-- **Low cardinality first** (tenant_id ~100 vals → binary search)
-- Most-filtered columns first
-- **Timestamp last** (too many distinct values per granule alone)
-- **Never UUID/high-cardinality first** — UUID-first = 18000/18562 granules (full scan); tenant-first = 47/18562
+- **Low cardinality first** → most-filtered first → **timestamp last**
+- Never UUID or high-cardinality first (18000/18562 granules = full scan vs 47/18562 w/ tenant-first)
 
 ```sql
--- ❌ High cardinality first
+-- ❌ UUID first (full scan)
 ORDER BY (_uuid, _org_id, severity, _timestamp_load)
--- ❌ Timestamp first
+-- ❌ Timestamp first (can't filter by _org_id)
 ORDER BY (_timestamp_load, _org_id, severity)
--- ✅ Low cardinality first, filtered first, timestamp last
+-- ✅ Low cardinality first
 ORDER BY (_org_id, severity, _timestamp_load)
 ```
 
 ### Partition Strategy
 
-Partitioning = **data management** (TTL drops, storage tiers), NOT query optimisation.
+Partitioning = **data management** (TTL, tiered storage), NOT query optimisation.
 
 - **Monthly default:** `PARTITION BY toYYYYMM(timestamp)`
-- **TTL column = PARTITION BY column** — non-negotiable (whole-partition drops vs row-by-row rewrite)
+- **TTL column = PARTITION BY column** — non-negotiable (instant drops vs hours of row-by-row rewrite)
 - Target 10 GB–1 TB per partition
-- **Never** partition by high-cardinality columns
-- Daily only if 10+ GB/day
-- No partition for small tables (< few GB)
+- Never partition by high-cardinality columns (300+ active parts = error)
+- Daily only if 10+ GB/day; no partition for tables < few GB
 - Always set `ttl_only_drop_parts = 1`
 
 ```sql
--- ❌ TTL column ≠ PARTITION BY column
+-- ❌ TTL ≠ PARTITION BY
 PARTITION BY toYYYYMM(ingest_ts)
 TTL event_ts + INTERVAL 90 DAY DELETE
-
--- ✅ Same column, aligned
+-- ✅ Same column, with ttl_only_drop_parts
 PARTITION BY toYYYYMM(ingest_ts)
 TTL ingest_ts + INTERVAL 90 DAY DELETE
 SETTINGS ttl_only_drop_parts = 1
 ```
 
-#### TTL and Tiered Storage
+#### TTL Tiered Storage
 
 ```sql
-TTL
-    timestamp + INTERVAL 30 DAY TO VOLUME 'warm',
+TTL timestamp + INTERVAL 30 DAY TO VOLUME 'warm',
     timestamp + INTERVAL 90 DAY TO VOLUME 'cold',
     timestamp + INTERVAL 365 DAY DELETE
-SETTINGS ttl_only_drop_parts = 1;
 ```
 
 ### Codec Selection
@@ -106,59 +101,58 @@ SETTINGS ttl_only_drop_parts = 1;
 | Data Pattern | Codec |
 |---|---|
 | Sorted timestamps, monotonic IDs | `DoubleDelta, LZ4` |
-| Float metrics (gauge, sensor) | `Gorilla, ZSTD(1)` |
+| Float metrics | `Gorilla, ZSTD(1)` |
 | Small ints in large types | `T64, LZ4` |
 | LowCardinality strings | `LZ4` |
-| High-entropy strings (log msgs) | `ZSTD(3)` |
-| Random data (hashes, UUIDs) | `ZSTD(1)` |
+| High-entropy strings | `ZSTD(3)` |
+| Random (hashes, UUIDs) | `ZSTD(1)` |
 
-ZSTD levels 1–3 cover 95% of cases. ZSTD(9) = 3% better compression, 4x CPU. Not worth it.
+ZSTD levels 1–3 cover 95%. Level 9+: 3% better compression, 4x more CPU — not worth it.
 
 ### Skip Indexes
 
-Granule-level exclusion, NOT B-tree. Answer: "does this granule definitely NOT contain my value?"
+Work on **granules** (~8192 rows). Answer: "does this granule NOT contain my value?" Only useful when indexed column correlates w/ ORDER BY.
 
 | Type | Use Case |
 |---|---|
-| `minmax` | Range filtering on numeric/date |
-| `set(N)` | Equality, N distinct values/granule |
-| `bloom_filter` | Point lookups on high-cardinality (trace_id) |
+| `minmax` | Range on numeric/date |
+| `set(N)` | Equality, N distinct/granule |
+| `bloom_filter` | Point lookup high-cardinality (trace_id) |
 | `tokenbf_v2(size, hashes, seed)` | Tokenised text search |
 | `ngrambf_v1(n, size, hashes, seed)` | Substring matching |
-| `full_text` / `text` | Full-text search (GA v25.10) |
+| `full_text` / `text` | Deterministic inverted index (v25.10+) |
 
-Only help when indexed column correlates w/ ORDER BY. Verify: `EXPLAIN PLAN indexes = 1`. **Always `MATERIALIZE INDEX` after adding** — existing data stays unindexed otherwise.
+**Always verify:** `EXPLAIN PLAN indexes = 1` — if granule ratio doesn't drop, index is dead weight.
+**Always materialise for existing data:** `ALTER TABLE t MATERIALIZE INDEX idx_name;`
 
 ### Full-Text / Text Index (GA v25.10)
 
-Deterministic inverted index. No false positives. Row-level filtering. 45x faster than without (Hackernews 28.7M rows, `hasToken`: 0.008s vs 0.362s).
+Deterministic inverted index. No false positives. Row-level filtering. 45x faster than without on Hackernews benchmark (0.008s vs 0.362s).
 
 ```sql
 ALTER TABLE logs ADD INDEX idx_ft_message(message) TYPE text(
     tokenizer = splitByNonAlpha,
     preprocessor = lower(message)
 );
-ALTER TABLE logs MATERIALIZE INDEX idx_ft_message
-    SETTINGS mutations_sync = 2;
+ALTER TABLE logs MATERIALIZE INDEX idx_ft_message SETTINGS mutations_sync = 2;
 ```
 
 **Tokenisers:** `splitByNonAlpha` (default), `splitByString[(S)]`, `ngrams[(N)]`, `sparseGrams[(min,max,cutoff)]`, `array`
 
-**Accelerated functions:** `hasToken`, `hasAllTokens`, `hasAnyTokens`, `LIKE` (when tokens extractable), `match()` (with compatible tokeniser)
+**Accelerated functions:** `hasToken`, `hasAllTokens`, `hasAnyTokens`, `LIKE` (when tokens extractable), `match()` (with splitByNonAlpha/ngrams/sparseGrams)
 
-**NOT accelerated:** Leading wildcards (`LIKE '%foo'`), `PREWHERE` (issue #89975), CJK text
+**Direct read (v26.2+, default on):** reads answer from index without touching column data.
 
-**Direct read (v26.2+, default on):** reads from index without touching column data.
+**Does NOT accelerate:** leading wildcards (`LIKE '%foo'`), `PREWHERE` (issue #89975), CJK text.
 
-For versions before v26.2: `SET enable_full_text_index=true; query_plan_direct_read_from_text_index=true; use_skip_indexes_on_data_read=true;`
+**Pre-v26.2 settings:** `SET enable_full_text_index=true; SET query_plan_direct_read_from_text_index=true; SET use_skip_indexes_on_data_read=true;`
 
 | | `text` (inverted) | `tokenbf_v2`/`ngrambf_v1` |
 |---|---|---|
 | False positives | None | Yes |
-| Filtering | Row-level | Granule-level |
+| Granularity | Row-level | Block-level |
 | Storage/part | 10s–100s MB | 1s–10s KB |
-| Speed | 10–100x faster | Good for coarse filtering |
-| Min version | v25.10 | Stable for years |
+| Speed (w/ direct read) | 10–100x faster | Good for coarse filtering |
 
 ---
 
@@ -166,93 +160,91 @@ For versions before v26.2: `SET enable_full_text_index=true; query_plan_direct_r
 
 ### LowCardinality(String)
 
-< ~10K distinct values → **5–10x better compression and speed**. Above ~100K can be worse than plain `String`. Check: `SELECT uniq(col) FROM table`.
+< ~10K distinct values → 5–10x better compression and query speed. Above ~100K can be **worse**. Check: `SELECT uniq(col) FROM table`.
 
 ```sql
 -- ❌
-level String,  -- 5 values
+level String  -- 5 values
 -- ✅
-level LowCardinality(String),
-country LowCardinality(FixedString(2)),
+level LowCardinality(String)
 ```
 
-### Nullable
+### Nullable — Performance Tax
 
-2x storage, 2x slower queries (229M→98M rows/s). Replace w/ defaults (`''`, `0`) unless NULL has genuine semantic meaning.
-
-**When Nullable is unavoidable:** external ingestion preserving NULLs, outer JOINs, sparse data, data quality (NULL ≠ zero).
+2x storage, 2x slower queries. `GROUP BY Int64` = 229M rows/s → `Nullable(Int64)` = 98M rows/s.
 
 **Rules:**
-- **Never** Nullable in ORDER BY, PARTITION BY, or primary key
-- **Minimise** in filter/GROUP BY columns
+- Replace w/ defaults (`''`, `0`) when semantics allow
+- **Never** in ORDER BY, PARTITION BY, or primary key
 - **Acceptable** in payload columns rarely filtered
-- Use `ifNull(col, default)` in queries, not `coalesce()` (3.4x faster)
-- Consider MVs that strip Nullable for hot query path
+- **Required** when NULL = "not provided" (ETL, outer JOINs, sparse data, regulatory)
+- Use MVs to strip Nullable for hot query path
 
 ### FixedString
 
-Exact known byte length only. `FixedString(32)` for hex trace_id, `FixedString(2)` for ISO country codes. Do NOT use for variable-length data (pads w/ null bytes).
+Exact byte length only. `trace_id FixedString(32)`, `country_code FixedString(2)`, `md5_hash FixedString(16)`.
 
-### DateTime and Timezones
+### DateTime / Timezones
 
-- Always declare timezone: `DateTime64(3, 'UTC')`
+- Always `DateTime64(3, 'UTC')` with explicit timezone
 - Store UTC, convert in SELECT: `toTimeZone(_timestamp, 'Australia/Sydney')`
-- Use IANA names, never abbreviations (`AEST`, `PST`)
-- **Never** wrap columns in functions in WHERE (breaks index): filter on raw column
+- Use IANA names (`Australia/Sydney`), never abbreviations (`AEST`)
+- Never wrap column in function in WHERE (breaks index): filter on raw column
 
-### Enum8/Enum16
+### Enum8 / Enum16
 
-Strict value enforcement at storage layer. `Enum8` = 1 byte/128 vals. For most cases `LowCardinality(String)` is more flexible.
+Strict value enforcement. `Enum8` = 1 byte/128 values. Prefer `LowCardinality(String)` unless you need rejection of unknown values.
 
 ### Array, Map, Tuple
 
-- Use `ARRAY JOIN` clause (optimised, uses indexes) over `arrayJoin()` function
-- `arrayJoin()` w/ two arrays = cross-product; `ARRAY JOIN` zips them
+- Prefer `ARRAY JOIN` clause over `arrayJoin()` function (optimised, uses indexes, zips instead of cross-product)
 - Map access is linear scan, not O(1)
-- Lambda: `arrayMap(x -> x * 2, [1,2,3])`, `arrayFilter`, `arrayExists`
+- Lambda: `arrayMap`, `arrayFilter`, `arrayExists`
 
 ### JSON Type (GA v25.3)
 
-New `JSON` type (old `Object('json')` is **removed**). Columnar JSON — each path stored as typed sub-column.
+Columnar JSON — each path stored as typed sub-column. Old `Object('json')` is **removed**.
 
 ```sql
-CREATE TABLE raw (
-    _json JSON
+CREATE TABLE t (
+    _json JSON(
+        user_id UInt64,           -- typed path hints: 2-5x faster
+        SKIP debug_info,          -- never store
+        SKIP REGEXP 'internal\..*'
+    )
 ) SETTINGS max_dynamic_paths = 1024;
-
--- Typed path hints (2-5x faster than dynamic)
-payload JSON(
-    user_id UInt64,
-    action String,
-    metadata.source String
-)
-
--- SKIP unwanted paths
-data JSON(SKIP debug_info, SKIP REGEXP 'internal\..*')
 ```
 
 | Setting | Default | Notes |
 |---|---|---|
-| `max_dynamic_paths` | 1024 | Beyond this → shared overflow (slower) |
-| `max_dynamic_types` | 32 | Per dynamic path column |
+| `max_dynamic_paths` | 1024 | Paths beyond → shared overflow (slower) |
+| `max_dynamic_types` | 32 | Distinct types per dynamic path |
 
-**Rules:** Don't `SELECT _json` on wide JSON. Don't put JSON cols in ORDER BY. If filtering a JSON path in every query → break it out to typed column.
+- Don't `SELECT _json` on wide JSON — name paths
+- Don't put JSON paths in ORDER BY — break out to typed column first
+- If filtering a JSON path in every query → break it out
 
 ### Dynamic / Variant Types (GA v25.3)
 
-`Variant(UInt64, String, Array(String))` — discriminated union. `Dynamic(max_types=16)` — stores any type. Both columnar internally.
+`Variant(UInt64, String, Array(String))` — discriminated union (known types).
+`Dynamic(max_types = 16)` — any type, no declaration. JSON uses Dynamic internally.
 
 ---
 
 ## Query Patterns
 
+### Never SELECT *
+
+```sql
+-- ❌ 200 columns = 200 file reads
+SELECT * FROM threat_events WHERE ...
+-- ✅ 3 columns = 3 file reads
+SELECT severity, source_ip, _timestamp_load FROM threat_events WHERE ...
+```
+
 ### PREWHERE vs WHERE
 
-Auto-promoted by default (`optimize_move_to_prewhere = 1`). Use explicit PREWHERE when:
-- `FINAL` is used (PREWHERE disabled with FINAL auto-promotion)
-- Highly selective filter on large table as first pass
-
-**Warning:** `PREWHERE` + `FINAL` on ReplacingMergeTree = **correctness bug**. PREWHERE filters before FINAL dedup → deleted rows reappear. Use `WHERE` with FINAL.
+Auto-promoted by default (`optimize_move_to_prewhere = 1`). Use explicit PREWHERE with `FINAL` (not auto-applied) or for highly selective filters.
 
 ### JOINs
 
@@ -260,103 +252,117 @@ Auto-promoted by default (`optimize_move_to_prewhere = 1`). Use explicit PREWHER
 
 | ❌ Don't | ✅ Do | Why |
 |---|---|---|
-| `FROM dim JOIN fact ON ...` | `FROM fact JOIN dim ON ...` | Right table → hash in RAM. Fact on right = OOM |
-| `JOIN` for existence check | `WHERE id IN (SELECT id FROM ...)` | HashSet, no data extraction |
-| `JOIN` for dimension lookup | `dictGet('dict', 'col', key)` | Cached in memory, fastest |
-| ALL JOIN for first-match | `ANY LEFT JOIN` | No row multiplication |
+| `FROM dim JOIN fact ON ...` | `FROM fact JOIN dim ON ...` | Right table loaded into RAM hash table |
 
-Types must match exactly in JOIN conditions — no implicit cast (unlike PostgreSQL).
+**Prefer alternatives:**
+- `WHERE x IN (SELECT ...)` — HashSet, no data extraction
+- `dictGet('dict', 'col', key)` — cached dictionary lookup (fastest)
+- `ANY LEFT JOIN` — first-match only, no row multiplication
 
-For distributed: use `GLOBAL JOIN`/`GLOBAL IN` — without `GLOBAL`, each shard runs right-side subquery locally (incomplete results, no error).
+**Type matching:** JOIN keys must be exact same type. No implicit casting.
 
 ### GROUP BY vs DISTINCT
 
 ```sql
 -- ❌ DISTINCT: 5.8s on 1.8B rows
+SELECT DISTINCT source_ip FROM t;
 -- ✅ GROUP BY: 1.3s (4.5x faster)
--- Exception: DISTINCT + LIMIT short-circuits (0.014s)
+SELECT source_ip FROM t GROUP BY source_ip;
+-- Exception: DISTINCT + LIMIT short-circuits (fine)
+SELECT DISTINCT source_ip FROM t LIMIT 1000;
 ```
 
-### CTEs
+### Approximate Functions
 
-Re-executed every reference. Single-reference = fine. Multiple references → temp table or restructure as single pass.
+| Exact (slow) | Approximate (fast) | Error |
+|---|---|---|
+| `count(DISTINCT x)` | `uniq(x)` / `uniqCombined(x)` | ~2% |
+| `quantileExact(0.99)(x)` | `quantile(0.99)(x)` | ~1% |
+
+Compose via `-State`/`-Merge` in MVs.
+
+### CTEs Are Macros
+
+Re-executed at every reference. 3 refs = 3 full scans.
+
+```sql
+-- ❌ 2 refs = 2 scans
+WITH cte AS (SELECT ... FROM big_table)
+SELECT * FROM cte UNION ALL SELECT * FROM cte;
+-- ✅ Materialise once
+CREATE TEMPORARY TABLE tmp AS SELECT ... FROM big_table;
+```
+
+Single-reference CTEs are fine.
 
 ### LIMIT BY (Top-N Per Group)
 
 ```sql
--- ❌ row_number() OVER (PARTITION BY ...)
--- ✅ ClickHouse-native:
-SELECT severity, source_ip, _timestamp_load
-FROM threat_events
-ORDER BY source_ip, _timestamp_load DESC
-LIMIT 3 BY source_ip;
+-- ❌ Window function (PostgreSQL habit)
+SELECT *, row_number() OVER (PARTITION BY src ORDER BY ts DESC) AS rn ...
+-- ✅ ClickHouse native
+SELECT * FROM t ORDER BY src, ts DESC LIMIT 3 BY src;
 ```
-
-Combine: `LIMIT 3 BY source_ip LIMIT 1000`
-
-### Approximate Functions
-
-| Exact | Approximate | Error | Speedup |
-|---|---|---|---|
-| `count(DISTINCT x)` | `uniq(x)` | ~2% | 10–100x |
-| `count(DISTINCT x)` | `uniqCombined(x)` | ~2% | Faster, less memory |
-| `quantileExact(0.99)(x)` | `quantile(0.99)(x)` | ~1% | 5–20x |
-
-Compose via `-State`/`-Merge` across MVs.
 
 ### Regex Is Evil
 
-Use native functions. Regex = last resort.
+Native string functions are 10–100x faster. Regex = last resort.
 
 | Pattern | ❌ Regex | ✅ Native |
 |---|---|---|
 | Contains word | `match(msg, '\\berror\\b')` | `hasToken(msg, 'error')` |
-| Contains any word | `match(msg, 'error\|fatal')` | `hasAnyTokens(msg, ['error','fatal'])` |
-| Contains all words | `match(msg, '(?=.*a)(?=.*b)')` | `hasAllTokens(msg, ['a','b'])` |
-| Starts with | `match(url, '^https')` | `startsWith(url, 'https')` |
+| Contains any | `match(msg, 'error\|fatal')` | `hasAnyTokens(msg, ['error','fatal'])` |
+| Starts with | `match(url, '^https://')` | `startsWith(url, 'https://')` |
 | Contains substring | `match(msg, 'conn refused')` | `position(msg, 'conn refused') > 0` |
-| Case-insensitive | `match(msg, '(?i)error')` | `positionCaseInsensitive(msg, 'error') > 0` |
 | Extract domain | `extract(url, '://([^/]+)')` | `domain(url)` |
-| Extract URL param | `extract(url, 'key=([^&]+)')` | `extractURLParameter(url, 'key')` |
+| Extract URL param | `extract(url, 'utm=([^&]+)')` | `extractURLParameter(url, 'utm')` |
 | Split | `extractAll(s, '[^,]+')` | `splitByChar(',', s)` |
-| IP validation | `match(ip, regex)` | `isIPv4String(ip)` |
-| Subnet match | `match(ip, '^10\\.66\\..*')` | `isIPAddressInRange(ip, '10.66.0.0/16')` |
+| IP subnet | `match(ip, '^10\\.66\\.')` | `isIPAddressInRange(ip, '10.66.0.0/16')` |
 
-Key native functions: `hasToken`, `hasAllTokens`, `hasAnyTokens`, `multiSearchAny` (Aho-Corasick), `position`, `positionCaseInsensitive`, `startsWith`, `endsWith`, `domain`, `path`, `topLevelDomain`, `extractURLParameter`, `splitByChar`, `splitByString`, `JSONExtractString`/`JSONExtractUInt`
+**Key native functions:** `hasToken`, `hasAllTokens`, `hasAnyTokens`, `position`, `positionCaseInsensitive`, `multiSearchAny`, `startsWith`, `endsWith`, `domain`, `path`, `topLevelDomain`, `extractURLParameter`, `splitByChar`, `splitByString`, `JSONExtractString`, `JSON_VALUE`.
 
 ---
 
 ## EXPLAIN: Always Verify
 
-**Run `EXPLAIN PLAN indexes = 1` before deploying any non-trivial query.**
+**Run `EXPLAIN PLAN indexes = 1` on every non-trivial query.**
 
 | Command | Use |
 |---|---|
-| `EXPLAIN PLAN indexes = 1` | **Primary.** Validate index usage, parts/granules ratio |
-| `EXPLAIN PIPELINE` | Parallelism (`× N`), bottlenecks (`→ 1`) |
-| `EXPLAIN ESTIMATE` | Quick row/part/mark count without executing |
-| `EXPLAIN SYNTAX` | See optimiser rewrites (PREWHERE auto-promotion, predicate pushdown) |
-| `EXPLAIN AST` | Parse/macro debugging |
+| `EXPLAIN PLAN indexes = 1` | **Primary.** Validate index usage, parts/granules read. |
+| `EXPLAIN PIPELINE` | Parallelism (`× N`). Watch for `→ 1` bottlenecks. |
+| `EXPLAIN ESTIMATE` | Quick row/part/mark sizing without execution. |
+| `EXPLAIN SYNTAX` | See optimiser rewrites (PREWHERE auto-promotion, etc). |
+| `EXPLAIN AST` | Debug parse issues. |
 
-**Red flags:** Parts ratio near 1.0 = full scan. Granules > 50% = near-full scan. `× 1` parallelism = check `max_threads`. PREWHERE missing with FINAL.
+**What to check:**
+- `Parts: 3/24` — low ratio = good. `24/24` = full scan.
+- `Granules: 47/18562` — reading >50% = near-full scan, fix ORDER BY or add skip index.
+- `FINAL` disables auto-PREWHERE — check w/ `EXPLAIN SYNTAX`.
 
 ---
 
 ## Insert Strategy
 
-Each INSERT = new part. 300+ active parts/partition = "Too many parts" = writes stop.
+Each INSERT = new part. 300+ active parts/partition = "Too many parts" error.
 
-- **Min 1K rows/INSERT, aim 10K–100K.** One INSERT/sec max.
-- **Never** single-row inserts in a loop
+- **Min 1K rows/INSERT, aim 10K–100K**
+- Max ~1 INSERT/second
+- Single-row inserts = dead server in under a minute
 
-**Async inserts** (server-side batching when client batching impractical):
+### Async Inserts (Server-Side Batching)
+
 ```sql
-SETTINGS async_insert = 1, wait_for_async_insert = 1,
+INSERT INTO t VALUES (...) SETTINGS
+    async_insert = 1,
+    wait_for_async_insert = 1,
     async_insert_max_data_size = 10000000,
     async_insert_busy_timeout_ms = 1000;
 ```
 
-**Deduplication:** Replicated tables deduplicate by insert block hash (default window: 100). `ReplacingMergeTree` deduplicates by ORDER BY key on merge (eventual).
+### Deduplication
+
+Replicated tables deduplicate by insert block hash (default window: 100 blocks). `ReplacingMergeTree` deduplicates by ORDER BY key on merge (eventual).
 
 ---
 
@@ -364,91 +370,96 @@ SETTINGS async_insert = 1, wait_for_async_insert = 1,
 
 ### Lightweight DELETE (GA v23.3)
 
-Masks rows via `_row_exists`. Fast, non-blocking. Physical removal on next merge. For targeted deletes (GDPR). Not for bulk.
+Fast, non-blocking. Masks rows; physical removal on next merge.
 
-### Mutations (`ALTER TABLE UPDATE/DELETE`)
+```sql
+DELETE FROM dfe.default WHERE _uuid = '...';
+SELECT * FROM system.mutations WHERE is_done = 0;
+```
 
-Rewrite entire parts. Heavy, async. Monitor: `SELECT * FROM system.mutations WHERE is_done = 0`. Do NOT use as routine operations — share merge thread pool, can't roll back, stack up.
+### Mutations (ALTER TABLE UPDATE/DELETE)
+
+**Heavy.** Rewrite entire parts. Don't use routinely.
 
 ### ReplacingMergeTree: argMax vs FINAL
 
-Dedup is **eventual** (background merge), not immediate.
+Dedup is **eventual** (on merge), not immediate.
 
 ```sql
--- ❌ FINAL: 16x slower (0.149s → 2.399s on 1B rows)
+-- ❌ FINAL: 16x slower (2.399s vs 0.149s on 1B rows)
 SELECT * FROM users FINAL WHERE user_id = 123;
--- ✅ argMax pattern (correct without FINAL)
-SELECT user_id, argMax(name, updated_at) AS name,
-    max(updated_at) AS updated_at
+-- ✅ argMax pattern
+SELECT user_id, argMax(name, updated_at) AS name
 FROM users WHERE user_id = 123 GROUP BY user_id;
 -- ✅ Tuned FINAL (0.309s)
 SELECT * FROM users FINAL PREWHERE tenant_id = 42
 SETTINGS do_not_merge_across_partitions_select_final = 1, max_final_threads = 16;
 ```
 
-**Never put version column in ORDER BY** — becomes part of dedup key, dedup completely broken.
+**Never put version column in ORDER BY** — becomes part of dedup key, breaking dedup entirely.
 
-### CollapsingMergeTree
+### CollapsingMergeTree / VersionedCollapsingMergeTree
 
-Queries must multiply by `sign` and filter `HAVING sum(sign) > 0`. Cancel row must precede state row in `CollapsingMergeTree`; use `VersionedCollapsingMergeTree` if order can't be guaranteed.
+Sign-based cancellation for query-time correctness before merge.
+- Multiply values by `sign` in every aggregate
+- `HAVING sum(sign) > 0` to exclude cancelled rows
+- Can't guarantee insert order → use `VersionedCollapsingMergeTree`
 
 ---
 
 ## Materialised Views and Projections
 
-### Incremental MVs (INSERT triggers)
+### Incremental MVs (INSERT Triggers)
 
-Run on each inserted block, NOT full table. Pair w/ `AggregatingMergeTree`/`SummingMergeTree`.
+Run on inserted **block only** (not full table). Pair with `AggregatingMergeTree`/`SummingMergeTree`.
 
-**Do NOT use `POPULATE`** — races w/ concurrent inserts. Create MV, then backfill manually:
+**Do NOT use `POPULATE`** — races with concurrent inserts. Create MV, then backfill manually:
 
 ```sql
 CREATE MATERIALIZED VIEW mv TO target_table AS
-SELECT toStartOfHour(ts) AS hour, countState() AS cnt,
-    uniqState(source_ip) AS sources
+SELECT toStartOfHour(ts) AS hour, countState() AS cnt
 FROM source GROUP BY hour;
-
--- Backfill existing data in chunks
-INSERT INTO target_table SELECT ... FROM source
-WHERE ts >= '2025-01-01' AND ts < '2025-02-01' GROUP BY hour;
+-- Backfill
+INSERT INTO target_table SELECT ... FROM source WHERE ts >= ... GROUP BY ...;
 ```
 
 ### -State / -Merge Pattern
 
 **Every AI gets this wrong.**
 
-- `-State` when **writing** (stores intermediate binary state)
-- `-Merge` when **reading** (finalises aggregation)
-- `GROUP BY` still required on read
-
 ```sql
 -- ❌ Plain aggregates in AggregatingMergeTree
-INSERT INTO agg SELECT date, count(), avg(x) ...
--- ✅
-INSERT INTO agg SELECT date, countState(), avgState(x) ...
-SELECT date, countMerge(cnt), avgMerge(avg_x) FROM agg GROUP BY date;
+INSERT INTO agg SELECT date, count() AS cnt ...
+-- ✅ Write with -State
+INSERT INTO agg SELECT date, countState() AS cnt ...
+-- ✅ Read with -Merge (GROUP BY still required)
+SELECT date, countMerge(cnt) FROM agg GROUP BY date;
 ```
 
 ### Refreshable MVs (GA v24.10)
 
 ```sql
-CREATE MATERIALIZED VIEW report
-REFRESH EVERY 1 HOUR TO report_table AS SELECT ...;
--- Monitor: SELECT * FROM system.view_refreshes;
--- Chain: DEPENDS ON other_mv
+CREATE MATERIALIZED VIEW mv REFRESH EVERY 1 HOUR TO target AS SELECT ...;
+SELECT * FROM system.view_refreshes;
 ```
+
+Use `DEPENDS ON` for chaining.
 
 ### Projections
 
-Alternative sort order within same table, auto-selected at query time. Extra storage + write amplification tradeoff.
+Alternative sort orders within same table. Auto-selected at query time.
+
+```sql
+PROJECTION by_source_ip (SELECT * ORDER BY source_ip, _timestamp_load)
+-- Backfill: ALTER TABLE t MATERIALIZE PROJECTION by_source_ip;
+```
 
 | | Projections | MVs |
 |---|---|---|
-| Storage | Same table | Separate table |
-| Selection | Automatic | Must query target |
+| Storage | Within table | Separate table |
+| Query | Auto-selected | Must query target |
 | Chaining | No | Yes |
 | Complex transforms | No | Yes |
-| FINAL support | No (until v25.8+) | Yes |
 
 ---
 
@@ -456,14 +467,14 @@ Alternative sort order within same table, auto-selected at query time. Extra sto
 
 | Feature | Version | Notes |
 |---|---|---|
-| JSON type (redesigned) | GA v25.3 | Old `Object('json')` removed. Typed path hints, SKIP/REGEXP. |
-| Dynamic / Variant types | GA v25.3 | Columnar, faster than String+parse |
-| Text index (redesigned) | GA v25.10 | Deterministic inverted index, 45x faster, row-level |
-| Query condition cache | v25.3 | 1 bit/condition/granule. Dashboard: 0.8s→50ms. Transparent. |
-| Lazy materialisation | v25.4 | Defers column reads for Top-N. 219s→0.14s. 40x less I/O. |
-| Vector similarity search | GA v25.8 | HNSW index, `cosineDistance`, embedding search |
-| Lightweight updates (patch parts) | **Experimental** v25.7 | 1000x faster than mutations. Watch for GA. |
-| Refreshable MVs | GA v24.10 | Native scheduling, `DEPENDS ON` chaining |
+| JSON type (GA) | v25.3 | Replaces removed `Object('json')`. Typed path hints, SKIP/REGEXP. |
+| Dynamic/Variant types (GA) | v25.3 | Discriminated union / any-type columns. |
+| Text index (GA redesign) | v25.10 | Deterministic inverted index, 45x faster, row-level. |
+| Query condition cache | v25.3 | 1-bit/filter/granule cache. Dashboard queries: 0.8s→50ms. |
+| Lazy materialisation | v25.4 | Defers column reads for Top-N. 219s→0.14s, 40x less I/O. |
+| Vector similarity search (GA) | v25.8 | HNSW index, `cosineDistance`. |
+| Lightweight UPDATE / patch parts | v25.7 | **Experimental.** 1000x faster than mutations. Watch for GA. |
+| Refreshable MVs (GA) | v24.10 | `REFRESH EVERY` — replaces cron/dbt. |
 
 ---
 
@@ -471,15 +482,15 @@ Alternative sort order within same table, auto-selected at query time. Extra sto
 
 ### Data Warehouse
 
-Wide denormalised fact tables + dictionaries for dimensions + MVs for dashboards. Raw table for ad-hoc.
+Wide denormalised fact tables + dictionary lookups. Pre-aggregate via MVs for dashboards; raw table for ad-hoc.
 
 ### Time-Series
 
 ```sql
 CREATE TABLE metrics (
     timestamp DateTime('UTC') CODEC(DoubleDelta, LZ4),
-    device_id UInt32 CODEC(Delta, LZ4),
     metric_name LowCardinality(String),
+    device_id UInt32 CODEC(Delta, LZ4),
     value Float64 CODEC(Gorilla, ZSTD(1))
 ) ENGINE = ReplicatedMergeTree()
 PARTITION BY toYYYYMM(timestamp)
@@ -487,19 +498,26 @@ ORDER BY (metric_name, device_id, timestamp)
 TTL timestamp + INTERVAL 180 DAY DELETE;
 ```
 
-Downsample w/ MVs to `AggregatingMergeTree` (avgState, minState, maxState, countState).
+Downsample with MVs: raw → hourly/daily rollups using `-State`/`-Merge`.
 
-### Log Analytics
+### Log Analytics / Observability
 
-Text indexes (v25.10+) for message search. `bloom_filter` for trace_id lookups. Tiered TTL (hot→warm→cold→delete).
+Text index (v25.10+) for message search. Bloom filter for trace_id lookups.
+
+```sql
+ORDER BY (service, level, timestamp)
+TTL timestamp + INTERVAL 7 DAY TO VOLUME 'warm',
+    timestamp + INTERVAL 30 DAY TO VOLUME 'cold',
+    timestamp + INTERVAL 90 DAY DELETE
+```
 
 ### Real-Time Dashboards
 
-**Pre-aggregate everything.** Dashboard queries hit aggregated tables. Raw = ad-hoc only. Use `SimpleAggregateFunction` for additive metrics, `AggregateFunction` for complex (quantile, uniq).
+**Dashboard queries must hit pre-aggregated tables, never raw.** Use `SimpleAggregateFunction`/`AggregateFunction` with MVs.
 
 ### Funnel Analysis
 
-`windowFunnel(window_seconds)(timestamp, cond1, cond2, ...)` — native ClickHouse, no window functions needed.
+`windowFunnel(86400)(timestamp, cond1, cond2, ...)` — native sequential event analysis. No window functions needed.
 
 ---
 
@@ -507,138 +525,260 @@ Text indexes (v25.10+) for message search. `bloom_filter` for trace_id lookups. 
 
 ### Common Header
 
-**Source of truth:** `dfe-loader/schemas/common_header.csv` and `common_table.sql`
+> **SSOT:** `dfe-loader/schemas/common_header.csv` and `common_table.sql`
 
-| Column | Type | Directive |
-|---|---|---|
-| `_timestamp_load` | `DateTime64(3)` | `@generated: now64(3)` — when CH received row, in ORDER BY |
-| `_timestamp` | `DateTime64(3)` | `@source: timestamp \| now()` — event time, minmax indexed |
-| `_timestamp_received` | `Nullable(DateTime64(3))` | `@source: timestamp_received` |
-| `_uuid` | `UUID` | `@generated: generateUUIDv7()` |
-| `_org_id` | `LowCardinality(String)` | `@source: org_id` — first in ORDER BY |
-| `_source` | `LowCardinality(String)` | `@source: first(_source) \| topic_name` |
-| `_raw` | `Nullable(String)` | `@renamed: logoriginal` |
-| `_json` | `Nullable(JSON)` | `@captured: raw_payload as JSON` |
-| `_tags` | `Nullable(JSON)` | `@source: first(tags/_tags/meta/metadata.tags)` |
+| Column | Type | Directive | Notes |
+|---|---|---|---|
+| `_timestamp_load` | `DateTime64(3)` | `@generated: now64(3)` | In ORDER BY. Query filter, TTL, partition. |
+| `_timestamp` | `DateTime64(3)` | `@source: timestamp \| now()` | Event time. Minmax indexed. |
+| `_timestamp_received` | `Nullable(DateTime64(3))` | `@source: timestamp_received` | When dfe-receiver got it. |
+| `_uuid` | `UUID` | `@generated: generateUUIDv7()` | Time-ordered unique ID. |
+| `_org_id` | `LowCardinality(String)` | `@source: org_id` | Tenant ID. First in ORDER BY. |
+| `_source` | `LowCardinality(String)` | `@source: first(_source) \| topic_name` | Source identifier. |
+| `_raw` | `Nullable(String)` | `@renamed: logoriginal` | Original log line. |
+| `_json` | `Nullable(JSON)` | `@captured: raw_payload as JSON` | Full Kafka message. |
+| `_tags` | `Nullable(JSON)` | `@source: first(tags/_tags/meta/metadata.tags)` | Metadata. |
 
-**Standard ORDER BY:** `(_org_id, _timestamp_load, _uuid)`
-**Standard PARTITION BY:** `(toYYYYMM(_timestamp_load), _org_id)`
+**Standard:** `ORDER BY (_org_id, _timestamp_load, _uuid)` / `PARTITION BY (toYYYYMM(_timestamp_load), _org_id)`
 
-Engine auto-detection: `SharedMergeTree` → `ReplicatedMergeTree` → `MergeTree`
+**Engine auto-detection:** SharedMergeTree → ReplicatedMergeTree → MergeTree (fallback)
 
 ### dfe-receiver
 
-HTTP/gRPC ingestion gateway. Authenticate → validate (sonic-rs SIMD lazy parse) → route → Kafka or dfe-loader direct. No schema awareness, no ClickHouse interaction, no transformation.
+HTTP/gRPC ingestion gateway → Kafka. No schema awareness, no ClickHouse interaction, no transformation.
 
-- Zero-copy hot path (`bytes::Bytes`, `Cow<str>`)
-- Per-topic batching: 10K msgs or 8 MiB or 20ms
-- Backpressure: 67% memory, 503 when saturated
+- sonic-rs `LazyValue` SIMD JSON validation (no DOM)
+- Zero-copy: `bytes::Bytes` + `Cow<str>`
+- Per-topic batching: 10K msgs / 8 MiB / 20ms
+- Backpressure at 67% memory; 503 when saturated
 - Circuit breaker: TieredSink w/ in-memory queue
 - DLQ for invalid/unroutable messages
-- Config hot-reload: SIGHUP or periodic timer
+- Config hot-reload: SIGHUP or timer
+
+**Routing:** field-based source extraction (`key_value_use`, `key_present`, `key_value_set`) → topic suffix mapping.
 
 ### dfe-loader
 
-Kafka→ClickHouse transform + load. **DDL IS the config** — column comments contain `@` directives.
+Kafka → transform → Arrow RecordBatch → ClickHouse via `clickhouse-arrow`.
 
-#### DDL Expression Language
+**DDL IS the config.** Column comments contain `@` directives:
 
-| Directive | What |
+| Directive | Purpose |
 |---|---|
-| `@source: field \| fallback` | Copy from JSON. `first(a/b/c)` for first non-null |
-| `@generated: expr` | CH DEFAULT generates value, loader omits field |
-| `@captured: desc` | Raw payload capture (`_json` column) |
-| `@renamed: field` | Zero-copy rename. `first(a/b)` fallback |
-| `@computed: expr` | Enrichment: `geoip(ip).country_code` etc |
-| `@config: path` | Configurable from YAML/ENV |
+| `@source: field \| fallback` | Copy from JSON. `first(a/b/c)` for first non-null. |
+| `@generated: expression` | CH DEFAULT generates. Loader omits. |
+| `@captured: description` | Raw payload capture (`_json`). |
+| `@renamed: source_field` | Zero-copy rename. |
+| `@computed: expression` | Enrichment (`geoip(ip).country_code`). |
+| `@config: path` | Configurable from YAML/ENV. |
 
-**Transform pipeline order:** extract tags → flatten JSON → validate timestamp → rename → inject header → remove routing fields → sanitise names
+**Transform pipeline order:** Extract tags → Flatten → Validate timestamp → Rename → Inject header → Remove routing fields → Sanitise names
 
-#### clickhouse-arrow (Rust)
+**Field mapping precedence:** Column comments → Config overrides → External remap files → Built-in presets (ECS, CIM, Beats)
 
-Apache Arrow → ClickHouse native protocol. Zero-copy insert (`bytemuck::cast_slice`), vectored I/O, streaming LZ4, connection pooling (up to 16), parallel EXPLAIN, schema introspection via `system.columns`, io_uring (feature-gated, Linux 5.10+).
+#### clickhouse-arrow
 
-**Failed rows:** Binary-split salvage — recursive bisect to isolate bad rows. Good rows inserted, bad → DLQ.
+High-perf async Rust client. Zero-copy Arrow→CH native protocol.
 
-| Arrow Type | ClickHouse Type |
-|---|---|
-| `Utf8`/`LargeUtf8` | `String` |
-| `Dictionary(Int8, Utf8)` | `LowCardinality(String)` (needs `SchemaConversions` hint) |
-| `Decimal128(p,s)` | `Decimal(P,S)` (precision must match) |
-| `Timestamp(ns, tz)` | `DateTime64(9, tz)` (precision must match) |
-| Arrow nullable | Not automatic — be explicit about `Nullable(T)` |
+- `bytemuck::cast_slice` for primitives (zero-copy)
+- Vectored I/O (15–25% fewer syscalls)
+- Streaming LZ4 (constant memory)
+- SIMD null bitmap expansion (2.2x speedup)
+- Size-tiered buffer pooling (21% faster allocs)
+- Connection pooling (up to 16)
+- Parallel EXPLAIN (separate tokio task, negligible overhead)
+- `io_uring` feature-gated (Linux 5.10+)
+- Binary-split salvage for failed rows → DLQ
+
+**Arrow↔CH type mapping caveats:**
+- `Dictionary(Int8, Utf8)` → `LowCardinality(String)` needs `SchemaConversions` hint
+- Arrow nullable ≠ CH Nullable — be explicit
+- `Decimal128(p,s)` precision/scale must match exactly
+
+**Performance:** 40–60% throughput improvement (bulk), 20–35% (string-heavy) vs row-based.
 
 #### The Ingest-First Pattern
 
-Land everything in `_json` first → query → break out hot paths to typed columns as patterns emerge.
+Land everything in `_json`. Break out hot paths to typed columns as query patterns emerge.
 
-Feedback loop: `system.columns` schema fetch → `EXPLAIN ESTIMATE` on sample queries → compare granules read → generate `ALTER TABLE ADD COLUMN` + backfill → validate Arrow↔CH type round-trip.
+```sql
+-- Stage 1: All JSON
+CREATE TABLE dfe.raw (... _json Nullable(JSON) ...) SETTINGS max_dynamic_paths = 1024;
+-- Stage 2: Break out hot paths
+CREATE TABLE dfe.default (... severity LowCardinality(String), source_ip String, _json Nullable(JSON) ...);
+```
+
+Feedback loop: schema from `system.columns` → `EXPLAIN ESTIMATE` → compare granules → generate `ALTER TABLE ADD COLUMN` → validate round-trip.
+
+#### Tokenisers
+
+CH text index tokenisers = search/indexing level. DFE/membank/LLM token accounting uses enhanced tiktoken layer over engine-specific tokenisers (Anthropic, OpenAI, Google). Don't conflate.
 
 ---
 
-## AI Mistakes — Quick Reference
+## AI Mistakes — Hard Rules
 
-| ❌ Don't | ✅ Do | Why |
-|---|---|---|
-| `SELECT *` | Name columns | 200 cols = 200 file reads |
-| Multi-ref CTEs | Temp table or single pass | Re-executed per reference |
-| Fact table on JOIN right | Dimension (small) on right | Right → hash in RAM |
-| `DISTINCT col` | `GROUP BY col` | 4.5x faster |
-| `Nullable` everywhere | Defaults (`''`, `0`) | 2x perf penalty |
-| Single-row inserts | Batch 10K–100K rows | "Too many parts" kills server |
-| `FINAL` without thought | `argMax()` pattern | 16x slower |
-| UUID first in ORDER BY | Low cardinality first | Full scan vs targeted |
-| `BEGIN`/`COMMIT` | N/A — each INSERT atomic | No transactions |
-| `UPSERT`/`ON CONFLICT` | `ReplacingMergeTree` | Doesn't exist |
-| `CASE WHEN x=0 THEN 0 ELSE a/x` | `a / nullIf(x, 0)` or `intDivOrZero` | All branches evaluated |
-| `coalesce(x, 0)` | `ifNull(x, 0)` | 3.4x faster |
-| `OFFSET` pagination | Keyset pagination w/ tiebreaker `_uuid` | O(n) vs O(1) |
-| `PREWHERE` + `FINAL` on RMT | `WHERE` + `FINAL` | Correctness bug — deleted rows reappear |
-| `count(DISTINCT col)` | `uniq(col)` | 20x faster, constant memory |
-| `Float64` for money | `Decimal64(2)` | Non-deterministic sums |
-| `CAST()` on Nullable | `toString()` or `CAST(x AS Nullable(T))` | Silently strips Nullable |
-| `ALTER TABLE UPDATE` per-request | RMT insert / TTL / batched lightweight DELETE | Rewrites parts, blocks merges |
-| DDL without `ON CLUSTER` | `ON CLUSTER '{cluster}'` | Schema drift across replicas |
-| Subquery JOIN without `GLOBAL` | `GLOBAL JOIN`/`GLOBAL IN` on distributed | Incomplete results, no error |
-| Correlated subqueries | Rewrite as JOINs | Beta — can crash/wrong results |
-| `OPTIMIZE TABLE FINAL` routinely | Let auto-merge work; scope to partition if needed | Blocks for hours |
-| `POPULATE` on MV | Create MV then manual `INSERT INTO ... SELECT` in chunks | Races with concurrent inserts |
-| Plain aggregates in AggregatingMT | `-State` on write, `-Merge` on read | Silent corruption |
-| Query RMT without dedup | `argMax` or `FINAL` | Duplicates until merge |
-| Query CollapsingMT without `sign` | `sum(val * sign)`, `HAVING sum(sign) > 0` | Inflated counts |
-| Version column in RMT ORDER BY | Keep version out of ORDER BY | Dedup completely broken |
-| `WHERE toDate(ts) = '...'` | `WHERE ts >= '...' AND ts < '...'` | Functions on cols break index |
-| PostgreSQL syntax (`SERIAL`, `VARCHAR(N)`, `BOOLEAN`, `JSONB`, `\|\|`) | CH equivalents (see table below) | Doesn't exist or different |
-| `Object('json')` | `JSON` (v25.3+) | Old type removed |
-| `MATERIALIZE INDEX` forgotten | Always run after `ADD INDEX` | Existing data unindexed |
+### Critical ❌/✅ Pairs
 
-### PostgreSQL → ClickHouse Syntax
+```sql
+-- ❌ SELECT *
+SELECT * FROM dfe.default;
+-- ✅ Name columns
+SELECT severity, source_ip FROM dfe.default;
+
+-- ❌ CTE referenced multiple times
+WITH cte AS (...) SELECT * FROM cte UNION ALL SELECT * FROM cte;
+-- ✅ Temp table
+CREATE TEMPORARY TABLE tmp AS ...;
+
+-- ❌ Fact table on right
+FROM dim JOIN fact ON ...;
+-- ✅ Dimension on right
+FROM fact JOIN dim ON ...;
+
+-- ❌ DISTINCT (5.8s)
+SELECT DISTINCT col FROM t;
+-- ✅ GROUP BY (1.3s)
+SELECT col FROM t GROUP BY col;
+
+-- ❌ Nullable by default
+hostname Nullable(String)
+-- ✅ Defaults
+hostname String DEFAULT ''
+
+-- ❌ Single-row inserts
+INSERT INTO t VALUES (row1); INSERT INTO t VALUES (row2);
+-- ✅ Batch 10K+ rows per INSERT
+
+-- ❌ FINAL without alternatives (16x slower)
+SELECT * FROM rmt FINAL;
+-- ✅ argMax pattern
+SELECT id, argMax(name, ver) FROM rmt GROUP BY id;
+
+-- ❌ High-cardinality first in ORDER BY
+ORDER BY (uuid, tenant, ts)
+-- ✅ Low cardinality first
+ORDER BY (tenant, event_type, ts)
+
+-- ❌ Function on column in WHERE (breaks index)
+WHERE toDate(ts) = '2026-01-15'
+-- ✅ Range filter on raw column
+WHERE ts >= '2026-01-15' AND ts < '2026-01-16'
+
+-- ❌ CASE/if() for division safety (all branches evaluated)
+SELECT CASE WHEN total=0 THEN 0 ELSE hits/total END
+-- ✅ nullIf or OrZero
+SELECT hits / nullIf(total, 0)
+SELECT intDivOrZero(hits, total)
+
+-- ❌ coalesce (3.4x slower)
+SELECT coalesce(x, 0)
+-- ✅ ifNull
+SELECT ifNull(x, 0)
+
+-- ❌ CAST strips Nullable silently
+SELECT CAST(nullable_col AS String)
+-- ✅ toString preserves Nullable
+SELECT toString(nullable_col)
+
+-- ❌ COUNT(DISTINCT col) on large columns (OOM risk)
+SELECT COUNT(DISTINCT source_ip) FROM t;
+-- ✅ HyperLogLog
+SELECT uniq(source_ip) FROM t;
+
+-- ❌ Float64 for money
+amount Float64
+-- ✅ Decimal
+amount Decimal64(2)
+
+-- ❌ OFFSET pagination (O(n))
+LIMIT 50 OFFSET 2450
+-- ✅ Keyset pagination
+WHERE (ts, _uuid) < (last_ts, last_uuid) ORDER BY ts DESC, _uuid DESC LIMIT 50
+
+-- ❌ PREWHERE with FINAL on ReplacingMergeTree (correctness bug)
+SELECT * FROM rmt FINAL PREWHERE status = 'active'
+-- ✅ WHERE after FINAL
+SELECT * FROM rmt FINAL WHERE status = 'active'
+
+-- ❌ OPTIMIZE TABLE FINAL (blocks hours)
+OPTIMIZE TABLE t FINAL;
+-- ✅ Scope to partition
+OPTIMIZE TABLE t PARTITION '202601' FINAL;
+
+-- ❌ DDL without ON CLUSTER (schema drift)
+ALTER TABLE t ADD COLUMN c String;
+-- ✅
+ALTER TABLE t ON CLUSTER '{cluster}' ADD COLUMN c String;
+
+-- ❌ Distributed subquery without GLOBAL (incomplete results)
+SELECT * FROM dist_events e JOIN dist_users u ON ...;
+-- ✅
+SELECT * FROM dist_events e GLOBAL JOIN dist_users u ON ...;
+
+-- ❌ Correlated subqueries (Beta, can SEGV)
+SELECT (SELECT max(x) FROM t2 WHERE t2.id = t1.id) FROM t1;
+-- ✅ Rewrite as JOIN
+SELECT t1.*, m.max_x FROM t1 JOIN (SELECT id, max(x) AS max_x FROM t2 GROUP BY id) m ON t1.id = m.id;
+
+-- ❌ -State/-Merge mismatch with AggregatingMergeTree
+INSERT INTO agg SELECT date, count() AS cnt ...;
+-- ✅ Write -State, read -Merge
+INSERT INTO agg SELECT date, countState() AS cnt ...;
+SELECT date, countMerge(cnt) FROM agg GROUP BY date;
+
+-- ❌ Query ReplacingMergeTree without dedup
+SELECT * FROM rmt WHERE org = 'x';
+-- ✅ argMax or FINAL
+SELECT id, argMax(name, ver) FROM rmt WHERE org = 'x' GROUP BY id;
+
+-- ❌ Query CollapsingMergeTree without sign
+SELECT user_id, count() FROM sessions GROUP BY user_id;
+-- ✅ Account for sign
+SELECT user_id, sum(sign) AS sessions FROM sessions GROUP BY user_id HAVING sum(sign) > 0;
+
+-- ❌ MV expects backfill
+CREATE MATERIALIZED VIEW mv ... AS SELECT ... FROM existing_table;
+-- ✅ Create MV, then manual backfill
+CREATE MATERIALIZED VIEW mv ...;
+INSERT INTO target SELECT ... FROM existing_table WHERE ... GROUP BY ...;
+
+-- ❌ TTL ≠ PARTITION BY
+PARTITION BY toYYYYMM(ingest_ts) TTL event_ts + INTERVAL 90 DAY DELETE
+-- ✅ Same column
+PARTITION BY toYYYYMM(ingest_ts) TTL ingest_ts + INTERVAL 90 DAY DELETE SETTINGS ttl_only_drop_parts = 1;
+
+-- ❌ ALTER TABLE UPDATE/DELETE routinely (rewrites parts, blocks merges)
+ALTER TABLE t UPDATE status='done' WHERE id='...';
+-- ✅ ReplacingMergeTree or TTL or batched lightweight DELETE
+```
+
+### PostgreSQL → ClickHouse Translation
 
 | PostgreSQL | ClickHouse |
 |---|---|
-| `SERIAL`/`BIGSERIAL` | `generateUUIDv7()` or app-generated |
-| `VARCHAR(N)` | `String` or `FixedString(N)` |
-| `BOOLEAN` | `UInt8` or `Bool` |
+| `SERIAL`/`BIGSERIAL` | `generateUUIDv7()` or app IDs |
+| `VARCHAR(N)` | `String` / `FixedString(N)` |
+| `BOOLEAN` | `UInt8` / `Bool` |
 | `JSONB` | `JSON` (v25.3+) |
 | `CREATE INDEX USING btree` | Skip indexes |
+| `CONSTRAINT`/`FOREIGN KEY` | Not supported |
 | `DISTINCT ON (col)` | `LIMIT 1 BY col` |
-| `string \|\| string` | `concat(string, string)` |
+| `string \|\| string` | `concat(s1, s2)` |
+| `COALESCE` | `ifNull` (3.4x faster) |
 | `DATE_TRUNC('hour', ts)` | `toStartOfHour(ts)` |
 | `EXTRACT(YEAR FROM ts)` | `toYear(ts)` |
 | `POSITION(needle IN haystack)` | `position(haystack, needle)` |
-| `SUBSTRING(s FROM 1 FOR 10)` | `substring(s, 1, 10)` |
-| `lag(val) OVER (...)` | `lagInFrame(val, 1, 0) OVER (... ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)` |
-| `GROUPS` frame / `EXCLUDE` | Not supported — use `ROWS`/`RANGE` |
+| `lag(v) OVER (...)` | `lagInFrame(v,1,0) OVER (... ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)` |
+| `COUNT(DISTINCT x)` | `uniq(x)` |
+| Correlated subqueries | Rewrite as JOINs |
 
 ---
 
 ## References
 
 - Docs: <https://clickhouse.com/docs>
-- SQL Reference: <https://clickhouse.com/docs/en/sql-reference>
 - EXPLAIN: <https://clickhouse.com/docs/en/sql-reference/statements/explain>
 - Best Practices: <https://clickhouse.com/docs/en/best-practices>
-- MergeTree Family: <https://clickhouse.com/docs/en/engines/table-engines/mergetree-family>
-- Data Types: <https://clickhouse.com/docs/en/sql-reference/data-types>
 - Playground: <https://play.clickhouse.com>
 - Altinity KB: <https://kb.altinity.com>

@@ -17,131 +17,92 @@ source: universal/SECURITY.md
 
 ## Input Validation
 
-Validate ALL external input: user input, file uploads, env vars, DB results, external API responses.
+Validate **all** external input: user input, file uploads, env vars, DB results, external API responses.
 
-**Checklist:** type checking, range/length limits, format validation, sanitisation (SQLi/XSS), business logic constraints.
+**Checklist:** type check → range/length limits → format validation → sanitisation → business logic constraints.
 
-### Validation Libraries
-
-| Language | Library |
+| Language | Validation Library |
 |---|---|
-| Python | `pydantic` with `Field`, `validator` |
-| Go | `github.com/go-playground/validator/v10` |
-| TypeScript | `zod` |
-| Bash | Manual checks (`-z`, `${#}`, `=~`) |
+| Python | `pydantic` (`BaseModel`, `Field`, `validator`) |
+| Go | `github.com/go-playground/validator/v10` (struct tags) |
+| TypeScript | `zod` (`z.object`, `.parse()`) |
+| Bash | Manual: check empty, length, regex `[[ ! "${input}" =~ ^pattern$ ]]` |
 
 ```python
-# Python — pydantic
+# Python — pydantic validation
 class UserInput(BaseModel):
     email: EmailStr
     age: int = Field(ge=18, le=120)
     username: str = Field(min_length=3, max_length=50, pattern=r'^[a-zA-Z0-9_]+$')
 ```
 
-```go
-// Go — struct tags
-type UserInput struct {
-    Email    string `validate:"required,email"`
-    Age      int    `validate:"gte=18,lte=120"`
-    Username string `validate:"required,min=3,max=50,alphanum"`
-}
-```
-
 ```typescript
-// TypeScript — zod
+// TypeScript — zod validation
 const UserInput = z.object({
   email: z.string().email(),
   age: z.number().int().min(18).max(120),
   username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_]+$/),
 });
+const validated = UserInput.parse(data); // throws ZodError
 ```
-
-```bash
-# Bash — always validate
-[[ -z "${input}" ]] && return 1
-[[ ${#input} -gt 255 ]] && return 1
-[[ ! "${input}" =~ ^[a-zA-Z0-9_-]+$ ]] && return 1
-```
-
----
 
 ## SQL Injection Prevention
 
 | ❌ Don't | ✅ Do | Why |
 |---|---|---|
-| `f"SELECT * FROM users WHERE id = {user_id}"` | `cursor.execute("... WHERE id = %s", (user_id,))` | SQL injection |
+| `f"SELECT * FROM users WHERE id = {user_id}"` | `cursor.execute("SELECT ... WHERE id = %s", (user_id,))` | SQL injection |
 | `fmt.Sprintf("... WHERE id = %s", id)` | `db.QueryRow("... WHERE id = $1", id)` | SQL injection |
-| `` `SELECT * FROM users WHERE id = ${userId}` `` | `db.query('... WHERE id = $1', [userId])` | SQL injection |
+| `` `SELECT ... WHERE id = ${userId}` `` | `prisma.user.findUnique({ where: { id } })` or `db.query('... WHERE id = $1', [id])` | SQL injection |
 
-Use ORMs/query builders: SQLAlchemy, sqlx, Prisma.
-
----
+Use ORMs (SQLAlchemy, sqlx, Prisma) or parameterised queries. **Never** string-interpolate user input into SQL.
 
 ## Secrets Management
 
-| ❌ Don't | ✅ Do |
-|---|---|
-| Commit secrets to VCS | Use env vars or secret managers (Vault, AWS Secrets Manager) |
-| Hardcode credentials | `os.environ["DATABASE_URL"]` or `hyperi_pylib.config.settings` |
-| Log passwords/tokens/keys | Mask all sensitive data in logs |
-| Same secrets across envs | Different secrets per environment |
+- ❌ Never commit secrets to VCS
+- ❌ Never hardcode credentials
+- ❌ Never log passwords/tokens/API keys
+- ✅ Use env vars or secret managers (Vault, AWS Secrets Manager)
+- ✅ Rotate secrets regularly
+- ✅ Different secrets per environment
 
-### .gitignore — required entries
-
-```gitignore
-.env
-.env.local
-.env.*.local
-*.pem
-*.key
-credentials.json
-secrets.yaml
+```python
+# ❌ DATABASE_URL = "postgresql://user:password123@localhost/db"
+# ✅
+DATABASE_URL = os.environ["DATABASE_URL"]
+# ✅ Better — hyperi_pylib.config
+DATABASE_URL = settings.database.url  # Raises if missing
 ```
 
-Rotate secrets regularly.
-
----
+**Required `.gitignore` entries:** `.env`, `.env.local`, `.env.*.local`, `*.pem`, `*.key`, `credentials.json`, `secrets.yaml`
 
 ## Dependency Security
 
-### Required Scanners
+| Language | Scanner | Alerts | Lock File |
+|---|---|---|---|
+| Python | `bandit`, `pip-audit` | Dependabot, Snyk | `uv.lock` |
+| Go | `govulncheck` | Dependabot | `go.sum` |
+| Node.js | `npm audit`, `snyk` | Dependabot, Snyk | `package-lock.json` / `yarn.lock` |
+| Rust | `cargo audit` | Dependabot | `Cargo.lock` |
 
-| Language | Scanner | Alerts |
-|---|---|---|
-| Python | `bandit`, `pip-audit` | Dependabot, Snyk |
-| Go | `govulncheck` | Dependabot |
-| Node.js | `npm audit`, `snyk` | Dependabot, Snyk |
-| Rust | `cargo audit` | Dependabot |
-
-### Lock Files — ALWAYS commit
-
-| Language | Lock file |
-|---|---|
-| Python | `uv.lock` |
-| Go | `go.sum` |
-| Node.js | `package-lock.json` / `yarn.lock` |
-| Rust | `Cargo.lock` |
+**Always commit lock files.** Update commands:
 
 ```bash
-# Update commands
-./ci/run dependency-update          # Python (uv)
-go get -u ./... && go mod tidy      # Go
-npm update && npm audit fix         # Node.js
-cargo update && cargo audit         # Rust
+./ci/run dependency-update  # Python (uv)
+go get -u ./... && go mod tidy  # Go
+npm update && npm audit fix  # Node.js
+cargo update && cargo audit  # Rust
 ```
-
----
 
 ## Authentication & Authorisation
 
-### Password Handling
+### Passwords
 
 | ❌ Don't | ✅ Do |
 |---|---|
 | `db.insert(password=password)` | `bcrypt.hashpw(password.encode(), bcrypt.gensalt())` |
-| Store plain text | Store bcrypt hash, verify with `bcrypt.checkpw` |
+| Store plain text | Store bcrypt hash, verify with `bcrypt.checkpw()` |
 
-### Token Security
+### Tokens & Rate Limiting
 
 ```python
 import secrets
@@ -149,11 +110,7 @@ token = secrets.token_urlsafe(32)
 api_key = f"sk_{secrets.token_hex(32)}"
 ```
 
-### Rate Limiting
-
-Implement per-identifier rate limiting (e.g., 5 attempts / 15 min window). Clean expired entries. Apply to login, API auth, password reset.
-
----
+Implement rate limiting: track attempts per identifier, enforce max attempts within sliding window (e.g., 5 attempts / 15 min).
 
 ## Common Vulnerabilities (OWASP Top 10)
 
@@ -167,15 +124,15 @@ Implement per-identifier rate limiting (e.g., 5 attempts / 15 min window). Clean
 
 | ❌ Don't | ✅ Do |
 |---|---|
-| `f"<div>Hello, {user_name}</div>"` | `escape(user_name)` or templating engine (auto-escapes) |
+| `f"<div>Hello, {user_name}</div>"` | `escape(user_name)` or use templating engine (auto-escapes) |
 
 ### Insecure Deserialisation
 
 | ❌ Don't | ✅ Do |
 |---|---|
-| `pickle.loads(user_bytes)` | `json.loads(user_string)` or `MyModel.model_validate_json()` |
+| `pickle.loads(user_bytes)` | `json.loads(user_string)` or `MyModel.model_validate_json(user_string)` |
 
-Never use `pickle` with untrusted data — remote code execution risk.
+**Never** use `pickle` with untrusted data (RCE risk).
 
 ### Path Traversal
 
@@ -186,22 +143,18 @@ if not str(file_path).startswith(str(base_path)):
     raise ValueError("Invalid path")
 ```
 
----
-
 ## Logging Security
 
-**NEVER log:** passwords, tokens, API keys, card numbers, SSNs, private keys, session tokens, JWTs, PII.
+**Never log:** passwords, tokens, API keys, card numbers, SSNs, private keys, session tokens, JWTs, PII.
 
 ```python
 from hyperi_pylib import logger
 # Auto-masks sensitive fields
-logger.info("Login", username="alice", password="secret")
+logger.info("User login", username="alice", password="secret123")
 # → password="***MASKED***"
 ```
 
-Mask helpers: show only last 4 of cards (`****-****-****-1234`), partial emails (`a***e@domain.com`).
-
----
+Mask helpers: show only last 4 digits of cards (`****-****-****-1234`), partially mask emails (`a***e@domain.com`).
 
 ## Security Checklists
 
@@ -212,7 +165,7 @@ Mask helpers: show only last 4 of cards (`****-****-****-1234`), partial emails 
 - [ ] Parameterised queries only
 - [ ] Passwords hashed (never plain text)
 - [ ] Sensitive data masked in logs
-- [ ] Dependencies scanned for vulns
+- [ ] Dependencies scanned
 - [ ] Error messages don't expose internals
 
 ### Before Deploying

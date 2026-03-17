@@ -17,24 +17,24 @@ source: universal/CODE-STYLE.md
 
 # Code Style Standards
 
-## Common AI Mistakes
+## Common AI Mistakes — Fix First
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
 | Dense chained one-liners | Break into named intermediate variables | Readability, debugging |
-| Numbered comments (`# 1. …`, `# 2. …`) | Unnumbered comments | Renumbering on reorder |
+| Numbered comments (`# 1. …`, `# 2. …`) | Unnumbered comments (`# Validate input`) | Renumbering on reorder |
 | Comments describing WHAT | Comments explaining WHY | Code is self-documenting for WHAT |
-| Hardcode `/tmp` paths | Use language temp libraries | Security, cleanup |
-| Predictable temp filenames | `mktemp`/`tempfile`/`os.CreateTemp` | Security |
-| `colour`/`initialise` in code identifiers | `color`/`initialize` in code | Match stdlib conventions |
+| `colour`, `initialise`, `optimise` in **code** | `color`, `initialize`, `optimize` in **code** | Match stdlib conventions |
+| `color`, `initialize` in **docs/comments** | `colour`, `initialise` in **docs/comments** | Australian English for documentation |
+| Hardcoded `/tmp/myfile` | Language tempfile library + auto-cleanup | Security, cleanup |
+| Predictable temp filenames | `mktemp` / `tempfile` / `os.CreateTemp()` | Avoid symlink attacks |
 
 ## Clarity Over Cleverness
 
 - Break compound operations into named steps
 - Use intermediate variables with descriptive names
-- Simple single-operation idioms (list comprehensions, short chains) are fine
-- Avoid nested operations requiring mental parsing
-- Avoid multiple transformations in a single expression
+- Simple idiomatic single operations are fine; **nested/multi-transform chains are not**
+- Comments explain WHY, not WHAT
 
 ```python
 # ❌
@@ -46,7 +46,7 @@ result = [[f(x) for x in row] for row in non_empty_rows]
 ```
 
 ```go
-// ✅ Name complex conditions
+// ✅ Named boolean sub-expressions
 normalUserAccess := hasPermission && isActive
 adminOverride := isAdmin && !isLocked
 if normalUserAccess || adminOverride { process() }
@@ -54,93 +54,93 @@ if normalUserAccess || adminOverride { process() }
 
 ## Function Organisation
 
-**Helper-first (recommended):** Define helper/child functions at top, main/parent function at bottom.
-
-- Helpers defined before use → clearer dependencies
-- Easier cut/paste/reorder without breaking references
-- Alternative (main-first) acceptable — **be consistent per file**
+- **Helper-first**: define helpers at top, main/parent function at bottom
+- Reading top→bottom follows details→usage ("zoom in")
+- Alternative (main-first) acceptable — **stay consistent per file**
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-# helpers first
 validate_input() { [[ -n "${1:-}" ]] || return 1; }
-cleanup() { rm -rf "${TEMP_DIR:-}"; }
-# main last
-main() { validate_input "${1:-}" || { echo "Error" >&2; exit 1; }; }
+process_file() { echo "Processing: ${1}"; }
+main() { validate_input "${1:-}" || { echo "Error" >&2; exit 1; }; process_file "${1}"; }
 main "$@"
-```
-
-## Comment Standards
-
-- Never number sequential comments
-- Comment WHY, not WHAT
-- Document: public APIs, complex algorithms, non-obvious business logic, security/perf concerns, edge cases, assumptions
-- Don't document: obvious code, frequently-changing implementation details
-
-```python
-# ❌ Increment counter
-counter += 1
-# ✅ Track retries for exponential backoff calculation
-counter += 1
 ```
 
 ## Naming Conventions
 
 | Element | Convention | Examples |
 |---------|-----------|----------|
-| Variables | Descriptive, context-clear | `user_count`, `total_price` |
+| Variables | Descriptive, context-clear | `user_count`, `isValid` |
 | Functions | Verb-noun | `get_user()`, `validate_input()` |
 | Constants | `UPPER_SNAKE_CASE` | `MAX_RETRIES`, `DEFAULT_TIMEOUT` |
-| Booleans | `is/has/can/should` prefix | `is_active`, `has_permission` |
+| Booleans | `is/has/can/should` prefix | `is_active`, `hasPermission` |
 
-### Language-Specific Casing
-
-| Language | Vars/Funcs | Classes | Constants |
-|----------|-----------|---------|-----------|
+| Language | Vars/Funcs | Types | Constants |
+|----------|-----------|-------|-----------|
 | Python | `snake_case` | `PascalCase` | `UPPER_SNAKE_CASE` |
-| Go | `camelCase`/`PascalCase` (exported) | `PascalCase` | `PascalCase` or `UPPER_SNAKE_CASE` |
+| Go | `camelCase` / `PascalCase` (exported) | `PascalCase` | `PascalCase` or `UPPER_SNAKE_CASE` |
 | JS/TS | `camelCase` | `PascalCase` | `UPPER_SNAKE_CASE` |
 | Rust | `snake_case` | `PascalCase` | `UPPER_SNAKE_CASE` |
 | Bash | `snake_case` (local), `UPPER_SNAKE_CASE` (export) | N/A | `UPPER_SNAKE_CASE` |
 
 ## Spelling & Language
 
-- **Code identifiers:** American English (`color`, `initialize`, `optimize`)
-- **Docs/comments/commits:** Australian English (`colour`, `initialise`, `optimise`)
-
 ```python
+# ✅ American in code identifiers, Australian in comments/docstrings
 def initialize_color_picker():
     """Initialise the colour picker component."""
-    color = "#FF0000"  # American in code
+    color = "#FF0000"
+    return ColorPicker(color)
 ```
 
 ## Temporary Files
 
-- **Dev work:** Use `./.tmp/` for all project-scoped temp files (gitignored)
-- **Production:** Use language-standard temp libraries:
-
-| Language | Use |
-|----------|-----|
+| Context | Method |
+|---------|--------|
+| Dev/CI scratch | `./.tmp/` (project-scoped, gitignored) |
 | Python | `tempfile` module |
 | Go | `os.MkdirTemp()`, `os.CreateTemp()` |
 | Node.js | `tmp` / `temp` packages |
 | Rust | `tempfile` crate |
-| Bash | `mktemp` command |
+| Bash | `mktemp` |
 
-- Always use auto-cleanup (context managers, `defer`, RAII, `trap`)
-- Always set restrictive permissions
+- ✅ Always auto-cleanup (context managers, `defer`, RAII, `trap`)
+- ✅ Always restrictive permissions
+- ❌ Never hardcode `/tmp` paths or predictable filenames
 
-## Performance Guidelines
+## Documentation
+
+**Always document:** public APIs, complex algorithms, non-obvious business logic, security/perf considerations, edge cases, assumptions.
+
+**Don't document:** obvious code, frequently-changing impl details, WHAT (only WHY).
+
+## Performance
 
 - Profile before optimising; optimise hot path first
-- Use appropriate data structures; cache expensive computations
-- Batch operations when possible
+- Use appropriate data structures; cache expensive computations; batch operations
 
-| ❌ Anti-Pattern | Fix |
+| ❌ Anti-pattern | Fix |
 |----------------|-----|
-| N+1 queries | Batch/join queries |
-| Unnecessary nested loops | Restructure or use maps/sets |
-| Unclosed resources | RAII / defer / context managers |
-| Blocking ops in hot paths | Async or offload |
+| N+1 queries | Batch/join |
+| Unnecessary nested loops | Better data structures |
+| Unclosed resources | RAII / `defer` / `finally` |
+| Blocking in hot paths | Async / offload |
 | Excessive prod logging | Level-gate logs |
+
+## CLI Tool Preferences
+
+Use modern tools; fall back with `command -v`.
+
+| Task | ✅ Use | ❌ Instead of |
+|------|-------|--------------|
+| Recursive search | `rg` (ripgrep) | `grep -R` |
+| Find files | `fd` / `fdfind` | `find` |
+| File loops | `fd`, `parallel`, `xargs -0` | bash for loops |
+| Search/replace | `sd` | `sed -i` |
+| JSON | `jq` | grep/awk |
+| YAML/JSON/XML/CSV/TOML | `yq` | grep/awk |
+| CSV/TSV | `mlr` (Miller) | awk/cut |
+| Directory trees | `rsync` | complex cp/mv |
+| File preview | `bat` / `batcat` | `cat` |
+| Interactive pickers | `fzf` | custom shell menus |

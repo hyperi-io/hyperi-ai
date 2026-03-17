@@ -20,91 +20,69 @@ source: universal/PKI.md
 
 ## Security Profiles
 
-**Corporate default: `prod`.** Use `prod` unless you have a specific reason not to.
+| Profile | Use | TLS Cert | Hash | Notes |
+|---------|-----|----------|------|-------|
+| **prod** (default) | Production, customer-facing | ECDSA P-384 | SHA-384 | Corporate default — use if unsure |
+| devtest | Local dev, staging, prototypes | ECDSA P-256 | SHA-256 | Industry default, lighter |
+| highsec | Federal/defence contracts | P-384 → ML-DSA-87 | SHA-384/512 | CNSA 2.0 required |
 
-| Profile | TLS Cert | Hash | SSH | Use When |
-|---------|----------|------|-----|----------|
-| **prod** | ECDSA P-384 | SHA-384 | Ed25519 | Production, customer data, APIs, default |
-| devtest | ECDSA P-256 | SHA-256 | Ed25519 | Local dev, prototypes, staging |
-| highsec | P-384→ML-DSA | SHA-384/512 | Ed25519+ML-KEM hybrid | Federal/defence contracts, classified data |
-
-All profiles: AES-256-GCM symmetric, 20+ alphanumeric passwords (~119 bits entropy), TLS 1.2 minimum / 1.3 preferred.
+**All profiles:** SSH=Ed25519, Symmetric=AES-256-GCM, Passwords=20 alphanumeric (~119 bits)
 
 ## Banned Algorithms
 
 | ❌ Never Use | Why |
 |---|---|
-| SSLv2/3, TLS 1.0/1.1 | Known vulnerabilities |
+| SSLv2/3, TLS 1.0/1.1 | Known vulns |
 | MD5, SHA-1 | Broken hashes |
 | DES, 3DES, RC4 | Weak/broken |
-| CBC mode | Padding oracle attacks |
-| RSA key exchange (non-ECDHE) | No forward secrecy |
+| CBC mode | Padding oracle |
+| RSA key exchange | No forward secrecy |
 | Export ciphers | Intentionally weak |
-| ECDSA for SSH keys | RNG dependency leaks private key |
+| ECDSA for SSH keys | RNG failure leaks private key |
 
 ## SSH Keys
 
 ```bash
 # Default — all profiles
 ssh-keygen -t ed25519 -C "user@hyperi.io"
-# Legacy fallback only
+# Fallback (legacy only)
 ssh-keygen -t rsa -b 4096 -C "user@hyperi.io"
 ```
 
-**Post-quantum (OpenSSH 9.9+):**
+**Post-quantum SSH (OpenSSH 9.9+):**
 
 ```text
 Host *
     KexAlgorithms mlkem768x25519-sha256,sntrup761x25519-sha512,curve25519-sha256
 ```
 
-| Algorithm | OpenSSH Version | Notes |
+| Algorithm | OpenSSH | Notes |
 |---|---|---|
 | mlkem768x25519-sha256 | 9.9+ | Default in 10.0 |
 | sntrup761x25519-sha512 | 9.0+ | Previous default |
 | curve25519-sha256 | 6.5+ | Classical fallback |
 
-**Permissions:** `700` for `~/.ssh/`, `600` for private keys & config, `644` for public keys/authorized_keys/known_hosts.
+**Permissions:** `700 ~/.ssh`, `600` private keys/config, `644` public keys/authorized_keys/known_hosts.
 
-## Certificate Format: PEM
+## TLS Certificates
 
-PEM is the standard format. Use `.key`, `.crt`, `.pem` extensions.
+### Generate P-384 (prod default)
 
-```text
-server.key       # Private key
-server.crt       # Certificate
-ca.crt           # CA certificate
-fullchain.crt    # Server cert + chain (nginx etc.)
-client.crt/.key  # mTLS client cert/key
-```
-
-| ❌ Don't | ✅ Do | Why |
-|---|---|---|
-| Use PKCS#12/JKS by default | Use PEM everywhere | Human-readable, universal support |
-| Use `.p12`/`.pfx` | Convert only when service requires it | `openssl pkcs12 -export` when needed |
-
-**Inspect:**
-```bash
-openssl x509 -in server.crt -text -noout
-openssl x509 -in cert.crt -enddate -noout
-openssl verify -CAfile ca.crt server.crt
-```
-
-## TLS Certificate Generation
-
-**prod default — P-384:**
 ```bash
 openssl ecparam -genkey -name secp384r1 -out server.key
 openssl req -x509 -new -key server.key -out server.crt \
     -days 365 -sha384 -subj "/CN=app.example.com/O=HyperI/C=AU"
 ```
 
-**CA certificate:**
+### Generate CA
+
 ```bash
 openssl ecparam -genkey -name secp384r1 -out ca.key
 openssl req -x509 -new -key ca.key -out ca.crt \
     -days 3650 -sha384 -subj "/CN=HyperI Internal CA/O=HyperI/C=AU"
 ```
+
+**Fallback:** RSA-4096 only for legacy client compat.
 
 | Metric | ECDSA P-384 | RSA-4096 |
 |---|---|---|
@@ -112,28 +90,29 @@ openssl req -x509 -new -key ca.key -out ca.crt \
 | Key size | 48 bytes | 512 bytes |
 | Sign speed | ~2100/sec | ~10/sec |
 
-RSA-4096 fallback only for legacy compatibility.
+## Certificate Format: PEM
 
-**Cert locations (Linux):** System CA bundle `/etc/ssl/certs/ca-certificates.crt`, custom CAs in `/usr/local/share/ca-certificates/` then `sudo update-ca-certificates`. Fedora: `/etc/pki/ca-trust/source/anchors/` then `sudo update-ca-trust`. macOS: `brew install openssl@3`, use `security add-trusted-cert` for system keychain.
+**PEM is the standard.** Extensions: `.key` (private), `.crt`/`.pem` (cert), `.csr` (request).
+
+```bash
+# Inspect cert
+openssl x509 -in server.crt -text -noout
+# Convert to PKCS12 (only when required by Java/Windows/LB)
+openssl pkcs12 -export -in server.crt -inkey server.key -certfile ca.crt -out server.p12
+```
+
+**PEM file naming:** `server.key`, `server.crt`, `ca.crt`, `chain.crt`, `fullchain.crt`, `client.crt`, `client.key`
 
 ## TLS Configuration
 
-**TLS 1.3 cipher priority:**
-1. `TLS_AES_256_GCM_SHA384`
-2. `TLS_CHACHA20_POLY1305_SHA256`
-3. `TLS_AES_128_GCM_SHA256`
+### Cipher Priority
 
-**TLS 1.2 fallback (AEAD only):**
-```text
-ECDHE-ECDSA-AES256-GCM-SHA384
-ECDHE-RSA-AES256-GCM-SHA384
-ECDHE-ECDSA-CHACHA20-POLY1305
-ECDHE-RSA-CHACHA20-POLY1305
-ECDHE-ECDSA-AES128-GCM-SHA256
-ECDHE-RSA-AES128-GCM-SHA256
-```
+**TLS 1.3:** `TLS_AES_256_GCM_SHA384` > `TLS_CHACHA20_POLY1305_SHA256` > `TLS_AES_128_GCM_SHA256`
 
-**Nginx:**
+**TLS 1.2 (fallback, AEAD only):** `ECDHE-ECDSA-AES256-GCM-SHA384`, `ECDHE-RSA-AES256-GCM-SHA384`, `ECDHE-ECDSA-CHACHA20-POLY1305`, `ECDHE-RSA-CHACHA20-POLY1305`
+
+### Nginx
+
 ```nginx
 ssl_protocols TLSv1.2 TLSv1.3;
 ssl_prefer_server_ciphers off;
@@ -141,7 +120,19 @@ ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDS
 add_header Strict-Transport-Security "max-age=31536000" always;
 ```
 
-**Envoy / Gateway API:** Use `tls_minimum_protocol_version: TLSv1_2`, `tls_maximum_protocol_version: TLSv1_3`, cipher suites `TLS_AES_256_GCM_SHA384` + `ECDHE-ECDSA-AES256-GCM-SHA384`. For mTLS set `require_client_certificate: true` with `validation_context.trusted_ca`. Gateway API: `tls.mode: Terminate` with `certificateRefs` to a Secret (cert-manager managed).
+### Envoy / Gateway API
+
+```yaml
+tls_params:
+  tls_minimum_protocol_version: TLSv1_2
+  tls_maximum_protocol_version: TLSv1_3
+  cipher_suites:
+    - TLS_AES_256_GCM_SHA384
+    - TLS_CHACHA20_POLY1305_SHA256
+    - ECDHE-ECDSA-AES256-GCM-SHA384
+```
+
+Gateway API: use `certificateRefs` pointing to cert-manager-managed Secret. For mTLS set `require_client_certificate: true`.
 
 ## Database TLS
 
@@ -155,30 +146,43 @@ ssl_key_file = '/etc/postgresql/server.key'
 ssl_ca_file = '/etc/postgresql/ca.crt'
 ```
 
-PostgreSQL 18+: `ssl_tls13_ciphers = 'TLS_AES_256_GCM_SHA384'`
-
-Use `sslmode=verify-full` in production. Connect: `psql "host=db dbname=app sslmode=verify-full sslrootcert=/path/to/ca.crt"`
+Use `sslmode=verify-full` in production. PostgreSQL 18+ adds `ssl_tls13_ciphers`.
 
 ### ClickHouse
 
-Enable `https_port` (8443) and `tcp_port_secure` (9440). Set `disableProtocols=sslv2,sslv3,tlsv1,tlsv1_1`, `verificationMode=strict`. Disable insecure ports (8123, 9000). Connect: `clickhouse-client --port 9440 --secure`
+```xml
+<openSSL><server>
+  <certificateFile>/etc/clickhouse-server/certs/server.crt</certificateFile>
+  <privateKeyFile>/etc/clickhouse-server/certs/server.key</privateKeyFile>
+  <verificationMode>strict</verificationMode>
+  <disableProtocols>sslv2,sslv3,tlsv1,tlsv1_1</disableProtocols>
+</server></openSSL>
+```
+
+Disable insecure ports (`http_port`, `tcp_port`). Connect: `clickhouse-client --port 9440 --secure`
 
 ## Kafka / AutoMQ TLS
 
-Kafka uses mTLS. Broker: `security.inter.broker.protocol=SSL`, `ssl.client.auth=required`, `ssl.protocol=TLSv1.3`, PKCS12 keystores/truststores.
+mTLS for encryption + auth. Use PKCS12 keystores/truststores.
+
+```properties
+security.inter.broker.protocol=SSL
+ssl.client.auth=required
+ssl.keystore.type=PKCS12
+ssl.enabled.protocols=TLSv1.2,TLSv1.3
+ssl.protocol=TLSv1.3
+```
 
 ```bash
-# Create PKCS12 keystore from P-384 cert
+# Create broker keystore
+openssl ecparam -genkey -name secp384r1 -out broker.key
 openssl pkcs12 -export -in broker.crt -inkey broker.key \
-    -out kafka.keystore.p12 -name kafka -CAfile ca.crt -caname root -chain
+    -out kafka.keystore.p12 -name kafka -CAfile ca.crt -chain
+keytool -importcert -file ca.crt -keystore kafka.truststore.p12 \
+    -storetype PKCS12 -alias ca -noprompt
 ```
 
-**Python client:**
-```python
-producer = KafkaProducer(
-    bootstrap_servers=['kafka:9093'], security_protocol='SSL',
-    ssl_cafile='ca.crt', ssl_certfile='client.crt', ssl_keyfile='client.key')
-```
+Python client: `KafkaProducer(security_protocol='SSL', ssl_cafile=..., ssl_certfile=..., ssl_keyfile=...)`
 
 ## Passwords & Secrets
 
@@ -186,10 +190,9 @@ producer = KafkaProducer(
 openssl rand -base64 30 | tr -dc 'a-zA-Z0-9' | head -c 20
 ```
 
-20 alphanumeric = ~119 bits entropy. Length > complexity (NIST 2024). Special chars only when system requires.
+20 alphanumeric = ~119 bits. Length > complexity. Special chars only when system requires.
 
-**Store secrets in:** HashiCorp Vault/OpenBao, 1Password, cloud secrets managers, runtime env vars.
-**Never in:** git repos, code, committed config files.
+**Store in:** HashiCorp Vault/OpenBao, 1Password, runtime env vars. **Never in:** git, code, committed config.
 
 ## Gitignore (Mandatory)
 
@@ -218,15 +221,30 @@ credentials.json
 
 Set global: `git config --global core.excludesfile ~/.gitignore_global`
 
-## Language-Specific Patterns
+## Platform-Specific
+
+| OS | Install/Update CA |
+|---|---|
+| Ubuntu/Debian | `sudo cp myca.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates` |
+| Fedora/RHEL | `sudo cp myca.crt /etc/pki/ca-trust/source/anchors/ && sudo update-ca-trust` |
+| macOS | `brew install openssl@3` / `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain myca.crt` |
+| Windows | Use WSL2 with Ubuntu |
+
+## Language-Specific
 
 ### Python
 
-| ❌ Don't | ✅ Do |
-|---|---|
-| `ctx.verify_mode = ssl.CERT_NONE` | `ctx = ssl.create_default_context(cafile=certifi.where())` |
-| `requests.get(url, verify=False)` | `requests.get(url, verify=certifi.where())` |
-| `ssl.PROTOCOL_SSLv3` | `ctx.minimum_version = ssl.TLSVersion.TLSv1_2` |
+```python
+import ssl, certifi
+ctx = ssl.create_default_context(cafile=certifi.where())
+ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+```
+
+| ❌ Don't | ✅ Do | Why |
+|---|---|---|
+| `ctx.verify_mode = ssl.CERT_NONE` | `ssl.create_default_context(cafile=certifi.where())` | Disables verification |
+| `requests.get(url, verify=False)` | `requests.get(url, verify=certifi.where())` | MitM vulnerable |
+| `ssl.PROTOCOL_SSLv3` | `ctx.minimum_version = ssl.TLSVersion.TLSv1_2` | Deprecated protocol |
 
 ### Rust
 
@@ -239,61 +257,89 @@ let config = ClientConfig::builder()
     .with_no_client_auth();
 ```
 
+Crates: `rustls`, `webpki_roots`
+
 ### Go
 
 - Go defaults to TLS 1.2+ and secure ciphers — usually no config needed
-- Never set `InsecureSkipVerify: true` in production
+- Never `InsecureSkipVerify: true` in production
 - Use SAN in certs — Go deprecated Common Name matching
-- FIPS mode: build with `GOEXPERIMENT=boringcrypto`
-
-### C++
-
-- Use OpenSSL 3.x or BoringSSL
-- Always call `SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr)`
-- Check return values — OpenSSL fails silently
-- Set `SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION)`
-- Consider wolfSSL/mbedTLS for embedded
+- FIPS: `GOEXPERIMENT=boringcrypto`
 
 ### TypeScript/Node.js
 
-Set `minVersion: 'TLSv1.2'`, always provide `ca`, set `rejectUnauthorized: true`.
+Set `minVersion: 'TLSv1.2'`, always `rejectUnauthorized: true`, load CA with `ca: fs.readFileSync(...)`.
+
+### C++
+
+Use OpenSSL 3.x or BoringSSL. Always `SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, nullptr)`. Check return values — OpenSSL fails silently. Consider wolfSSL/mbedTLS for embedded.
 
 ### Bash
 
 ```bash
+# Debug TLS
+openssl s_client -connect example.com:443 -CAfile /path/to/ca.crt
+# mTLS
 curl --cacert ca.crt --cert client.crt --key client.key https://api.example.com
-openssl s_client -connect host:443 -CAfile ca.crt  # debug
 ```
 
 ## Infrastructure Tools
 
 ### Terraform
 
-Use Vault for PKI. Never store private keys in Terraform state. Use `local_sensitive_file` for cert outputs. ACM: use DNS validation with Route53 (`create_before_destroy = true`).
+Use Vault for PKI. **Never store private keys in Terraform state.**
 
-### Ansible
+```hcl
+resource "vault_pki_secret_backend_cert" "app" {
+  backend     = "pki"
+  name        = "server-role"
+  common_name = "app.example.com"
+  ttl         = "720h"
+}
+```
 
-Use `community.crypto.openssl_privatekey` (type: ECC, curve: secp384r1, mode: 0600), `community.crypto.openssl_csr`, `community.crypto.x509_certificate`.
+### Ansible (`community.crypto`)
+
+```yaml
+- community.crypto.openssl_privatekey:
+    path: /etc/ssl/private/server.key
+    type: ECC
+    curve: secp384r1
+    mode: '0600'
+```
 
 ### Helm / cert-manager
+
+```yaml
+tls:
+  enabled: true
+  secretName: app-tls  # cert-manager managed
+```
+
+## Proxmox VE
+
+Use **Terraform ACME provider + Ansible deployment**, not built-in Proxmox ACME.
+
+| Built-in ACME | Our Pattern |
+|---|---|
+| RSA-2048 default | ECDSA P-384 (`key_type = "P384"`) |
+| Per-node config | Centralized Terraform state |
+| Manual renewal | Auto-renewal `min_days_remaining = 30` |
+
+Terraform: `acme_certificate` with `dns_challenge { provider = "route53" }`, `key_type = "P384"`.
+
+Ansible deploys to Proxmox: `/etc/pve/local/pveproxy-ssl.pem` (cert), `/etc/pve/local/pveproxy-ssl.key` (key), owner `root:www-data`, mode `0640`. Restart `pveproxy`. Use `no_log: true` for key tasks.
+
+Cluster internal certs (`pve-root-ca.pem`, node certs) are auto-managed — only replace pveproxy cert.
+
+Include Prometheus cert expiry metrics via node_exporter textfile collector.
+
+## Rancher / K3s
 
 ```bash
 helm install cert-manager jetstack/cert-manager \
     --namespace cert-manager --create-namespace --set crds.enabled=true
 ```
-
-Use `ClusterIssuer` with Let's Encrypt ACME, `Certificate` resources referencing it.
-
-## Proxmox VE
-
-Use Terraform ACME provider + Ansible deployment, not built-in Proxmox ACME.
-
-- Terraform: `acme_certificate` with `key_type = "P384"`, DNS-01 via Route53, `min_days_remaining = 30`
-- Ansible: deploy to `/etc/pve/local/pveproxy-ssl.pem` and `.key` (owner root:www-data, mode 0640), `no_log: true` for key tasks
-- Include Prometheus cert expiry metrics via node_exporter textfile collector
-- Only replace pveproxy cert — cluster internal certs are auto-managed
-
-## Rancher / K3s
 
 | Option | Use Case |
 |---|---|
@@ -301,19 +347,21 @@ Use Terraform ACME provider + Ansible deployment, not built-in Proxmox ACME.
 | Let's Encrypt | Public-facing (`--set ingress.tls.source=letsEncrypt`) |
 | Bring your own | Enterprise CA (`--set ingress.tls.source=secret --set privateCA=true`) |
 
-Create secrets: `kubectl -n cattle-system create secret tls tls-rancher-ingress --cert=server.crt --key=server.key`
+ClusterIssuer + Certificate CRDs for workload certs.
 
 ## OpenBao (Vault Fork)
 
-API-compatible with Vault PKI. Use intermediate CA (keep root offline).
+API-compatible with Vault PKI. Use intermediate CA (root offline).
 
 ```bash
 bao secrets enable pki
 bao write pki/root/generate/internal \
     common_name="HyperI Root CA" ttl=87600h key_type=ec key_bits=384
+bao write pki_int/roles/server \
+    allowed_domains="example.com" allow_subdomains=true \
+    max_ttl=720h key_type=ec key_bits=384
+bao write pki_int/issue/server common_name="app.example.com" ttl=720h
 ```
-
-Create roles with `key_type=ec key_bits=384`. Issue via `bao write pki_int/issue/server`.
 
 | Key Type | Issuance Rate |
 |---|---|
@@ -324,94 +372,129 @@ For >250k active certs, use audit logs instead of storing certs in OpenBao.
 
 ## AWS Certificate Services
 
-**ACM:** Free public TLS. Use DNS validation (auto-renews). Don't pin ACM certs (they rotate). Terraform: `aws_acm_certificate` + `aws_route53_record` for validation.
+### ACM
 
-**ACM Private CA:** `KeyAlgorithm=EC_secp384r1, SigningAlgorithm=SHA384WITHECDSA`
+```bash
+aws acm request-certificate --domain-name app.example.com \
+    --validation-method DNS --subject-alternative-names "*.app.example.com"
+```
 
-**ALB/NLB TLS policies:** Use `ELBSecurityPolicy-TLS13-1-2-2021-06` (recommended).
+- Use DNS validation (auto-renews if CNAME exists)
+- Don't pin ACM certs (they auto-rotate)
+- Terraform: `aws_acm_certificate` + `aws_route53_record` for validation
 
-**Enforce TLS on S3:** Deny policy with `"aws:SecureTransport": "false"` condition.
+### ACM Private CA
 
-**Post-quantum:** AWS KMS/ACM/Secrets Manager support ML-KEM hybrid on non-FIPS endpoints.
+```bash
+aws acm-pca create-certificate-authority \
+    --certificate-authority-configuration \
+        KeyAlgorithm=EC_secp384r1,SigningAlgorithm=SHA384WITHECDSA,...
+```
 
-## CNSA 2.0 / highsec
+### AWS TLS Policies
 
-### Timeline (NSA National Security Systems)
+| Policy | Versions | Use |
+|---|---|---|
+| `ELBSecurityPolicy-TLS13-1-2-2021-06` | 1.2+1.3 | Recommended |
+| `ELBSecurityPolicy-TLS13-1-3-2021-06` | 1.3 only | Max security |
 
-| Capability | Exclusive Use Date |
+Enforce TLS on S3: bucket policy with `"Bool": { "aws:SecureTransport": "false" }` → Deny.
+
+**PQ note:** AWS KMS, ACM, Secrets Manager support ML-KEM hybrid on non-FIPS endpoints.
+
+## HIGH SECURITY: Federal (CNSA 2.0)
+
+### Timeline
+
+| Capability | Exclusive Use |
 |---|---|
 | Software/firmware signing (LMS/XMSS) | 2025 |
-| Web browsers/servers (TLS 1.3 + CNSA) | 2025 |
+| Web browsers/servers | 2025 |
 | Traditional networking | 2026 |
 | Operating systems | 2027 |
-| Legacy equipment sunset | 2033 |
+| Legacy sunset | 2033 |
 
 ### Mandatory Algorithms
 
 | Use | Algorithm | FIPS |
 |---|---|---|
-| Symmetric | AES-256 | FIPS 197 |
-| Hash | SHA-384/SHA-512 | FIPS 180-4 |
-| Key exchange | ML-KEM-1024 | FIPS 203 |
-| Digital signatures | ML-DSA-87 | FIPS 204 |
-| Firmware signing | LMS or XMSS | SP 800-208 |
+| Symmetric | AES-256 | 197 |
+| Hash | SHA-384/512 | 180-4 |
+| Key exchange | ML-KEM-1024 | 203 |
+| Signatures | ML-DSA-87 | 204 |
+| Firmware signing | LMS/XMSS | SP 800-208 |
 
-**FIPS mode:** OpenSSL `OPENSSL_FIPS=1`, Go `GOEXPERIMENT=boringcrypto`, AWS FIPS endpoints (suffix `-fips`).
+### FIPS Mode
 
-**Upgrade trigger:** Contract requires CNSA/FIPS, classified data, Five Eyes defence customer. "Might sell to government" → stay at `prod`.
+| Platform | How |
+|---|---|
+| OpenSSL | FIPS provider / `OPENSSL_FIPS=1` |
+| Go | `GOEXPERIMENT=boringcrypto` |
+| AWS | FIPS endpoints (suffix `-fips`) |
+
+### Compliance Checklist
+
+TLS 1.3 only, AES-256-GCM, SHA-384+, P-384 ECDSA (→ ML-DSA), hybrid PQ where available, FIPS 140-2/3 modules, no deprecated algorithms, certificate pinning disabled, audit logging of crypto ops.
+
+**Trigger:** Contract requires CNSA/FIPS or handling classified data → highsec. "Might sell to government" → prod is close enough.
 
 ## HyperI Library Integration
 
-**Python (hyperi-pylib):**
+### Python (hyperi-pylib)
+
 ```python
 from hyperi_pylib.tls import create_ssl_context
-ctx = create_ssl_context(profile="prod")  # default
+ctx = create_ssl_context(profile="prod")  # "devtest", "highsec"
 ```
 
-**Rust (hyperi-rustlib):**
+### Rust (hyperi-rustlib)
+
 ```rust
 use hyperi_rustlib::tls::{create_tls_config, TlsProfile};
 let config = create_tls_config(TlsProfile::Prod)?;
 ```
 
-Both provide: SSL context factory, profile-based config, database SSL helpers (`build_database_url()`), Kafka mTLS config, settings.yaml/env var config cascade.
+| Feature | hyperi-pylib | hyperi-rustlib |
+|---|---|---|
+| SSL context | `create_ssl_context()` | `create_tls_config()` |
+| DB SSL | `build_database_url()` | via settings |
+| Kafka mTLS | `get_kafka_ssl_config()` | `KafkaConfig::from_settings()` |
+| Config | settings.yaml / env vars | settings.yaml / env vars |
 
 Docs: `hyperi-pylib/docs/PKI.md`, `hyperi-rustlib/docs/PKI.md`
-
-## AI Code Review Flags
-
-| Flag | Issue |
-|---|---|
-| `ssl.CERT_NONE`, `verify=False`, `InsecureSkipVerify: true` | Cert verification disabled |
-| TLS 1.0/1.1, SSLv3 | Deprecated protocol |
-| MD5/SHA-1 for signatures | Broken hash |
-| RSA < 2048 bits | Weak key |
-| Hardcoded passwords/keys | Must be external |
-| Missing `.key`/`.pem`/`.env` in gitignore | Secret leak risk |
-| Never generate real private keys | Use placeholders or generation commands |
 
 ## Common Commands Cheat Sheet
 
 ```bash
+# Inspect
+openssl x509 -in cert.crt -text -noout
+openssl x509 -in cert.crt -enddate -noout
+openssl verify -CAfile ca.crt server.crt
 # Test TLS
-openssl s_client -connect host:443 -servername host
-openssl s_client -connect host:443 -showcerts
-nmap --script ssl-enum-ciphers -p 443 host
-
+openssl s_client -connect example.com:443 -servername example.com
+nmap --script ssl-enum-ciphers -p 443 example.com
 # Convert
-openssl pkcs12 -export -in cert.crt -inkey cert.key -out cert.p12  # PEM→P12
-openssl pkcs12 -in cert.p12 -out cert.pem -nodes                    # P12→PEM
-openssl x509 -inform DER -in cert.der -out cert.pem                 # DER→PEM
-
-# Extract public key
-openssl ec -in private.key -pubout -out public.key
+openssl pkcs12 -export -in cert.crt -inkey cert.key -out cert.p12
+openssl x509 -inform DER -in cert.der -out cert.pem
 ```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| SSH "UNPROTECTED PRIVATE KEY" | `chmod 600 ~/.ssh/id_ed25519 && chmod 700 ~/.ssh` |
-| "certificate verify failed" | Check CA cert, hostname vs CN/SAN, expiry, intermediate chain |
-| PostgreSQL "SSL required" | `SHOW ssl`, check cert file permissions |
-| Kafka "SSL handshake failed" | Verify keystore/truststore passwords, CN=hostname, TLS version match |
+| SSH "UNPROTECTED PRIVATE KEY FILE" | `chmod 600 ~/.ssh/id_ed25519 && chmod 700 ~/.ssh` |
+| "certificate verify failed" | Check CA cert, hostname vs SAN, expiry, intermediate chain |
+| PostgreSQL SSL required | `psql "sslmode=require" -c "SHOW ssl"`, check file perms |
+| Kafka SSL handshake failed | Verify keystore/truststore passwords, cert CN=hostname, TLS version compat |
+
+## AI Code Review Flags
+
+| ❌ Flag | Why |
+|---|---|
+| `ssl.CERT_NONE` / `verify=False` / `InsecureSkipVerify: true` | Disables cert verification |
+| TLS 1.0/1.1, SSLv3 | Deprecated protocols |
+| MD5/SHA-1 for signatures | Broken hashes |
+| RSA < 2048 | Weak keys |
+| Hardcoded passwords/keys | Must be external |
+| Missing `.key`/`.pem`/`.env` in gitignore | Secret leak risk |
+| Real private keys in generated code | Use placeholders or gen commands |

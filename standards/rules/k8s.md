@@ -18,46 +18,16 @@ source: infrastructure/K8S.md
 
 # Kubernetes Standards — HyperI Projects
 
-**Prereq:** Containers must pass [DOCKER.md](DOCKER.md) checklist before K8s deployment.
-
----
-
-## Quick Reference
-
-```bash
-kubectl get pods / logs -f <pod> / describe pod <pod> / apply -f manifest.yaml
-helm install <name> <chart> / helm upgrade <name> <chart>
-```
-
----
-
-## HELM Chart Structure
-
-```text
-mychart/
-├── Chart.yaml, values.yaml, values-dev.yaml, values-prod.yaml
-├── templates/ (_helpers.tpl, deployment, service, configmap, secret, ingress, hpa, NOTES.txt)
-└── charts/
-```
-
-### Chart.yaml
-
-```yaml
-apiVersion: v2
-name: dfe-discovery
-type: application
-version: 0.3.0        # Chart version (semver)
-appVersion: "1.16.0"  # App version (quoted string)
-```
+> Helm charts, deployments, services, ArgoCD, KEDA. All containers must pass [DOCKER.md](DOCKER.md) before K8s deployment.
 
 ---
 
 ## Prohibited: Bitnami Charts
 
-**Never use `bitnami/*` charts.** Non-standard configs, hard to debug, breaking upgrades.
+**Never use Bitnami Helm charts.** Use operators instead.
 
-| Component | ❌ Don't | ✅ Use Instead | Install |
-|-----------|---------|---------------|---------|
+| Component | ❌ Don't | ✅ Use | Install |
+|-----------|---------|-------|---------|
 | PostgreSQL | `bitnami/postgresql` | CloudNativePG | `helm install cnpg cloudnative-pg/cloudnative-pg -n cnpg-system` |
 | Kafka | `bitnami/kafka` | Strimzi / AutoMQ | `helm install strimzi strimzi/strimzi-kafka-operator -n kafka` |
 | ClickHouse | `bitnami/clickhouse` | Altinity Operator | `helm install clickhouse-operator altinity/clickhouse-operator` |
@@ -66,6 +36,8 @@ appVersion: "1.16.0"  # App version (quoted string)
 | Elasticsearch | `bitnami/elasticsearch` | ECK | `helm install elastic-operator elastic/eck-operator -n elastic-system` |
 | ArgoCD | `bitnami/argo-cd` | Official Chart | `helm install argocd argo/argo-cd -n argocd` |
 | MinIO | `bitnami/minio` | MinIO Operator | `helm install minio-operator minio/operator -n minio-operator` |
+
+**HyperI standard stack:** CloudNativePG, AutoMQ (S3-backed Kafka), Altinity ClickHouse, Vector (logs), ArgoCD, Helm 3.
 
 ```bash
 helm repo add cloudnative-pg https://cloudnative-pg.github.io/charts
@@ -79,69 +51,50 @@ helm repo add minio https://operator.min.io/
 helm repo update
 ```
 
-**HyperI standard stack:** CloudNativePG, AutoMQ (S3-backed Kafka), Altinity ClickHouse, Vector (logs), ArgoCD, Helm 3.
+---
+
+## Helm Chart Structure
+
+```text
+mychart/
+├── Chart.yaml          # apiVersion: v2, semver version, quoted appVersion
+├── values.yaml         # Defaults
+├── values-{dev,prod}.yaml
+├── templates/
+│   ├── _helpers.tpl    # name, fullname, labels, selectorLabels
+│   ├── deployment.yaml, service.yaml, configmap.yaml
+│   ├── secret.yaml, ingress.yaml, hpa.yaml, NOTES.txt
+└── charts/             # Dependencies (no Bitnami)
+```
+
+## Chart.yaml
 
 ```yaml
-# ✅ CloudNativePG Cluster
-apiVersion: postgresql.cnpg.io/v1
-kind: Cluster
-metadata:
-  name: myapp-db
-spec:
-  instances: 3
-  storage: { size: 10Gi }
+apiVersion: v2
+name: dfe-discovery
+type: application
+version: 0.3.0           # Chart version (semver)
+appVersion: "1.16.0"     # App version (quoted string)
 ```
 
 ---
 
-## values.yaml Patterns
+## Ingress: Gateway API over Ingress
+
+| Workload | Rule |
+|----------|------|
+| **New** | Gateway API + Envoy-based controller. No new Ingress resources. |
+| **Existing (simple)** | Migrate to Gateway API on schedule |
+| **Existing (NGINX annotations)** | Keep short-term, plan explicit refactor |
+
+**Recommended controllers:** Envoy Gateway (default), Contour, Istio Gateway.
 
 ```yaml
-image:
-  repository: registry.example.com/myapp
-  tag: ""  # defaults to Chart.appVersion
-  pullPolicy: IfNotPresent
-imagePullSecrets: [{ name: registry-credentials }]
-replicaCount: 2
-resources:
-  requests: { cpu: 100m, memory: 128Mi }
-  limits: { cpu: 500m, memory: 512Mi }
+# ❌ NGINX-specific annotations — non-portable, security risk
+annotations:
+  nginx.ingress.kubernetes.io/configuration-snippet: |
+    more_set_headers "X-Custom-Header: value";
 ```
-
-### Health Probes (required in values)
-
-```yaml
-livenessProbe:  { httpGet: { path: /health/live, port: http }, initialDelaySeconds: 10, periodSeconds: 10, failureThreshold: 3 }
-readinessProbe: { httpGet: { path: /health/ready, port: http }, initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 2 }
-startupProbe:   { httpGet: { path: /health/startup, port: http }, failureThreshold: 30, periodSeconds: 5 }
-```
-
-### Service & Routing
-
-```yaml
-service: { type: ClusterIP, port: 80, targetPort: 8080 }
-httpRoute:            # ✅ Preferred — Gateway API
-  enabled: true
-  parentRefs: [{ name: main-gateway, namespace: gateway-system }]
-  hostnames: [app.example.com]
-ingress:
-  enabled: false      # Legacy only — migrate to httpRoute
-global:
-  tenancy_name: dfe
-  appSecretName: app-secrets
-```
-
----
-
-## Ingress Policy: Gateway API over Ingress
-
-| ❌ Don't | ✅ Do | Why |
-|---------|------|-----|
-| Create new `Ingress` resources | Use `HTTPRoute` (Gateway API) | Portable, type-safe, no vendor lock |
-| Use `nginx.ingress.kubernetes.io/*` annotations | Use Gateway API filters | NGINX snippets = security risk + non-portable |
-| Default `ingressClassName: nginx` | Use `gatewayClassName: envoy` | Envoy-based is the standard |
-
-**Recommended controllers:** Envoy Gateway (CNCF), Contour, Istio Gateway (if mesh exists).
 
 ```yaml
 # ✅ Gateway API HTTPRoute
@@ -150,42 +103,85 @@ kind: HTTPRoute
 metadata:
   name: myapp-route
 spec:
-  parentRefs: [{ name: main-gateway, namespace: gateway-system }]
+  parentRefs:
+    - name: main-gateway
+      namespace: gateway-system
   hostnames: ["app.example.com"]
   rules:
-    - matches: [{ path: { type: PathPrefix, value: /api } }]
-      backendRefs: [{ name: myapp, port: 80 }]
+    - matches:
+        - path: { type: PathPrefix, value: /api }
+      backendRefs:
+        - name: myapp
+          port: 80
 ```
 
-**Migration path:** Audit Ingress → deploy Envoy Gateway parallel → migrate simple routes → refactor annotated routes → decommission NGINX.
+**Gateway** (cluster-wide, platform-managed): `gatewayClassName: envoy`, HTTPS listener with TLS termination.
+
+**Migration path:** Audit → Deploy Envoy Gateway parallel → Migrate simple routes → Refactor annotated routes → Decommission NGINX.
 
 ---
 
-## Template Helpers (_helpers.tpl)
+## values.yaml Patterns
 
-Include standard helpers: `mychart.chart`, `mychart.labels`, `mychart.selectorLabels`, `mychart.fullname`. Truncate to 63 chars. Use `app.kubernetes.io/*` label schema.
-
----
-
-## Deployment Template — Critical Patterns
-
-- Annotation `checksum/config` for configmap-triggered rollout
-- `securityContext: { runAsNonRoot: true, runAsUser: 1000, fsGroup: 1000 }`
-- Inject `POD_NAME` via `fieldRef: metadata.name`
-- `envFrom: [{ secretRef: { name: .Values.global.appSecretName } }]`
-- Conditionally set `replicas` only when `autoscaling.enabled: false`
+```yaml
+image:
+  repository: registry.example.com/myapp
+  tag: ""                    # Defaults to Chart.appVersion
+  pullPolicy: IfNotPresent
+replicaCount: 2
+resources:                   # ALWAYS specify
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { cpu: 500m, memory: 512Mi }
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+httpRoute:
+  enabled: true              # Gateway API preferred
+ingress:
+  enabled: false             # Disabled by default
+global:
+  tenancy_name: dfe
+  appSecretName: app-secrets
+```
 
 ---
 
 ## Health Endpoints
 
-| Endpoint | Purpose | Probe |
-|----------|---------|-------|
-| `/health/live` | Process alive | livenessProbe |
-| `/health/ready` | Can serve traffic (check deps) | readinessProbe |
-| `/health/startup` | Init complete | startupProbe |
+| Endpoint | Probe | Purpose |
+|----------|-------|---------|
+| `/health/live` | livenessProbe | Process alive |
+| `/health/ready` | readinessProbe | Can handle traffic (check deps) |
+| `/health/startup` | startupProbe | Init complete |
 
-Return 503 when not ready/started. All three required.
+```yaml
+livenessProbe:
+  httpGet: { path: /health/live, port: http }
+  initialDelaySeconds: 10, periodSeconds: 10, failureThreshold: 3
+readinessProbe:
+  httpGet: { path: /health/ready, port: http }
+  initialDelaySeconds: 5, periodSeconds: 5, failureThreshold: 2
+startupProbe:
+  httpGet: { path: /health/startup, port: http }
+  failureThreshold: 30, periodSeconds: 5
+```
+
+---
+
+## Deployment Template — Key Patterns
+
+- Annotation `checksum/config` for ConfigMap rollout: `{{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}`
+- `securityContext: { runAsNonRoot: true, runAsUser: 1000, fsGroup: 1000 }`
+- `envFrom` with `secretRef` → `global.appSecretName`
+- Inject `POD_NAME` via `fieldRef: metadata.name`
+- Conditional `replicas` when `autoscaling.enabled` is false
+
+---
+
+## Template Helpers (_helpers.tpl)
+
+Required helpers: `mychart.chart`, `mychart.name`, `mychart.fullname`, `mychart.labels`, `mychart.selectorLabels`. Truncate to 63 chars, trimSuffix `-`.
 
 ---
 
@@ -194,15 +190,19 @@ Return 503 when not ready/started. All three required.
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
-metadata: { name: myapp, namespace: argocd }
+metadata:
+  name: myapp
+  namespace: argocd
 spec:
-  project: default
   source:
     repoURL: https://github.com/org/repo.git
     targetRevision: HEAD
     path: charts/myapp
-    helm: { valueFiles: [values.yaml, values-prod.yaml] }
-  destination: { server: "https://kubernetes.default.svc", namespace: production }
+    helm:
+      valueFiles: [values.yaml, values-prod.yaml]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: production
   syncPolicy:
     automated: { prune: true, selfHeal: true }
     syncOptions: [CreateNamespace=true]
@@ -212,10 +212,30 @@ spec:
 
 ## KEDA Autoscaling
 
+Use `scaling_pressure` metric from `hyperi-rustlib` `scaling` feature (normalised 0–100 combining queue depth, latency, errors, utilisation).
+
+```yaml
+# ❌ Brittle Prometheus combination queries
+triggers:
+  - type: prometheus
+    metadata:
+      query: sum(rate(kafka_consumer_lag{...})) / on() sum(rate(messages_processed_total{...}))
+
+# ✅ Native scaling pressure
+triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus:9090
+      metricName: scaling_pressure
+      threshold: "70"
+      query: avg(scaling_pressure{app="myapp"})
+```
+
 ```yaml
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
-metadata: { name: myapp-scaler }
+metadata:
+  name: myapp-scaler
 spec:
   scaleTargetRef: { name: myapp }
   minReplicaCount: 2
@@ -223,24 +243,24 @@ spec:
   pollingInterval: 30
   cooldownPeriod: 300
   triggers:
-    - type: cpu
-      metricType: Utilization
-      metadata: { value: "80" }
-    - type: kafka
-      metadata: { bootstrapServers: "kafka:9092", consumerGroup: myapp-group, topic: events, lagThreshold: "100" }
-    - type: prometheus
-      metadata: { serverAddress: "http://prometheus:9090", threshold: "100", query: 'sum(rate(http_requests_total{app="myapp"}[2m]))' }
+    - type: prometheus  # Primary: scaling_pressure
+    - type: kafka       # Fallback: lagThreshold: "100"
 ```
 
 ---
 
-## ConfigMaps & Secrets
-
-### ConfigMap — use Helm template with `config.yaml` inline.
-
-### External Secrets (ESO)
+## ConfigMaps & External Secrets
 
 ```yaml
+# ConfigMap — template with values
+data:
+  config.yaml: |
+    server: { port: {{ .Values.service.targetPort }} }
+    logging: { level: {{ .Values.logLevel | default "info" }} }
+```
+
+```yaml
+# External Secrets Operator (ESO)
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 spec:
@@ -256,16 +276,14 @@ spec:
 
 ## Network Policies
 
-Always define `Ingress` + `Egress` policy types. Allow:
-- Ingress from ingress controller namespace + same namespace
-- Egress to DNS (port 53/UDP) + specific backends (e.g. postgresql:5432)
+Always define both Ingress and Egress `policyTypes`. Allow: ingress controller → app, same-namespace pods, DNS (UDP 53), specific DB ports.
 
 ---
 
 ## Resource Management
 
-- **ResourceQuota** per namespace: set `requests.cpu`, `requests.memory`, `limits.*`, `pods`
-- **LimitRange**: set container defaults (`cpu: 500m/100m`, `memory: 512Mi/128Mi`)
+- **ResourceQuota** per namespace: cap `requests.cpu`, `requests.memory`, `limits.*`, `pods`
+- **LimitRange**: set default/defaultRequest per Container (e.g., 500m/512Mi limit, 100m/128Mi request)
 
 ---
 
@@ -273,13 +291,13 @@ Always define `Ingress` + `Egress` policy types. Allow:
 
 | ❌ Never | ✅ Always |
 |---------|----------|
-| `latest` tag in production | Pin image tags |
-| Secrets in ConfigMaps | Use ExternalSecret / ESO |
+| `latest` tag in prod | Pinned image tag or `Chart.appVersion` |
+| Secrets in ConfigMaps | External Secrets (ESO) + vault |
 | Run as root | `runAsNonRoot: true, runAsUser: 1000` |
-| Skip health probes | All 3 probes: live, ready, startup |
-| Hardcode env-specific values | Use `values-{env}.yaml` overrides |
-| Omit resource requests/limits | Specify both requests AND limits |
-| Skip PodDisruptionBudget | Define PDB for all prod workloads |
+| Skip health probes | All three: liveness, readiness, startup |
+| Hardcode env-specific values | `values-{env}.yaml` overrides |
+| Omit resource limits | Specify both requests AND limits |
+| Skip PodDisruptionBudget | Always define PDB |
 
 ### Required Labels
 

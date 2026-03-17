@@ -21,8 +21,17 @@ source: universal/DESIGN-PRINCIPLES.md
 Each class/function: ONE reason to change.
 
 ```python
-# ❌ UserManager with save_user + send_email + generate_report
-# ✅ UserRepository, EmailService, UserReportGenerator — separate classes
+# ❌ UserManager with save_user, send_welcome_email, generate_report
+
+# ✅ Split into focused classes
+class UserRepository:
+    def save(self, user): db.insert(user)
+
+class EmailService:
+    def send_welcome(self, user): smtp.send(user.email, "Welcome!")
+
+class UserReportGenerator:
+    def generate(self, user): return f"User Report: {user.name}"
 ```
 
 ### Open/Closed (OCP)
@@ -30,72 +39,98 @@ Each class/function: ONE reason to change.
 Open for extension, closed for modification.
 
 ```python
-# ❌ if/elif chain in PaymentProcessor for each type
-# ✅ Base PaymentProcessor + CreditCardProcessor, PayPalProcessor subclasses
+# ❌ if/elif chain for payment types inside one class
+
+# ✅ Extend via inheritance
+class PaymentProcessor:
+    def process(self, amount): raise NotImplementedError
+
+class CreditCardProcessor(PaymentProcessor): ...
+class PayPalProcessor(PaymentProcessor): ...
+class BitcoinProcessor(PaymentProcessor): ...  # No existing code modified
 ```
 
 ### Liskov Substitution (LSP)
 
-Subtypes must honor base type contracts.
+Subtypes must be substitutable for base types without breaking contracts.
 
 ```python
-# ❌ Penguin(Bird) raising Exception("can't fly!")
-# ✅ Bird.move() → FlyingBird.move(), Penguin.move()
+# ❌ Penguin(Bird).fly() raises Exception
+
+# ✅ Correct hierarchy
+class Bird:
+    def move(self): raise NotImplementedError
+class FlyingBird(Bird):
+    def move(self): return "Flying"
+class Penguin(Bird):
+    def move(self): return "Swimming"
 ```
 
 ### Interface Segregation (ISP)
 
-Split fat interfaces into focused ones.
+Split fat interfaces into small, focused ones.
 
 ```python
-# ❌ Robot(Worker) forced to implement eat(), sleep()
-# ✅ Workable, Eatable, Sleepable — Robot only implements Workable
+# ❌ Robot(Worker) forced to implement eat() and sleep()
+
+# ✅ Segregated interfaces
+class Workable:
+    def work(self): pass
+class Eatable:
+    def eat(self): pass
+
+class Robot(Workable): ...       # Only what it needs
+class Human(Workable, Eatable): ...
 ```
 
 ### Dependency Inversion (DIP)
 
-Depend on abstractions, not concretions.
+Depend on abstractions, not concretions. Inject dependencies.
 
 ```python
-# ❌ self.db = MySQLDatabase()  # hardcoded in __init__
-# ✅ def __init__(self, db: Database):  # inject abstraction
+# ❌ self.db = MySQLDatabase()  # tight coupling
+
+# ✅ Inject abstraction
+class UserService:
+    def __init__(self, db: Database):  # accepts any Database impl
+        self.db = db
 ```
 
 ## DRY (Don't Repeat Yourself)
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| Duplicate identical logic across functions | Extract to shared function/class | Reduce maintenance surface |
-| Force DRY on similar-but-diverging logic | Accept duplication if paths differ | Wrong abstraction > duplication |
-| DRY at first occurrence | Wait for 3+ duplicates (Rule of Three) | Premature extraction creates coupling |
-| `if type == "user"` / `elif type == "product"` growing chain | Separate `process_user` / `process_product` | Forced DRY → artificial coupling |
+| Copy-paste identical logic across functions | Extract shared logic into one function | Single source of truth |
+| Force-DRY on similar-but-divergent logic | Accept duplication if logic will diverge | Wrong abstraction > duplication |
+| Extract on first duplicate | Wait for 3+ duplicates (Rule of Three) | Premature DRY creates coupling |
+| Create `process_entity(type)` with if/elif branches | Keep `process_user()` and `process_product()` separate | Growing if/elif = code smell |
 
 ## KISS (Keep It Simple, Stupid)
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| `ConfigFactoryFactory` → `ConfigFactory` → config | `config = load_config("config.yaml")` | No unnecessary indirection |
-| Nested comprehension one-liners | Break into named intermediate steps | Readability > cleverness |
-| Clever tricks without comments | Straightforward code | Future maintainers |
+| `ConfigFactoryFactory` → `ConfigFactory` → config | `config = load_config("config.yaml")` | Match complexity to problem |
+| Nested one-liner comprehensions | Multi-step with named intermediates | Readability > cleverness |
+| Abstract patterns for simple problems | Direct, straightforward code | Fewer bugs, easier maintenance |
 
-**Complexity justified only when:** performance-critical (profiled), security-critical, unavoidable domain complexity — and documented.
+**Complexity is justified only when:** performance-critical (profiled), security-critical, or unavoidable domain complexity — and always documented.
 
 ## YAGNI (You Aren't Gonna Need It)
 
-Implement only what is needed NOW.
+Implement only what's needed NOW.
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
-| DB abstraction layer when using only PostgreSQL | Direct PostgreSQL usage | Add abstraction when second DB is real |
-| Plugin system for one plugin | Call the plugin directly | Speculative generality |
-| Config for values that never change | Hardcode; add config when actually needed | Over-configuration adds complexity |
+| DB abstraction layer when using only PostgreSQL | Use PostgreSQL directly | Add abstraction when second DB is real |
+| Plugin system for one plugin | Call the plugin directly | Infrastructure without need = waste |
+| Make everything configurable | Hardcode until change is needed | Config adds indirection |
+| Build speculative features "just in case" | Refactor when requirement is confirmed | Speculative code rots |
 
-**Build ahead ONLY when:**
+**Build ahead only when:**
 - Requirements are certain (not speculative)
-- Cost of later refactor is very high
-- Architecture decision that's hard to reverse
-- Security/compliance requirement
+- Cost of later refactor is very high (architecture decisions)
+- Security/compliance demands it
 
 ## See Also
 
-- **Configuration & Logging:** See `CONFIG-AND-LOGGING.md` for 7-layer config cascade and structured logging standards
+- **Configuration & Logging:** `CONFIG-AND-LOGGING.md` — 7-layer config cascade, structured logging standards
