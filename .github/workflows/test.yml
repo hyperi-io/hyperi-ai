@@ -30,3 +30,35 @@ jobs:
           ./attach.sh --help
           ./agents/claude.sh --help
           ./agents/gemini.sh --help
+
+  regenerate-rules:
+    name: Regenerate Compact Rules (changed only)
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GIT_TOKEN || github.token }}
+
+      - name: Install dependencies
+        run: pip install anthropic
+
+      - name: Regenerate changed rules
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python3 tools/generate-rules.py --verbose
+
+      - name: Commit and push if changed
+        run: |
+          if ! git diff --quiet standards/rules/; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add standards/rules/
+            git commit -m "chore: regenerate compact rules [skip ci]"
+            git push
+          fi
