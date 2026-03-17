@@ -972,6 +972,43 @@ class User:
 # Python threads do NOT provide parallelism for CPU work (GIL)
 # Use threads ONLY for I/O-bound concurrency with external services
 # For CPU parallelism: multiprocessing, concurrent.futures, or Rust
+
+# ✅ No "power features" — avoid metaclasses, __getattr__ hacks,
+# dynamic code generation, bytecode manipulation, sys._getframe.
+# These make code impossible to understand, grep, and debug.
+class MyMeta(type): ...     # ❌ Almost never justified
+type("Dyn", (Base,), {})    # ❌ Dynamic class creation
+exec(code_string)           # ❌ Never with external input
+
+# ✅ Comprehensions: ONE clause max. No nesting.
+[x**2 for x in range(10)]                    # ✅ Single clause
+[name for user in users if user.active       # ❌ Two clauses —
+      for name in user.aliases]              #    use explicit loop
+
+# ✅ Default arguments must be IMMUTABLE
+def bad(items: list = []):             # ❌ Mutable default
+    items.append(1)                    #    shared across calls!
+
+def good(items: list | None = None):   # ✅ None default
+    items = items if items is not None else []
+
+def also_good(count: int = 0):         # ✅ Immutable types are fine
+    ...
+
+def with_tuple(dims: tuple = (64, 64)):  # ✅ Tuples are immutable
+    ...
+
+# ✅ Import modules, not individual classes/functions
+import os                              # ✅ Import module
+from os import path                    # ❌ Avoid (Google rule)
+path.exists("/tmp")                    # ❌ Unclear where path comes from
+os.path.exists("/tmp")                 # ✅ Origin is obvious
+
+# Exception: well-known short imports are fine
+from pathlib import Path               # ✅ Widely understood
+from typing import Protocol            # ✅ Standard pattern
+from dataclasses import dataclass      # ✅ Standard pattern
+from collections.abc import Iterator   # ✅ Standard pattern
 ```
 
 ### Examples
