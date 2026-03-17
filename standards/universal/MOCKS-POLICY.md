@@ -1,6 +1,6 @@
 ---
 name: mocks-policy-standards
-description: Mock-aware testing policy for HyperI projects. Test against real dependencies; mocks are scaffolding not testing. No placeholder code in production.
+description: No mocks policy. Test against real dependencies always. Mocks are forbidden — use testcontainers, sandboxes, and real infrastructure.
 rule_paths:
   - "**/*.py"
   - "**/*.rs"
@@ -13,124 +13,128 @@ rule_paths:
   - "**/*.spec.*"
 ---
 
-# Mock-Aware Testing Policy
+# No Mocks Policy
 
 > **"Every time we have mocks and AI it always ends in tears."** — Derek
 
-**Mocks are scaffolding, not testing. A test suite with only mocked tests is untested.**
+**Do not use mocks. Test against real dependencies. Period.**
+
+A mocked test proves nothing — it tests your assumptions about the dependency,
+not the dependency itself. Mocked test suites pass while production burns.
 
 ---
 
-## The Core Problem
+## The Rule
 
-AI coding agents routinely run mock-heavy tests, see green, and declare code
-"production ready." But mocking every external call proves only that code calls
-mocks correctly — not that it works. Mock-only coverage creates a dangerous
-illusion of quality.
+- **No `unittest.mock`**, `patch()`, `MagicMock`, `Mock()`
+- **No `jest.mock()`**, `jest.fn()`, `jest.spyOn()` with fake returns
+- **No `gomock`**, `testify/mock`, `mockgen`
+- **No `mockall`**, `mockito`, or any mock framework in any language
+- **No hand-rolled fakes** that simulate dependency behaviour
 
-**The rule:** Every mocked boundary must have a corresponding integration test
-that exercises the real thing (or a realistic substitute).
+If a test cannot run against the real dependency, it is not a test —
+it is a wish. Skip it or fix the test infrastructure.
 
 ---
 
-## Mock Usage: Permitted, Not Sufficient
+## What To Use Instead
 
-| Mock Target | In Unit Tests? | Integration Test Required? |
-|-------------|---------------|---------------------------|
-| Internal functions/classes | ❌ Never mock | N/A — test the real code |
-| External APIs (Stripe, AWS, GCP) | ✅ Yes | ✅ Yes — against sandbox/staging |
-| Databases (PostgreSQL, Redis) | ✅ Yes | ✅ Yes — use testcontainers |
-| Kubernetes API | ✅ Yes | ✅ Yes — against test cluster or kind |
-| File systems, network calls | ✅ Yes | ✅ Yes — against real FS/network in CI |
-| Time/clock | ✅ Yes | Optional |
-
-### The Key Distinction
+| Dependency | Use Instead of Mocks |
+|---|---|
+| **Databases** | Testcontainers (real PostgreSQL/Redis/ClickHouse in Docker) |
+| **External APIs** | Sandbox/staging endpoints (Stripe test mode, AWS LocalStack) |
+| **Kubernetes** | kind or k3s in CI |
+| **File system** | Real files in `tempfile.TemporaryDirectory` |
+| **Network** | Real HTTP calls to local test server or actual endpoint |
+| **Time/clock** | The ONE exception — freezing time is acceptable (`freezegun`, `tokio::time::pause`, `jest.useFakeTimers`) |
 
 ```python
-# ❌ BAD — mocking internal code (tests nothing real)
+# ❌ NEVER — mocking internal code
 def test_process_order():
     with patch('myapp.services.calculate_total') as mock_calc:
-        mock_calc.return_value = 100.0  # Imaginary contract
+        mock_calc.return_value = 100.0  # Tests nothing
         result = process_order(order)
-        assert result.total == 100.0  # Circular — tests the mock
 
-# ✅ GOOD — mock external boundary, test real internal logic
-def test_process_order():
-    with patch('myapp.clients.stripe.charge') as mock_stripe:
-        mock_stripe.return_value = ChargeResult(success=True)
-        result = process_order(order)
-        assert result.total == 85.0  # Real calculation tested
-        mock_stripe.assert_called_with(amount=8500)
+# ❌ NEVER — mocking the database
+def test_save_user():
+    with patch('myapp.db.session') as mock_db:
+        mock_db.query.return_value = User(name="test")
+        # Proves nothing about real SQL
+
+# ✅ ALWAYS — real database via testcontainers
+@pytest.fixture
+def db():
+    with PostgresContainer() as postgres:
+        yield create_connection(postgres.get_connection_url())
+
+def test_save_user(db):
+    user_id = save_user(db, {"name": "Alice", "email": "a@b.com"})
+    assert db.get_user(user_id).name == "Alice"  # Real SQL, real DB
+
+# ✅ ALWAYS — real external API sandbox
+@pytest.mark.integration
+def test_payment():
+    result = process_payment(100.0, "tok_visa")  # Stripe test mode
+    assert result.success is True
 ```
 
 ---
 
-## The Two-Layer Testing Requirement
+## If You Cannot Test Against Real Dependencies
 
-### Layer 1: Unit Tests (Mocks Allowed)
+Say so explicitly. Do NOT mock to make a test pass.
 
-Fast, isolated, run on every commit. Mock external boundaries only.
+```python
+@pytest.mark.skip(reason="Needs Stripe sandbox — not mocking")
+def test_payment_integration():
+    ...
+```
 
-- Test internal logic with real code paths
-- Mock external APIs, databases, network at the client boundary
-- 80% coverage minimum — but this alone is NOT "tested"
+This is honest. A skipped test is better than a mocked test that lies
+about coverage.
 
-### Layer 2: Integration Tests (No Mocks)
+---
 
-Prove that boundaries actually work. Run in CI.
+## Coverage Accounting
 
-- Use testcontainers for databases (PostgreSQL, Redis, ClickHouse)
-- Use sandbox/staging endpoints for external APIs
-- Use kind/k3s for Kubernetes integration
-- Use real filesystem and network in CI environment
-
-**A feature is not tested until both layers exist.**
-
-### Coverage Accounting
-
-Mock-only unit tests contribute to coverage metrics but do NOT satisfy the
-"tested" requirement for production readiness. When reporting test status:
-
-- "Unit tests pass (mocked)" = fast feedback, not proof
-- "Integration tests pass" = proof that boundaries work
-- "Both pass" = actually tested
+Tests using mocks do NOT count toward the "tested" requirement for
+production readiness. Only tests against real dependencies count.
 
 ---
 
 ## For AI Code Assistants
 
-### When You Write Tests
+### When Writing Tests
 
-1. Write unit tests with mocks for fast feedback — this is fine
-2. **You are NOT done.** Write at least one integration test per mocked boundary
-3. If you cannot write integration tests (no testcontainers config, no sandbox),
-   explicitly state: "Integration tests needed for: [list boundaries]"
-4. Never report "all tests pass, production ready" when only mocked tests exist
+1. Write tests that exercise real code against real dependencies
+2. Use testcontainers or Docker for databases and message queues
+3. Use sandbox endpoints for external APIs
+4. If you cannot test against real dependencies, say so explicitly:
+   "Cannot test [boundary] — needs [setup]. Skipping, not mocking."
+5. **Never** create a mock to make a test pass — that is not testing
+
+### NEVER Do
+
+- Import any mock library
+- Patch or monkey-patch any function, method, or module
+- Create fake objects that simulate real dependency behaviour
+- Write `mock_*.py` or `*_mock.py` files
+- Claim "tests pass" when tests use mocks — they do not pass,
+  they pretend to pass
+
+### If You See Existing Mocks
+
+Do not add more. If modifying a test file that uses mocks, flag it:
+"This test uses mocks — results are unreliable. Needs migration to
+real dependencies." Do not extend mock-based tests.
 
 ### Completion Criteria
 
-A feature is complete when:
-
-- [ ] Unit tests pass with mocked external boundaries
-- [ ] Integration tests pass against real (or realistic) dependencies
+- [ ] Tests pass against real dependencies (not mocks)
 - [ ] No TODO/FIXME/HACK in production code
 - [ ] No placeholder returns (`return True`, `return {}`, `return None`)
-- [ ] No hardcoded example data ("John Doe", "test@example.com")
 - [ ] Error handling covers failure paths, not just happy path
 - [ ] Input validation is complete
-
-### Red Flags — REJECT This Code
-
-These phrases indicate incomplete work:
-
-- "Here's a simple example..."
-- "This is a basic implementation..."
-- "For demonstration purposes..."
-- "This should work for most cases..."
-- "TODO: Add error handling"
-- "TODO: Connect to database"
-
-When you see these in your own output, stop and complete the implementation.
 
 ---
 

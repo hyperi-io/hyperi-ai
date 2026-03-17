@@ -34,13 +34,24 @@ Load in this order:
 
 | Language | Standard File |
 |----------|---------------|
-| Rust | `ai/standards/languages/RUST.md` |
-| Python | `ai/standards/languages/PYTHON.md` |
-| Go | `ai/standards/languages/GOLANG.md` |
-| TypeScript | `ai/standards/languages/TYPESCRIPT.md` |
-| C++ | `ai/standards/languages/CPP.md` |
-| Bash | `ai/standards/languages/BASH.md` |
-| ClickHouse SQL | `ai/standards/languages/SQL-CLICKHOUSE.md` |
+| Rust | `hyperi-ai/standards/languages/RUST.md` |
+| Python | `hyperi-ai/standards/languages/PYTHON.md` |
+| Go | `hyperi-ai/standards/languages/GOLANG.md` |
+| TypeScript | `hyperi-ai/standards/languages/TYPESCRIPT.md` |
+| C++ | `hyperi-ai/standards/languages/CPP.md` |
+| Bash | `hyperi-ai/standards/languages/BASH.md` |
+| ClickHouse SQL | `hyperi-ai/standards/languages/SQL-CLICKHOUSE.md` |
+
+### Always Load (universal standards)
+
+These apply to all code — load for every review:
+- `hyperi-ai/standards/universal/ERROR-HANDLING.md`
+- `hyperi-ai/standards/universal/SECURITY.md`
+- `hyperi-ai/standards/universal/TESTING.md`
+- `hyperi-ai/standards/universal/MOCKS-POLICY.md`
+- `hyperi-ai/standards/universal/DESIGN-PRINCIPLES.md`
+- `hyperi-ai/standards/universal/CODE-STYLE.md`
+- `hyperi-ai/standards/universal/AI-CONDUCT.md`
 
 ### Conditional
 
@@ -48,9 +59,9 @@ Only load if relevant files exist:
 
 | Condition | Load |
 |-----------|------|
-| `Dockerfile` or `docker-compose.yaml` | `ai/standards/infrastructure/DOCKER.md` |
-| `certs/`, `ssl/`, `tls/`, `pki/` directories | `ai/standards/universal/PKI.md` |
-| `*.tf` files | `ai/standards/infrastructure/TERRAFORM.md` |
+| `Dockerfile` or `docker-compose.yaml` | `hyperi-ai/standards/infrastructure/DOCKER.md` |
+| `certs/`, `ssl/`, `tls/`, `pki/` directories | `hyperi-ai/standards/universal/PKI.md` |
+| `*.tf` files | `hyperi-ai/standards/infrastructure/TERRAFORM.md` |
 
 ---
 

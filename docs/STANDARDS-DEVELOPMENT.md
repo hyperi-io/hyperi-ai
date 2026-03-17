@@ -93,7 +93,7 @@ standards/
 - [ ] Token count under budget (see [TOKEN-ENGINEERING.md](TOKEN-ENGINEERING.md))
 - [ ] Examples compile/run mentally
 - [ ] No contradictions with other standards
-- [ ] Cross-references valid (`$AI_ROOT/standards/...` paths exist)
+- [ ] Cross-references valid (`hyperi-ai/standards/...` paths exist)
 - [ ] Section ordering follows workflow relevance
 - [ ] AI-specific content at end of file
 
