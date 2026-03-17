@@ -3404,6 +3404,55 @@ name = "throughput"
 harness = false
 ```
 
+### Version Pinning & Update Policy
+
+**General rule: use `>=X.Y` compatible ranges, pin only when forced.**
+
+```toml
+# Cargo.toml
+[dependencies]
+tokio = { version = ">=1.50, <2" }           # ✅ >= range with semver bound
+serde = { version = ">=1.0.228, <2" }        # ✅ >= with upper bound
+hyperi-rustlib = { version = ">=1.16" }       # ✅ >= range
+rdkafka = { version = "=0.39.0" }            # ⚠️ Pinned — document WHY
+```
+
+**Rules:**
+- `>=X.Y, <Z` — default for all dependencies. Accept patches and minors
+  within the major version. Cargo semver compatibility handles this naturally.
+- `=X.Y.Z` — pin ONLY when a specific version has a known regression.
+  Always add a `# pinned: reason` comment.
+- `Cargo.lock` — always committed for binaries and applications. This IS
+  your reproducible build. Libraries omit `Cargo.lock` (consumers resolve).
+- `cargo deny check` in CI — catches license violations and security advisories.
+
+**Update cadence:**
+- Dependencies MUST be updated with every code review. Run `cargo update`
+  and check for `cargo audit` advisories.
+- `cargo deny check advisories` in CI — fails on known vulnerabilities.
+- When updating, run the full test suite + clippy. If clean, update is safe.
+
+```bash
+# Update all deps to latest compatible versions
+cargo update
+
+# Check for security advisories
+cargo audit
+
+# Check licenses and advisories (CI)
+cargo deny check
+```
+
+**Risk mitigation for `>=` ranges:**
+
+| Risk | Mitigation |
+|---|---|
+| Breaking upstream release | `Cargo.lock` pins exact versions — reproducible builds |
+| Security vulnerability | `cargo audit` + `cargo deny` in CI — blocks merge |
+| Yanked crate version | `cargo update` resolves to latest non-yanked |
+| Stale deps | Mandatory `cargo update` at every code review |
+| Incompatible transitive deps | Cargo resolver handles this — conflicts caught at build |
+
 ---
 
 ## Configuration (HyperI Cascade)
