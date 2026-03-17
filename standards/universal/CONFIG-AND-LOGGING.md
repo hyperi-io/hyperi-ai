@@ -29,6 +29,41 @@ paths:
 
 ---
 
+## Use the Org Libraries (Preferred)
+
+For HyperI projects, **prefer the shared libraries** over bespoke
+config/logging implementations. They implement the cascade and logging
+standards automatically.
+
+| Language | Config Library | Logging Library |
+|---|---|---|
+| **Python** | `hyperi_pylib.config.settings` (Dynaconf cascade) | `hyperi_pylib.logger` (auto-detect, masking) |
+| **Rust** | `hyperi_rustlib::config` (figment 8-layer cascade) | `hyperi_rustlib::logger` (JSON/pretty, masking) |
+
+```python
+# Python — zero-config, cascade is automatic
+from hyperi_pylib.config import settings
+from hyperi_pylib import logger
+
+host = settings.database.host  # ENV > .env > YAML > defaults
+logger.info("Connected", host=host)
+```
+
+```rust
+// Rust — zero-config with env prefix
+hyperi_rustlib::config::setup(config::ConfigOptions {
+    env_prefix: "MYAPP".into(), ..Default::default()
+})?;
+hyperi_rustlib::logger::setup_default()?;
+```
+
+Only implement bespoke config/logging for:
+- Languages without an org library (Go, TypeScript)
+- External/open-source projects not using HyperI libraries
+- Prototypes that haven't adopted the libraries yet
+
+---
+
 ## Configuration Cascade
 
 ### 7-Layer Priority (Highest to Lowest)
