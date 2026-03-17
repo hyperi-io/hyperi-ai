@@ -24,8 +24,9 @@ paths:
 # ClickHouse SQL Standards for HyperI Projects
 
 > **Schema SSOT:** The common event header and schema definitions live in
-> `/projects/dfe-engine` (schema builder, DDL generation, column profiles).
-> Always check `dfe-engine` for the current schema before creating tables.
+> `dfe-schemas` (common-header, hunt-results). The schema builder and DDL
+> generation logic lives in `dfe-engine`. Always check `dfe-schemas` for
+> the current column definitions before creating tables.
 
 ClickHouse-specific patterns for analytical databases, time-series, log analytics,
 and real-time dashboards. If you know PostgreSQL or MySQL, unlearn most of it here.
