@@ -71,8 +71,40 @@ unthrottled — these are already filtered by level in production.
 **Overhead:** ~50ns per event (lock-free sharded storage). Negligible for
 logging; measurable only if applied to millions of `trace!` events/sec.
 
-**Python equivalent:** Use a `logging.Filter` with a `defaultdict(TokenBucket)`
-keyed on `(logger_name, level, message_template)`.
+**Python (`logging` ecosystem):**
+
+Use a custom `logging.Filter` with token bucket rate limiting per message
+signature. The signature is `(logger_name, level, message_template)`.
+
+```python
+import logging
+import time
+from collections import defaultdict
+
+class RateLimitFilter(logging.Filter):
+    """Token bucket rate limiter per unique log signature."""
+
+    def __init__(self, burst: int = 10, rate: float = 1.0):
+        super().__init__()
+        self.burst = burst
+        self.rate = rate  # tokens per second
+        self._buckets: dict[tuple, list] = defaultdict(lambda: [burst, time.monotonic()])
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno < logging.WARNING:
+            return True  # only throttle warn/error
+        key = (record.name, record.levelno, record.msg)
+        tokens, last = self._buckets[key]
+        now = time.monotonic()
+        tokens = min(self.burst, tokens + (now - last) * self.rate)
+        self._buckets[key] = [tokens - 1, now] if tokens >= 1 else [tokens, now]
+        return tokens >= 1
+
+# Apply globally
+logging.getLogger().addFilter(RateLimitFilter(burst=10, rate=1.0))
+```
+
+For `structlog`, apply as a processor in the chain.
 
 ### 2. State-Transition Logging
 
@@ -98,6 +130,39 @@ transport healthy/unhealthy, connection up/down.
 **Pattern:** Log the **transition**, not the **state**. One line on failure,
 one line on recovery. Never log per-check-cycle.
 
+**Python:**
+
+```python
+import threading
+
+class StateLogger:
+    """Log only on state transitions."""
+
+    def __init__(self):
+        self._states: dict[str, bool] = {}
+        self._lock = threading.Lock()
+
+    def log_transition(self, key: str, is_active: bool, logger: logging.Logger,
+                       active_msg: str, recovered_msg: str) -> bool:
+        with self._lock:
+            was_active = self._states.get(key, False)
+            self._states[key] = is_active
+        if not was_active and is_active:
+            logger.warning(active_msg)
+            return True
+        if was_active and not is_active:
+            logger.info(recovered_msg)
+            return True
+        return False
+
+# Usage
+state = StateLogger()
+state.log_transition(
+    "kafka_healthy", is_healthy,
+    logger, "Kafka unhealthy — backpressure active", "Kafka recovered"
+)
+```
+
 ### 3. Sampled Error Logging
 
 For per-message errors where every occurrence matters for **metrics** but not
@@ -118,6 +183,30 @@ fn log_error_sampled(counter: &AtomicU64, error: &Error, sample_rate: u64) {
     // Always increment the metric — metrics capture everything
     counter!("transport_send_errors_total").increment(1);
 }
+```
+
+**Python:**
+
+```python
+import threading
+
+class SampledLogger:
+    """Log every Nth occurrence of an error, always count in metrics."""
+
+    def __init__(self):
+        self._counters: dict[str, int] = defaultdict(int)
+        self._lock = threading.Lock()
+
+    def log_sampled(self, key: str, sample_rate: int, logger: logging.Logger,
+                    msg: str, **kwargs) -> None:
+        with self._lock:
+            self._counters[key] += 1
+            count = self._counters[key]
+        if count == 1 or count % sample_rate == 0:
+            logger.warning(f"{msg} (total: {count}, showing 1 in {sample_rate})",
+                           extra=kwargs)
+        # Always record in metrics
+        SEND_ERRORS.labels(**kwargs).inc()
 ```
 
 **Use for:** Send failures, validation failures, type coercion errors, parse
@@ -272,14 +361,17 @@ failure conditions. See the project-specific audit in
 
 ### Implementation Plan
 
-**Phase 1:** Add `tracing-throttle` layer to `hyperi_rustlib::logger::setup()`
-as an opt-in global safety net. All consumers get baseline protection.
+**Rust (hyperi-rustlib):**
 
-**Phase 2:** Add helper functions to rustlib (`log_state_change`,
-`log_sampled`, `log_debounced`) for targeted per-site fixes.
+- Phase 1: Add `tracing-throttle` layer to `hyperi_rustlib::logger::setup()` — opt-in global safety net
+- Phase 2: Add helper functions (`log_state_change`, `log_sampled`, `log_debounced`)
+- Phase 3: Fix identified spam sites in each dfe-* Rust project
 
-**Phase 3:** Fix identified spam sites in each project using the appropriate
-technique from the decision matrix.
+**Python (hyperi-pylib):**
+
+- Phase 1: Add `RateLimitFilter` to `hyperi_pylib.logging.setup()` — opt-in global safety net
+- Phase 2: Add helper classes (`StateLogger`, `SampledLogger`) to `hyperi_pylib.logging`
+- Phase 3: Fix identified spam sites in dfe-engine and any other Python services
 
 ### Worst Offenders (Must Fix)
 

@@ -205,7 +205,7 @@ fallback:
 ## Implementation Best Practices
 
 - **Use your org's shared metrics library.** Don't hand-roll Prometheus text
-  format. Don't import the `prometheus` crate directly when a wrapper exists.
+  format. Don't import raw client libraries when a wrapper exists.
 - **Register metrics at startup, not lazily.** Missing metrics in Prometheus
   (as opposed to zero-valued) cause alerting gaps.
 - **Initialise counters to 0.** A counter that doesn't exist vs one that
@@ -215,6 +215,62 @@ fallback:
   every 15-60s.
 - **Expose `/metrics` on a separate port** from your data plane if scraping
   competes with ingest traffic.
+
+### Rust Implementation
+
+Use the `metrics` crate macros (`counter!`, `gauge!`, `histogram!`) with a
+Prometheus exporter backend. If your org has a shared library (e.g.,
+`hyperi-rustlib`), use its `MetricsManager` instead of raw crate setup.
+
+```rust
+use metrics::{counter, gauge, histogram};
+
+// Record on hot path — macros are zero-cost when no recorder is installed
+counter!("transport_sent_total", "transport" => "kafka").increment(1);
+gauge!("transport_queue_size", "transport" => "kafka").set(queue.len() as f64);
+histogram!("transport_send_duration_seconds", "transport" => "kafka")
+    .record(elapsed.as_secs_f64());
+```
+
+### Python Implementation
+
+Use `prometheus_client` (the official Python Prometheus client) or
+`opentelemetry-sdk` for OTel-native instrumentation. If your org has a shared
+library (e.g., `hyperi-pylib`), use its metrics helpers.
+
+```python
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
+
+# Register at module level (startup)
+TRANSPORT_SENT = Counter(
+    "transport_sent_total",
+    "Messages sent successfully",
+    labelnames=["transport"],
+)
+TRANSPORT_QUEUE = Gauge(
+    "transport_queue_size",
+    "Current send queue depth",
+    labelnames=["transport"],
+)
+TRANSPORT_DURATION = Histogram(
+    "transport_send_duration_seconds",
+    "Per-send latency",
+    labelnames=["transport"],
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+)
+
+# Record
+TRANSPORT_SENT.labels(transport="kafka").inc()
+TRANSPORT_QUEUE.labels(transport="kafka").set(len(queue))
+with TRANSPORT_DURATION.labels(transport="kafka").time():
+    await send_message(msg)
+
+# Expose /metrics
+start_http_server(9090)
+```
+
+For FastAPI/Starlette services, use `prometheus-fastapi-instrumentator` or
+mount the `prometheus_client` ASGI app at `/metrics`.
 
 ---
 
@@ -232,27 +288,51 @@ dfe_transport_sent_total{job="dfe-receiver", transport="kafka"}
 dfe_transport_sent_total{job="dfe-loader", transport="kafka"}
 ```
 
-### Implementation
+### Implementation — Rust
 
 Use `hyperi_rustlib::metrics::MetricsManager::new("dfe")`. This auto-registers
 process + container metrics and provides `/metrics` + `/healthz` + `/readyz`
 endpoints.
 
+```rust
+use hyperi_rustlib::metrics::MetricsManager;
+
+let metrics = MetricsManager::new("dfe");
+let sent = metrics.counter("transport_sent_total", "Messages sent");
+sent.increment(1);
+```
+
+### Implementation — Python
+
+Use `hyperi_pylib.metrics` which wraps `prometheus_client` with the same
+namespace and auto-registration pattern.
+
+```python
+from hyperi_pylib.metrics import MetricsManager
+
+metrics = MetricsManager(namespace="dfe")
+sent = metrics.counter("transport_sent_total", "Messages sent", labels=["transport"])
+sent.labels(transport="http").inc()
+```
+
+For dfe-engine (FastAPI), metrics are auto-instrumented via the
+`prometheus-fastapi-instrumentator` middleware configured in `hyperi_pylib`.
+
 ### Per-Service Applicability
 
-| Metric | receiver | loader | fetcher | archiver |
-|--------|----------|--------|---------|----------|
-| `dfe_transport_sent_total` | Yes | Yes | Yes | Yes |
-| `dfe_transport_send_errors_total` | Yes | Yes | Yes | Yes |
-| `dfe_transport_backpressured_total` | Yes | Yes | Yes | Yes |
-| `dfe_transport_healthy` | Yes | Yes | Yes | Yes |
-| `dfe_transport_queue_size` | Yes | Yes | - | Yes |
-| `dfe_pipeline_ready` | Yes | Yes | Yes | Yes |
-| `dfe_records_received_total` | Yes | Yes | Yes | Yes |
-| `dfe_records_delivered_total` | Yes | Yes | Yes | Yes |
-| `dfe_records_dlq_total` | Yes | Yes | - | Yes |
-| `dfe_scaling_pressure` | Yes | Yes | Yes | Yes |
-| `dfe_spool_bytes` | Yes | - | - | Yes |
+| Metric | receiver (Rust) | loader (Rust) | fetcher (Rust) | archiver (Rust) | engine (Python) |
+|--------|----------------|--------------|---------------|----------------|----------------|
+| `dfe_transport_sent_total` | Yes | Yes | Yes | Yes | Yes |
+| `dfe_transport_send_errors_total` | Yes | Yes | Yes | Yes | Yes |
+| `dfe_transport_backpressured_total` | Yes | Yes | Yes | Yes | - |
+| `dfe_transport_healthy` | Yes | Yes | Yes | Yes | Yes |
+| `dfe_transport_queue_size` | Yes | Yes | - | Yes | - |
+| `dfe_pipeline_ready` | Yes | Yes | Yes | Yes | Yes |
+| `dfe_records_received_total` | Yes | Yes | Yes | Yes | Yes |
+| `dfe_records_delivered_total` | Yes | Yes | Yes | Yes | Yes |
+| `dfe_records_dlq_total` | Yes | Yes | - | Yes | - |
+| `dfe_scaling_pressure` | Yes | Yes | Yes | Yes | - |
+| `dfe_spool_bytes` | Yes | - | - | Yes | - |
 
 ### Migration
 
