@@ -1,36 +1,107 @@
 # Proprietary and Confidential
 
-Copyright (c) 2026 HYPERI PTY LIMITED (ABN 31 622 581 748)
-Trading as HyperSec
+Copyright (c) 2025-2026 HYPERI PTY LIMITED (ABN 31 622 581 748)
 
-All rights reserved. This software and associated documentation are the
-exclusive property of HYPERI PTY LIMITED.
+All rights reserved. This software, including all source code, documentation,
+standards, rules, templates, hooks, and associated materials (collectively, the
+"Materials"), is the exclusive property of HYPERI PTY LIMITED ("HyperI").
+
+## Definitions
+
+"Authorised Purpose" means work performed exclusively for or on behalf of
+HyperI, its subsidiaries, or its related bodies corporate (as defined in
+section 50 of the Corporations Act 2001 (Cth)), including projects owned,
+commissioned, or contracted by HyperI.
+
+"Authorised User" means an individual who is a current employee, officer, or
+contractor of HyperI and who has been granted access to the Materials by HyperI.
 
 ## Permitted Use
 
-- Internal use by HYPERI PTY LIMITED employees and authorised contractors
-- Use within projects owned by HYPERI PTY LIMITED or its subsidiaries
+An Authorised User may use, copy, and adapt the Materials solely for the
+Authorised Purpose. No other use is permitted.
 
-## Prohibited
+## Prohibited Use
 
-- Redistribution, sublicensing, or transfer to third parties
-- Modification or creation of derivative works for external use
-- Public disclosure of source code or documentation
+Without limiting the generality of the above, the following are expressly
+prohibited without prior written consent from HyperI:
+
+1. Use of the Materials, in whole or in part, for any project, product,
+   service, or engagement that is not an Authorised Purpose — including
+   personal projects, other employers' work, other clients' engagements,
+   or any third-party benefit
+2. Redistribution, sublicensing, publication, or transfer of the Materials
+   to any person who is not an Authorised User
+3. Creation of derivative works based on the Materials for any purpose
+   other than the Authorised Purpose
+4. Public disclosure, display, or distribution of any portion of the
+   Materials, including on public repositories, forums, or websites
+5. Use of the Materials to develop, train, or improve competing products,
+   services, or standards
+
+## Intellectual Property
+
+All intellectual property rights in the Materials, including any modifications,
+adaptations, or derivative works created by Authorised Users in the course of
+the Authorised Purpose, vest in and remain the exclusive property of HyperI.
+
+Contributions to this repository are accepted on the basis that all
+intellectual property in those contributions is assigned to HyperI upon
+submission.
+
+## No Licence Implied
+
+Nothing in this notice grants any licence, express or implied, by estoppel or
+otherwise, to any intellectual property rights held by HyperI, except the
+limited permission expressly stated under "Permitted Use" above.
+
+Access to the Materials does not, of itself, confer any right or licence to
+use them.
+
+## Termination
+
+Permission to use the Materials terminates automatically and without notice
+upon:
+
+1. Cessation of the Authorised User's employment or engagement with HyperI
+2. Breach of any term of this licence
+3. Written notice from HyperI
+
+Upon termination, the Authorised User must destroy or return all copies of the
+Materials in their possession or control, except to the extent retention is
+required by law.
+
+## Disclaimer of Warranties
+
+To the maximum extent permitted by law, the Materials are provided "as is"
+without warranty of any kind, whether express, implied, statutory, or
+otherwise.
+
+## Limitation of Liability
+
+To the maximum extent permitted by law, HyperI excludes all liability for any
+loss or damage arising from the use of, or inability to use, the Materials.
 
 ## Enquiries
 
 For licensing enquiries: <sales@hyperi.io>
 
-## Australian Law Notice
+## Governing Law
 
-This licence is governed by the laws of the Australian Capital Territory.
+This licence is governed by and construed in accordance with the laws of the
+Australian Capital Territory. The parties submit to the exclusive jurisdiction
+of the courts of the Australian Capital Territory and any courts competent to
+hear appeals from those courts.
+
+## Australian Consumer Law Notice
+
 Nothing in this licence excludes, restricts or modifies any consumer guarantee,
 right or remedy conferred by the Competition and Consumer Act 2010 (Cth) or any
 other applicable Australian law that cannot be excluded, restricted or modified
 by agreement.
 
 Where the Australian Consumer Law (Schedule 2 of the Competition and Consumer
-Act 2010 (Cth)) implies guarantees that cannot be excluded, our liability for
-breach of such guarantees is limited, to the extent permitted by law, to the
-re-supply of the software or the payment of the cost of having the software
-re-supplied.
+Act 2010 (Cth)) implies guarantees that cannot be excluded, HyperI's liability
+for breach of such guarantees is limited, to the extent permitted by law, to
+the re-supply of the Materials or the payment of the cost of having the
+Materials re-supplied.
