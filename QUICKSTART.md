@@ -133,4 +133,4 @@ Respects `XDG_CONFIG_HOME` if set (defaults to `~/.config`).
 ## More Information
 
 - [README.md](README.md) - Full documentation
-- [standards/STANDARDS.md](standards/STANDARDS.md) - Coding standards reference
+- [standards/QUICKSTART.md](standards/QUICKSTART.md) - Standards entry point

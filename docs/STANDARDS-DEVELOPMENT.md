@@ -19,7 +19,7 @@
 
 **Single path - always load:**
 
-1. `rules/UNIVERSAL.md` - Cross-cutting coding rules (~137 lines)
+1. `rules/universal.md` - Cross-cutting coding rules
 2. Relevant `rules/<lang>.md` file(s) - Auto-injected when editing matching files
 3. Full `languages/*.md` and `infrastructure/*.md` for deep reference
 
@@ -31,14 +31,13 @@ See [TOKEN-ENGINEERING.md](TOKEN-ENGINEERING.md) for auto-detection rules.
 
 ```text
 standards/
-├── STANDARDS.md              # Full reference (not session-loaded)
-├── STANDARDS-QUICKSTART.md   # Quick reference index
-├── rules/                   # Compact rules (<200 lines each)
+├── QUICKSTART.md            # Entry point and index for all standards
+├── rules/                   # Compact rules (<200 lines each) -- LLM-generated
+│   ├── universal.md         # Cross-cutting rules (always loaded)
+│   └── <topic>.md           # Path-scoped rules (auto-injected by file type)
 │
-│   ├── COMMON.md             # Session management, commits
-│   └── AI-GUIDELINES.md      # Cognitive load, pitfalls
-│
-├── universal/                   # Language-agnostic
+├── universal/               # Language-agnostic standards (source of truth)
+│   ├── AI-CONDUCT.md
 │   ├── CODE-STYLE.md
 │   ├── GIT.md
 │   ├── TESTING.md
@@ -46,14 +45,16 @@ standards/
 │   ├── ERROR-HANDLING.md
 │   └── ...
 │
-├── languages/                # One file per language
+├── languages/               # One file per language
 │   ├── PYTHON.md
 │   ├── GOLANG.md
 │   ├── TYPESCRIPT.md
 │   ├── RUST.md
-│   └── BASH.md
+│   ├── BASH.md
+│   ├── CPP.md
+│   └── SQL-CLICKHOUSE.md
 │
-└── infrastructure/           # One file per tool
+└── infrastructure/          # One file per tool
     ├── DOCKER.md
     ├── K8S.md
     ├── TERRAFORM.md

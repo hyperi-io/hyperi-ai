@@ -22,7 +22,7 @@ unique to us.
 | Plan writing/execution | superpowers | Structured planning pipeline |
 | Code review methodology | superpowers | Review workflow |
 | Subagent-driven development | superpowers | Parallel agent coordination |
-| **Corporate coding standards** | **hyperi-ai** | 21 rules -- language, infra, cross-cutting |
+| **Corporate coding standards** | **hyperi-ai** | Rules covering languages, infrastructure, and cross-cutting concerns |
 | **Verification before completion** | **hyperi-ai** | Unique -- evidence-before-claims gate |
 | **Documentation/code-reality audit** | **hyperi-ai** | Unique -- docs must match code |
 | **Bleeding-edge dependency protection** | **hyperi-ai** | Unique -- stale training data protection |
@@ -46,6 +46,10 @@ These became Agent Skills in `skills/` -- superpowers has no equivalent:
 | `verification` | Verify before claiming completion -- requires fresh command output as evidence |
 | `documentation` | Documentation standards and code-reality auditing |
 | `bleeding-edge` | Stale training data protection + Context7 MCP for live library docs |
+| `release` | Full release workflow for hyperi-ci projects (commit to GH Releases + R2) |
+| `ci-check` | Local pre-push validation via hyperi-ci |
+| `ci-watch` | Trigger and monitor GitHub Actions CI runs |
+| `ci-logs` | Fetch and debug CI failure logs |
 
 ## Installation
 
@@ -63,7 +67,7 @@ The `/setup-claude` command checks for superpowers and prompts to install if mis
 
 | Potential Conflict | Resolution |
 |---|---|
-| Superpowers uses American English | Our `UNIVERSAL.md` rule (project-level) overrides -- Australian English wins |
+| Superpowers uses American English | Our `universal.md` rule (project-level) overrides -- Australian English wins |
 | Both define verification | Superpowers `verification-before-completion` and our `verification` skill complement -- ours is stricter (requires command output evidence) |
 | Both define code review | Superpowers provides methodology, our `/review` command adds corporate standards on top |
 
@@ -71,7 +75,7 @@ The `/setup-claude` command checks for superpowers and prompts to install if mis
 
 If superpowers can't be installed (no internet, restricted environments):
 - All corporate coding standards still work (rules are submodule-deployed)
-- Our 3 unique skills still work (verification, documentation, bleeding-edge)
+- Our unique skills still work (verification, documentation, bleeding-edge, CI/CD skills)
 - Methodology (debugging, TDD, planning) is unavailable -- accepted gap
 - No fallback methodology skills are maintained -- lean approach
 

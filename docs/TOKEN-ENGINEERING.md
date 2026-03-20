@@ -13,7 +13,7 @@ available context and selects the appropriate tier.
 | Tier | Context Window | Standards Source | Typical Budget |
 |------|---------------|-----------------|----------------|
 | `compact` | 200K (default) | `standards/rules/` (condensed) | ~12K tokens (~6% of 200K) |
-| `full` | 1M+ (auto-detected) | `standards/{languages,common,infrastructure}/` | ~83K tokens (~8% of 1M) |
+| `full` | 1M+ (auto-detected) | `standards/{languages,universal,infrastructure}/` | ~83K tokens (~8% of 1M) |
 
 ### Tier Detection (priority order)
 
@@ -43,7 +43,7 @@ loader runs:
 
 - **Compact:** loads from `standards/rules/*.md` (hand-maintained summaries)
 - **Full:** reads the `source:` frontmatter in each compact rule to find its
-  full source counterpart in `standards/{languages,common,infrastructure}/`
+  full source counterpart in `standards/{languages,universal,infrastructure}/`
 
 Both tiers load the same supplementary content (skills, STATE.md, user
 overrides, bash rules, tool survey). Only the standards content differs.
@@ -150,7 +150,7 @@ document.
 | Profile | Location | Audience | Tier |
 |---------|----------|----------|------|
 | LLM-optimised (compact) | `standards/rules/` | AI assistants on 200K | `compact` |
-| Full source | `standards/{languages,common,infrastructure}/` | AI on 1M + humans | `full` |
+| Full source | `standards/{languages,universal,infrastructure}/` | AI on 1M + humans | `full` |
 
 ---
 

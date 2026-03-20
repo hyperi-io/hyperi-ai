@@ -32,7 +32,7 @@ hyperi-ai is a git submodule that consumer projects add to get:
 
 - **Coding standards** — rules covering languages, infrastructure, security, and conventions
 - **AI assistant setup** — automated configuration for Claude Code, Cursor, Copilot, and Gemini
-- **Skills** — verification, documentation, and bleeding-edge dependency protection
+- **Skills** — verification, documentation, bleeding-edge dependency protection, and CI/CD workflow automation (release, ci-check, ci-watch, ci-logs)
 - **Hooks** — auto-format, lint-on-stop, safety guards, standards injection
 - **MCP servers** — Context7 (live library docs)
 - **Slash commands** — `/load`, `/save`, `/review`, `/simplify`, `/standards`, `/doco`, `/setup-claude`
@@ -58,7 +58,7 @@ Consumer Project/
 
 ### Key Components
 
-1. **agents/** — thin bash wrappers per AI tool (claude.sh, cursor.sh, copilot.sh, gemini.sh)
+1. **agents/** — thin bash wrappers per AI tool (claude.sh, cursor.sh, codex.sh, gemini.sh)
 2. **tools/** — Python3+stdlib deploy logic (deploy_claude.py, merge_mcp.py)
 3. **standards/** — SSOT for all coding standards (rules/ for compact, languages/ and infrastructure/ for full)
 4. **skills/** — Agent Skills (SKILL.md with YAML frontmatter) for methodology
@@ -115,7 +115,7 @@ Consumer Project/
 | Tier | Window | Source | Budget |
 |------|--------|--------|--------|
 | `compact` | 200K (default) | `standards/rules/` | ~12K tokens (~6%) |
-| `full` | 1M+ (auto-detected) | `standards/{languages,common,infrastructure}/` | ~83K tokens (~8%) |
+| `full` | 1M+ (auto-detected) | `standards/{languages,universal,infrastructure}/` | ~83K tokens (~8%) |
 
 **Detection:** `HYPERI_CONTEXT_TIER` env var > VS Code `claudeCode.selectedModel` `[1m]` suffix > default `compact`.
 

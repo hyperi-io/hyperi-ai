@@ -59,7 +59,7 @@ The submodule has seven distinct layers:
 
 | Layer | Source | Delivered As | What It Covers |
 |---|---|---|---|
-| **Corporate code standards** | `standards/rules/UNIVERSAL.md` | CC rule (always-on) | Australian English, file headers, no emojis, git conventions, licensing, security |
+| **Corporate code standards** | `standards/rules/universal.md` | CC rule (always-on) | Australian English, file headers, no emojis, git conventions, licensing, security |
 | **Language rules** | `standards/rules/<lang>.md` | CC rule (path-scoped) | Python/uv/ruff, Rust, Go, TypeScript, Bash, C++, ClickHouse SQL |
 | **Infrastructure rules** | `standards/rules/<infra>.md` | CC rule (path-scoped) | Docker, K8s, Terraform, Ansible, PKI |
 | **Cross-cutting rules** | `standards/rules/*.md` | CC rule (path-scoped) | Git, security, CI, error handling, design principles, code style, config, mocks |
@@ -155,7 +155,7 @@ The `hyperi-ai/` submodule references a private repository -- this is intentiona
 
 | File | Purpose |
 |------|---------|
-| `STATE.md` | Project state, session history, context for AI |
+| `STATE.md` | Project architecture, decisions, and context for AI |
 | `TODO.md` | Task tracking, priorities |
 
 ### By agent scripts
@@ -181,7 +181,11 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |-- skills/                      # Our unique methodology skills (Agent Skills standard)
 |   |-- verification/SKILL.md   # Verify before claiming completion
 |   |-- documentation/SKILL.md  # Docs must match code reality
-|   +-- bleeding-edge/SKILL.md  # Stale training data protection + Context7
+|   |-- bleeding-edge/SKILL.md  # Stale training data protection + Context7
+|   |-- release/SKILL.md        # Full release workflow (hyperi-ci projects)
+|   |-- ci-check/SKILL.md       # Local pre-push validation
+|   |-- ci-watch/SKILL.md       # Trigger and monitor CI runs
+|   +-- ci-logs/SKILL.md        # Fetch and debug CI failure logs
 |
 |-- commands/                    # Slash commands (user-invocable)
 |   |-- load.md                 # /load -- restore session context
@@ -200,7 +204,9 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |   |-- auto_format.py          # PostToolUse(Edit|Write): run formatter on edited files
 |   |-- subagent_context.py     # SubagentStart: inject standards into subagents
 |   |-- safety_guard.py         # PreToolUse(Bash): block dangerous commands
-|   +-- lint_check.py           # Stop: lint modified files, feed errors back
+|   |-- lint_check.py           # Stop: lint modified files, feed errors back
+|   |-- migrate_submodule_name.py  # Migrate legacy ai/ submodule path to hyperi-ai/
+|   +-- survey_tools_cli.py     # Detect installed dev tools for context injection
 |
 |-- agents/                      # Agent setup scripts (bash)
 |   |-- common.sh               # Shared functions (CLI detection, logging)
@@ -210,13 +216,12 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |   +-- codex.sh                # OpenAI Codex / GitHub Copilot setup
 |
 |-- standards/                   # Coding standards (main product)
-|   |-- STANDARDS.md             # Full reference
-|   |-- QUICKSTART.md  # Router to rules/ (compact single source)
-|   |-- rules/                  # Compact rules (<200 lines) -- single source for all agents
-|   |   |-- UNIVERSAL.md        # Cross-cutting rules (always loaded)
-|   |   +-- <topic>.md          # Path-scoped rules (auto-injected by file type)
-|   |-- universal/ # Language-agnostic standards
-|   |-- languages/               # Python, Go, TypeScript, Rust, Bash, C++
+|   |-- QUICKSTART.md            # Entry point and index for all standards
+|   |-- rules/                   # Compact rules (<200 lines) -- LLM-generated, do not hand-edit
+|   |   |-- universal.md         # Cross-cutting rules (always loaded)
+|   |   +-- <topic>.md           # Path-scoped rules (auto-injected by file type)
+|   |-- universal/               # Language-agnostic standards (source of truth)
+|   |-- languages/               # Python, Go, TypeScript, Rust, Bash, C++, SQL-ClickHouse
 |   +-- infrastructure/          # Docker, K8s, Terraform, Ansible
 |
 |-- templates/                   # Deployment templates
@@ -226,7 +231,10 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |
 |-- .mcp.json                    # MCP server config (Context7 -- deployed to consumer projects)
 |-- tools/                       # Development tools
-|   +-- compact-standards.py    # Generate compact rules from full standards (API script)
+|   |-- generate-rules.py       # Generate compact rules from full standards (Claude API)
+|   |-- deploy_claude.py        # Claude Code deployment logic
+|   |-- merge_mcp.py            # MCP config merging
+|   +-- discover_github_pat.py  # GitHub PAT discovery for CI
 |
 |-- tests/                       # BATS test suite
 +-- docs/                        # Project documentation
@@ -382,9 +390,9 @@ Respects `XDG_CONFIG_HOME` if set (defaults to `~/.config`).
 ### Layer 1 -- CAG: Pre-loaded at session start (primary)
 
 All relevant standards are pre-loaded into context at session start by
-`inject_cag_payload()` in `hooks/common.py`: `UNIVERSAL.md`, all detected technology
-rules, project context (STATE.md), skills, and commands. Approximately 24K tokens
-(~2.4% of the 1M context window). Re-injected by `on_compact.py` after compaction.
+`inject_cag_payload()` in `hooks/common.py`: `universal.md`, all detected technology
+rules, project context (STATE.md), skills, and commands. Re-injected by
+`on_compact.py` after compaction.
 
 Technology detection scans up to 3 levels deep (handles monorepos and workspaces):
 
@@ -420,6 +428,10 @@ CC loads the full skill content when the description matches the current task:
 | `verification` | Claiming completion, committing, creating PRs |
 | `documentation` | Writing or updating docs, README, STATE.md |
 | `bleeding-edge` | Adding dependencies, using library APIs, Docker images |
+| `release` | Releasing, shipping, deploying (hyperi-ci projects) |
+| `ci-check` | Pre-push validation, running CI locally (hyperi-ci projects) |
+| `ci-watch` | Monitoring CI runs, checking pipeline status (hyperi-ci projects) |
+| `ci-logs` | Debugging CI failures, fetching logs (hyperi-ci projects) |
 
 ---
 

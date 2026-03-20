@@ -24,18 +24,17 @@ hyperi-ai/
 │   ├── safety_guard.py       # PreToolUse(Bash): block dangerous commands
 │   └── lint_check.py         # Stop: lint modified files, feed errors back
 ├── standards/           # Main product - coding standards
-│   ├── STANDARDS.md             # Full reference
-│   ├── QUICKSTART.md  # Router/index → standards/rules/
-│   ├── rules/                  # Compact rules (<200 lines each, single source)
-│   ├── common/                  # Language-agnostic standards
-│   ├── languages/               # Python, Go, TypeScript, Rust, Bash, C++
+│   ├── QUICKSTART.md            # Entry point and index for all standards
+│   ├── rules/                   # Compact rules (<200 lines each) -- LLM-generated, do not hand-edit
+│   ├── universal/               # Language-agnostic standards (source of truth)
+│   ├── languages/               # Python, Go, TypeScript, Rust, Bash, C++, SQL-ClickHouse
 │   └── infrastructure/          # Docker, K8s, Terraform, Ansible
 ├── templates/           # Deployment templates
 │   ├── STATE.md, TODO.md        # Cross-assistant
 │   └── claude-code/, copilot/, cursor/, gemini/
 ├── tools/               # Development tools
-│   └── compact-standards.py    # Generate compact rules from full standards
-├── tests/               # BATS test suite (86 tests)
+│   └── generate-rules.py       # Generate compact rules from full standards (Claude API)
+├── tests/               # BATS test suite
 └── docs/                # Project documentation
 ```
 
@@ -46,7 +45,7 @@ hyperi-ai/
 Standards are primarily delivered via CAG (Context-Augmented Generation) at session
 start, with redundant fallback layers:
 
-1. **CAG (Primary):** All relevant standards — `UNIVERSAL.md`, detected tech rules,
+1. **CAG (Primary):** All relevant standards — `universal.md`, detected tech rules,
    project context (STATE.md), skills, and commands — are pre-loaded into context at
    session start by `inject_cag_payload()` in `hooks/common.py`. Approximately 24K
    tokens (~2.4% of the 1M context window). Re-injected by `on_compact.py` after
@@ -71,7 +70,7 @@ Each agent's deploy script converts `standards/rules/*.md` into its platform's f
 
 ```bash
 git clone https://github.com/hyperi-io/hyperi-ai.git
-cd ai
+cd hyperi-ai
 ```
 
 ### Making Changes
@@ -94,7 +93,7 @@ git push origin main
 
 ## Testing
 
-### Run All Tests (86 tests)
+### Run All Tests
 
 ```bash
 bats tests/
@@ -177,7 +176,7 @@ git commit -m "refactor!: restructure standards delivery" -m "BREAKING CHANGE: c
 
 | Directory | Purpose |
 |-----------|---------|
-| `standards/rules/UNIVERSAL.md` | Cross-cutting rules, always loaded (~137 lines) |
+| `standards/rules/universal.md` | Cross-cutting rules, always loaded |
 | `standards/rules/<topic>.md` | Compact path-scoped rules (<200 lines each) |
 | `standards/universal/` | Language-agnostic standards |
 | `standards/languages/` | Per-language: PYTHON.md, GOLANG.md, etc. |
@@ -194,7 +193,7 @@ git commit -m "refactor!: restructure standards delivery" -m "BREAKING CHANGE: c
 ### Adding New Standards
 
 1. Create full standard in appropriate `standards/languages/` or `standards/infrastructure/` directory
-2. Run `tools/compact-standards.py` to generate compact rule in `standards/rules/`
+2. Run `tools/generate-rules.py` to generate compact rule in `standards/rules/`
 3. Add detection entry to `hooks/common.py` `TECH_DETECTIONS` table
 4. Add skill deployment to `agents/claude.sh` `deploy_skills()`
 5. The compact rule is automatically picked up by all agent deploy scripts
