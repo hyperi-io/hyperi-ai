@@ -1,3 +1,10 @@
+## [3.7.0](https://github.com/hyperi-io/hyperi-ai/compare/3.6.0...3.7.0) (2026-03-20)
+
+
+### Features
+
+* enforce release branch protection in safety guard ([c595524](https://github.com/hyperi-io/hyperi-ai/commit/c595524e05d5571e98e1ccd565b5928a8148fcac))
+
 ## [3.6.0](https://github.com/hyperi-io/hyperi-ai/compare/3.5.0...3.6.0) (2026-03-20)
 
 
