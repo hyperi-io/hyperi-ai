@@ -1,3 +1,17 @@
+## [3.5.0](https://github.com/hyperi-io/hyperi-ai/compare/3.4.13...3.5.0) (2026-03-20)
+
+
+### Features
+
+* add CI/CD skills for hyperi-ci consumer projects ([3405949](https://github.com/hyperi-io/hyperi-ai/commit/34059495ec06af9913d39e510f01c31a1a391821))
+
+
+### Documentation
+
+* add METRICS.md and LOG-FLOODING.md universal standards ([c04e0ee](https://github.com/hyperi-io/hyperi-ai/commit/c04e0ee792dbfafe3a630d30c383664a6917bc90))
+* add Python implementation examples to METRICS.md and LOG-FLOODING.md ([c555396](https://github.com/hyperi-io/hyperi-ai/commit/c5553969ddd74a9a70a4b32b73bd256fb2261d2c))
+* strengthen LICENSE with explicit HyperI-only use restriction ([9c3fbca](https://github.com/hyperi-io/hyperi-ai/commit/9c3fbcaeb5be86c62028c9466fc3ae36e8126cdb))
+
 ## [3.4.13](https://github.com/hyperi-io/hyperi-ai/compare/3.4.12...3.4.13) (2026-03-17)
 
 
