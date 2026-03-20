@@ -185,7 +185,8 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |   |-- release/SKILL.md        # Full release workflow (hyperi-ci projects)
 |   |-- ci-check/SKILL.md       # Local pre-push validation
 |   |-- ci-watch/SKILL.md       # Trigger and monitor CI runs
-|   +-- ci-logs/SKILL.md        # Fetch and debug CI failure logs
+|   |-- ci-logs/SKILL.md        # Fetch and debug CI failure logs
+|   +-- deps/SKILL.md           # Dependency update workflow (update + upstream health)
 |
 |-- commands/                    # Slash commands (user-invocable)
 |   |-- load.md                 # /load -- restore session context
@@ -232,9 +233,11 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |-- .mcp.json                    # MCP server config (Context7 -- deployed to consumer projects)
 |-- tools/                       # Development tools
 |   |-- generate-rules.py       # Generate compact rules from full standards (Claude API)
+|   |-- compact-standards.py    # Legacy alias for generate-rules.py
 |   |-- deploy_claude.py        # Claude Code deployment logic
 |   |-- merge_mcp.py            # MCP config merging
-|   +-- discover_github_pat.py  # GitHub PAT discovery for CI
+|   |-- discover_github_pat.py  # GitHub PAT discovery for CI
+|   +-- relpath.py              # Relative path helper for symlink creation
 |
 |-- tests/                       # BATS test suite
 +-- docs/                        # Project documentation
@@ -432,6 +435,7 @@ CC loads the full skill content when the description matches the current task:
 | `ci-check` | Pre-push validation, running CI locally (hyperi-ci projects) |
 | `ci-watch` | Monitoring CI runs, checking pipeline status (hyperi-ci projects) |
 | `ci-logs` | Debugging CI failures, fetching logs (hyperi-ci projects) |
+| `deps` | Updating dependencies, upstream health checks, replacement research |
 
 ---
 

@@ -32,7 +32,7 @@ hyperi-ai is a git submodule that consumer projects add to get:
 
 - **Coding standards** — rules covering languages, infrastructure, security, and conventions
 - **AI assistant setup** — automated configuration for Claude Code, Cursor, Copilot, and Gemini
-- **Skills** — verification, documentation, bleeding-edge dependency protection, and CI/CD workflow automation (release, ci-check, ci-watch, ci-logs)
+- **Skills** — verification, documentation, bleeding-edge dependency protection, CI/CD workflow automation (release, ci-check, ci-watch, ci-logs), and dependency management (deps)
 - **Hooks** — auto-format, lint-on-stop, safety guards, standards injection
 - **MCP servers** — Context7 (live library docs)
 - **Slash commands** — `/load`, `/save`, `/review`, `/simplify`, `/standards`, `/doco`, `/setup-claude`

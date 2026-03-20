@@ -50,6 +50,7 @@ These became Agent Skills in `skills/` -- superpowers has no equivalent:
 | `ci-check` | Local pre-push validation via hyperi-ci |
 | `ci-watch` | Trigger and monitor GitHub Actions CI runs |
 | `ci-logs` | Fetch and debug CI failure logs |
+| `deps` | Dependency updates, upstream health assessment, replacement research |
 
 ## Installation
 
