@@ -930,6 +930,10 @@ _DANGEROUS_PATTERNS: List[Tuple[str, str]] = [
         r"git\s+push\s+.*--force.*\brelease\b",
         "BLOCKED: Never force-push to release. Release is protected — use PRs from main.",
     ),
+    (
+        r"git\s+(checkout|switch)\s+release(?![-/\w])",
+        "BLOCKED: Never switch to the release branch. All changes go to main first, then PR to release. Stay on main or a feature branch.",
+    ),
 ]
 
 

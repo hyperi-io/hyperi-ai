@@ -54,10 +54,15 @@ main → PR → release
 
 **NEVER:**
 
+- Checkout or switch to `release` — stay on `main` or a feature branch
 - Commit directly to `release` — always PR from `main`
 - Push to `release` without a PR
 - Rebase or force-push `release`
 - Skip the `main → release` PR step for "quick fixes"
+
+These rules are enforced by the `safety_guard.py` hook — attempts to checkout
+`release`, commit on `release`, or push to `release` are blocked with a
+corrective message.
 
 ---
 

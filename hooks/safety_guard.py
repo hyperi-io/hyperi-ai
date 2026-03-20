@@ -16,12 +16,30 @@ If dangerous: outputs JSON with permissionDecision: deny and a helpful reason.
 If safe: exits silently (implicit allow).
 """
 
+import re
+import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import common  # noqa: E402
+
+
+def _current_branch() -> str:
+    """Get the current git branch name, or empty string on error."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    return ""
 
 
 def main() -> None:
@@ -37,11 +55,30 @@ def main() -> None:
     result = common.check_command_safety(command)
     if result:
         _pattern, reason = result
-        print(common.hook_response(
-            "PreToolUse",
-            permission_decision="deny",
-            decision_reason=reason,
-        ))
+        print(
+            common.hook_response(
+                "PreToolUse",
+                permission_decision="deny",
+                decision_reason=reason,
+            )
+        )
+        return
+
+    # Block git commit/push while on the release branch
+    if re.search(r"git\s+(commit|push)\b", command):
+        branch = _current_branch()
+        if branch == "release":
+            print(
+                common.hook_response(
+                    "PreToolUse",
+                    permission_decision="deny",
+                    decision_reason=(
+                        "BLOCKED: You are on the release branch. Never commit or "
+                        "push directly to release. Switch to main first: "
+                        "'git checkout main'. All changes flow: main -> PR -> release."
+                    ),
+                )
+            )
 
 
 if __name__ == "__main__":
