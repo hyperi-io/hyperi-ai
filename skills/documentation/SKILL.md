@@ -115,15 +115,48 @@ When Terraform, Ansible, K8s, or Docker files are present:
 | Decision records | `docs/decisions/` or inline in STATE.md |
 | Generated docs | `docs/` (via `/doco` command) |
 
-## Avoid Hardcoded Counts
+## No Maintenance Churn in Documentation
 
-Never embed counts that will go stale when code changes:
+Documentation must not contain values that go stale on every build, commit,
+or release. These create an endless cycle of doc updates that always lag
+behind reality.
 
-- ❌ "132 BATS tests", "21 rule files", "7 hooks"
-- ✅ "BATS test suite", "rule files covering languages and infrastructure"
+### What to NEVER put in docs
 
-Hardcoded counts create maintenance debt — every addition or removal
-requires a doc update. Use prose descriptions instead.
+| Churn Item | Why It's Wrong | Use Instead |
+|---|---|---|
+| Hardcoded counts ("132 tests", "21 rules", "7 hooks") | Changes on every addition/removal | Prose ("BATS test suite", "rule files covering languages and infrastructure") |
+| Version numbers ("v3.4.13", "Python 3.12.1") | Stale within hours of a release | `git describe --tags`, `VERSION` file, or omit entirely |
+| Dates ("Updated 2026-03-20", "As of March 2026") | Stale immediately | Git commit timestamps are the source of truth |
+| Line counts ("~137 lines", "877 lines") | Changes on every edit | Omit or use qualitative ("compact", "large") |
+| Token counts as exact values ("24,000 tokens") | Changes when standards change | Use approximate ("~24K tokens") with "approximate" qualifier |
+| File counts in directory listings | Changes on every file add/remove | Omit counts, just describe the directory's purpose |
+| Specific test names in overview docs | Tests get renamed/added/removed | Reference test files, not individual test names |
+| "Currently" + any specific state | Implies a snapshot that will decay | State the design intent, not current state |
+
+### Examples
+
+- ❌ "132 BATS tests across 6 test files"
+- ✅ "BATS test suite"
+
+- ❌ "21 compact rule files"
+- ✅ "Compact rules covering languages, infrastructure, and cross-cutting concerns"
+
+- ❌ "Updated March 2026"
+- ✅ (omit — git log has the date)
+
+- ❌ "v3.4.13"
+- ✅ "See `VERSION` file or `git describe --tags`"
+
+- ❌ "Currently 7 hooks"
+- ✅ "Hooks for formatting, linting, safety, standards injection, and subagent context"
+
+### Why this matters
+
+LLMs are particularly prone to inserting hard metrics, counts, and dates.
+These look precise and authoritative but become wrong within days, making
+the documentation actively misleading. Every hardcoded value is a future
+bug in the docs.
 
 ## Anti-Patterns
 
@@ -132,4 +165,5 @@ requires a doc update. Use prose descriptions instead.
 - Leaving TODO/placeholder sections in committed documentation
 - Documenting aspirational architecture instead of actual architecture
 - Bloating README with content that belongs in `docs/`
-- Embedding counts (files, tests, rules) that go stale on every change
+- Embedding any value that changes from build to build (counts, versions, dates, metrics)
+- Using "currently" — it implies a snapshot that will rot
