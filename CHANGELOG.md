@@ -1,3 +1,21 @@
+## [3.6.0](https://github.com/hyperi-io/hyperi-ai/compare/3.5.0...3.6.0) (2026-03-20)
+
+
+### Features
+
+* add DFE metrics standard (dfe-metrics.md) ([c3c2e74](https://github.com/hyperi-io/hyperi-ai/commit/c3c2e74488ca4113b6bccb8d8024c3a8de2f63d5))
+
+
+### Bug Fixes
+
+* add auto-generation principle to DFE metrics standard ([e041805](https://github.com/hyperi-io/hyperi-ai/commit/e041805dd5920b069348c155766bd6bc47ed36a0))
+
+
+### Documentation
+
+* fix documentation drift across all non-standards docs ([8cc041c](https://github.com/hyperi-io/hyperi-ai/commit/8cc041ce9ebdcc16f60188503fa547687c4748bb))
+* strengthen anti-churn rules in documentation skill ([ea49833](https://github.com/hyperi-io/hyperi-ai/commit/ea4983366ecf700677200ff25ad1b224d48d1ce7))
+
 ## [3.5.0](https://github.com/hyperi-io/hyperi-ai/compare/3.4.13...3.5.0) (2026-03-20)
 
 
