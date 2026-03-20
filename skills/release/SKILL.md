@@ -13,8 +13,8 @@ user-invocable: true
 
 This skill is ONLY for projects using hyperi-ci. Verify before proceeding:
 - `.hyperi-ci.yaml` must exist in the project root
-- `.github/workflows/release-merge.yml` must exist (or equivalent caller)
 - `.releaserc.yaml` must exist
+- `hyperi-ci` must be installed (`uvx hyperi-ci --version` or `hyperi-ci --version`)
 
 If any are missing, tell the user this project is not configured for hyperi-ci releases.
 
@@ -66,21 +66,19 @@ Fix and re-push. Do not proceed until main CI is green.
 
 ### 4. Trigger Release Merge
 
-The release-merge workflow merges `main` → `release` with automatic conflict resolution
-for VERSION, Cargo.toml, pyproject.toml, package.json, and CHANGELOG.md files.
+Run the release-merge command. This clones to a temp directory, merges main into
+release with automatic conflict resolution for VERSION/Cargo.toml/CHANGELOG.md,
+pushes a merge branch, and creates a PR. Never touches your working tree.
 
 ```bash
-gh workflow run release-merge.yml
+hyperi-ci release-merge
 ```
 
-Wait for the workflow to complete:
-```bash
-gh run watch --repo $(gh repo view --json nameWithOwner -q .nameWithOwner)
-```
-
-This creates a PR from `main` → `release`. The PR title includes the commit summary.
+If `gh` CLI is not available, the command prints manual git/gh commands to run instead.
 
 ### 5. Find and Report the PR
+
+The release-merge command outputs the PR URL directly. If needed:
 
 ```bash
 gh pr list --base release --state open
@@ -137,9 +135,10 @@ Provide a summary:
 |---------|--------|
 | `hyperi-ci check` fails | Fix issues, re-run |
 | Main CI fails | `hyperi-ci logs --failed`, fix, re-push |
-| Release-merge has conflicts | Workflow will fail with details — resolve manually |
-| Release CI fails | Check logs, fix on main, re-run release-merge |
+| Release-merge has conflicts | Command resolves VERSION/Cargo.toml/CHANGELOG.md automatically; other conflicts require manual resolution |
+| Release CI fails | Check logs, fix on main, re-run `hyperi-ci release-merge` |
 | Missing GitHub Release | Check semantic-release logs in CI — likely no releasable commits |
+| `gh` CLI not installed | `hyperi-ci release-merge` prints manual commands to run |
 
 ## What NOT to Do
 
