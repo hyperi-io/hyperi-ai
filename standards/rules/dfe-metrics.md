@@ -5,6 +5,28 @@ Feature-gated in `hyperi-rustlib` (`metrics-dfe` feature). Opt-in, DFE-specific.
 
 Non-DFE apps using rustlib are unaffected.
 
+## Auto-Generation Principle
+
+**If rustlib owns the abstraction, rustlib owns the metrics.**
+
+Apps MUST NOT manually emit metrics that the library can emit automatically.
+This eliminates drift — the library version determines the metric set.
+
+| Abstraction | Auto-Emits | Feature Gate |
+|---|---|---|
+| `MetricsManager` | Process metrics (CPU, RSS, FDs, uptime) | `metrics` |
+| `DfeMetrics` | Platform `dfe_*` metrics (records, transport, scaling, security) | `metrics` |
+| `MemoryGuard` | `memory_used_bytes`, `memory_limit_bytes`, `memory_pressure` | `memory` |
+| `TieredSink` | `spool_bytes`, `spool_messages`, `spool_disk_available` | `tiered-sink` |
+| `ScalingPressure` | `scaling_pressure`, `scaling_circuit_open`, `scaling_memory_pressure` | `scaling` |
+| `TransportAdapter` (Kafka) | `consumer_lag`, `consumer_partitions_assigned`, `consumer_rebalance_total`, rdkafka stats | `transport-kafka` |
+| `ConfigReloader` | `config_reloads_total` with `result` label | `config-reload` |
+| Metric groups (`AppMetrics`, `BufferMetrics`, etc.) | Group-specific metrics with app namespace prefix | `metrics-dfe` |
+
+Apps provide **recording calls** (e.g., `buffer.record_flush(...)`) but the
+metric registration, naming, and export are handled by the library. Apps only
+register app-specific metrics directly via `MetricsManager::counter/gauge/histogram`.
+
 ## Naming Convention
 
 ```
