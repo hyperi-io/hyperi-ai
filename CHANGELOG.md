@@ -1,3 +1,10 @@
+## [3.8.0](https://github.com/hyperi-io/hyperi-ai/compare/3.7.1...3.8.0) (2026-03-20)
+
+
+### Features
+
+* add /deps skill for dependency update workflow ([ba6ed63](https://github.com/hyperi-io/hyperi-ai/commit/ba6ed631c1e40b620a3f2597443b4455f774af43))
+
 ## [3.7.1](https://github.com/hyperi-io/hyperi-ai/compare/3.7.0...3.7.1) (2026-03-20)
 
 
