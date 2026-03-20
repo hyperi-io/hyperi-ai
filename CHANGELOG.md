@@ -1,3 +1,10 @@
+## [3.7.1](https://github.com/hyperi-io/hyperi-ai/compare/3.7.0...3.7.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* update release skill to use hyperi-ci release-merge CLI ([895ae45](https://github.com/hyperi-io/hyperi-ai/commit/895ae45b2f7fc3c5a33587acb004dcef0ea75381))
+
 ## [3.7.0](https://github.com/hyperi-io/hyperi-ai/compare/3.6.0...3.7.0) (2026-03-20)
 
 
