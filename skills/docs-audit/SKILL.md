@@ -15,9 +15,8 @@ description: >-
 DOCUMENTATION MUST MATCH CODE REALITY
 ```
 
-Stale documentation is actively harmful — it misleads developers and AI
-agents into wrong assumptions. Every doc claim must be traceable to
-actual source files.
+Stale docs mislead developers and AI agents alike. Every doc claim must
+be traceable to actual source files.
 
 ## Keep Documentation Current
 
@@ -75,14 +74,12 @@ If you find drift, fix it. Don't add new docs on top of stale docs.
 
 ## Mermaid Diagrams — Prefer Over Prose
 
-**A diagram is worth a thousand words.** Documentation is read by people,
-not just LLMs. When describing architecture, dependencies, data flows, or
-component interactions, a mermaid diagram communicates in seconds what
-paragraphs of prose never fully convey.
+Documentation is read by people, not just LLMs. A picture paints a thousand
+words — default to mermaid diagrams for architecture, dependencies, data
+flows, and component interactions.
 
-**Default to diagrams.** If you're writing more than two sentences
-describing how components relate, stop and draw a diagram instead.
-Prose explains _why_; diagrams show _what_ and _how_.
+If you're writing more than two sentences about how components relate,
+draw a diagram instead.
 
 Mermaid diagrams belong in any `.md` file — never in source code comments
 or file headers.
@@ -243,10 +240,8 @@ behind reality.
 
 ### Why this matters
 
-LLMs are particularly prone to inserting hard metrics, counts, and dates.
-These look precise and authoritative but become wrong within days, making
-the documentation actively misleading. Every hardcoded value is a future
-bug in the docs.
+LLMs love inserting precise-looking metrics, counts, and dates. They're
+wrong within days. Every hardcoded value is a future doc bug.
 
 ## Anti-Patterns
 

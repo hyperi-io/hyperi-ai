@@ -449,13 +449,12 @@ def initialize_color_picker():
 
 ### Mermaid Diagrams — Prefer Over Prose
 
-**A diagram is worth a thousand words.** When describing architecture,
-dependencies, data flows, or component interactions, use a mermaid diagram
-in a `.md` file. Prose explains _why_; diagrams show _what_ and _how_.
+A picture paints a thousand words. When describing architecture, dependencies,
+data flows, or component interactions, use a mermaid diagram in a `.md` file.
 
-If you're writing more than two sentences describing how components relate,
-stop and draw a diagram instead. Diagrams go in any `.md` file — never in
-source code comments or file headers.
+If you're writing more than two sentences about how components relate, draw
+a diagram instead. Diagrams go in any `.md` file — never in source code
+comments or file headers.
 
 **Mandatory diagram situations:**
 
