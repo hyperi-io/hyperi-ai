@@ -1,3 +1,15 @@
+## [3.8.1](https://github.com/hyperi-io/hyperi-ai/compare/3.8.0...3.8.1) (2026-03-21)
+
+
+### Refactoring
+
+* rename documentation skill to docs-audit ([3cd0f9e](https://github.com/hyperi-io/hyperi-ai/commit/3cd0f9e70c0fe3921c4440e78e4ea58019bda196))
+
+
+### Documentation
+
+* add deps skill to all doc listings, fix remaining drift ([2d6a08f](https://github.com/hyperi-io/hyperi-ai/commit/2d6a08f084184cf22b0c29e0bec7cd287a942c5f))
+
 ## [3.8.0](https://github.com/hyperi-io/hyperi-ai/compare/3.7.1...3.8.0) (2026-03-20)
 
 
