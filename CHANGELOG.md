@@ -1,3 +1,11 @@
+## [3.8.2](https://github.com/hyperi-io/hyperi-ai/compare/3.8.1...3.8.2) (2026-03-21)
+
+
+### Bug Fixes
+
+* broaden mermaid placement rule to any .md file ([b15e12c](https://github.com/hyperi-io/hyperi-ai/commit/b15e12cf22dc0862a0fef4ac01de9138f85c46cc))
+* clarify mermaid diagrams belong in markdown docs, not code headers ([5ee3b08](https://github.com/hyperi-io/hyperi-ai/commit/5ee3b08c6b8c7cce98c107a18dad765e49c52f0c))
+
 ## [3.8.1](https://github.com/hyperi-io/hyperi-ai/compare/3.8.0...3.8.1) (2026-03-21)
 
 
