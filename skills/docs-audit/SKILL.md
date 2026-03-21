@@ -1,5 +1,5 @@
 ---
-name: documentation
+name: docs-audit
 description: >-
   Documentation standards and code-reality auditing. Use when writing or
   updating docs, README, STATE.md, or ARCHITECTURE.md. Docs must match

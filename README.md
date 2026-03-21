@@ -64,7 +64,7 @@ The submodule has seven distinct layers:
 | **Infrastructure rules** | `standards/rules/<infra>.md` | CC rule (path-scoped) | Docker, K8s, Terraform, Ansible, PKI |
 | **Cross-cutting rules** | `standards/rules/*.md` | CC rule (path-scoped) | Git, security, CI, error handling, design principles, code style, config, mocks |
 | **Verification** | `skills/verification/` | CC skill | Verify before claiming completion -- requires fresh command output as evidence |
-| **Documentation** | `skills/documentation/` | CC skill | Docs must match code reality -- verify before writing |
+| **Documentation** | `skills/docs-audit/` | CC skill | Docs must match code reality -- verify before writing |
 | **Bleeding-edge** | `skills/bleeding-edge/` | CC skill | Stale training data protection -- web search first, Context7 MCP for live docs |
 | **Live library docs** | `.mcp.json` (Context7) | MCP server | Fetch current documentation for any library via `resolve-library-id` + `query-docs` |
 | **Debugging** | superpowers plugin | CC skill | Systematic debugging methodology |
@@ -180,7 +180,7 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |
 |-- skills/                      # Our unique methodology skills (Agent Skills standard)
 |   |-- verification/SKILL.md   # Verify before claiming completion
-|   |-- documentation/SKILL.md  # Docs must match code reality
+|   |-- docs-audit/SKILL.md     # Docs must match code reality
 |   |-- bleeding-edge/SKILL.md  # Stale training data protection + Context7
 |   |-- release/SKILL.md        # Full release workflow (hyperi-ci projects)
 |   |-- ci-check/SKILL.md       # Local pre-push validation
@@ -429,7 +429,7 @@ CC loads the full skill content when the description matches the current task:
 | Skill | Triggers When |
 |---|---|
 | `verification` | Claiming completion, committing, creating PRs |
-| `documentation` | Writing or updating docs, README, STATE.md |
+| `docs-audit` | Writing or updating docs, README, STATE.md |
 | `bleeding-edge` | Adding dependencies, using library APIs, Docker images |
 | `release` | Releasing, shipping, deploying (hyperi-ci projects) |
 | `ci-check` | Pre-push validation, running CI locally (hyperi-ci projects) |

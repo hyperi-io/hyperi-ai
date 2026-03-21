@@ -44,7 +44,7 @@ These became Agent Skills in `skills/` -- superpowers has no equivalent:
 | Skill | Purpose |
 |---|---|
 | `verification` | Verify before claiming completion -- requires fresh command output as evidence |
-| `documentation` | Documentation standards and code-reality auditing |
+| `docs-audit` | Documentation standards and code-reality auditing |
 | `bleeding-edge` | Stale training data protection + Context7 MCP for live library docs |
 | `release` | Full release workflow for hyperi-ci projects (commit to GH Releases + R2) |
 | `ci-check` | Local pre-push validation via hyperi-ci |
