@@ -75,8 +75,8 @@ If you find drift, fix it. Don't add new docs on top of stale docs.
 
 ## Mermaid Diagrams
 
-Mermaid diagrams belong in markdown documentation files (`docs/`, `README.md`,
-`STATE.md`, `ARCHITECTURE.md`) — never in source code comments or file headers.
+Mermaid diagrams belong in any `.md` file — never in source code comments
+or file headers.
 
 Use mermaid diagrams in markdown for:
 
