@@ -1,3 +1,10 @@
+## [3.8.4](https://github.com/hyperi-io/hyperi-ai/compare/3.8.3...3.8.4) (2026-03-21)
+
+
+### Bug Fixes
+
+* add mermaid diagram standards to people-facing CODE-STYLE.md ([2ec6b9e](https://github.com/hyperi-io/hyperi-ai/commit/2ec6b9e68eef644b01d12489c913297c032baf6b))
+
 ## [3.8.3](https://github.com/hyperi-io/hyperi-ai/compare/3.8.2...3.8.3) (2026-03-21)
 
 
