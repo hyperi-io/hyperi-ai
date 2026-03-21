@@ -122,6 +122,13 @@ STOP — Commit or revert
 
 **Revert if:** 3+ iterations with no progress, code more complex than start, tests failing with unclear cause.
 
+## Documentation Diagrams
+
+- **Prefer mermaid diagrams over prose** for architecture, dependencies, data flows, and component interactions
+- Diagrams go in `.md` files — never in source code comments or file headers
+- If you're writing 2+ sentences about how components relate, draw a diagram instead
+- Mandatory for: architecture (3+ components), dependency trees, data flow, deployment topology, API interactions
+
 ## Source of Truth
 
 | Data | Source | NOT From |

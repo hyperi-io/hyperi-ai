@@ -73,29 +73,116 @@ If you find drift, fix it. Don't add new docs on top of stale docs.
 - Data flow diagrams
 - Infrastructure diagram (if IaC present)
 
-## Mermaid Diagrams
+## Mermaid Diagrams — Prefer Over Prose
+
+**A diagram is worth a thousand words.** Documentation is read by people,
+not just LLMs. When describing architecture, dependencies, data flows, or
+component interactions, a mermaid diagram communicates in seconds what
+paragraphs of prose never fully convey.
+
+**Default to diagrams.** If you're writing more than two sentences
+describing how components relate, stop and draw a diagram instead.
+Prose explains _why_; diagrams show _what_ and _how_.
 
 Mermaid diagrams belong in any `.md` file — never in source code comments
 or file headers.
 
-Use mermaid diagrams in markdown for:
+### When to Use Each Type
 
-| Diagram Type | Use When |
+| Diagram Type | Use For |
 |---|---|
-| **Architecture** (`graph TD`) | 3+ components interacting |
-| **Sequence** (`sequenceDiagram`) | Request/response flows, API interactions |
-| **Entity-relationship** (`erDiagram`) | Data models, database schemas |
-| **Flowchart** (`flowchart LR`) | Build pipelines, decision logic |
-| **State** (`stateDiagram-v2`) | Lifecycle management, status transitions |
+| **Architecture** (`graph TD`) | Component relationships, system overview, module dependencies |
+| **Sequence** (`sequenceDiagram`) | Request/response flows, API call chains, event sequences |
+| **Entity-relationship** (`erDiagram`) | Data models, database schemas, struct relationships |
+| **Flowchart** (`flowchart LR`) | Build pipelines, decision logic, deployment flows |
+| **State** (`stateDiagram-v2`) | Lifecycle management, status transitions, state machines |
+| **Class** (`classDiagram`) | Module interfaces, trait/interface hierarchies |
+
+### Mandatory Diagram Situations
+
+You MUST include a mermaid diagram when documenting:
+
+- **Architecture** — any project with 3+ interacting components
+- **Dependencies** — package/crate/module dependency trees
+- **Data flow** — how data moves through the system
+- **Deployment** — infrastructure topology, CI/CD pipelines
+- **API interactions** — service-to-service communication
+- **State machines** — anything with lifecycle states
 
 ### Diagram Rules
 
 - **Generate from code analysis, not imagination.** Every node and edge
   must correspond to actual components and relationships.
-- Create diagrams when 3+ components interact or data flow isn't obvious
 - Don't diagram trivial relationships (single-file scripts, simple CRUD)
 - Keep diagrams focused — split large ones into multiple smaller diagrams
 - Use descriptive node labels, not abbreviations
+- Show direction of data/control flow with arrow labels
+
+### Examples
+
+**Architecture overview** — show how components connect:
+
+````markdown
+```mermaid
+graph TD
+    CLI[CLI Entry Point] --> Parser[Log Parser]
+    Parser --> Stats[Stats Aggregator]
+    Stats --> Reporter[Report Generator]
+    Reporter --> Console[Console Output]
+    Reporter --> JSON[JSON Export]
+    Parser --> Filter[IP Filter]
+    Filter --> Stats
+```
+````
+
+**Dependency flow** — show what depends on what:
+
+````markdown
+```mermaid
+graph LR
+    API[api-server] --> Auth[auth-service]
+    API --> DB[(PostgreSQL)]
+    API --> Cache[(Redis)]
+    Auth --> DB
+    Worker[background-worker] --> DB
+    Worker --> Queue[(RabbitMQ)]
+    API --> Queue
+```
+````
+
+**Sequence diagram** — show request/response flow:
+
+````markdown
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Auth
+    participant DB
+
+    Client->>API: POST /login
+    API->>Auth: validate_credentials()
+    Auth->>DB: SELECT user
+    DB-->>Auth: user record
+    Auth-->>API: JWT token
+    API-->>Client: 200 OK + token
+```
+````
+
+**Deployment topology** — show infrastructure:
+
+````markdown
+```mermaid
+graph TD
+    LB[Load Balancer] --> App1[App Server 1]
+    LB --> App2[App Server 2]
+    App1 --> DB[(Primary DB)]
+    App2 --> DB
+    DB --> Replica[(Read Replica)]
+    App1 --> S3[Object Storage]
+    App2 --> S3
+```
+````
 
 ## Infrastructure Documentation (IaC Projects)
 
