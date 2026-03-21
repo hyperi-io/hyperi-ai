@@ -1,3 +1,10 @@
+## [3.8.5](https://github.com/hyperi-io/hyperi-ai/compare/3.8.4...3.8.5) (2026-03-21)
+
+
+### Bug Fixes
+
+* de-LLM the docs-audit skill and CODE-STYLE mermaid section ([9ab17b9](https://github.com/hyperi-io/hyperi-ai/commit/9ab17b9a047a57695d4f4906c711708eac182cac))
+
 ## [3.8.4](https://github.com/hyperi-io/hyperi-ai/compare/3.8.3...3.8.4) (2026-03-21)
 
 
