@@ -1,3 +1,10 @@
+## [3.8.3](https://github.com/hyperi-io/hyperi-ai/compare/3.8.2...3.8.3) (2026-03-21)
+
+
+### Bug Fixes
+
+* strongly encourage mermaid diagrams over prose in documentation ([f181de5](https://github.com/hyperi-io/hyperi-ai/commit/f181de59fcce1c0487db708da5a831fd40570bc3))
+
 ## [3.8.2](https://github.com/hyperi-io/hyperi-ai/compare/3.8.1...3.8.2) (2026-03-21)
 
 
