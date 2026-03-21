@@ -447,6 +447,72 @@ def initialize_color_picker():
 - Assumptions and constraints
 - External dependencies
 
+### Mermaid Diagrams — Prefer Over Prose
+
+**A diagram is worth a thousand words.** When describing architecture,
+dependencies, data flows, or component interactions, use a mermaid diagram
+in a `.md` file. Prose explains _why_; diagrams show _what_ and _how_.
+
+If you're writing more than two sentences describing how components relate,
+stop and draw a diagram instead. Diagrams go in any `.md` file — never in
+source code comments or file headers.
+
+**Mandatory diagram situations:**
+
+- Architecture — any project with 3+ interacting components
+- Dependencies — package/crate/module dependency trees
+- Data flow — how data moves through the system
+- Deployment — infrastructure topology, CI/CD pipelines
+- API interactions — service-to-service communication
+- State machines — anything with lifecycle states
+
+**Diagram types:**
+
+| Type | Syntax | Use For |
+|------|--------|---------|
+| Architecture | `graph TD` | Component relationships, system overview |
+| Sequence | `sequenceDiagram` | Request/response flows, API call chains |
+| Entity-relationship | `erDiagram` | Data models, database schemas |
+| Flowchart | `flowchart LR` | Build pipelines, decision logic |
+| State | `stateDiagram-v2` | Lifecycle management, status transitions |
+| Class | `classDiagram` | Module interfaces, trait/interface hierarchies |
+
+**Example — architecture overview:**
+
+```mermaid
+graph TD
+    CLI[CLI Entry Point] --> Parser[Log Parser]
+    Parser --> Filter[IP Filter]
+    Filter --> Stats[Stats Aggregator]
+    Stats --> Console[Console Output]
+    Stats --> JSON[JSON Export]
+```
+
+**Example — service interaction:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Auth
+    participant DB
+
+    Client->>API: POST /login
+    API->>Auth: validate_credentials()
+    Auth->>DB: SELECT user
+    DB-->>Auth: user record
+    Auth-->>API: JWT token
+    API-->>Client: 200 OK + token
+```
+
+**Diagram rules:**
+
+- Generate from code analysis, not imagination — every node must map to a real component
+- Don't diagram trivial relationships (single-file scripts, simple CRUD)
+- Keep diagrams focused — split large ones into smaller diagrams
+- Use descriptive node labels, not abbreviations
+- Show direction of data/control flow with arrow labels
+
 ---
 
 ## Performance Guidelines
