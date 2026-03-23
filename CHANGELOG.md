@@ -1,3 +1,10 @@
+## [3.8.8](https://github.com/hyperi-io/hyperi-ai/compare/3.8.7...3.8.8) (2026-03-23)
+
+
+### Bug Fixes
+
+* add real-binary integration test guidance to TESTING.md ([89d9a1f](https://github.com/hyperi-io/hyperi-ai/commit/89d9a1f10d37c5b3d598d14a437eac06577f213c))
+
 ## [3.8.7](https://github.com/hyperi-io/hyperi-ai/compare/3.8.6...3.8.7) (2026-03-23)
 
 
