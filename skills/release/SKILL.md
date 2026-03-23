@@ -97,18 +97,47 @@ gh pr merge <PR_NUMBER> --merge --delete-branch=false
 
 IMPORTANT: Do NOT delete the release branch. It is a permanent branch.
 
-### 7. Watch Release CI
+### 7. Ask: Follow the Release?
 
-The merge to `release` triggers the full CI pipeline including:
-- quality → test → build → **release** → **publish**
+After merge, ask the user:
+
+> "Release merged. Want me to follow this all the way through to completion?
+> I'll check every 2 minutes and report status until artifacts are published."
+
+- **If yes:** proceed to steps 8–10 (monitoring loop)
+- **If no:** report the merge and stop
+
+### 8. Monitor Release CI (every 2 minutes)
+
+The merge to `release` triggers the full CI pipeline:
+quality → test → build → **release** → **publish**
+
+Poll every 2 minutes and report status. Use the `/loop` pattern:
 
 ```bash
-gh run watch --repo $(gh repo view --json nameWithOwner -q .nameWithOwner)
+# Get the run triggered by the merge
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+RUN_ID=$(gh run list --repo "$REPO" --branch release --limit 1 --json databaseId -q '.[0].databaseId')
+
+# Check status
+gh run view "$RUN_ID" --repo "$REPO"
 ```
 
-### 8. Verify Release Artifacts
+Each check, report to the user:
+- Which jobs have completed, which are running, which are queued
+- Any failures (with the failing job name and a one-line summary)
+- Elapsed time since merge
 
-Once CI completes, verify all artifacts were published:
+Continue until the run reaches a terminal state (completed/failed/cancelled).
+
+If the run fails, fetch logs immediately:
+```bash
+hyperi-ci logs --failed
+```
+
+### 9. Verify Release Artifacts
+
+Once CI completes successfully, verify all artifacts were published:
 
 ```bash
 # Check GitHub Release was created
@@ -119,14 +148,17 @@ gh release view $(gh release list --limit 1 --json tagName -q '.[0].tagName')
 ```
 
 For projects with R2 publishing, verify the binary URLs are accessible
-(the publish job logs will show the R2 upload paths).
+(the publish job logs show the R2 upload paths).
 
-### 9. Report to User
+For JFrog publishing, check the publish job logs for upload confirmation.
 
-Provide a summary:
+### 10. Final Report
+
+Provide a complete summary:
 - GA version tag (e.g. `v1.15.0`)
 - GitHub Release URL
 - Published destinations (PyPI, crates.io, npm, R2, JFrog — based on `.hyperi-ci.yaml` publish config)
+- Total time from merge to artifacts published
 - Any warnings or issues from the CI run
 
 ## Error Recovery
