@@ -1,3 +1,11 @@
+## [3.8.7](https://github.com/hyperi-io/hyperi-ai/compare/3.8.6...3.8.7) (2026-03-23)
+
+
+### Bug Fixes
+
+* add test structure, CI mapping, AI traps to all language standards ([f654fa1](https://github.com/hyperi-io/hyperi-ai/commit/f654fa1ea206b5d486c07b2b193ddc730445e97b))
+* overhaul Python testing section — src layout, no mocks, async, CI mapping ([b892feb](https://github.com/hyperi-io/hyperi-ai/commit/b892febc65fc134293d1d0e96fd6d5dbe010ef02))
+
 ## [3.8.6](https://github.com/hyperi-io/hyperi-ai/compare/3.8.5...3.8.6) (2026-03-23)
 
 
