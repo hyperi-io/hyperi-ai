@@ -1,3 +1,10 @@
+## [3.8.6](https://github.com/hyperi-io/hyperi-ai/compare/3.8.5...3.8.6) (2026-03-23)
+
+
+### Bug Fixes
+
+* overhaul testing standards — directory structure, CI mapping, smoke tests ([515d75a](https://github.com/hyperi-io/hyperi-ai/commit/515d75ad4c30c6c0ff3e5d50b6bbe4559fcb51b5))
+
 ## [3.8.5](https://github.com/hyperi-io/hyperi-ai/compare/3.8.4...3.8.5) (2026-03-21)
 
 
