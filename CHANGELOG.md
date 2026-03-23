@@ -1,3 +1,10 @@
+## [3.10.0](https://github.com/hyperi-io/hyperi-ai/compare/3.9.0...3.10.0) (2026-03-23)
+
+
+### Features
+
+* add release monitoring loop to release skill ([2912563](https://github.com/hyperi-io/hyperi-ai/commit/2912563622004a526705d3a37f73d7e23d3dab58))
+
 ## [3.9.0](https://github.com/hyperi-io/hyperi-ai/compare/3.8.8...3.9.0) (2026-03-23)
 
 
