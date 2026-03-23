@@ -156,6 +156,122 @@ Put reusable test infrastructure here. Not test cases — those go in `unit/`, `
 
 ---
 
+## Integration Tests: Use Real Binaries, Not Emulation
+
+Integration tests SHOULD use the actual external tool binary where feasible. Don't write local emulation code to simulate what a real tool does — you'll spend more time maintaining the emulator than the tests, and the emulator will diverge from the real tool's behaviour.
+
+**The pattern:**
+
+1. Write a `scripts/fetch-{tool}.sh` that downloads the latest binary release, caches it in `.tmp/`, and prints the path to stdout
+2. Test code calls the fetch script once per test run (cached via `OnceLock` / module-level fixture)
+3. Falls back to the tool in system PATH if the fetch fails
+4. Tests skip gracefully if the binary isn't available — not fail
+
+**Reference implementation:** dfe-receiver's Vector and Filebeat integration tests. Vector is auto-downloaded, started as a subprocess, pointed at the running server, and the test verifies real events flow through the real protocol.
+
+### When to Use Real Binaries vs Docker
+
+| Approach | Use when | Example |
+|----------|----------|---------|
+| **Real binary (preferred)** | Tool is a single binary, no server state needed | Vector, Filebeat, Logstash, curl, openssl |
+| **Docker (testcontainers)** | Tool requires a running server with state | Kafka, PostgreSQL, Redis, ClickHouse |
+| **Emulation (last resort)** | No binary available, can't Docker, proprietary API | Cloud API wiremock stubs |
+
+**The hierarchy:** Real binary > Docker container > Wiremock stub > Skip test. Never write a local emulator.
+
+### Fetch Script Pattern
+
+```bash
+#!/usr/bin/env bash
+# scripts/fetch-{tool}.sh — download and cache {tool} binary
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CACHE_DIR="${REPO_ROOT}/.tmp/{tool}"
+ARCH="$(uname -m)"
+
+# Check cached version
+cached_version() {
+    local bin="${CACHE_DIR}/bin/{tool}"
+    [[ -x "$bin" ]] && "$bin" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1
+}
+
+# Fetch latest from GitHub releases (or pin via {TOOL}_VERSION env var)
+# Download → extract → cache in .tmp/{tool}/bin/
+# Print absolute path to binary on stdout (last line)
+```
+
+- `.tmp/` is gitignored — binaries are never committed
+- Script is idempotent — re-running reuses the cache unless a newer version is available
+- Pin a specific version via env var (`VECTOR_VERSION=0.43.0 ./scripts/fetch-vector.sh`) for CI reproducibility
+- Default: latest release (developer machines always test against the current version)
+
+### Using the Binary in Tests
+
+```rust
+// Rust — OnceLock for one-time fetch
+fn tool_binary_path() -> Option<&'static PathBuf> {
+    static BIN: OnceLock<Option<PathBuf>> = OnceLock::new();
+    BIN.get_or_init(|| {
+        let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/fetch-tool.sh");
+        Command::new("bash").arg(&script).output().ok()
+            .filter(|o| o.status.success())
+            .and_then(|o| {
+                let path = String::from_utf8_lossy(&o.stdout).trim().lines().last()?.to_string();
+                let p = PathBuf::from(&path);
+                p.exists().then_some(p)
+            })
+            .or_else(|| {
+                // Fallback: check system PATH
+                Command::new("tool").arg("--version").output().ok()
+                    .filter(|o| o.status.success())
+                    .map(|_| PathBuf::from("tool"))
+            })
+    }).as_ref()
+}
+
+#[tokio::test]
+async fn test_tool_integration() {
+    let Some(bin) = tool_binary_path() else {
+        eprintln!("Skipping: tool binary not available");
+        return;
+    };
+    // Start your server, run the tool as subprocess, verify results
+}
+```
+
+```python
+# Python — module-level fixture
+import subprocess, shutil
+from pathlib import Path
+
+@pytest.fixture(scope="session")
+def tool_binary():
+    script = Path(__file__).parent.parent / "scripts" / "fetch-tool.sh"
+    if script.exists():
+        result = subprocess.run(["bash", str(script)], capture_output=True, text=True)
+        if result.returncode == 0:
+            path = result.stdout.strip().splitlines()[-1]
+            if Path(path).exists():
+                return path
+    # Fallback: system PATH
+    if shutil.which("tool"):
+        return "tool"
+    pytest.skip("tool binary not available")
+```
+
+### AI Guidance
+
+When generating integration tests for external tools, AI assistants MUST:
+
+1. **Web search** for the tool's binary distribution — check if a standalone binary exists, how to download it, and what platforms are supported
+2. **Prefer the real binary** over writing emulation code — the emulator will be wrong
+3. **Write a fetch script** following the pattern above if one doesn't exist
+4. **Check Docker feasibility** only if a standalone binary isn't available (tool requires a running server)
+5. **Fall back to wiremock/stubs** only for proprietary cloud APIs with no local alternative
+
+---
+
 ## Coverage
 
 - 80% minimum for all projects (CI-enforced)
