@@ -539,6 +539,64 @@ const getEvents = (filters: Filter[]) => {
 
 ## Testing
 
+### Directory Structure
+
+Co-locate unit tests with source. Integration and E2E tests go in `tests/`.
+
+```text
+src/
+├── components/
+│   ├── UserCard.tsx
+│   └── UserCard.test.tsx     # Unit test co-located
+├── services/
+│   ├── auth.ts
+│   └── auth.test.ts          # Unit test co-located
+└── utils/
+    ├── format.ts
+    └── format.test.ts         # Unit test co-located
+
+tests/
+├── common/                    # Shared helpers, factories
+│   └── setup.ts
+├── fixtures/                  # Static test data
+│   └── sample_responses.json
+├── integration/
+│   ├── api.test.ts
+│   └── database.test.ts
+├── e2e/
+│   └── user_flow.test.ts
+└── smoke/
+    └── startup.test.ts        # MANDATORY — catches init crashes
+```
+
+- Unit tests: co-located as `*.test.ts` or `*.spec.ts` next to source
+- Integration/E2E: in `tests/` directory with separate Vitest project configs
+- Smoke test is mandatory — boots the app, checks it doesn't crash
+- Use `describe` blocks to group related tests within a file
+
+### Startup Smoke Test (MANDATORY)
+
+```typescript
+import { describe, it, expect } from "vitest";
+
+describe("startup", () => {
+  it("boots with default config without crashing", async () => {
+    const app = await createApp();
+    expect(app).toBeDefined();
+    expect(app.isReady()).toBe(true);
+  });
+});
+```
+
+### CI Stage Mapping (hyperi-ci)
+
+| Location | CI Stage | Trigger |
+|----------|----------|---------|
+| `src/**/*.test.ts` | `quality` | Every push |
+| `tests/integration/` | `test` | Every push |
+| `tests/e2e/` | `test:e2e` | PR to `release` |
+| `tests/smoke/` | `test:smoke` | Every push |
+
 ### Vitest Configuration
 
 ```typescript
@@ -1457,6 +1515,38 @@ const handleResult = (result: Result) =>
 | `vitest` | Test runner |
 | `@testing-library/react` | React testing |
 | `happy-dom` | DOM implementation |
+
+---
+
+## AI Test Generation Traps
+
+> **Derek's hard lessons learned from trusting AI-generated test suites.**
+> The tests looked great. CI was green. Production broke anyway.
+
+### Traps to Watch For
+
+| Trap | What AI does | What you need |
+|------|-------------|---------------|
+| **Happy-path only** | Tests valid input, checks it works | Tests INVALID input, checks it throws correctly |
+| **Mirror tests** | Assertions that duplicate implementation logic | Assertions that check observable behaviour |
+| **Assertion-free tests** | Calls functions but never asserts | Every test MUST `expect()` something meaningful |
+| **Missing error paths** | No tests for thrown errors, rejected promises, null | Explicit tests for every error your code can throw |
+| **No boundary tests** | Values like 5 and 10 but not 0, Infinity, "", null, undefined | Boundary values: zero, empty string, null, undefined, NaN |
+| **Missing async tests** | Sequential-only tests for async code | Tests with AbortController, timeout, concurrent access |
+| **No startup smoke test** | Tests for individual functions, nothing for app boot | Mandatory smoke test with default config |
+
+### Test Quality Checklist (Apply After AI Generation)
+
+- [ ] Every thrown error type has at least one test that triggers it
+- [ ] Zero, empty string, null, undefined, NaN inputs are tested
+- [ ] Invalid/malformed input is tested (not just valid input)
+- [ ] Async code has timeout and cancellation tests
+- [ ] The test actually fails when you break the implementation
+- [ ] Test names describe the scenario, not the function
+- [ ] No assertion-free tests
+- [ ] Startup smoke test exists
+
+**Treat AI-generated tests as drafts.** Add the edge cases, failure paths, and adversarial inputs yourself.
 
 ---
 

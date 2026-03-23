@@ -169,6 +169,97 @@ func (e *ConfigError) Unwrap() error {
 
 ## Testing
 
+### Directory Structure
+
+Unit tests are co-located with source (Go convention). Integration and E2E go in `tests/`.
+
+```text
+cmd/
+├── myapp/
+│   └── main.go
+internal/
+├── config/
+│   ├── config.go
+│   └── config_test.go        # Unit test co-located
+├── pipeline/
+│   ├── pipeline.go
+│   └── pipeline_test.go      # Unit test co-located
+└── source/
+    ├── aws.go
+    └── aws_test.go            # Unit test co-located
+
+tests/
+├── common/
+│   └── helpers.go             # Shared test helpers
+├── fixtures/
+│   └── sample_config.yaml     # Static test data
+├── integration/
+│   └── api_test.go            # Build tag: //go:build integration
+├── e2e/
+│   └── pipeline_test.go       # Build tag: //go:build e2e
+└── smoke_test.go              # MANDATORY — startup smoke test
+```
+
+- Unit tests: co-located `_test.go` files (Go standard)
+- Integration: use build tags (`//go:build integration`) for CI separation
+- E2E: use build tags (`//go:build e2e`) — requires infrastructure
+- Smoke test is mandatory — catches init panics before production does
+
+### Startup Smoke Test (MANDATORY)
+
+```go
+// tests/smoke_test.go
+package tests
+
+func TestAppStartsWithDefaults(t *testing.T) {
+    cfg := config.Default()
+    app, err := NewApp(cfg)
+    require.NoError(t, err, "app should start with default config")
+    assert.True(t, app.IsReady())
+}
+```
+
+### CI Stage Mapping (hyperi-ci)
+
+| Location | CI Stage | Command | Trigger |
+|----------|----------|---------|---------|
+| `*_test.go` (no tags) | `quality` | `go test ./...` | Every push |
+| `//go:build integration` | `test` | `go test -tags=integration ./tests/integration/` | Every push |
+| `//go:build e2e` | `test:e2e` | `go test -tags=e2e ./tests/e2e/` | PR to `release` |
+| `tests/smoke_test.go` | `test:smoke` | `go test ./tests/ -run Smoke` | Every push |
+
+### Integration Tests with Testcontainers
+
+```go
+// tests/integration/db_test.go
+//go:build integration
+
+package integration
+
+import (
+    "context"
+    "testing"
+
+    "github.com/stretchr/testify/require"
+    "github.com/testcontainers/testcontainers-go"
+    "github.com/testcontainers/testcontainers-go/modules/postgres"
+)
+
+func TestDatabaseOperations(t *testing.T) {
+    ctx := context.Background()
+
+    pgContainer, err := postgres.Run(ctx, "postgres:16-alpine")
+    require.NoError(t, err)
+    defer pgContainer.Terminate(ctx)
+
+    connStr, err := pgContainer.ConnectionString(ctx)
+    require.NoError(t, err)
+
+    db := connectDB(t, connStr)
+    // test with real Postgres
+}
+```
+
 ### Table-Driven Tests
 
 ```go
@@ -1736,6 +1827,38 @@ func processFile(path string) error {
     return process(f)
 }
 ```
+
+---
+
+## AI Test Generation Traps
+
+> **Derek's hard lessons learned from trusting AI-generated test suites.**
+> The tests looked great. CI was green. Production broke anyway.
+
+### Traps to Watch For
+
+| Trap | What AI does | What you need |
+|------|-------------|---------------|
+| **Happy-path only** | Table tests with all-valid inputs | Table tests MUST include error cases, zero values, nil |
+| **Mirror tests** | Assertions that duplicate implementation logic | Assertions that check observable behaviour |
+| **Missing error rows** | `wantErr: false` on every table row | At least half your table rows should have `wantErr: true` |
+| **No nil/zero tests** | Tests with populated structs only | Tests with nil pointers, zero-value structs, empty slices |
+| **Missing goroutine tests** | Sequential-only tests for concurrent code | Tests with `t.Parallel()`, data races caught by `-race` |
+| **No startup smoke test** | Tests for individual functions, nothing for app boot | `TestAppStartsWithDefaults` in `tests/smoke_test.go` |
+| **Shallow testify usage** | Only `assert.Equal` | Use `require.NoError` for setup, `assert` for verification |
+
+### Test Quality Checklist (Apply After AI Generation)
+
+- [ ] Every error return path has at least one test that triggers it
+- [ ] Table-driven tests include error cases (not just success cases)
+- [ ] nil, zero-value, and empty inputs are tested
+- [ ] Concurrent code tested with `-race` flag and `t.Parallel()`
+- [ ] The test actually fails when you break the implementation
+- [ ] Test names follow `TestFunction_Scenario` convention
+- [ ] `require` used for setup assertions, `assert` for test assertions
+- [ ] Startup smoke test exists
+
+**Treat AI-generated tests as drafts.** Add the error rows, nil cases, and race condition tests yourself.
 
 ---
 

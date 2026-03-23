@@ -6445,6 +6445,62 @@ Key realisation: **The compiler is your pair programmer.** Read the error messag
 
 ---
 
+## AI Test Generation Traps
+
+> **Derek's hard lessons learned from trusting AI-generated test suites.**
+> The tests looked great. CI was green. Production broke anyway.
+> Every trap below cost real debugging time.
+
+### The Core Problem: Happy-Path Overfitting
+
+AI models generate tests that confirm the code works under ideal conditions. That's the least valuable thing a test can do. The bugs that matter live in edge cases, error states, race conditions, and system interactions — exactly where AI has the least signal.
+
+Studies show up to 30% of AI-generated tests contain "sycophantic" patterns — assertions that look correct but verify nothing meaningful. Line coverage might report 85%, but effective coverage (meaningful behaviours actually verified) can be as low as 40%.
+
+### Traps to Watch For
+
+| Trap | What AI Does | What You Need |
+|------|-------------|---------------|
+| **Happy-path only** | Tests that send valid input and check it works | Tests that send INVALID input and check it fails correctly |
+| **Mirror tests** | Assertions that duplicate the implementation logic | Assertions that check observable behaviour from a user's perspective |
+| **Assertion-free tests** | Tests that call functions but never assert anything | Every test MUST assert something meaningful |
+| **Hardcoded oracles** | `assert_eq!(result, 42)` without explaining WHY 42 | Test names and comments that document the business rule |
+| **Missing error paths** | No tests for `Err`, `None`, `panic`, timeout, disconnect | Explicit tests for every error variant in your error enum |
+| **No boundary tests** | Tests with values like `5` and `10` but not `0`, `MAX`, `-1` | Boundary values: zero, one, max, overflow, empty, null |
+| **Shallow mocking** | Mock that returns success unconditionally | Real dependency via testcontainers (we don't use mocks) |
+| **Missing concurrency tests** | Sequential-only tests for concurrent code | Tests with `tokio::time::pause()`, `JoinSet`, race conditions |
+| **No startup smoke test** | Tests for individual functions but nothing for "does the app boot?" | Mandatory smoke test that boots with default config |
+
+### The Shared Blind Spot
+
+When AI generates BOTH the code AND the tests, the same probabilistic assumptions produce the same blind spots. The tests confirm the code's biases rather than challenging them. A test suite where every test passes on first run is a test suite that isn't testing hard enough.
+
+### What to Do About It
+
+**When reviewing AI-generated tests, check for:**
+
+- At least one failure-path test per function (error, None, panic, timeout)
+- Boundary values (0, 1, empty, max, overflow, negative)
+- Concurrency tests for any async/parallel code
+- A startup smoke test
+- Tests that actually fail when you break the implementation (mutation testing)
+- No assertions against hardcoded values without an explanatory comment
+
+**Treat AI-generated tests as drafts.** Add the edge cases, failure paths, and adversarial inputs yourself. The AI is good at scaffolding — the human adds the cases that actually catch bugs.
+
+### Test Quality Checklist (Apply After AI Generation)
+
+- [ ] Every error variant has at least one test that triggers it
+- [ ] Zero, one, empty, and max-value inputs are tested
+- [ ] Invalid/malformed input is tested (not just valid input)
+- [ ] Async code has timeout and cancellation tests
+- [ ] The test actually fails when you comment out the implementation
+- [ ] Test names describe the scenario, not the function (`test_rejects_expired_token` not `test_validate`)
+- [ ] No `assert!(true)` or assertion-free tests
+- [ ] Startup smoke test exists
+
+---
+
 ## Resources
 
 ### Official Documentation

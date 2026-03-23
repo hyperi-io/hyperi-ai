@@ -2157,6 +2157,48 @@ result = asyncio.run(coro())  # Only from sync entrypoint
 
 ---
 
+## AI Test Generation Traps
+
+> **Derek's hard lessons learned from trusting AI-generated test suites.**
+> The tests looked great. CI was green. Production broke anyway.
+
+### The Core Problem
+
+AI generates tests that confirm happy paths. That's the least valuable thing a test can do. The bugs live in edge cases, error states, race conditions, and boundary values — exactly where AI produces the least useful output.
+
+Up to 30% of AI-generated tests contain patterns that look correct but verify nothing meaningful. Coverage reports 85% but effective coverage (meaningful behaviours verified) can be as low as 40%.
+
+### Traps to Watch For
+
+| Trap | What AI does | What you need |
+|------|-------------|---------------|
+| **Happy-path only** | Tests valid input, checks it works | Tests INVALID input, checks it fails correctly |
+| **Mirror tests** | Assertions that duplicate implementation logic | Assertions that check observable behaviour |
+| **Assertion-free tests** | Calls functions but never asserts | Every test MUST assert something meaningful |
+| **Missing error paths** | No tests for exceptions, None, timeout | Explicit tests for every exception your code can raise |
+| **No boundary tests** | Values like 5 and 10 but not 0, MAX, -1, empty | Boundary values: zero, one, max, overflow, empty, None |
+| **Missing async tests** | Sequential-only tests for async code | Tests with timeout, cancellation, concurrent access |
+| **No startup smoke test** | Tests for individual functions, nothing for "does the app boot?" | Mandatory smoke test with default config |
+
+### The Shared Blind Spot
+
+When AI generates BOTH the code AND the tests, the same blind spots appear in both. The tests confirm the code's biases rather than challenging them.
+
+### Test Quality Checklist (Apply After AI Generation)
+
+- [ ] Every exception/error type has at least one test that triggers it
+- [ ] Zero, one, empty, and max-value inputs are tested
+- [ ] Invalid/malformed input is tested (not just valid input)
+- [ ] Async code has timeout and cancellation tests
+- [ ] The test actually fails when you break the implementation
+- [ ] Test names describe the scenario, not the function
+- [ ] No `assert True` or assertion-free tests
+- [ ] Startup smoke test exists
+
+**Treat AI-generated tests as drafts.** Add the edge cases, failure paths, and adversarial inputs yourself.
+
+---
+
 ## Resources
 
 **Official PEPs:**
