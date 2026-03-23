@@ -1,3 +1,10 @@
+## [3.9.0](https://github.com/hyperi-io/hyperi-ai/compare/3.8.8...3.9.0) (2026-03-23)
+
+
+### Features
+
+* add test-review skill for coverage audit and remediation ([5f941ab](https://github.com/hyperi-io/hyperi-ai/commit/5f941ab1c65ff020b2b27ca041e94b56492ced5e))
+
 ## [3.8.8](https://github.com/hyperi-io/hyperi-ai/compare/3.8.7...3.8.8) (2026-03-23)
 
 
