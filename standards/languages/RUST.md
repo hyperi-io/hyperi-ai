@@ -1873,54 +1873,220 @@ match char {
 
 ## Testing
 
-Use `cargo nextest` instead of `cargo test`. It's faster, has better output, and runs tests in parallel properly. Install it: `cargo install cargo-nextest`.
+Use `cargo nextest` instead of `cargo test`. Process-per-test model, better output, proper parallelism, safe `env::set_var`. Coverage with `cargo tarpaulin`. Property-based with `proptest`. Benchmarks with `criterion`.
 
-For coverage, use `cargo tarpaulin`. For property-based testing, use `proptest`. For benchmarks, use `criterion`.
+```bash
+cargo nextest run                          # unit + integration
+cargo nextest run -- --ignored             # e2e (needs infra)
+cargo nextest run -E 'test(smoke)'         # smoke only
+cargo tarpaulin --out Html                 # coverage report
+```
 
-### Unit Tests
+### Test Directory Structure
+
+Every Rust project uses this layout. Unit tests stay inline in `src/`. Everything else goes in `tests/`.
+
+```text
+src/
+├── lib.rs                    # #[cfg(test)] mod tests inline
+├── config.rs                 # #[cfg(test)] mod tests inline
+└── pipeline.rs               # #[cfg(test)] mod tests inline
+
+tests/
+├── common/                   # Shared helpers — NOT compiled as test crate
+│   └── mod.rs                # TestMode, KafkaTestConfig, skip_if_no_kafka!
+├── fixtures/                 # Static test data (YAML, JSON, certs)
+│   ├── valid_config.yaml
+│   └── cloudtrail_event.json
+├── integration/              # Single binary — all integration tests as submodules
+│   ├── mod.rs                # mod config; mod pipeline; mod credentials; ...
+│   ├── config.rs
+│   ├── pipeline.rs
+│   ├── credentials.rs
+│   └── source_aws.rs
+├── e2e/                      # Real infra tests — #[ignore] by default
+│   ├── mod.rs                # mod kafka; mod container;
+│   ├── kafka.rs
+│   └── container.rs
+└── smoke.rs                  # Startup smoke test (MANDATORY, runs on every push)
+
+benches/
+└── throughput.rs              # Criterion benchmarks (harness = false)
+```
+
+**Why this structure matters:**
+
+- **`tests/common/mod.rs`** — files in subdirectories are NOT compiled as separate test crates. `tests/common.rs` would show "running 0 tests" in output. The `mod.rs` pattern avoids this.
+- **`tests/integration/mod.rs`** — consolidates all integration tests into ONE binary. Each `tests/*.rs` file compiles as a separate binary (separate link cycle). 10 test files = 10 link cycles. One `mod.rs` with submodules = 1 link cycle. This gives a **3x compile-time reduction** on real projects.
+- **`tests/e2e/`** — infrastructure-dependent tests stay separate, marked `#[ignore]`, run via `cargo nextest run -- --ignored` or CI's e2e stage.
+- **`tests/smoke.rs`** — startup smoke test at top level, always runs. Catches init panics before production does.
+
+### The Single-Binary Integration Test Pattern
+
+This is the most impactful compile-time optimisation for test suites. Instead of N separate test files (N link cycles), consolidate into one binary with submodules.
 
 ```rust
+// tests/integration/mod.rs
+mod config;
+mod credentials;
+mod pipeline;
+mod source_aws;
+mod source_azure;
+```
+
+```rust
+// tests/integration/config.rs
+use mylib::config::Config;
+
+#[test]
+fn test_default_config_loads() {
+    let config = Config::default();
+    assert_eq!(config.scheduler.default_interval_secs, 300);
+}
+
+#[test]
+fn test_config_from_example_yaml() {
+    let yaml = std::fs::read_to_string("config.example.yaml").unwrap();
+    let _config: Config = serde_yaml_ng::from_str(&yaml).unwrap();
+}
+```
+
+Each submodule file is just a normal Rust file with `#[test]` functions. The `mod.rs` pulls them together into one compilation unit.
+
+### Shared Test Helpers (`tests/common/mod.rs`)
+
+```rust
+// tests/common/mod.rs
+#![allow(dead_code)] // Not all helpers used by every test file
+
+use std::env;
+
+pub enum TestMode { Remote, Docker }
+
+impl TestMode {
+    pub fn detect() -> Self {
+        match env::var("TEST_MODE").unwrap_or_default().as_str() {
+            "docker" => Self::Docker,
+            _ => Self::Remote,
+        }
+    }
+}
+
+pub struct KafkaTestConfig {
+    pub brokers: String,
+    pub security_protocol: String,
+}
+
+pub fn kafka_test_config() -> KafkaTestConfig {
+    match TestMode::detect() {
+        TestMode::Docker => KafkaTestConfig {
+            brokers: "localhost:19092".into(),
+            security_protocol: "PLAINTEXT".into(),
+        },
+        TestMode::Remote => KafkaTestConfig {
+            brokers: env::var("KAFKA_BROKERS").unwrap_or("localhost:9092".into()),
+            security_protocol: env::var("KAFKA_SECURITY_PROTOCOL")
+                .unwrap_or("SASL_PLAINTEXT".into()),
+        },
+    }
+}
+
+/// Skip test if Kafka is not reachable.
+#[macro_export]
+macro_rules! skip_if_no_kafka {
+    () => {
+        let kf = common::kafka_test_config();
+        if !kf.is_reachable() {
+            eprintln!("Skipping: Kafka not reachable at {}", kf.brokers);
+            return;
+        }
+    };
+}
+```
+
+Usage from any test file:
+
+```rust
+mod common;
+
+#[tokio::test]
+#[ignore = "requires Kafka"]
+async fn test_kafka_roundtrip() {
+    skip_if_no_kafka!();
+    // ... test with real Kafka
+}
+```
+
+### Startup Smoke Test (MANDATORY)
+
+Every project gets one. It boots the app with default config and checks nothing panics. Single highest-value test — catches the regressions that cause production outages on deploy.
+
+```rust
+// tests/smoke.rs (or tests/integration/smoke.rs)
+#[tokio::test]
+async fn test_startup_boots_with_default_config() {
+    let config = Config::default();
+    let metrics = Arc::new(Metrics::new());
+    let shutdown = CancellationToken::new();
+
+    let result = Orchestrator::new(config, metrics, shutdown).await;
+    assert!(result.is_ok(), "Orchestrator should boot: {:?}", result.err());
+
+    let state = result.unwrap().state();
+    assert!(state.is_ready());
+}
+```
+
+### Unit Tests (Inline)
+
+Unit tests stay in the same file as the code they test. `#[cfg(test)]` ensures they're not compiled into release builds.
+
+```rust
+// src/config.rs
+pub fn validate_port(port: u16) -> Result<u16> {
+    if port == 0 { return Err(Error::Config("port cannot be 0".into())); }
+    Ok(port)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_record_validation() {
-        let valid = Record::new("123", 1000);
-        assert!(valid.is_valid());
-
-        let invalid = Record::new("", 1000);
-        assert!(!invalid.is_valid());
+    fn test_valid_port() {
+        assert_eq!(validate_port(8080).unwrap(), 8080);
     }
 
     #[test]
-    fn test_parse_config() {
-        let yaml = r#"
-            name: test
-            port: 8080
-        "#;
-        let config: Config = serde_yaml::from_str(yaml).unwrap();
-        assert_eq!(config.name, "test");
-        assert_eq!(config.port, 8080);
-    }
-
-    #[test]
-    #[should_panic(expected = "missing field")]
-    fn test_missing_field_panics() {
-        let yaml = "name: test";  // missing port
-        let _: StrictConfig = serde_yaml::from_str(yaml).unwrap();
-    }
-
-    #[test]
-    fn test_result_error() {
-        let result = parse_invalid_input();
-        assert!(result.is_err());
-        assert!(matches!(result, Err(ParseError::InvalidFormat(_))));
+    fn test_zero_port_rejected() {
+        assert!(validate_port(0).is_err());
     }
 }
 ```
 
+### E2E Tests (`#[ignore]`)
+
+Tests that need real infrastructure (Kafka, Docker, cloud APIs) go in `tests/e2e/` and are marked `#[ignore]`. They run in CI's e2e stage (PR to `release` only) or locally with `--ignored`.
+
+```rust
+// tests/e2e/kafka.rs
+mod common;
+
+#[tokio::test]
+#[ignore = "requires Kafka (TEST_MODE=remote or docker)"]
+async fn test_produce_consume_roundtrip() {
+    skip_if_no_kafka!();
+
+    let kf = common::kafka_test_config();
+    let topic = common::test_topic("e2e-roundtrip");
+
+    // produce → consume → verify content
+}
+```
+
 ### Test Fixtures
+
+Use `tempfile::TempDir` for filesystem tests. Static data goes in `tests/fixtures/`.
 
 ```rust
 #[cfg(test)]
@@ -1930,9 +2096,9 @@ mod tests {
 
     fn setup() -> (TempDir, PathBuf) {
         let dir = TempDir::new().unwrap();
-        let config_path = dir.path().join("config.yaml");
-        std::fs::write(&config_path, "name: test\nport: 8080").unwrap();
-        (dir, config_path)
+        let path = dir.path().join("config.yaml");
+        std::fs::write(&path, "name: test\nport: 8080").unwrap();
+        (dir, path)
     }
 
     #[test]
@@ -1946,6 +2112,8 @@ mod tests {
 
 ### Property-Based Testing
 
+Use `proptest` for fuzzing invariants. Good for parsers, serialisers, and transform functions.
+
 ```rust
 use proptest::prelude::*;
 
@@ -1958,18 +2126,10 @@ proptest! {
             assert_eq!(parsed, reparsed);
         }
     }
-
-    #[test]
-    fn test_transform_preserves_count(
-        records in prop::collection::vec(any::<Record>(), 0..1000)
-    ) {
-        let transformed = transform(&records);
-        assert_eq!(records.len(), transformed.len());
-    }
 }
 ```
 
-### Benchmarks with Criterion
+### Benchmarks (Criterion)
 
 ```rust
 // benches/throughput.rs
@@ -1977,16 +2137,11 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughpu
 
 fn bench_parsing(c: &mut Criterion) {
     let data = generate_test_data(10_000);
-
     let mut group = c.benchmark_group("parsing");
     group.throughput(Throughput::Elements(10_000));
 
     group.bench_function("json_parse", |b| {
         b.iter(|| parse_json(black_box(&data)))
-    });
-
-    group.bench_function("simd_parse", |b| {
-        b.iter(|| parse_simd(black_box(&data)))
     });
 
     group.finish();
@@ -1996,24 +2151,43 @@ criterion_group!(benches, bench_parsing);
 criterion_main!(benches);
 ```
 
-### Integration Tests
+Requires in `Cargo.toml`:
+
+```toml
+[[bench]]
+name = "throughput"
+harness = false
+```
+
+### Env Var Isolation
+
+Nextest runs each test in its own process — `std::env::set_var` is safe. If using `cargo test` (tarpaulin), serialise env-dependent tests with a static mutex:
 
 ```rust
-// tests/integration_test.rs
-use mylib::{Pipeline, Config};
+static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-#[tokio::test]
-async fn test_pipeline_end_to_end() {
-    let config = Config::default();
-    let pipeline = Pipeline::new(config);
-
-    let input = vec![create_test_record()];
-    let output = pipeline.process(input).await.unwrap();
-
-    assert_eq!(output.len(), 1);
-    assert!(output[0].processed);
+fn with_env<F: FnOnce()>(vars: &[(&str, &str)], f: F) {
+    let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    for (k, v) in vars {
+        unsafe { std::env::set_var(k, v) };
+    }
+    f();
+    for (k, _) in vars {
+        unsafe { std::env::remove_var(k) };
+    }
 }
 ```
+
+### CI Stage Mapping (hyperi-ci)
+
+| Test category | CI stage | Command |
+|--------------|----------|---------|
+| Unit (inline `#[cfg(test)]`) | `quality` | `cargo nextest run --lib` |
+| Integration (`tests/integration/`) | `test` | `cargo nextest run --test integration` |
+| E2E (`tests/e2e/`) | `test:e2e` | `cargo nextest run -- --ignored` |
+| Smoke (`tests/smoke.rs`) | `test:smoke` | `cargo nextest run --test smoke` |
+| Benchmarks (`benches/`) | `benchmark` | `cargo bench` |
+| Coverage | `coverage` | `cargo tarpaulin --skip-clean` |
 
 ---
 

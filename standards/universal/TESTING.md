@@ -1,6 +1,6 @@
 ---
 name: testing-standards
-description: Test-first development standards for all HyperI projects. 80% minimum coverage, real dependencies over mocks, unit/integration/e2e pyramid.
+description: Test organisation, directory structure, CI integration, and test-first development. Mandatory for all HyperI projects.
 rule_paths:
   - "**/*.py"
   - "**/*.rs"
@@ -15,491 +15,266 @@ rule_paths:
 
 # Testing Standards
 
-**Comprehensive testing guide with test-first development patterns**
+80% minimum coverage. Real dependencies over mocks. Every project gets a smoke test.
 
 ---
 
-## Quick Reference
+## Directory Structure
 
-**Structure:** `tests/unit/`, `tests/integration/`, `tests/e2e/`
-**Coverage:** 80% minimum (enforced by CI)
-**Frameworks:** pytest (Python), testing+testify (Go), Jest/Vitest (JS/TS), cargo test (Rust), BATS (Bash)
-
----
-
-## Test Organisation
-
-### Standard Directory Structure
+Every project uses the same layout. Language-specific adaptations below, but the directories are universal.
 
 ```text
 tests/
-├── unit/          # Fast, isolated unit tests
-├── integration/   # Component integration tests
-└── e2e/           # End-to-end tests
+├── common/           # Shared helpers, factories, skip macros
+├── fixtures/         # Static test data (YAML, JSON, SQL, certs)
+├── unit/             # Fast, isolated — no external deps
+├── integration/      # Wiremock, API tests, config validation
+├── e2e/              # Real infrastructure (Kafka, Docker, cloud APIs)
+└── smoke.{ext}       # Startup smoke test (MANDATORY)
 ```
 
-### Test Requirements
+- `common/` is for helpers, NOT test cases
+- `fixtures/` is for static data files, NOT code
+- `smoke` test runs on every push — catches init panics before production does
+- `e2e/` tests require infrastructure — marked `#[ignore]` (Rust) or `@pytest.mark.e2e` (Python)
 
-**All projects MUST have:**
+### Language Adaptations
 
-- Unit tests for core business logic
-- Integration tests for external dependencies
-- Minimum 80% code coverage
-- Tests run before every build/release
+| Language | Unit tests | Integration/E2E tests | Shared helpers |
+|----------|-----------|----------------------|----------------|
+| Rust | Inline `#[cfg(test)]` in `src/` | `tests/integration/mod.rs` + submodules | `tests/common/mod.rs` |
+| Python | `tests/unit/test_*.py` | `tests/integration/test_*.py` | `tests/conftest.py` (hierarchical) |
+| Go | `*_test.go` co-located | `tests/integration/*_test.go` | `tests/common/helpers.go` |
+| JS/TS | `*.test.ts` co-located | `tests/integration/*.test.ts` | `tests/common/setup.ts` |
+| Bash | `tests/*.bats` | `tests/integration/*.bats` | Source guard pattern |
 
-### Test Naming
+---
 
-- Clear, descriptive test names
-- Follow language conventions
-- Explain WHAT is being tested
+## Runtime SLOs
+
+Enforce these. Slow tests don't get run. Tests that don't run don't exist.
+
+| Category | Budget | Trigger | What fails if exceeded |
+|----------|--------|---------|----------------------|
+| Smoke | 1 min | Every push | CI blocks merge |
+| Unit | 3 min | Every push | CI blocks merge |
+| Integration | 5 min | Every push | CI blocks merge |
+| E2E | 20 min | PR to `release` only | CI blocks release merge |
+| Benchmarks | 10 min | Weekly / manual | Advisory only |
+
+---
+
+## Startup Smoke Test
+
+**MANDATORY.** Highest-value single test in any project. Catches init panics, missing config defaults, broken dependency wiring — the things that cause production outages on deploy.
+
+Every project gets one. It boots the app with default config and checks it doesn't crash.
+
+```python
+# Python
+def test_app_boots_with_default_config():
+    app = create_app(Config())
+    assert app.is_ready()
+```
+
+```rust
+// Rust
+#[tokio::test]
+async fn test_startup_boots_with_default_config() {
+    let config = Config::default();
+    let result = App::new(config).await;
+    assert!(result.is_ok());
+}
+```
+
+```go
+// Go
+func TestAppStartsWithDefaults(t *testing.T) {
+    app, err := NewApp(DefaultConfig())
+    require.NoError(t, err)
+    assert.True(t, app.IsReady())
+}
+```
+
+---
+
+## CI Stage Mapping
+
+### With hyperi-ci
+
+The directory structure maps directly to CI stages. No extra config needed — hyperi-ci reads the structure.
+
+| Directory | CI Stage | Trigger |
+|-----------|----------|---------|
+| Unit (inline / `tests/unit/`) | `quality` | Every push |
+| `tests/integration/` | `test` | Every push |
+| `tests/e2e/` | `test:e2e` | PR to `release` |
+| Smoke | `test:smoke` | Every push (fast subset) |
+| `benches/` | `benchmark` | Weekly / manual |
+
+### Without hyperi-ci
+
+Use filters/markers to separate categories:
+
+```bash
+# Rust
+cargo nextest run                          # unit + integration
+cargo nextest run -- --ignored             # e2e (needs infra)
+cargo nextest run -E 'test(smoke)'         # smoke only
+
+# Python
+pytest tests/unit/ tests/integration/      # unit + integration
+pytest tests/e2e/                          # e2e (needs infra)
+pytest -m smoke                            # smoke only
+```
+
+---
+
+## Shared Helpers (`tests/common/`)
+
+Put reusable test infrastructure here. Not test cases — those go in `unit/`, `integration/`, `e2e/`.
+
+**Goes in `common/`:**
+
+- Test mode detection (Docker vs remote cluster)
+- Infrastructure connection helpers (Kafka config, DB sessions)
+- Skip macros/decorators for missing infrastructure
+- Test data factories
+- Custom assertion helpers
+
+**Does NOT go in `common/`:**
+
+- Actual test cases
+- Static data files (use `fixtures/`)
+- App configuration (use `fixtures/`)
+
+### Why subdirectory, not top-level file
+
+- **Rust:** `tests/common.rs` compiles as a separate test binary (shows "running 0 tests"). `tests/common/mod.rs` does not.
+- **Python:** Root-level `conftest.py` is fine (pytest auto-discovers). Per-directory `conftest.py` scopes fixtures.
+- **General:** Keeps the test runner output clean. Only actual test files at the top level.
+
+---
+
+## Coverage
+
+- 80% minimum for all projects (CI-enforced)
+- 90% for AI-generated code
+- Measure with: `cargo tarpaulin` (Rust), `pytest-cov` (Python), `go test -cover` (Go)
+- Coverage that never runs in CI is fiction
 
 ---
 
 ## Test-First Development
 
-**Define success criteria through tests BEFORE making changes.**
+Write tests BEFORE implementation. Not after. Not "later". Before.
 
-### When to Use Test-First
+**Workflow:**
 
-**Perfect for:**
+1. Understand the current behaviour
+2. Write tests defining success criteria
+3. Run tests — new features should fail, existing behaviour should pass
+4. Implement
+5. Run tests — all pass
+6. Commit
 
-- Refactoring existing code
-- Bug fixes
-- Adding features to existing code
+**One test at a time.** Write 1 test, implement, run, pass, commit. Not 10 tests then implement.
 
-**Not suitable for:**
-
-- New greenfield code (use pure TDD)
-- Exploratory prototypes
-- One-off scripts
-
-### Test-First Workflow
-
-**1. Understand Current Behaviour**
-
-```python
-# Read existing code
-def calculate_total(items: list[dict]) -> float:
-    """Calculate order total."""
-    total = 0
-    for item in items:
-        total += item["price"] * item["quantity"]
-    return total
-```
-
-**2. Write Tests for Success Criteria**
-
-```python
-def test_calculate_total_existing_behaviour():
-    """Test existing subtotal calculation (MUST NOT BREAK)."""
-    items = [
-        {"price": 10.0, "quantity": 2},
-        {"price": 5.0, "quantity": 3},
-    ]
-    assert calculate_total(items) == 35.0
-
-def test_calculate_total_with_tax():
-    """Test new tax calculation."""
-    items = [{"price": 100.0, "quantity": 1}]
-    assert calculate_total(items, tax_rate=0.1) == 110.0
-
-def test_calculate_total_invalid_tax_rate():
-    """Test tax rate validation."""
-    items = [{"price": 100.0, "quantity": 1}]
-    with pytest.raises(ValueError, match="Tax rate must be 0-1"):
-        calculate_total(items, tax_rate=1.5)
-```
-
-**3. Run Tests (They Should Fail)**
-
-```bash
-pytest tests/test_calculate_total.py -v
-
-test_calculate_total_existing_behaviour PASSED  # Existing behaviour works
-test_calculate_total_with_tax FAILED           # New feature not implemented
-test_calculate_total_invalid_tax_rate FAILED   # Validation not implemented
-```
-
-**4. Implement Changes**
-
-```python
-def calculate_total(items: list[dict], tax_rate: float = 0.0) -> float:
-    if not 0.0 <= tax_rate <= 1.0:
-        raise ValueError("Tax rate must be 0-1")
-
-    subtotal = sum(item["price"] * item["quantity"] for item in items)
-    return subtotal * (1 + tax_rate)
-```
-
-**5. Run Tests (They Should Pass)**
-
-```bash
-pytest tests/test_calculate_total.py -v
-================================ 4 passed ================================
-```
+| Don't | Do | Why |
+|-------|-----|-----|
+| Write 10 tests then implement | 1 test, implement, pass, commit, repeat | Isolates failures |
+| Let AI write your tests | Write tests yourself, let AI implement | Tests are YOUR specification |
+| Test how code works internally | Test what it does (observable behaviour) | Refactoring shouldn't break tests |
 
 ---
 
-## Language-Specific Testing
+## Language-Specific Patterns
 
 ### Python (pytest)
 
-```python
-# tests/unit/test_user.py
-import pytest
-from myapp.user import create_user, UserNotFoundError
-
-class TestCreateUser:
-    def test_creates_valid_user(self, db_session):
-        """Test user creation with valid data."""
-        user = create_user(email="test@example.com", name="Test User")
-        assert user.id is not None
-        assert user.email == "test@example.com"
-
-    def test_rejects_invalid_email(self):
-        """Test validation rejects invalid email."""
-        with pytest.raises(ValueError, match="Invalid email"):
-            create_user(email="invalid", name="Test")
-
-    def test_handles_duplicate_email(self, db_session, existing_user):
-        """Test duplicate email raises error."""
-        with pytest.raises(DuplicateEmailError):
-            create_user(email=existing_user.email, name="Another")
+```text
+tests/
+├── conftest.py           # Session-scoped shared fixtures
+├── unit/
+│   ├── conftest.py       # Unit-specific fixtures
+│   └── test_models.py
+├── integration/
+│   ├── conftest.py       # Integration fixtures (testcontainers)
+│   └── test_api.py
+├── e2e/
+│   ├── conftest.py
+│   └── test_workflows.py
+├── fixtures/
+│   └── sample_data.json
+└── smoke/
+    └── test_startup.py
 ```
 
-**Fixtures:**
+**Fixture scoping:**
 
-```python
-# tests/conftest.py
-import pytest
+| Scope | Use for | Example |
+|-------|---------|---------|
+| `function` (default) | Isolated per-test state | DB transactions |
+| `module` | Shared within file | Expensive resource init |
+| `session` | Shared across entire run | DB engine, HTTP pool |
 
-@pytest.fixture
-def db_session():
-    """Provide test database session."""
-    session = create_test_session()
-    yield session
-    session.rollback()
+**Rules:**
 
-@pytest.fixture
-def existing_user(db_session):
-    """Create a user for tests that need existing data."""
-    return create_user(email="existing@example.com", name="Existing")
-```
+- Use `yield` for teardown (not `return`)
+- Never import `conftest.py` directly — pytest auto-discovers it
+- Per-directory `conftest.py` scopes fixtures to that subtree
+- Use marks (`@pytest.mark.integration`, `@pytest.mark.e2e`, `@pytest.mark.slow`) for CI filtering
+- `conftest.py` at root level for broadly shared fixtures, per-directory for localised ones
+
+### Rust (cargo nextest)
+
+See the **Rust Standards** document for the full test section, including:
+
+- Single-binary integration test pattern (3x compile-time win)
+- `tests/common/mod.rs` shared helpers
+- `#[ignore]` for infrastructure-dependent tests
+- Nextest process-per-test model (safe `env::set_var`)
+- Property-based testing with `proptest`
+- Benchmarks with `criterion`
 
 ### Go (testing + testify)
 
-```go
-// user_test.go
-package user
-
-import (
-    "testing"
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/require"
-)
-
-func TestCreateUser(t *testing.T) {
-    t.Run("creates valid user", func(t *testing.T) {
-        user, err := CreateUser("test@example.com", "Test User")
-        require.NoError(t, err)
-        assert.NotEmpty(t, user.ID)
-        assert.Equal(t, "test@example.com", user.Email)
-    })
-
-    t.Run("rejects invalid email", func(t *testing.T) {
-        _, err := CreateUser("invalid", "Test")
-        assert.ErrorContains(t, err, "invalid email")
-    })
-
-    t.Run("handles duplicate email", func(t *testing.T) {
-        // Create first user
-        _, err := CreateUser("duplicate@example.com", "First")
-        require.NoError(t, err)
-
-        // Try to create duplicate
-        _, err = CreateUser("duplicate@example.com", "Second")
-        assert.ErrorIs(t, err, ErrDuplicateEmail)
-    })
-}
-
-// Table-driven tests
-func TestValidateEmail(t *testing.T) {
-    tests := []struct {
-        name    string
-        email   string
-        wantErr bool
-    }{
-        {"valid email", "user@example.com", false},
-        {"missing @", "userexample.com", true},
-        {"empty", "", true},
-    }
-
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            err := ValidateEmail(tt.email)
-            if tt.wantErr {
-                assert.Error(t, err)
-            } else {
-                assert.NoError(t, err)
-            }
-        })
-    }
-}
-```
-
-### JavaScript/TypeScript (Jest/Vitest)
-
-```typescript
-// user.test.ts
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createUser, UserNotFoundError } from './user';
-
-describe('createUser', () => {
-  beforeEach(() => {
-    // Reset database or mocks
-  });
-
-  it('creates valid user', async () => {
-    const user = await createUser({
-      email: 'test@example.com',
-      name: 'Test User',
-    });
-
-    expect(user.id).toBeDefined();
-    expect(user.email).toBe('test@example.com');
-  });
-
-  it('rejects invalid email', async () => {
-    await expect(
-      createUser({ email: 'invalid', name: 'Test' })
-    ).rejects.toThrow('Invalid email');
-  });
-
-  it('handles duplicate email', async () => {
-    await createUser({ email: 'dup@example.com', name: 'First' });
-
-    await expect(
-      createUser({ email: 'dup@example.com', name: 'Second' })
-    ).rejects.toThrow('Email already exists');
-  });
-});
-```
-
-### Rust (cargo test)
-
-```rust
-// src/user.rs
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_create_user_valid() {
-        let user = create_user("test@example.com", "Test User").unwrap();
-        assert!(!user.id.is_empty());
-        assert_eq!(user.email, "test@example.com");
-    }
-
-    #[test]
-    fn test_create_user_invalid_email() {
-        let result = create_user("invalid", "Test");
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("invalid email"));
-    }
-
-    #[test]
-    #[should_panic(expected = "duplicate email")]
-    fn test_create_user_duplicate_panics() {
-        create_user("dup@example.com", "First").unwrap();
-        create_user("dup@example.com", "Second").unwrap(); // Should panic
-    }
-}
-```
+- Co-locate unit tests (`*_test.go` next to source)
+- Table-driven tests as the standard pattern
+- `testify/assert` + `testify/require` for assertions
+- `t.Run()` for subtests
 
 ### Bash (BATS)
 
-```bash
-# tests/script.bats
-#!/usr/bin/env bats
+- Source guard pattern required (`if [[ "${BASH_SOURCE[0]}" == "${0}" ]]`)
+- `setup()` / `teardown()` for fixtures
+- Use `run` for capturing exit codes
 
-setup() {
-    # Source the script to test
-    source "${BATS_TEST_DIRNAME}/../script.sh"
-    # Create temp directory
-    TEMP_DIR=$(mktemp -d)
-}
+---
 
-teardown() {
-    rm -rf "${TEMP_DIR}"
-}
+## Anti-Patterns
 
-@test "validate_input accepts valid input" {
-    run validate_input "valid_input"
-    [ "$status" -eq 0 ]
-}
+| Anti-pattern | Fix |
+|-------------|-----|
+| Tests that pass when run alone but fail together | Shared mutable state — use proper fixtures |
+| Flaky tests left in the suite | Fix immediately or delete. Flaky tests erode trust. |
+| Slow test suite nobody runs | Enforce runtime SLOs. Parallelise. |
+| No smoke test | Add one now. Single highest-value test. |
+| Tests only in CI, never run locally | If it doesn't run locally, developers won't write them |
+| Mocking everything | Test against real dependencies. Mocks hide bugs. |
 
-@test "validate_input rejects empty input" {
-    run validate_input ""
-    [ "$status" -eq 1 ]
-}
+---
 
-@test "process_file creates output" {
-    echo "test content" > "${TEMP_DIR}/input.txt"
-
-    run process_file "${TEMP_DIR}/input.txt"
-
-    [ "$status" -eq 0 ]
-    [ -f "${TEMP_DIR}/input.txt.processed" ]
-}
-
-@test "main exits with error on missing argument" {
-    run main
-    [ "$status" -eq 1 ]
-    [[ "$output" == *"Error"* ]]
-}
-```
-
-**Source Guard Pattern (enable BATS testing):**
+## CI Enforcement
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
+# hyperi-ci
+hyperi-ci check         # quality + test stages
 
-validate_input() {
-    [[ -n "${1:-}" ]] || return 1
-}
-
-main() {
-    validate_input "${1:-}" || exit 1
-    echo "Processing..."
-}
-
-# Only run main if not sourced (enables BATS testing)
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
-fi
+# Manual
+cargo nextest run       # Rust
+pytest                  # Python
+go test ./...           # Go
 ```
 
----
-
-## Test Patterns
-
-### Regression Prevention
-
-```python
-def test_bug_123_float_quantities():
-    """Regression test for bug #123: float quantities crash."""
-    items = [{"price": 10.0, "quantity": 2.5}]
-    assert calculate_total(items) == 25.0  # Should work
-```
-
-### Edge Case Coverage
-
-```python
-def test_empty_items():
-    """Empty cart should return 0."""
-    assert calculate_total([]) == 0.0
-
-def test_zero_price():
-    """Free items should work."""
-    items = [{"price": 0.0, "quantity": 10}]
-    assert calculate_total(items) == 0.0
-
-def test_large_numbers():
-    """Handle large orders."""
-    items = [{"price": 999999.99, "quantity": 1000}]
-    assert calculate_total(items) == 999999990.0
-```
-
-### Behaviour Documentation
-
-```python
-def test_discount_rounding():
-    """Discounts round to 2 decimal places (business rule)."""
-    assert calculate_discount(10.00, 33.33) == 6.67
-    assert calculate_discount(100.00, 7.5) == 92.50
-```
-
----
-
-## Test-First with AI Code Assistants
-
-### Workflow
-
-**1. Write tests yourself (don't let AI write them):**
-
-```python
-def test_apply_seasonal_discount():
-    """Summer sale: 20% off items with 'summer' tag."""
-    items = [
-        {"price": 100, "tags": ["summer"]},
-        {"price": 50, "tags": ["winter"]},
-    ]
-    assert calculate_seasonal_discount(items) == 130.0  # 80 + 50
-```
-
-**2. Let AI implement to pass tests:**
-
-```text
-Prompt: "Implement calculate_seasonal_discount() to pass these tests"
-```
-
-**3. Run tests - iterate until passing**
-
-**Why This Works:** Tests are your specification. AI knows what to implement, no ambiguity, catches mistakes immediately.
-
----
-
-## Common Pitfalls
-
-### Testing Implementation Instead of Behaviour
-
-**❌ Bad (tests HOW not WHAT):**
-
-```python
-def test_calculate_total_uses_loop():
-    source = inspect.getsource(calculate_total)
-    assert "for" in source  # Brittle!
-```
-
-**✅ Good (tests WHAT not HOW):**
-
-```python
-def test_calculate_total_sums_items():
-    items = [{"price": 10, "quantity": 2}]
-    assert calculate_total(items) == 20.0  # Don't care how
-```
-
-### Too Many Tests
-
-**Rule of thumb:** 3-7 tests per function covers most cases. Focus on:
-
-- Happy path
-- Error conditions
-- Edge cases (empty, zero, max values)
-- Business rule verification
-
-### Not Running Tests Frequently
-
-**❌ Wrong:** Write 10 tests → Implement → Run all tests (many failures)
-
-**✅ Correct:** Write 1 test → Implement → Run → Pass → Commit → Repeat
-
----
-
-## CI Integration
-
-**Tests must pass before build:**
-
-```bash
-./ci/run build
-# If tests fail, build fails
-```
-
-**Coverage enforcement (80% minimum):**
-
-```yaml
-# ci.yaml
-test:
-  coverage_threshold: 80
-```
+**Coverage threshold: 80% minimum.** CI blocks merge if coverage drops below threshold.
