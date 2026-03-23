@@ -1628,12 +1628,82 @@ except ValueError as e:
 
 ---
 
-## Testing — No Mocks Policy
+## Testing
+
+### Project Layout for Testability
+
+Use the `src/` layout. Tests import the installed package, not the working directory. Prevents import shadowing bugs that waste hours to debug.
+
+```text
+my_project/
+├── pyproject.toml
+├── src/
+│   └── my_package/
+│       ├── __init__.py
+│       └── core.py
+└── tests/
+    ├── conftest.py
+    ├── unit/
+    ├── integration/
+    ├── e2e/
+    ├── fixtures/
+    └── smoke/
+```
+
+If using `uv`, always `uv init --package` (creates src layout). The default `uv init` creates flat layout — don't use it for anything beyond throwaway scripts.
+
+### Directory Structure
+
+```text
+tests/
+├── conftest.py           # Shared fixtures (session-scoped DB, HTTP clients)
+├── unit/
+│   ├── conftest.py       # Unit-specific fixtures
+│   ├── test_models.py
+│   └── test_utils.py
+├── integration/
+│   ├── conftest.py       # Integration fixtures (testcontainers)
+│   ├── test_api.py
+│   └── test_database.py
+├── e2e/
+│   ├── conftest.py
+│   └── test_workflows.py
+├── fixtures/             # Static test data (JSON, YAML, SQL)
+│   └── sample_data.json
+└── smoke/
+    └── test_startup.py   # MANDATORY — catches init crashes
+```
+
+- `conftest.py` at root for shared fixtures, per-directory for scoped fixtures
+- Never import `conftest.py` directly — pytest auto-discovers it
+- Static test data goes in `fixtures/`, not scattered through test files
+- Smoke test is mandatory — boots the app with defaults, checks it doesn't crash
+
+### Startup Smoke Test (MANDATORY)
+
+Every project gets one. Catches init panics, missing config defaults, broken wiring. Single highest-value test.
+
+```python
+# tests/smoke/test_startup.py
+def test_app_boots_with_default_config():
+    """App should start without crashing on default config."""
+    app = create_app()
+    assert app is not None
+
+import pytest
+
+@pytest.mark.anyio
+async def test_async_app_boots():
+    """Async app should initialise without errors."""
+    app = await create_async_app(Config())
+    assert app.is_ready()
+```
+
+### No Mocks Policy
 
 > **"Every time we have mocks and AI it always ends in tears."** — Derek
 
-**Do not use mocks. Test against real dependencies.**
-See `standards/universal/MOCKS-POLICY.md` for the full policy.
+**Do not use mocks. Test against real dependencies.** See `standards/universal/MOCKS-POLICY.md` for the full policy.
 
 ```python
 # ❌ NEVER — no mock libraries, no patch, no MagicMock
@@ -1644,10 +1714,9 @@ with patch('myapp.db.session') as mock_db:
     # Tests nothing real
 
 # ✅ ALWAYS — real dependencies via testcontainers
-import pytest
 from testcontainers.postgres import PostgresContainer
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def db():
     with PostgresContainer() as postgres:
         yield create_connection(postgres.get_connection_url())
@@ -1656,7 +1725,7 @@ def test_save_user(db):
     user_id = save_user(db, {"name": "Alice"})
     assert db.get_user(user_id).name == "Alice"  # Real DB
 
-# ✅ External APIs — use sandbox, not mock
+# ✅ External APIs — use sandbox/test mode, not mock
 @pytest.mark.integration
 def test_payment():
     result = process_payment(100.0, "tok_visa")  # Stripe test mode
@@ -1668,9 +1737,144 @@ def test_payment_integration():
     ...
 ```
 
-**The one exception:** freezing time is acceptable (`freezegun`).
+**The one exception:** freezing time is acceptable (`time-machine` preferred over `freezegun`).
 
-**Production code must be complete:** No TODOs, no `return True` placeholders, no `except: pass`.
+### Fixture Scoping
+
+Wrong scope = slow tests or leaked state. Choose deliberately.
+
+| Scope | Use for | Teardown |
+|-------|---------|----------|
+| `function` (default) | Isolated per-test state | After each test |
+| `module` | Shared within file — expensive setup | After all tests in file |
+| `session` | Shared across entire run — DB engine, HTTP pool | After full run |
+
+Use `yield` for teardown (not `return`). Everything after `yield` runs even if the test fails.
+
+```python
+# tests/conftest.py
+import pytest
+
+@pytest.fixture(scope="session")
+def db_engine():
+    """Session-scoped — created once, shared across all tests."""
+    engine = create_engine(test_database_url())
+    yield engine
+    engine.dispose()
+
+@pytest.fixture
+def db_session(db_engine):
+    """Function-scoped — fresh transaction per test, rolled back."""
+    session = Session(db_engine)
+    yield session
+    session.rollback()
+    session.close()
+```
+
+### Async Testing
+
+Use `anyio` marker (not `asyncio`) — works across backends and avoids plugin conflicts.
+
+```python
+import pytest
+
+pytestmark = pytest.mark.anyio  # all async tests in this file
+
+async def test_fetch_data(http_client):
+    response = await http_client.get("/api/data")
+    assert response.status_code == 200
+```
+
+For FastAPI, use `httpx.AsyncClient` with `ASGITransport`:
+
+```python
+from httpx import ASGITransport, AsyncClient
+
+@pytest.mark.anyio
+async def test_api_endpoint():
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test"
+    ) as client:
+        response = await client.get("/health")
+        assert response.status_code == 200
+```
+
+Specify the backend explicitly in a session-scoped fixture:
+
+```python
+@pytest.fixture(scope="session")
+def anyio_backend():
+    return "asyncio"
+```
+
+### Marks for CI Filtering
+
+Tag tests so CI runs the right subset at the right time.
+
+```python
+# pyproject.toml
+[tool.pytest.ini_options]
+markers = [
+    "integration: requires external services (DB, Kafka, APIs)",
+    "e2e: end-to-end tests requiring full infrastructure",
+    "slow: tests exceeding 30 seconds",
+    "smoke: critical-path startup tests",
+]
+```
+
+```python
+@pytest.mark.integration
+def test_kafka_produce(kafka_client):
+    kafka_client.send("topic", b"data")
+
+@pytest.mark.e2e
+@pytest.mark.slow
+def test_full_pipeline(running_app, kafka_client, db):
+    ...
+```
+
+```bash
+# CI stages
+uv run pytest tests/unit/ tests/smoke/             # Every push (<3 min)
+uv run pytest tests/integration/                   # Every push (<5 min)
+uv run pytest tests/e2e/ -m "not slow"             # PR to release (<20 min)
+uv run pytest -m smoke                             # Smoke subset (<1 min)
+```
+
+### CI Stage Mapping (hyperi-ci)
+
+| Directory | CI stage | Trigger |
+|-----------|----------|---------|
+| `tests/unit/` + `tests/smoke/` | `quality` | Every push |
+| `tests/integration/` | `test` | Every push |
+| `tests/e2e/` | `test:e2e` | PR to `release` |
+| `tests/smoke/` | `test:smoke` | Every push (fast subset) |
+
+### Test Runner Config
+
+```toml
+# pyproject.toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--import-mode=importlib",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+```
+
+Run tests with `uv run pytest` — no virtual env activation needed.
+
+**Production code must be complete.** No TODOs, no `return True` placeholders, no `except: pass`.
 
 ---
 
