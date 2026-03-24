@@ -62,6 +62,20 @@ def relpath(from_dir: str, to_file: str) -> str:
     return os.path.relpath(to_file, from_dir)
 
 
+def smart_link_target(from_dir: str, to_file: str, project_root: str) -> str:
+    """Return relative path if target is inside project, absolute otherwise.
+
+    Stealth mode places hyperi-ai outside the project tree (e.g.
+    ~/.local/share/hyperi-ai/). Relative symlinks would contain many ../
+    traversals and break if the project moves. Use absolute paths instead.
+    """
+    try:
+        Path(to_file).resolve().relative_to(Path(project_root).resolve())
+        return os.path.relpath(to_file, from_dir)
+    except ValueError:
+        return str(Path(to_file).resolve())
+
+
 def force_symlink(target: str, link: str) -> None:
     """Create symlink, removing existing file/link first."""
     p = Path(link)
@@ -103,7 +117,7 @@ def deploy_settings(
         log_error(f"Template not found: {src}")
         sys.exit(EXIT_ERROR)
 
-    rel = relpath(str(dst.parent), str(src))
+    rel = smart_link_target(str(dst.parent), str(src), project_root)
 
     if dry_run:
         if not dst.exists() or force:
@@ -201,7 +215,7 @@ def deploy_commands(
     for cmd in commands:
         src = src_dir / f"{cmd}.md"
         dst = dst_dir / f"{cmd}.md"
-        rel = relpath(str(dst_dir), str(src))
+        rel = smart_link_target(str(dst_dir), str(src), project_root)
 
         # Auto-remediation: remove stale symlinks to old templates/ path
         if dst.is_symlink():
@@ -244,7 +258,7 @@ def deploy_rules(
     count = 0
     for src_file in sorted(rules_src.glob("*.md")):
         dst_file = rules_dst / src_file.name
-        rel = relpath(str(rules_dst), str(src_file))
+        rel = smart_link_target(str(rules_dst), str(src_file), project_root)
 
         if dry_run:
             if not dst_file.exists() or force:
@@ -278,7 +292,7 @@ def deploy_rules(
     user_std = Path(xdg) / "hyperi-ai" / "USER-CODING-STANDARDS.md"
     if user_std.is_file():
         dst_file = rules_dst / "user-standards.md"
-        rel = relpath(str(rules_dst), str(user_std))
+        rel = smart_link_target(str(rules_dst), str(user_std), project_root)
         if dry_run:
             print(f"Would symlink user standards: {dst_file} -> {rel}")
         elif not dst_file.exists() or force:
@@ -348,6 +362,7 @@ def _create_skill(
     name: str,
     src_file: str,
     skills_dir: str,
+    project_root: str,
     *,
     dry_run: bool,
     force: bool,
@@ -364,7 +379,7 @@ def _create_skill(
 
     skill_dir = Path(skills_dir) / name
     skill_md = skill_dir / "SKILL.md"
-    rel = relpath(str(skill_dir), src_file)
+    rel = smart_link_target(str(skill_dir), src_file, project_root)
 
     if dry_run:
         if not skill_dir.exists() or force:
@@ -402,6 +417,7 @@ def deploy_skills(
         "standards",
         str(standards_dir / "QUICKSTART.md"),
         skills_dir,
+        project_root,
         dry_run=dry_run,
         force=force,
         verbose=verbose,
@@ -412,7 +428,13 @@ def deploy_skills(
     for display, skill_name, std_path in _detect_tech(project_root):
         src = str(standards_dir / std_path)
         if _create_skill(
-            skill_name, src, skills_dir, dry_run=dry_run, force=force, verbose=verbose
+            skill_name,
+            src,
+            skills_dir,
+            project_root,
+            dry_run=dry_run,
+            force=force,
+            verbose=verbose,
         ):
             print(f"  Detected: {display}")
 
@@ -430,6 +452,7 @@ def deploy_skills(
                 skill_src_dir.name,
                 str(src_file),
                 skills_dir,
+                project_root,
                 dry_run=dry_run,
                 force=force,
                 verbose=verbose,

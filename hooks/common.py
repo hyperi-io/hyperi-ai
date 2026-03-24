@@ -140,18 +140,38 @@ def get_project_dir() -> Path:
 
 
 def get_ai_dir(project_dir: Path) -> Path:
-    """Return the hyperi-ai/ submodule directory within the project.
+    """Return the hyperi-ai directory, checking multiple locations.
 
-    Handles two cases:
-    - Consumer project: /projects/myapp/hyperi-ai/ (submodule)
-    - Dogfooding: /projects/hyperi-ai/ (we ARE the repo)
+    Search order:
+    1. Consumer project submodule: /projects/myapp/hyperi-ai/
+    2. Dogfooding: project_dir itself IS hyperi-ai
+    3. Stealth mode system-wide clone: ~/.local/share/hyperi-ai/
+    4. HYPERI_AI_ROOT env var (explicit override)
+
+    Returns a Path that may not exist if hyperi-ai is not available.
+    Callers must handle this gracefully.
     """
+    # Explicit override (set by stealth attach)
+    env_root = os.environ.get("HYPERI_AI_ROOT")
+    if env_root:
+        p = Path(env_root)
+        if p.is_dir():
+            return p
+
+    # Standard submodule
     submodule = project_dir / "hyperi-ai"
     if submodule.is_dir():
         return submodule
+
     # Dogfooding: check if project_dir itself IS hyperi-ai
     if (project_dir / "standards" / "rules").is_dir():
         return project_dir
+
+    # Stealth mode: system-wide clone
+    stealth = Path.home() / ".local" / "share" / "hyperi-ai"
+    if stealth.is_dir():
+        return stealth
+
     return submodule  # fallback (will fail gracefully downstream)
 
 
@@ -374,12 +394,8 @@ def inject_rules(project_dir: Path) -> Tuple[str, List[str]]:
     """
     rules_dir = get_rules_dir(project_dir)
     if not rules_dir.is_dir():
-        return (
-            "NOTE: hyperi-ai/standards/rules/ not found — "
-            "coding standards not loaded. "
-            "If you have access, run: git submodule update --init hyperi-ai\n",
-            [],
-        )
+        # Silent degradation — no standards available
+        return ("", [])
 
     parts: List[str] = []
     loaded: List[str] = []
@@ -570,12 +586,8 @@ def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
 
     rules_dir = get_rules_dir(project_dir)
     if not rules_dir.is_dir():
-        return (
-            "NOTE: hyperi-ai/standards/rules/ not found — "
-            "coding standards not loaded. "
-            "If you have access, run: git submodule update --init hyperi-ai\n",
-            [],
-        )
+        # Silent degradation — no standards available
+        return ("", [])
 
     # Select tier and load standards accordingly
     tier = get_context_tier()
@@ -1029,9 +1041,34 @@ def auto_update_submodule(project_dir: Path, name: str = "hyperi-ai") -> bool:
         return False
 
 
+def auto_update_stealth_clone() -> bool:
+    """Silently pull latest hyperi-ai system-wide clone (stealth mode).
+
+    Returns True if updated, False otherwise.
+    """
+    stealth = Path.home() / ".local" / "share" / "hyperi-ai"
+    if not stealth.is_dir():
+        return False
+    try:
+        subprocess.run(
+            ["git", "pull", "--rebase", "--quiet"],
+            capture_output=True,
+            timeout=30,
+            cwd=str(stealth),
+        )
+        return True
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
+
 def auto_update_submodules(project_dir: Path) -> None:
-    """Silently update hyperi-ai submodule if present and not pinned."""
-    auto_update_submodule(project_dir, "hyperi-ai")
+    """Silently update hyperi-ai — submodule or stealth clone."""
+    submodule = project_dir / "hyperi-ai"
+    if submodule.is_dir() and (submodule / ".git").exists():
+        auto_update_submodule(project_dir, "hyperi-ai")
+    else:
+        # No submodule — try stealth clone
+        auto_update_stealth_clone()
 
 
 def check_version_and_reattach(project_dir: Path) -> Optional[str]:

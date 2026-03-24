@@ -24,6 +24,9 @@ FORCE=false
 VERBOSE=false
 PIN_SUBMODULE=false
 RESET_STATE=false
+STEALTH=false
+CUSTOM_AI_ROOT=""
+STEALTH_DEFAULT_ROOT="${HOME}/.local/share/hyperi-ai"
 
 # Agent detection mode
 SPECIFIC_AGENT=""           # Set when --agent <name> is used
@@ -77,6 +80,12 @@ OPTIONS:
   --pin            Pin submodule version (disable auto-update from upstream)
                    Use this for projects requiring fixed AI versions
 
+STEALTH MODE (for public/OSS projects — zero committed artifacts):
+  --stealth        Use system-wide clone, .git/info/exclude, no submodule
+                   No changes to .gitignore or .gitmodules
+  --ai-root PATH   Custom hyperi-ai location (default: ~/.local/share/hyperi-ai)
+                   Only valid with --stealth
+
 AGENT SETUP (default: auto-detect first installed agent):
   --agent NAME     Setup specific agent (claude, cursor, gemini, codex)
   --all-agents     Setup all installed agents (don't stop on first)
@@ -110,6 +119,12 @@ EXAMPLES:
 
   # Pin submodule version (no auto-update)
   ./hyperi-ai/attach.sh --pin
+
+  # Stealth mode (public/OSS projects — zero committed artifacts)
+  ./hyperi-ai/attach.sh --stealth --path /path/to/project
+
+  # Stealth with custom hyperi-ai location
+  ./hyperi-ai/attach.sh --stealth --ai-root ~/my-hyperi-ai --path /path/to/project
 
 EOF
 }
@@ -149,6 +164,18 @@ parse_args() {
             --pin)
                 PIN_SUBMODULE=true
                 shift
+                ;;
+            --stealth)
+                STEALTH=true
+                shift
+                ;;
+            --ai-root)
+                if [ -z "${2:-}" ]; then
+                    log_error "--ai-root requires a path argument"
+                    exit 1
+                fi
+                CUSTOM_AI_ROOT="$2"
+                shift 2
                 ;;
             --agent)
                 if [ -z "${2:-}" ]; then
@@ -204,23 +231,47 @@ parse_args() {
         log_error "Options --agent, --all-agents, and --no-agent are mutually exclusive"
         exit 1
     fi
+
+    # --ai-root requires --stealth
+    if [ -n "$CUSTOM_AI_ROOT" ] && [ "$STEALTH" != true ]; then
+        log_error "--ai-root requires --stealth"
+        exit 1
+    fi
+
+    # --stealth and --pin are mutually exclusive
+    if [ "$STEALTH" = true ] && [ "$PIN_SUBMODULE" = true ]; then
+        log_error "--stealth and --pin are mutually exclusive (stealth has no submodule)"
+        exit 1
+    fi
 }
 
 # Detect script location and project root
 detect_paths() {
-    # AI_ROOT = directory containing this script
-    AI_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    AI_DIR="$(basename "$AI_ROOT")"
+    if [ "$STEALTH" = true ]; then
+        # Stealth mode: --path is required since we may not be in the project
+        if [ -z "$PROJECT_ROOT" ]; then
+            # Try parent of script location (works if running from a submodule checkout)
+            PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+        fi
+        # AI_ROOT is set later by ensure_stealth_clone()
+        AI_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        AI_DIR="$(basename "$AI_ROOT")"
+    else
+        # Standard mode: AI_ROOT = directory containing this script
+        AI_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        AI_DIR="$(basename "$AI_ROOT")"
 
-    # PROJECT_ROOT = parent directory (default)
-    # Can be overridden with --path
-    if [ -z "$PROJECT_ROOT" ]; then
-        PROJECT_ROOT="$(dirname "$AI_ROOT")"
+        # PROJECT_ROOT = parent directory (default)
+        # Can be overridden with --path
+        if [ -z "$PROJECT_ROOT" ]; then
+            PROJECT_ROOT="$(dirname "$AI_ROOT")"
+        fi
     fi
 
     if [ "$VERBOSE" = true ]; then
         log_info "AI_ROOT: $AI_ROOT"
         log_info "PROJECT_ROOT: $PROJECT_ROOT"
+        [ "$STEALTH" = true ] && log_info "Mode: stealth"
     fi
 }
 
@@ -510,6 +561,69 @@ check_submodule_url() {
     fi
 }
 
+# Ensure system-wide hyperi-ai clone exists (stealth mode)
+ensure_stealth_clone() {
+    local target="${CUSTOM_AI_ROOT:-$STEALTH_DEFAULT_ROOT}"
+
+    if [ -d "$target/.git" ] || [ -f "$target/.git" ]; then
+        log_info "Using existing hyperi-ai at: $target"
+        # Pull latest silently
+        if [ "$DRY_RUN" != true ]; then
+            git -C "$target" pull --rebase --quiet 2>/dev/null || true
+        fi
+        AI_ROOT="$target"
+        AI_DIR="$(basename "$target")"
+        return
+    fi
+
+    log_info "Cloning hyperi-ai to: $target"
+    if [ "$DRY_RUN" = true ]; then
+        log_info "Would clone $AI_REPO_URL to $target"
+        AI_ROOT="$target"
+        AI_DIR="$(basename "$target")"
+        return
+    fi
+
+    mkdir -p "$(dirname "$target")"
+    if ! git clone --quiet "$AI_REPO_URL" "$target" 2>/dev/null; then
+        log_error "Failed to clone hyperi-ai. Check access: $AI_REPO_URL"
+        exit 1
+    fi
+    log_success "Cloned hyperi-ai to: $target"
+    AI_ROOT="$target"
+    AI_DIR="$(basename "$target")"
+}
+
+# Add entries to .git/info/exclude (stealth mode — local-only gitignore)
+setup_git_exclude() {
+    local exclude_file="$PROJECT_ROOT/.git/info/exclude"
+    local marker="# hyperi-ai stealth attach"
+
+    # Already configured?
+    if [ -f "$exclude_file" ] && grep -qF "$marker" "$exclude_file"; then
+        if [ "$VERBOSE" = true ]; then
+            log_info ".git/info/exclude already configured"
+        fi
+        return
+    fi
+
+    if [ "$DRY_RUN" = true ]; then
+        log_info "Would add stealth exclusions to .git/info/exclude"
+        return
+    fi
+
+    mkdir -p "$(dirname "$exclude_file")"
+    cat >> "$exclude_file" << 'EXCLUDE'
+
+# hyperi-ai stealth attach
+.claude/
+STATE.md
+TODO.md
+CLAUDE.md
+EXCLUDE
+    log_success "Added stealth exclusions to .git/info/exclude"
+}
+
 # Copy file if it doesn't exist (or if --force)
 copy_if_missing() {
     local src="$1"
@@ -773,7 +887,14 @@ print_summary() {
     fi
     echo ""
 
-    if [ "$mode" = "submodule" ]; then
+    if [ "$STEALTH" = true ]; then
+        echo "Stealth mode:"
+        echo "  - hyperi-ai: $AI_ROOT"
+        echo "  - .git/info/exclude hides all artifacts"
+        echo "  - Zero committed footprint"
+        echo "  - To update: git -C $AI_ROOT pull"
+        echo ""
+    elif [ "$mode" = "submodule" ]; then
         if [ "$PIN_SUBMODULE" = true ]; then
             echo "AI submodule configured (pinned):"
             echo "  - Manual updates only"
@@ -803,35 +924,44 @@ main() {
     detect_paths
     validate_environment
 
-    # Migrate ai/ → hyperi-ai/ if old name detected
-    if [ "$AI_DIR" = "ai" ] && [ -d "$PROJECT_ROOT/ai" ]; then
-        if command -v python3 >/dev/null 2>&1; then
-            log_info "Migrating submodule: ai/ → hyperi-ai/"
-            CLAUDE_PROJECT_DIR="$PROJECT_ROOT" python3 "$AI_ROOT/hooks/migrate_submodule_name.py"
-            # Re-detect paths after rename
-            AI_ROOT="$PROJECT_ROOT/hyperi-ai"
-            AI_DIR="hyperi-ai"
-        else
-            log_warn "Python 3 not found — cannot auto-migrate ai/ to hyperi-ai/"
-            log_warn "  Rename manually: mv ai hyperi-ai"
+    if [ "$STEALTH" = true ]; then
+        # Stealth mode: system-wide clone, .git/info/exclude, no submodule
+        ensure_stealth_clone
+        setup_git_exclude
+        deploy_templates
+        # Export AI_ROOT for agent scripts
+        export HYPERI_AI_ROOT="$AI_ROOT"
+        run_agent_detection
+        print_summary
+    else
+        # Standard mode: submodule-based
+
+        # Migrate ai/ → hyperi-ai/ if old name detected
+        if [ "$AI_DIR" = "ai" ] && [ -d "$PROJECT_ROOT/ai" ]; then
+            if command -v python3 >/dev/null 2>&1; then
+                log_info "Migrating submodule: ai/ → hyperi-ai/"
+                CLAUDE_PROJECT_DIR="$PROJECT_ROOT" python3 "$AI_ROOT/hooks/migrate_submodule_name.py"
+                # Re-detect paths after rename
+                AI_ROOT="$PROJECT_ROOT/hyperi-ai"
+                AI_DIR="hyperi-ai"
+            else
+                log_warn "Python 3 not found — cannot auto-migrate ai/ to hyperi-ai/"
+                log_warn "  Rename manually: mv ai hyperi-ai"
+            fi
         fi
+
+        # Configure/migrate submodule if in submodule mode
+        local mode
+        mode="$(detect_mode)"
+        if [ "$mode" = "submodule" ]; then
+            migrate_submodule_settings
+            configure_submodule_settings
+        fi
+
+        deploy_templates
+        run_agent_detection
+        print_summary
     fi
-
-    # Configure/migrate submodule if in submodule mode
-    local mode
-    mode="$(detect_mode)"
-    if [ "$mode" = "submodule" ]; then
-        migrate_submodule_settings
-        configure_submodule_settings
-    fi
-
-    # Deploy templates (STATE.md, TODO.md)
-    deploy_templates
-
-    # Run agent detection
-    run_agent_detection
-
-    print_summary
 }
 
 # Run main if executed directly (not sourced)

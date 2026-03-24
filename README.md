@@ -477,25 +477,47 @@ with project state.
 
 ---
 
-## Dual Mode: Submodule + Plugin
+## Deployment Modes
 
-hyperi-ai works in two modes from the same repository:
+### Submodule mode (private projects)
 
-### Submodule mode (primary)
+For projects where all contributors have access to hyperi-ai:
 
 ```bash
 git submodule add https://github.com/hyperi-io/hyperi-ai.git hyperi-ai
 ./hyperi-ai/attach.sh --agent claude
 ```
 
-`claude.sh` deploys rules, skills, commands, settings, and MCP config as symlinks
-from the submodule into the consumer project's `.claude/` directory.
+Deploys rules, skills, commands, settings, and MCP config as symlinks from the
+submodule into `.claude/`.
+
+### Stealth mode (public/OSS projects)
+
+For projects where external contributors should not see any hyperi-ai artifacts:
+
+```bash
+# From the project root (hyperi-ai cloned to ~/.local/share/hyperi-ai/)
+~/.local/share/hyperi-ai/attach.sh --stealth --path .
+
+# Or with a custom hyperi-ai location
+/path/to/hyperi-ai/attach.sh --stealth --ai-root /path/to/hyperi-ai --path .
+```
+
+Zero committed footprint — uses `.git/info/exclude` (local-only, never committed)
+to hide `.claude/`, `STATE.md`, and `TODO.md` from git. External contributors
+cloning the repo see no trace of hyperi-ai. All hooks and standards degrade
+silently when hyperi-ai is not available.
 
 ### Plugin mode
 
-The repository also includes a CC plugin manifest (`.claude-plugin/plugin.json`)
-and hook config (`hooks/hooks.json`). This enables direct plugin installation
-for environments where git submodules aren't practical.
+CC plugin manifest (`.claude-plugin/plugin.json`) for direct plugin installation
+in environments where git submodules aren't practical.
+
+### Graceful degradation
+
+When hyperi-ai is not available (external contributor, missing submodule, no
+access), everything degrades silently — no errors, no warnings. Claude Code
+works normally, just without HyperI standards injection.
 
 ---
 

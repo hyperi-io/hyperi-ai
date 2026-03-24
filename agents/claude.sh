@@ -19,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=agents/common.sh disable=SC1091
 source "${SCRIPT_DIR}/common.sh"
 
-AI_ROOT="$(dirname "$SCRIPT_DIR")"
+AI_ROOT="${HYPERI_AI_ROOT:-$(dirname "$SCRIPT_DIR")}"
 AGENT_CLI="claude"
 DEPLOY_SCRIPT="$AI_ROOT/tools/deploy_claude.py"
 

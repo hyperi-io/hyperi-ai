@@ -51,10 +51,22 @@ Consumer Project/
   CLAUDE.md           -> STATE.md
 ```
 
-### Dual Mode
+### Deployment Modes
 
-1. **Submodule mode** — `git submodule add`, then `./hyperi-ai/attach.sh` + `./hyperi-ai/agents/claude.sh`
-2. **Plugin mode** — `.claude-plugin/plugin.json` manifest for Claude Code plugin system
+1. **Submodule mode** — `git submodule add`, then `./hyperi-ai/attach.sh` + `./hyperi-ai/agents/claude.sh`. For private projects where all contributors have access.
+2. **Stealth mode** — `attach.sh --stealth`. Uses system-wide clone (`~/.local/share/hyperi-ai/`), `.git/info/exclude` to hide artifacts. Zero committed footprint. For public/OSS projects.
+3. **Plugin mode** — `.claude-plugin/plugin.json` manifest for Claude Code plugin system
+
+### Proprietary IP
+
+**hyperi-ai is proprietary and will NOT be open-sourced.** It contains too much
+IP in standards, skills, hooks, and tooling. HyperI projects will be OSS, but
+hyperi-ai remains private. Stealth mode exists specifically for this: attach
+standards to public repos without leaking any reference to hyperi-ai.
+
+If a contributor clones a public project without hyperi-ai access, everything
+must degrade silently — no errors, no warnings, just standard Claude Code
+without HyperI standards.
 
 ### Key Components
 
