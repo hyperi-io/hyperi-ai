@@ -1,3 +1,10 @@
+## [3.12.0](https://github.com/hyperi-io/hyperi-ai/compare/3.11.0...3.12.0) (2026-03-24)
+
+
+### Features
+
+* add AGENT-ATTACH.md for agentic auto-detection and attach ([356a10f](https://github.com/hyperi-io/hyperi-ai/commit/356a10f8fa27e0aa4c06b58ae1899c3b326bf0be))
+
 ## [3.11.0](https://github.com/hyperi-io/hyperi-ai/compare/3.10.1...3.11.0) (2026-03-24)
 
 
