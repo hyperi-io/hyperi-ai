@@ -167,6 +167,16 @@ Include a body listing notable version bumps (major versions, security fixes).
 
 ---
 
+After Phase 1 is complete, ask the user:
+
+> "Dependencies updated. Want me to run the deep upstream health analysis?
+> (Package maintenance trends, abandonment risks, replacement candidates)"
+
+- **If yes:** proceed to Phase 2
+- **If no:** stop here — Phase 1 is the common case
+
+---
+
 ## Phase 2: Upstream Checks
 
 This phase is research and analysis. Use extended thinking / ultrathink for the
