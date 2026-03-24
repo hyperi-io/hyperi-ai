@@ -1,3 +1,10 @@
+## [3.11.0](https://github.com/hyperi-io/hyperi-ai/compare/3.10.1...3.11.0) (2026-03-24)
+
+
+### Features
+
+* add stealth mode for public/OSS projects ([640decb](https://github.com/hyperi-io/hyperi-ai/commit/640decb1cbc8919ccf963cb770460f2d09925e5e))
+
 ## [3.10.1](https://github.com/hyperi-io/hyperi-ai/compare/3.10.0...3.10.1) (2026-03-24)
 
 
