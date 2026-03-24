@@ -479,8 +479,7 @@ with project state.
 
 ## Deployment Modes
 
-**Agentic attach:** Point any coding agent at [AGENT-ATTACH.md](AGENT-ATTACH.md) — it
-auto-detects project type and runs the right attach method.
+**Quick start:** See [ATTACH.md](ATTACH.md) — covers both modes with auto-detection.
 
 ### Submodule mode (private projects)
 
