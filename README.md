@@ -479,6 +479,9 @@ with project state.
 
 ## Deployment Modes
 
+**Agentic attach:** Point any coding agent at [AGENT-ATTACH.md](AGENT-ATTACH.md) — it
+auto-detects project type and runs the right attach method.
+
 ### Submodule mode (private projects)
 
 For projects where all contributors have access to hyperi-ai:
