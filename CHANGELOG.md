@@ -1,3 +1,10 @@
+## [3.10.1](https://github.com/hyperi-io/hyperi-ai/compare/3.10.0...3.10.1) (2026-03-24)
+
+
+### Bug Fixes
+
+* make Phase 2 upstream analysis opt-in in /deps skill ([6ecfd9f](https://github.com/hyperi-io/hyperi-ai/commit/6ecfd9f5e2837e42a7349eed7a59cfad7a3b1f3a))
+
 ## [3.10.0](https://github.com/hyperi-io/hyperi-ai/compare/3.9.0...3.10.0) (2026-03-23)
 
 
