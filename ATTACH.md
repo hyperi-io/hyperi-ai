@@ -56,6 +56,12 @@ If anything is missing, re-run `attach.sh` with `--force`.
 
 ## Updating
 
+**Automatic:** Both modes auto-update on every Claude Code session start. The
+session-start hook pulls the latest hyperi-ai (submodule or stealth clone) and
+re-deploys if anything changed. No manual steps needed.
+
+**Manual** (if you need to force an update):
+
 ```bash
 # Submodule projects
 git submodule update --remote hyperi-ai
@@ -65,8 +71,6 @@ git submodule update --remote hyperi-ai
 git -C ~/.local/share/hyperi-ai pull
 ~/.local/share/hyperi-ai/attach.sh --stealth --force --path .
 ```
-
-The session-start hook also auto-updates silently in both modes.
 
 ## Notes
 

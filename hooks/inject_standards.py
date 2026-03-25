@@ -53,10 +53,10 @@ def main() -> None:
         except Exception as exc:
             print(f"[migrate] auto-migration failed: {exc}", file=sys.stderr)
 
-    # Auto-update: silently pull latest hyperi-ai submodule if behind remote
+    # Auto-update: silently pull latest hyperi-ai (submodule or stealth clone)
     common.auto_update_submodules(project_dir)
 
-    # Auto-reattach: detect submodule updates and re-deploy if needed
+    # Auto-reattach: detect hyperi-ai updates and re-deploy if needed
     reattach_msg = common.check_version_and_reattach(project_dir)
 
     # Inject current date — models often hallucinate dates from training data
