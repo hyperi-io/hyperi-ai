@@ -41,6 +41,57 @@ Rules governing how AI assistants behave, communicate, and work within HyperI pr
 
 ---
 
+## No SEP Fields (Somebody Else's Problem)
+
+AI agents habitually dismiss bugs they encounter with "this is unrelated to
+our changes" or "this appears to be a pre-existing issue". This is Douglas
+Adams' [SEP field](https://en.wikipedia.org/wiki/Somebody_else%27s_problem)
+— a cognitive blind spot that makes real problems invisible.
+
+Every session, a different agent walks past the same burning bin, notes the
+fire, says "not my task", and keeps going. The bin never gets fixed.
+
+**The rule: if you see it, it's your problem.**
+
+### Tier 1 — Fix immediately (no discussion needed)
+
+- Typos, wrong names, broken imports in code you're already reading
+- Deprecated API usage you spot
+- Missing error handling that's obviously wrong
+- Dead code / unused imports around code you're editing
+- Security issues (ALWAYS fix, zero tolerance, never defer)
+
+### Tier 2 — Ask the user
+
+- Fix requires reading code you haven't touched (more than 3 files beyond
+  your current scope)
+- It's a design problem, not a code bug
+- Estimated effort is more than a few minutes
+- You're not confident the fix won't break something else
+
+Prompt: "Found an issue in [file]: [description]. Fix now or add to TODO?"
+
+### Tier 3 — Rabbit hole guard
+
+Fix the bug you found. If fixing THAT bug reveals another bug:
+
+- Trivial or security → fix that one too
+- Everything else → note in TODO.md, tell the user, return to the
+  original task
+
+One level of depth, then stop and ask.
+
+### Banned phrases
+
+| Never Say | Say Instead |
+|-----------|-------------|
+| "This is unrelated to our changes" | "Found a bug in [file]. Fixing it now." |
+| "This appears to be a pre-existing issue" | "Found an existing issue in [file]: [description]. Fix now or TODO?" |
+| "This is outside the scope of this task" | "This needs a bigger fix — adding to TODO." |
+| "I noticed X but won't fix it" | Fix it or ask. Never walk past it. |
+
+---
+
 ## Three-Iteration Rule
 
 ```
