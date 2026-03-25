@@ -1,3 +1,10 @@
+## [3.13.0](https://github.com/hyperi-io/hyperi-ai/compare/3.12.2...3.13.0) (2026-03-25)
+
+
+### Features
+
+* add No SEP Fields rule to AI-CONDUCT standard ([6be7d03](https://github.com/hyperi-io/hyperi-ai/commit/6be7d039855c6f40e8719b428ad114d7b2a6a50c))
+
 ## [3.12.2](https://github.com/hyperi-io/hyperi-ai/compare/3.12.1...3.12.2) (2026-03-25)
 
 
