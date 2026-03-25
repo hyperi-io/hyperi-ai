@@ -1,3 +1,15 @@
+## [3.12.2](https://github.com/hyperi-io/hyperi-ai/compare/3.12.1...3.12.2) (2026-03-25)
+
+
+### Refactoring
+
+* rename standards/QUICKSTART.md to STANDARDS.md, full cross-ref audit ([3a8e783](https://github.com/hyperi-io/hyperi-ai/commit/3a8e783e424f7ebfc56f565d070768b7aab46de0))
+
+
+### Documentation
+
+* merge ATTACH.md into QUICKSTART.md, single entry point ([921d561](https://github.com/hyperi-io/hyperi-ai/commit/921d56150046bc3210f35c74139b7a88d1e97f09))
+
 ## [3.12.1](https://github.com/hyperi-io/hyperi-ai/compare/3.12.0...3.12.1) (2026-03-25)
 
 
