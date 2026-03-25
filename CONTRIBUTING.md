@@ -24,7 +24,7 @@ hyperi-ai/
 │   ├── safety_guard.py       # PreToolUse(Bash): block dangerous commands
 │   └── lint_check.py         # Stop: lint modified files, feed errors back
 ├── standards/           # Main product - coding standards
-│   ├── QUICKSTART.md            # Entry point and index for all standards
+│   ├── STANDARDS.md             # Entry point and index for all standards
 │   ├── rules/                   # Compact rules (<200 lines each) -- LLM-generated, do not hand-edit
 │   ├── universal/               # Language-agnostic standards (source of truth)
 │   ├── languages/               # Python, Go, TypeScript, Rust, Bash, C++, SQL-ClickHouse

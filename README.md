@@ -217,7 +217,7 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |   +-- codex.sh                # OpenAI Codex / GitHub Copilot setup
 |
 |-- standards/                   # Coding standards (main product)
-|   |-- QUICKSTART.md            # Entry point and index for all standards
+|   |-- STANDARDS.md             # Entry point and index for all standards
 |   |-- rules/                   # Compact rules (<200 lines) -- LLM-generated, do not hand-edit
 |   |   |-- universal.md         # Cross-cutting rules (always loaded)
 |   |   +-- <topic>.md           # Path-scoped rules (auto-injected by file type)

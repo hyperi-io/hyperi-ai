@@ -505,7 +505,7 @@ read-only audit — flag gaps but don't fix them in this PR.
 - [ ] **Step 1: For each compact rule in standards/rules/**
 
 Compare against the corresponding source in `standards/languages/`,
-`standards/infrastructure/`, or `standards/common/`. Flag:
+`standards/infrastructure/`, or `standards/universal/`. Flag:
 - Rules present in source but missing from compact
 - Nuance lost in compression
 - Important patterns not captured

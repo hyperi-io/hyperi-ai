@@ -2,7 +2,7 @@
   "contextFiles": [
     "STATE.md",
     "TODO.md",
-    "hyperi-ai/standards/QUICKSTART.md"
+    "hyperi-ai/standards/STANDARDS.md"
   ],
   "ignorePatterns": [
     "**/.git/**",

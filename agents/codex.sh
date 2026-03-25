@@ -221,8 +221,8 @@ EOF
         fi
     }
 
-    # Core skill — points to QUICKSTART.md
-    create_skill "standards" "HyperI coding standards - always use for code quality" "$standards_dir/QUICKSTART.md"
+    # Core skill — points to STANDARDS.md
+    create_skill "standards" "HyperI coding standards - always use for code quality" "$standards_dir/STANDARDS.md"
     echo "  Core: standards"
 
     # Deploy skills for detected technologies (uses shared detection from common.sh)

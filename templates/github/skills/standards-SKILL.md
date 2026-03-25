@@ -1,11 +1,11 @@
 ---
 name: standards
-description: HyperI coding standards — read QUICKSTART.md for full index
+description: HyperI coding standards — read STANDARDS.md for full index
 ---
 
 # HyperI Coding Standards
 
-Read `hyperi-ai/standards/QUICKSTART.md` for the full standards index,
+Read `hyperi-ai/standards/STANDARDS.md` for the full standards index,
 auto-detection rules, and directory structure.
 
 Standards are in `hyperi-ai/standards/` — organised by:

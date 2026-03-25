@@ -415,7 +415,7 @@ def deploy_skills(
     # Core skills
     _create_skill(
         "standards",
-        str(standards_dir / "QUICKSTART.md"),
+        str(standards_dir / "STANDARDS.md"),
         skills_dir,
         project_root,
         dry_run=dry_run,

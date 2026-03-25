@@ -69,8 +69,10 @@ Use for: code review, simplification, complex implementation decisions.
 | DESIGN-PRINCIPLES.md | SOLID, DRY, KISS, YAGNI |
 | ERROR-HANDLING.md | Security-first error handling |
 | GIT.md | Commit types, branch naming, semantic-release alignment |
+| ISSUE-MANAGEMENT.md | Issue tracking (GH Issues + Linear) |
 | LICENSING.md | FSL-1.1-ALv2 default, no GPL/AGPL/SSPL |
-| LINEAR-TICKETS.md | Issue tracking (GH Issues + Linear) |
+| LOG-FLOODING.md | Log volume control, sampling, rate limiting |
+| METRICS.md | Operational metrics, SLIs, instrumentation |
 | MOCKS-POLICY.md | No mocks — test against real dependencies |
 | PKI.md | TLS, SSH, certificates, CNSA 2.0 |
 | REPO-NAMING.md | Repository naming by product scope |

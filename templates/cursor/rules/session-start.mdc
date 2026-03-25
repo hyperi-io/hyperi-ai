@@ -1,11 +1,11 @@
 ---
 category: Auto Attached
-description: Session initialization — read QUICKSTART.md for coding standards
+description: Session initialization — read STANDARDS.md for coding standards
 ---
 
 # Start Session
 
 1. Read `STATE.md` and `TODO.md` for project context
-2. Read `hyperi-ai/standards/QUICKSTART.md` for coding standards index
+2. Read `hyperi-ai/standards/STANDARDS.md` for coding standards index
 3. Standards in `hyperi-ai/standards/` — language and infrastructure standards
    are in `languages/` and `infrastructure/`, auto-matched by file type

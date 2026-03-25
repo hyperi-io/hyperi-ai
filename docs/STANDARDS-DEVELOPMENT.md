@@ -31,7 +31,7 @@ See [TOKEN-ENGINEERING.md](TOKEN-ENGINEERING.md) for auto-detection rules.
 
 ```text
 standards/
-├── QUICKSTART.md            # Entry point and index for all standards
+├── STANDARDS.md             # Entry point and index for all standards
 ├── rules/                   # Compact rules (<200 lines each) -- LLM-generated
 │   ├── universal.md         # Cross-cutting rules (always loaded)
 │   └── <topic>.md           # Path-scoped rules (auto-injected by file type)

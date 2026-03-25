@@ -23,10 +23,10 @@ teardown() {
 
     [ "$status" -eq 0 ]
     [ -d ".claude/skills/verification" ]
-    [ -d ".claude/skills/documentation" ]
+    [ -d ".claude/skills/docs-audit" ]
     [ -d ".claude/skills/bleeding-edge" ]
     [ -f ".claude/skills/verification/SKILL.md" ]
-    [ -f ".claude/skills/documentation/SKILL.md" ]
+    [ -f ".claude/skills/docs-audit/SKILL.md" ]
     [ -f ".claude/skills/bleeding-edge/SKILL.md" ]
 }
 

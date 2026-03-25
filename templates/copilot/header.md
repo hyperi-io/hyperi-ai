@@ -1,6 +1,6 @@
 # HyperI Coding Standards
 
-Read `hyperi-ai/standards/QUICKSTART.md` for the full standards index,
+Read `hyperi-ai/standards/STANDARDS.md` for the full standards index,
 auto-detection rules, and directory structure.
 
 ## Session Start
