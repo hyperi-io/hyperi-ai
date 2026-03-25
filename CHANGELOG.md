@@ -1,3 +1,15 @@
+## [3.12.1](https://github.com/hyperi-io/hyperi-ai/compare/3.12.0...3.12.1) (2026-03-25)
+
+
+### Bug Fixes
+
+* clarify auto-update works for both submodule and stealth modes ([044ab72](https://github.com/hyperi-io/hyperi-ai/commit/044ab72c857ab123d76eac8327dae32390c70028))
+
+
+### Documentation
+
+* rename AGENT-ATTACH.md to ATTACH.md, make human-friendly ([fcb63d2](https://github.com/hyperi-io/hyperi-ai/commit/fcb63d275dbfcf3bb4af4ea5373156f48b1e255f))
+
 ## [3.12.0](https://github.com/hyperi-io/hyperi-ai/compare/3.11.0...3.12.0) (2026-03-24)
 
 
