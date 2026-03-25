@@ -479,7 +479,7 @@ with project state.
 
 ## Deployment Modes
 
-**Quick start:** See [ATTACH.md](ATTACH.md) — covers both modes with auto-detection.
+**Quick start:** See [QUICKSTART.md](QUICKSTART.md) — covers both modes with auto-detection.
 
 ### Submodule mode (private projects)
 
