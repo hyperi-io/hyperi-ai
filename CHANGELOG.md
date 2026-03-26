@@ -1,3 +1,18 @@
+## [3.13.1](https://github.com/hyperi-io/hyperi-ai/compare/3.13.0...3.13.1) (2026-03-26)
+
+
+### Bug Fixes
+
+* combine universal rules into single always-on baseline ([3e4f660](https://github.com/hyperi-io/hyperi-ai/commit/3e4f660d4b9cbc9293b07459e1073f75f8c73b8e))
+* remove missed ci.md universal rule file ([f37e9fa](https://github.com/hyperi-io/hyperi-ai/commit/f37e9fabf69d3d518864ef8b5bbc8343cde719f5))
+* update standards for single versioning and dispatch-triggered publish ([27419ce](https://github.com/hyperi-io/hyperi-ai/commit/27419cee11bfc5798ad7f0d4f63d412c1ebb2dc8))
+
+
+### Documentation
+
+* add comprehensive SKILLS.md reference ([a43b19a](https://github.com/hyperi-io/hyperi-ai/commit/a43b19ac28359b99bb57ef2eefff8cad8de764a2))
+* add SKILLS.md reference to README ([66030b7](https://github.com/hyperi-io/hyperi-ai/commit/66030b70c8cd9ff515c4e6eaf3a13165240e0c60))
+
 ## [3.13.0](https://github.com/hyperi-io/hyperi-ai/compare/3.12.2...3.13.0) (2026-03-25)
 
 
