@@ -480,13 +480,24 @@ def build_rules_file(meta: dict, body: str, source_rel: str) -> str:
         + Path(source_rel).name
     )
 
+    detect_markers = meta.get("detect_markers", [])
+
+    # If detect_markers include project-level file markers, the rule is
+    # project-wide and should load unconditionally (no paths restriction).
+    # The detect_markers tell claude.sh which projects to symlink the rule
+    # into — once symlinked, it should always load.
+    has_project_markers = any(
+        m.startswith("file:") or m.startswith("dir:") for m in detect_markers
+    )
+
     rule_paths = meta.get("rule_paths") or meta.get("paths", [])
-    if rule_paths:
+    if rule_paths and not has_project_markers:
         lines.append("paths:")
         for p in rule_paths:
             lines.append(f'  - "{p}"')
+    elif has_project_markers:
+        lines.append("# NO paths — project-wide rule (detect_markers matched project files)")
 
-    detect_markers = meta.get("detect_markers", [])
     if detect_markers:
         lines.append("detect_markers:")
         for m in detect_markers:
