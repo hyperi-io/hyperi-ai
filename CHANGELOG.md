@@ -1,3 +1,10 @@
+## [3.13.2](https://github.com/hyperi-io/hyperi-ai/compare/3.13.1...3.13.2) (2026-03-26)
+
+
+### Bug Fixes
+
+* regenerate ci.md from infrastructure/CI.md source ([ce7f334](https://github.com/hyperi-io/hyperi-ai/commit/ce7f3349108a63b09e96a4ce907cc7cec4e8fbbc))
+
 ## [3.13.1](https://github.com/hyperi-io/hyperi-ai/compare/3.13.0...3.13.1) (2026-03-26)
 
 
