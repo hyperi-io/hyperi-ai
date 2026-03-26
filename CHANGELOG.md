@@ -1,3 +1,10 @@
+## [3.13.3](https://github.com/hyperi-io/hyperi-ai/compare/3.13.2...3.13.3) (2026-03-26)
+
+
+### Bug Fixes
+
+* add CI/CD standards to infrastructure ([3a2537c](https://github.com/hyperi-io/hyperi-ai/commit/3a2537cd88c926c8c63639e4909fd31661b1a17b))
+
 ## [3.13.2](https://github.com/hyperi-io/hyperi-ai/compare/3.13.1...3.13.2) (2026-03-26)
 
 
