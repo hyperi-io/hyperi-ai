@@ -241,6 +241,7 @@ hyperi-ai/                       # This repository ($AI_ROOT)
 |
 |-- tests/                       # BATS test suite
 +-- docs/                        # Project documentation
+    +-- SKILLS.md                # Combined reference: all skills, commands, and how they work
 ```
 
 ---
@@ -436,6 +437,9 @@ CC loads the full skill content when the description matches the current task:
 | `ci-watch` | Monitoring CI runs, checking pipeline status (hyperi-ci projects) |
 | `ci-logs` | Debugging CI failures, fetching logs (hyperi-ci projects) |
 | `deps` | Updating dependencies, upstream health checks, replacement research |
+
+See [docs/SKILLS.md](docs/SKILLS.md) for full details on what each skill and command
+does, what it doesn't do, and how it works.
 
 ---
 
