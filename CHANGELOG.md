@@ -1,3 +1,10 @@
+## [3.13.7](https://github.com/hyperi-io/hyperi-ai/compare/3.13.6...3.13.7) (2026-03-27)
+
+
+### Bug Fixes
+
+* resolve all pre-existing test failures and regenerate compact rules ([63456ba](https://github.com/hyperi-io/hyperi-ai/commit/63456bae20c3e8d7cac8fc1139fd586d02ee1cec))
+
 ## [3.13.6](https://github.com/hyperi-io/hyperi-ai/compare/3.13.5...3.13.6) (2026-03-27)
 
 
