@@ -247,6 +247,44 @@ bacon test                      # Continuous testing
 cargo tarpaulin --out Html      # Coverage report
 ```
 
+### Local-First Development (CRITICAL for AI Agents)
+
+**Rust CI builds take 30+ minutes.** Do NOT push after every change. Accumulate
+commits locally and validate with local tools before pushing.
+
+```
+Loop locally:
+  1. Write code
+  2. cargo check          (seconds — type errors only)
+  3. cargo clippy          (seconds — lint)
+  4. cargo nextest run     (minutes — tests)
+  5. Commit locally
+  6. Repeat 1-5 as needed
+
+Push ONLY when:
+  - Feature/fix is complete and tests pass locally
+  - You need CI for cross-platform or integration tests you can't run locally
+  - You need a code review / PR
+  - User explicitly asks you to push
+```
+
+| ❌ Don't | ✅ Do | Why |
+|----------|-------|-----|
+| Push after every commit | Accumulate 3-10 local commits, push once | 30 min CI per push |
+| `git push` after a single file fix | `cargo check && cargo nextest run` locally | CI is not your type checker |
+| Push to "see if CI passes" | Run `hyperi-ci check` or `cargo clippy && cargo nextest run` locally | Local validation is instant |
+| Push WIP to trigger CI | Commit locally, keep working | CI builds block the pipeline |
+
+**When `hyperi-ci` is available:** `hyperi-ci check` runs the full quality + test
+pipeline locally. Use it instead of pushing to see if CI passes.
+
+**When only GitHub Actions CI:** Run `cargo fmt --check && cargo clippy --all-targets
+--all-features -- -D warnings && cargo nextest run --all-features` locally before
+pushing. This mirrors the CI pipeline.
+
+**`bacon`** is your best friend — it runs clippy/tests continuously on save.
+Never push just to get feedback that `bacon` gives you in 2 seconds.
+
 ### Type Quick Reference
 
 | Type | Size | Use Case |

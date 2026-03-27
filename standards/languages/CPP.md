@@ -50,6 +50,38 @@ cmake -B build-tsan -DSANITIZE=thread -GNinja && ninja -C build-tsan
 cmake -B build-ubsan -DSANITIZE=undefined -GNinja && ninja -C build-ubsan
 ```
 
+### Local-First Development (CRITICAL for AI Agents)
+
+**C++ CI builds take 30+ minutes (ClickHouse fork: 2-3 hours).** Do NOT push after every
+change. Accumulate commits locally and validate with local tools before pushing.
+
+```
+Loop locally:
+  1. Write code
+  2. ninja -C build          (incremental — seconds to minutes)
+  3. clang-tidy src/*.cpp    (lint)
+  4. ./build/unit_tests      (run tests)
+  5. Commit locally
+  6. Repeat 1-5 as needed
+
+Push ONLY when:
+  - Feature/fix is complete and tests pass locally
+  - You need CI for cross-platform, sanitiser, or integration tests
+  - You need a code review / PR
+  - User explicitly asks you to push
+```
+
+| ❌ Don't | ✅ Do | Why |
+|----------|-------|-----|
+| Push after every commit | Accumulate local commits, push once | 30+ min CI per push |
+| Push to "see if CI passes" | Run `hyperi-ci check` or build + test locally | Local is faster |
+| Push WIP to trigger sanitiser builds | Run ASan/TSan locally first | CI queues are shared |
+
+**When `hyperi-ci` is available:** `hyperi-ci check` runs the full local pipeline.
+
+**Incremental builds are your friend** — `ninja -C build` only recompiles changed
+TUs. Use `ccache` or `sccache` for cache hits across rebuilds.
+
 ---
 
 ## Core Principles for High-Volume Data Processing
