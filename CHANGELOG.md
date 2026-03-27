@@ -1,3 +1,10 @@
+## [3.13.6](https://github.com/hyperi-io/hyperi-ai/compare/3.13.5...3.13.6) (2026-03-27)
+
+
+### Bug Fixes
+
+* add local-first dev policy for Rust/C++ and make tests dynamic ([6a327eb](https://github.com/hyperi-io/hyperi-ai/commit/6a327eb3a0363d9595f2df4e879468941c3639c4))
+
 ## [3.13.5](https://github.com/hyperi-io/hyperi-ai/compare/3.13.4...3.13.5) (2026-03-27)
 
 
