@@ -1,3 +1,10 @@
+## [3.13.5](https://github.com/hyperi-io/hyperi-ai/compare/3.13.4...3.13.5) (2026-03-27)
+
+
+### Bug Fixes
+
+* add local-first development policy for Rust and C++ builds ([022e1e0](https://github.com/hyperi-io/hyperi-ai/commit/022e1e002d3dc8a0a4194d250bff6e7bff62f34a))
+
 ## [3.13.4](https://github.com/hyperi-io/hyperi-ai/compare/3.13.3...3.13.4) (2026-03-27)
 
 
