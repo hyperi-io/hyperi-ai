@@ -153,20 +153,26 @@ teardown() {
     ./hyperi-ai/attach.sh --no-agent
     ./hyperi-ai/agents/claude.sh --force --no-managed --no-superpowers
 
+    # universal.md is mandatory — always-on baseline
     [ -f ".claude/rules/universal.md" ]
-    [ -f ".claude/rules/python.md" ]
-    [ -f ".claude/rules/git.md" ]
-    [ -f ".claude/rules/security.md" ]
+
+    # Every rule file in standards/rules/ should be deployed
+    local source_count deployed_count
+    source_count="$(ls "$AI_SOURCE/standards/rules/"*.md 2>/dev/null | wc -l)"
+    deployed_count="$(ls .claude/rules/*.md 2>/dev/null | wc -l)"
+    [ "$deployed_count" -ge "$source_count" ]
 }
 
-@test "TC-322: Rule files deployed (at least 25, no methodology rules)" {
+@test "TC-322: Rule files deployed (dynamic count, no methodology rules)" {
     cd "$TEST_SUBMODULE"
     ./hyperi-ai/attach.sh --no-agent
     ./hyperi-ai/agents/claude.sh --force --no-managed --no-superpowers
 
-    local count
-    count="$(ls .claude/rules/*.md 2>/dev/null | wc -l)"
-    [ "$count" -ge 25 ]
+    # Deployed count should match source rules count
+    local source_count deployed_count
+    source_count="$(ls "$AI_SOURCE/standards/rules/"*.md 2>/dev/null | wc -l)"
+    deployed_count="$(ls .claude/rules/*.md 2>/dev/null | wc -l)"
+    [ "$deployed_count" -ge "$source_count" ]
 }
 
 # --- Commands from new path ---
@@ -301,10 +307,10 @@ for hook in data['hooks']:
     [[ "$output" =~ "superpowers" ]]
 }
 
-# --- ai-conduct.md references web search / training data ---
+# --- universal.md references web search / training data ---
 
-@test "TC-370: ai-conduct.md references web search before code" {
-    grep -qi "web.search\|training.data\|bleeding" "$AI_SOURCE/standards/rules/ai-conduct.md"
+@test "TC-370: universal.md references web search before code" {
+    grep -qi "web.search\|training.data\|bleeding" "$AI_SOURCE/standards/rules/universal.md"
 }
 
 @test "TC-371: Deleted methodology rules do not exist in standards/rules/" {
@@ -440,12 +446,16 @@ for hook in data['hooks']:
     run ./hyperi-ai/agents/claude.sh --self --force --no-managed --no-superpowers
 
     [ "$status" -eq 0 ]
-    [ -f "$TEST_SUBMODULE/hyperi-ai/.claude/rules/universal.md" ]
-    [ -f "$TEST_SUBMODULE/hyperi-ai/.claude/rules/python.md" ]
-    [ -f "$TEST_SUBMODULE/hyperi-ai/.claude/rules/git.md" ]
 
-    # Symlinks should resolve (not dangling)
+    # universal.md is mandatory
+    [ -f "$TEST_SUBMODULE/hyperi-ai/.claude/rules/universal.md" ]
     [ -e "$TEST_SUBMODULE/hyperi-ai/.claude/rules/universal.md" ]
+
+    # All source rules should be deployed
+    local source_count deployed_count
+    source_count="$(ls "$AI_SOURCE/standards/rules/"*.md 2>/dev/null | wc -l)"
+    deployed_count="$(ls "$TEST_SUBMODULE/hyperi-ai/.claude/rules/"*.md 2>/dev/null | wc -l)"
+    [ "$deployed_count" -ge "$source_count" ]
 }
 
 @test "TC-403: --self deploys skills into ai/.claude/skills/" {
