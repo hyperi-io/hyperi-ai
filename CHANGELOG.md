@@ -1,3 +1,10 @@
+## [3.13.4](https://github.com/hyperi-io/hyperi-ai/compare/3.13.3...3.13.4) (2026-03-27)
+
+
+### Bug Fixes
+
+* make language and CI rules unconditional when project detected ([12d6110](https://github.com/hyperi-io/hyperi-ai/commit/12d6110cbb92d60cf9700b3c3c73941e21dbaef3))
+
 ## [3.13.3](https://github.com/hyperi-io/hyperi-ai/compare/3.13.2...3.13.3) (2026-03-26)
 
 
