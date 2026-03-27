@@ -394,8 +394,8 @@ def inject_rules(project_dir: Path) -> Tuple[str, List[str]]:
     """
     rules_dir = get_rules_dir(project_dir)
     if not rules_dir.is_dir():
-        # Silent degradation — no standards available
-        return ("", [])
+        # Graceful degradation — warn but don't fail
+        return ("WARNING: hyperi-ai standards not found — rules directory missing", [])
 
     parts: List[str] = []
     loaded: List[str] = []
@@ -586,8 +586,8 @@ def inject_cag_payload(project_dir: Path) -> Tuple[str, List[str]]:
 
     rules_dir = get_rules_dir(project_dir)
     if not rules_dir.is_dir():
-        # Silent degradation — no standards available
-        return ("", [])
+        # Graceful degradation — warn but don't fail
+        return ("WARNING: hyperi-ai standards not found — rules directory missing", [])
 
     # Select tier and load standards accordingly
     tier = get_context_tier()

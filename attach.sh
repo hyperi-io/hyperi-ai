@@ -271,7 +271,9 @@ detect_paths() {
     if [ "$VERBOSE" = true ]; then
         log_info "AI_ROOT: $AI_ROOT"
         log_info "PROJECT_ROOT: $PROJECT_ROOT"
-        [ "$STEALTH" = true ] && log_info "Mode: stealth"
+        if [ "$STEALTH" = true ]; then
+            log_info "Mode: stealth"
+        fi
     fi
 }
 

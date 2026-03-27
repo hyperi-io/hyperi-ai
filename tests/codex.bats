@@ -107,7 +107,7 @@ teardown() {
     [ "$status" -eq 0 ]
     [ -d ".github/skills/standards" ]
     [ -f ".github/skills/standards/SKILL.md" ]
-    grep -q "QUICKSTART" .github/skills/standards/SKILL.md
+    grep -q "STANDARDS" .github/skills/standards/SKILL.md
 }
 
 @test "TC-C11: Creates .vscode directory" {
