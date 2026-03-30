@@ -1,3 +1,10 @@
+## [3.13.8](https://github.com/hyperi-io/hyperi-ai/compare/3.13.7...3.13.8) (2026-03-30)
+
+
+### Bug Fixes
+
+* grant Claude Code full CRUD access to /tmp ([798d9ba](https://github.com/hyperi-io/hyperi-ai/commit/798d9ba1027285910465dbcfcda806a9267e331e))
+
 ## [3.13.7](https://github.com/hyperi-io/hyperi-ai/compare/3.13.6...3.13.7) (2026-03-27)
 
 
