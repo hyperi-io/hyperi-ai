@@ -2788,6 +2788,112 @@ fn configure_rayon() {
 
 ---
 
+## Adaptive Worker Pool (hyperi-rustlib `worker` feature)
+
+> **For DFE pipeline apps using rustlib.** Provides CPU-saturating parallelism with
+> automatic scaling, metrics, and config cascade integration.
+
+### The Problem
+
+All DFE apps share the same antipattern: sequential CPU-bound processing in a
+`for msg in batch` loop on a single tokio task. I/O parallelism (Kafka, ClickHouse,
+HTTP) is good, but CPU work (JSON parsing, CEL evaluation, compression, routing)
+uses 1 of N cores. The `AdaptiveWorkerPool` fixes this.
+
+### Architecture: Hybrid Rayon + Tokio
+
+| API | Engine | Use For |
+|-----|--------|---------|
+| `pool.process_batch()` | Rayon (OS threads) | Pure CPU: parsing, transforms, compression, CEL, routing |
+| `pool.fan_out_async()` | Tokio JoinSet | Async I/O: enrichment, external APIs, storage writes |
+
+Rayon is 2-4x faster than tokio tasks for CPU-bound work. Async I/O needs `.await`
+which rayon cannot do. Use the right tool for each stage.
+
+### Scaling: Reactive Pressure-Based
+
+The pool auto-scales workers based on CPU utilisation, memory pressure, and scaling
+pressure. Fixed rayon thread pool + semaphore throttle (sleeping threads cost ~8KB each).
+
+```
+Watermark bands (all cascade-configurable):
+  CPU < grow_below (0.60)     → add 2 threads
+  CPU 0.60-0.85               → hold steady (dead band)
+  CPU > shrink_above (0.85)   → remove 1 thread
+  CPU > emergency_above (0.95) → remove 2 threads
+  Memory > memory_cap (0.80)  → hard cap at min_threads
+```
+
+Semaphore permits are acquired INSIDE each rayon task closure — this limits active
+threads without requiring pool rotation. The scaler adjusts permits every 5 seconds.
+
+### Usage Pattern (DFE Apps)
+
+```rust
+use hyperi_rustlib::worker::AdaptiveWorkerPool;
+
+// Startup (~5 lines)
+let pool = AdaptiveWorkerPool::from_cascade("worker_pool")?;
+pool.register_metrics(&metrics_manager);
+pool.set_memory_guard(memory_guard.clone());       // optional
+pool.set_scaling_pressure(scaling_pressure.clone()); // optional
+pool.start_scaling_loop(shutdown_token.clone());
+
+// Hot loop — CPU-bound parallel transform (rayon)
+let transformed = pool.process_batch(&batch, |msg| {
+    let parsed = sonic_rs::from_slice(&msg.payload)?;
+    let routed = route(&parsed, &rules)?;
+    apply_cel(&parsed, &expressions)
+});
+
+// Async parallel enrichment (tokio)
+let enriched = pool.fan_out_async(&items, |item| async move {
+    enrich_geoip(&item).await
+}).await;
+
+// Sequential buffer insert (app-specific, needs mutable access)
+for result in enriched {
+    buffer.insert(result?);
+}
+```
+
+### The Parallel-Then-Sequential Pattern
+
+Every DFE app follows this structure:
+
+1. **Parallel phase:** Extract a `MessageProcessor` struct holding only `&` refs (pure, Sync).
+   Use `pool.process_batch()` to run it on rayon threads.
+2. **Drop the processor** — immutable borrows released.
+3. **Sequential phase:** Create a `BatchCoordinator` with `&mut` refs to mutable state
+   (buffers, caches, DLQ). Apply results one at a time.
+
+The borrow checker enforces the phase boundary — the compiler prevents mutable access
+during the parallel phase.
+
+### Config (cascade-overridable)
+
+```yaml
+worker_pool:
+  min_threads: 2
+  max_threads: 0           # 0 = auto-detect from cgroup (capped at available cores)
+  grow_below: 0.60
+  shrink_above: 0.85
+  emergency_above: 0.95
+  memory_pressure_cap: 0.80
+  scale_interval_secs: 5
+  async_concurrency: 32
+  health_saturation_timeout_secs: 30
+```
+
+### When NOT to Use
+
+- Single-threaded by design (e.g. ordered processing requirements)
+- I/O-bound work with no CPU component (just use tokio::spawn)
+- Work that needs `.await` inside the closure (use `fan_out_async`, not `process_batch`)
+- ClickHouse fork (C++ — use native ClickHouse parallelism instead)
+
+---
+
 ## Hot Path Optimization
 
 ### Identifying Hot Paths
