@@ -48,6 +48,24 @@ git config core.hooksPath .githooks  # Activate commit hook
 
 **Never touch manually:** `VERSION`, `CHANGELOG.md`, version fields in `Cargo.toml`/`pyproject.toml`/`package.json`, git tags.
 
+### Major Version Policy (Torvalds Two-Hands Rule)
+
+When the minor version exceeds 20, bump to the next major. Humans count on
+fingers and toes — version numbers past 20 are a smell that a major bump was
+overdue. This is a version hygiene rule, not a semver override.
+
+**Trigger:** Minor reaches 20 AND at least one genuine `BREAKING CHANGE:` exists
+in the accumulated commits since the last major. Do NOT fabricate breaking changes
+just to bump — wait for a real API change (signature change, removed public type,
+behaviour change that requires consumer code updates).
+
+**How:** Add a commit with `BREAKING CHANGE:` in the footer describing the real
+breaking change. Semantic-release handles the rest.
+
+**Example:** `hyperi-rustlib` graduated from v1.22 to v2.0.0 when
+`DfeMetrics::register()` changed signature (real breaking change) and the minor
+had exceeded 20 (hygiene trigger).
+
 ## Publishing Channels
 
 Set in `.hyperi-ci.yaml` under `publish.channel`:
