@@ -1,3 +1,16 @@
+## [3.14.0](https://github.com/hyperi-io/hyperi-ai/compare/3.13.8...3.14.0) (2026-03-31)
+
+
+### Features
+
+* add AI/ML training restriction policy to licensing standards ([04310c8](https://github.com/hyperi-io/hyperi-ai/commit/04310c861394a0e75b37f7db79ae6a285543590a))
+
+
+### Documentation
+
+* add adaptive worker pool patterns to rust standards ([327e2c6](https://github.com/hyperi-io/hyperi-ai/commit/327e2c6f69ef61ebcfe7488d628c56aa9ef0f62c))
+* add Torvalds two-hands major version policy to CI standards ([988053f](https://github.com/hyperi-io/hyperi-ai/commit/988053f1759deefa3694df93891ad89d35275e5a))
+
 ## [3.13.8](https://github.com/hyperi-io/hyperi-ai/compare/3.13.7...3.13.8) (2026-03-30)
 
 
