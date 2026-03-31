@@ -1,6 +1,6 @@
 ---
 name: licensing-standards
-description: HyperI licensing policy — FSL-1.1-ALv2 for all projects. No GPL/AGPL/SSPL dependencies.
+description: HyperI licensing policy — FSL-1.1-ALv2 for all projects. No GPL/AGPL/SSPL dependencies. AI/ML training restrictions.
 ---
 
 # Licensing Standards
@@ -21,10 +21,12 @@ git clone https://github.com/hyperi-io/hyperi-licensing.git /projects/hyperi-lic
 
 | File | Purpose |
 |------|---------|
-| `LICENSE` | FSL-1.1-ALv2 license with Australian law notice |
+| `LICENSE` | FSL-1.1-ALv2 license with Australian law notice and AI/ML restriction |
+| `AI-TRAINING-POLICY.md` | AI / Machine Learning training restriction policy |
 | `COMMERCIAL.md` | Commercial licensing requirements and corporate group rules |
 | `CONTRIBUTING.md` | Contribution guidelines (DCO, Conventional Commits) |
 | `SECURITY.md` | Vulnerability disclosure policy |
+| `robots.txt` | AI training crawler blocklist (permits standard search indexing) |
 
 ---
 
@@ -51,9 +53,11 @@ Functional Source License, Version 1.1, ALv2 Future License.
 | Aspect | Detail |
 |--------|--------|
 | SPDX Identifier | `FSL-1.1-ALv2` |
+| SPDX (with AI restriction) | `LicenseRef-FSL-1.1-ALv2-NoAI` |
 | Copyright | `(c) YYYY HYPERI PTY LIMITED` |
 | Commercial Use | Requires commercial license |
 | Internal Use | Permitted without license |
+| AI/ML Training | **Not permitted** without written consent |
 | Future Open Source | Apache 2.0 after 2 years |
 
 ### When Commercial License Required
@@ -74,6 +78,112 @@ Functional Source License, Version 1.1, ALv2 Future License.
 
 ---
 
+## AI / Machine Learning Training Restriction
+
+All HyperI repositories include an explicit AI/ML training restriction in
+the LICENSE file and a standalone `AI-TRAINING-POLICY.md`.
+
+### What Is Prohibited
+
+Without prior written consent from HYPERI PTY LIMITED:
+
+- Direct training of ML models on the source code, documentation, or metadata
+- Fine-tuning or transfer learning using any part of the Software
+- Inclusion in any dataset, corpus, or data pipeline for ML training
+- RAG systems that index or retrieve from the Software
+- AI-assisted reverse engineering to replicate functionality
+- NLP training, benchmarking, or evaluation using the Software
+
+### What Is Permitted
+
+- **Search engine indexing** — standard web crawlers for search results
+- **Human reading and review** — individuals studying the code
+- **AI-assisted development** — using AI coding tools (Claude Code, Copilot,
+  Cursor, etc.) to write code that interacts with or extends the Software,
+  provided the Software itself is not used as training data for those tools
+- All uses permitted under the LICENSE (internal use, education, etc.)
+
+### AI Training Crawler Blocking (robots.txt)
+
+Every repository includes a `robots.txt` that blocks known AI training
+crawlers while permitting standard search engines:
+
+| Blocked | Permitted |
+|---------|-----------|
+| GPTBot, ClaudeBot, Google-Extended, CCBot | Googlebot, Bingbot, DuckDuckBot |
+| Meta, Bytespider, DeepSeekBot, PetalBot | YandexBot, Slurp, Baiduspider |
+| All AI training/data collection crawlers | Standard search engine crawlers |
+
+**Important:** The `robots.txt` in the repo root is a policy declaration.
+It only becomes functionally active if the content is served on a web domain
+(e.g., GitHub Pages, docs sites). GitHub.com serves its own `robots.txt` at
+`github.com/robots.txt` — the in-repo file does not affect access to repos
+via the GitHub platform, API, or git protocol.
+
+### GitHub Copilot Org Settings
+
+HyperI uses **Copilot Business** (exempt from GitHub AI training data
+collection). Org-level settings at
+`https://github.com/organizations/hyperi-io/settings/copilot/policies`:
+
+| Setting | Value | Reason |
+|---------|-------|--------|
+| Suggestions matching public code | **Block** | Avoid copyleft code leaking in |
+| Content exclusion | Sensitive file patterns | Prevent Copilot from reading secrets |
+
+Contributors using Copilot on personal (Free/Pro) plans must opt out of AI
+training at `https://github.com/settings/copilot/features` — disable
+"Allow GitHub to use my data for AI model training" (before April 24, 2026).
+
+### Requesting an AI/ML Training Exception
+
+**Email:** sales@hyperi.io — include your organisation, intended use, specific
+Materials, the AI system, and whether the use is commercial or non-commercial.
+
+---
+
+## AI Code Assistants — Accessing HyperI Repos
+
+### How robots.txt Affects AI Coding Agents
+
+**It doesn't.** The in-repo `robots.txt` only affects web crawlers hitting a
+domain that serves the file. When you use AI coding tools to work on HyperI
+code, they access repos through channels that do not check `robots.txt`:
+
+| Access Method | robots.txt Applies? | Notes |
+|---------------|---------------------|-------|
+| `gh` CLI / GitHub API | **No** | Authenticated API access |
+| `git clone` / `git pull` | **No** | Git protocol, not HTTP crawling |
+| Local file reads (Claude Code, Cursor) | **No** | Reading from local filesystem |
+| `WebFetch` on github.com URLs | **Possibly** | Depends on crawler UA compliance |
+
+**If an AI agent needs to fetch a GitHub URL and gets blocked**, use the `gh`
+CLI instead:
+
+```bash
+# Instead of WebFetch on a GitHub URL:
+gh api repos/hyperi-io/REPO/contents/PATH --jq '.content' | base64 -d
+
+# View a file from a specific branch:
+gh api repos/hyperi-io/REPO/contents/PATH?ref=BRANCH --jq '.content' | base64 -d
+
+# View a PR:
+gh pr view 123 --repo hyperi-io/REPO
+
+# View issue:
+gh issue view 456 --repo hyperi-io/REPO
+```
+
+### Default Behaviour for AI Assistants
+
+1. **Access repos via `gh` CLI or local filesystem** — never via web scraping
+2. Use FSL-1.1-ALv2 for all new projects
+3. Copy template files via `ci/attach.sh --init licensing`
+4. Never create custom LICENSE files — always use the template
+5. Include `AI-TRAINING-POLICY.md` and `robots.txt` in all new repos
+
+---
+
 ## Project Configuration
 
 ### Cargo.toml (Rust)
@@ -91,7 +201,14 @@ license = "FSL-1.1-ALv2"
 [project]
 name = "my-project"
 version = "1.0.0"
-license = { text = "FSL-1.1-ALv2" }
+license = "LicenseRef-FSL-1.1-ALv2-NoAI"
+license-files = ["LICENSE", "COMMERCIAL.md", "AI-TRAINING-POLICY.md"]
+classifiers = ["License :: Other/Proprietary License"]
+
+[project.urls]
+"License" = "https://github.com/hyperi-io/licensing/blob/main/LICENSE"
+"AI Training Policy" = "https://github.com/hyperi-io/licensing/blob/main/AI-TRAINING-POLICY.md"
+"Commercial Licensing" = "https://github.com/hyperi-io/licensing/blob/main/COMMERCIAL.md"
 ```
 
 ### package.json (TypeScript/JavaScript)
@@ -185,7 +302,8 @@ go-licenses check ./...
 
 **Licensor:** HYPERI PTY LIMITED (ABN 31 622 581 748)
 
-**Commercial licensing:** <sales@hyperi.com.au>
+**Commercial licensing:** <sales@hyperi.io>
+**AI/ML licensing enquiries:** <sales@hyperi.io>
 
 ---
 
@@ -195,17 +313,18 @@ go-licenses check ./...
 
 1. Use FSL-1.1-ALv2 for all new projects
 2. Copy template files via `ci/attach.sh --init licensing`
-3. Never create custom LICENSE files - always use the template
+3. Never create custom LICENSE files — always use the template
+4. Include `AI-TRAINING-POLICY.md` and `robots.txt` in all repos
 
 ### When Creating New Projects
 
 ```bash
-# Copy standard files via CI
+# Copy standard files via CI (includes AI policy and robots.txt)
 ci/attach.sh --init licensing
 
 # Set license in project config
 # Cargo.toml: license = "FSL-1.1-ALv2"
-# pyproject.toml: license = { text = "FSL-1.1-ALv2" }
+# pyproject.toml: license = "LicenseRef-FSL-1.1-ALv2-NoAI"
 ```
 
 ### Dependency License Check
