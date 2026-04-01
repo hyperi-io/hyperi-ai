@@ -6,6 +6,24 @@
 * add AI/ML training restriction policy and crawler blocklist ([2c62d07](https://github.com/hyperi-io/hyperi-ai/commit/2c62d07052db79c22a44e5abffe6804faf209ffe))
 
 
+### Bug Fixes
+
+* add Torvalds versioning policy to CI.md source ([a24e3b3](https://github.com/hyperi-io/hyperi-ai/commit/a24e3b326f3a21359f327e9fafe25daade5a8bdd))
+
+
+### Documentation
+
+* add adaptive worker pool section to RUST.md source (not generated rules) ([3f98039](https://github.com/hyperi-io/hyperi-ai/commit/3f98039c8629cacfe1e49f7798f3c9b56eedbada))
+* add commit type enforcement plan for AI guardrails ([c68955b](https://github.com/hyperi-io/hyperi-ai/commit/c68955bee36b1ba1fabd03220ae246a1d8a9489a))
+
+## [3.15.0](https://github.com/hyperi-io/hyperi-ai/compare/3.14.0...3.15.0) (2026-04-01)
+
+
+### Features
+
+* add AI/ML training restriction policy and crawler blocklist ([2c62d07](https://github.com/hyperi-io/hyperi-ai/commit/2c62d07052db79c22a44e5abffe6804faf209ffe))
+
+
 ### Documentation
 
 * add adaptive worker pool section to RUST.md source (not generated rules) ([3f98039](https://github.com/hyperi-io/hyperi-ai/commit/3f98039c8629cacfe1e49f7798f3c9b56eedbada))
