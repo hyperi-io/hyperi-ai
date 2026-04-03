@@ -6414,6 +6414,19 @@ struct Parser {
 ### Error Handling Pitfalls
 
 ```rust
+// ❌ Useless .into() when types already match (clippy: useless_conversion)
+fn handle() -> Result<(), AppError> {
+    do_thing().map_err(|e| Err(e.into()))?;  // e is already AppError!
+}
+// ✅ Return the error directly — no conversion needed
+fn handle() -> Result<(), AppError> {
+    do_thing().map_err(|e| Err(e))?;
+}
+// ✅ Or just use ? which handles From automatically
+fn handle() -> Result<(), AppError> {
+    do_thing()?;  // ? calls .into() only when types differ
+}
+
 // ❌ Using Box<dyn Error> in libraries
 fn process() -> Result<(), Box<dyn std::error::Error>> {
 // ✅ Define custom error type
