@@ -27,6 +27,11 @@
       "script": "./safety_guard.py"
     },
     {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "script": "./prefer_hyperi_ci.py"
+    },
+    {
       "event": "Stop",
       "script": "./lint_check.py"
     }

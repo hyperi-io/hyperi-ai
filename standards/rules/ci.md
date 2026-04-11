@@ -29,6 +29,10 @@ git config core.hooksPath .githooks  # Activate commit hook
 | Pre-push check | `hyperi-ci check` / `make check` |
 | Quality only | `hyperi-ci check --quick` |
 | Full local CI | `hyperi-ci check --full` / `make ci` |
+| **Push** | **`hyperi-ci push`** (NEVER bare `git push`) |
+| Push + auto-release | `hyperi-ci push --release` |
+| Push, skip CI | `hyperi-ci push --no-ci` |
+| Trigger CI run | `hyperi-ci trigger` |
 | Watch CI | `hyperi-ci watch` |
 | Failed logs | `hyperi-ci logs --failed` |
 | List unpublished tags | `hyperi-ci release --list` |
@@ -37,6 +41,30 @@ git config core.hooksPath .githooks  # Activate commit hook
 | List commit types | `hyperi-ci check-commit --list` |
 | Upgrade | `hyperi-ci upgrade` |
 | Run stages directly | `hyperi-ci run quality\|test\|build` |
+
+## Prefer hyperi-ci Over Native Tools
+
+When hyperi-ci is installed, it wraps common `gh` and `git` operations with
+project-aware logic (correct workflow, auto-detection, structured output).
+**Always prefer the wrapper over the native tool.**
+
+| ❌ Native tool | ✅ hyperi-ci | Why |
+|---|---|---|
+| `git push` | `hyperi-ci push` | Runs pre-push checks, rebases for semantic-release, supports `--release`/`--no-ci` |
+| `gh run watch` | `hyperi-ci watch` | Auto-detects latest run on current branch |
+| `gh run list` | `hyperi-ci watch` | Same — finds the latest CI run |
+| `gh run view --log-failed` | `hyperi-ci logs --failed` | Filter by `--job`, `--step`, `--grep`, `--tail` |
+| `gh workflow run ci.yml` | `hyperi-ci trigger` | Resolves workflow from config, supports `--watch` |
+| `gh release create/delete/upload` | `hyperi-ci release <tag>` | Full publish pipeline (build, GH Release, registries, R2) |
+
+**Read-only commands remain native:** `gh release view`, `gh run list --json` (scripting),
+`gh auth status`, `git status`/`log`/`diff`/`show`, etc.
+
+**Escape hatch:** Prefix with `HYPERCI_ALLOW_NATIVE=1` for one-off native tool use
+(e.g. diagnosing a hyperi-ci bug). Example: `HYPERCI_ALLOW_NATIVE=1 gh run watch 12345`.
+
+A PreToolUse hook in hyperi-ai enforces these redirects when hyperi-ci is on PATH.
+If hyperi-ci is not installed, the hook is inert — native tools work as normal.
 
 ## Versioning
 

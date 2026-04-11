@@ -39,14 +39,31 @@ hyperi-ci check              # Pre-push: quality + test (MANDATORY before every 
 hyperi-ci check --quick      # Quality only
 hyperi-ci check --full       # Quality + test + build
 
+# Pushing (ALWAYS prefer over bare 'git push')
+hyperi-ci push               # Check, rebase, push
+hyperi-ci push --release     # Push + auto-publish if CI passes
+hyperi-ci push --no-ci       # Push, skip CI (amends last commit with [skip ci])
+hyperi-ci push -n            # Dry-run
+hyperi-ci push -f            # Skip pre-push checks (doesn't force-push)
+
 # Stages (CI runs these, you can run locally)
 hyperi-ci run quality        # Lint, format, type check, security audit
 hyperi-ci run test           # Tests with coverage
 hyperi-ci run build          # Build artifacts
 
+# CI runs
+hyperi-ci trigger            # Dispatch a workflow run
+hyperi-ci watch              # Watch latest run (auto-detects branch)
+hyperi-ci logs --failed      # Fetch failed step logs
+
 # Publishing
 hyperi-ci release --list     # Show unpublished version tags
 hyperi-ci release v1.3.0     # Trigger publish for a tag
+hyperi-ci release latest     # Publish most recent unpublished tag
+
+# Config inspection
+hyperi-ci config             # Show merged config (YAML)
+hyperi-ci config --json      # Show merged config (JSON, for scripts)
 
 # Commit validation
 hyperi-ci check-commit --list    # Show all accepted commit types
@@ -55,6 +72,21 @@ git config core.hooksPath .githooks  # Activate local hook
 # Project setup
 hyperi-ci init               # Scaffold .hyperi-ci.yaml, Makefile, workflow, .releaserc.yaml, .githooks/
 ```
+
+### Global Conventions
+
+All commands follow these short-flag conventions:
+
+| Flag | Long form | Meaning |
+|------|-----------|---------|
+| `-V` | `--version` | Show version and exit (top-level only) |
+| `-C` | `--project-dir` | Project root directory |
+| `-n` | `--dry-run` | Show what would happen without executing |
+| `-f` | `--force` | Skip confirmations; semantics documented per-command |
+
+`-n` is reserved for `--dry-run` project-wide. `-C` is reserved for `--project-dir`.
+`--force` has command-specific semantics (`init` = overwrite files, `push` = skip
+pre-checks, NOT force-push) — always check `<cmd> --help`.
 
 ---
 
@@ -317,20 +349,26 @@ git config core.hooksPath .githooks
 
 ### Publishing a Release
 
+**Manual (two-step):**
 ```bash
-# 1. Make sure your changes are on main and CI passed
-hyperi-ci check
-git push origin main
+# 1. Push to main — CI runs, semantic-release creates a tag
+hyperi-ci push
 
-# 2. Wait for semantic-release to tag
-# (watch CI or check: git tag --list 'v*' --sort=-version:refname | head -5)
-
-# 3. See what's available
+# 2. Wait for CI, then check available tags
 hyperi-ci release --list
 
-# 4. Publish
+# 3. Publish whichever tag you want
 hyperi-ci release v1.3.0
 ```
+
+**Automatic (one command):**
+```bash
+# Push + watch CI + auto-publish in one shot
+hyperi-ci push --release
+```
+This chains: check → rebase → push → watch CI → detect new tag → dispatch publish
+→ watch publish. If CI fails, publish is not attempted. If no version bump commits
+are in the push, it exits cleanly with a message.
 
 ---
 
@@ -366,6 +404,61 @@ CLI flags -> ENV vars (HYPERCI_*) -> .hyperi-ci.yaml -> config/defaults.yaml -> 
 
 ---
 
+## Prefer hyperi-ci Over Native Tools
+
+When hyperi-ci is installed, use its wrappers instead of bare `gh` and `git` commands.
+The wrappers add project-aware logic: auto-detection, config resolution, structured output.
+
+| ❌ Native tool | ✅ hyperi-ci | Why |
+|---|---|---|
+| `git push` | `hyperi-ci push` | Pre-push checks, auto-rebase, `--release`/`--no-ci` |
+| `gh run watch` | `hyperi-ci watch` | Auto-detects latest run on current branch |
+| `gh run list` | `hyperi-ci watch` | Same — finds the latest CI run |
+| `gh run view --log-failed` | `hyperi-ci logs --failed` | Filter by `--job`, `--step`, `--grep`, `--tail` |
+| `gh workflow run ci.yml` | `hyperi-ci trigger` | Resolves workflow from config, supports `--watch` |
+| `gh release create/delete` | `hyperi-ci release <tag>` | Full publish pipeline (build, GH Release, registries, R2) |
+
+**Read-only commands stay native:** `gh release view`, `gh run list --json`, `gh pr list`,
+`git status`/`log`/`diff`/`show`, etc. These have no hyperi-ci wrapper and don't need one.
+
+**Enforcement:** A PreToolUse hook in hyperi-ai intercepts bare `gh run`/`gh workflow run`/
+`gh release create` calls and redirects them to hyperi-ci equivalents. The hook only
+activates when hyperi-ci is on PATH — projects without hyperi-ci are unaffected.
+
+**Escape hatch:** `HYPERCI_ALLOW_NATIVE=1 gh run watch 12345`
+
+---
+
+## hyperi-ci Architecture
+
+```
+src/hyperi_ci/
+├── cli.py               # Typer CLI entry point
+├── push.py              # Push wrapper (pre-checks, --release, --no-ci)
+├── config.py            # CIConfig, OrgConfig, config cascade loader
+├── common.py            # Logging, subprocess helpers, GH Actions output
+├── detect.py            # Language detection from file markers
+├── dispatch.py          # Stage dispatcher → language handlers
+├── init.py              # Project scaffolding (config, Makefile, workflow, hooks)
+├── release.py           # Tag-based publish dispatch
+├── publish_binaries.py  # GH Release creation + R2/JFrog binary upload
+├── gh.py                # GitHub CLI helpers
+├── trigger.py           # Workflow trigger command
+├── watch.py             # Run watch command
+├── logs.py              # Log fetch command
+├── upgrade.py           # Self-upgrade and auto-update
+├── quality/
+│   ├── gitleaks.py      # Secret scanning
+│   └── commit_validation.py  # Conventional commit enforcement
+└── languages/
+    ├── python/          # quality, test, build, publish
+    ├── rust/            # quality, test, build, publish
+    ├── typescript/      # quality, test, build, publish
+    └── golang/          # quality, test, build, publish
+```
+
+---
+
 ## Common Operations
 
 | Task | Command |
@@ -373,8 +466,13 @@ CLI flags -> ENV vars (HYPERCI_*) -> .hyperi-ci.yaml -> config/defaults.yaml -> 
 | Pre-push check | `hyperi-ci check` or `make check` |
 | Quality only | `hyperi-ci check --quick` |
 | Full local CI | `hyperi-ci check --full` or `make ci` |
+| **Push** | **`hyperi-ci push`** (NEVER bare `git push`) |
+| Push + auto-release | `hyperi-ci push --release` |
+| Push, skip CI | `hyperi-ci push --no-ci` |
+| Trigger CI run | `hyperi-ci trigger` |
 | Watch CI run | `hyperi-ci watch` |
 | View failed logs | `hyperi-ci logs --failed` |
+| Show config | `hyperi-ci config` (YAML) / `hyperi-ci config --json` |
 | List unpublished tags | `hyperi-ci release --list` |
 | Publish a version | `hyperi-ci release v1.3.0` |
 | Validate commit message | `echo "fix: something" \| hyperi-ci check-commit` |

@@ -377,9 +377,38 @@ feature-branch → merge → main (semantic-release tags) → hyperi-ci release 
 
 ### AI Push Workflow
 
-1. Run `hyperi-ci check` before every push
-2. `git pull --rebase origin main` (sync semantic-release commits)
-3. Show commit list + projected version bump, seek approval before push
+**NEVER use `git push` directly. Use `hyperi-ci push` instead.**
+
+A pre-push hook blocks bare `git push` — use the `hyperi-ci push` command:
+
+| Command | Effect |
+|---|---|
+| `hyperi-ci push` | Check, rebase, push (default) |
+| `hyperi-ci push --release` | Push + auto-publish if CI passes |
+| `hyperi-ci push --no-ci` | Push, skip CI |
+| `hyperi-ci push --force` | Push, skip pre-checks |
+| `hyperi-ci push --dry-run` | Show what would happen |
+
+1. Show commit list + projected version bump, seek approval before push
+2. Run `hyperi-ci push` (handles check + rebase + push)
+3. Emergency bypass: `HYPERCI_PUSH=1 git push`
+
+### External Tool Policy
+
+When a `hyperi-ci` command exists for a task, use it instead of the underlying tool:
+
+| ❌ Native tool | ✅ Use instead |
+|---|---|
+| `git push` | `hyperi-ci push` |
+| `gh run watch` | `hyperi-ci watch` |
+| `gh run view --log-failed` | `hyperi-ci logs --failed` |
+| `gh workflow run` | `hyperi-ci trigger` |
+| `gh release create/delete` | `hyperi-ci release <tag>` |
+
+Read-only commands (`git status`, `gh release view`, `gh pr list`) remain native.
+Escape hatch: `HYPERCI_ALLOW_NATIVE=1 <command>`.
+
+If unsure whether a wrapper exists, run `hyperi-ci --help` first.
 
 ### Semantic Release — NEVER Do
 
