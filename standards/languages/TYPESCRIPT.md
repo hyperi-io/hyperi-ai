@@ -8,9 +8,7 @@ rule_paths:
   - "**/*.jsx"
 detect_markers:
   - "file:tsconfig.json"
-  - "file:package.json"
   - "deep_file:tsconfig.json"
-  - "deep_file:package.json"
 paths:
   - "**/*.ts"
   - "**/*.tsx"
@@ -20,11 +18,12 @@ paths:
 
 # TypeScript Standards for HyperI Projects
 
-**Comprehensive TypeScript coding standards for monorepos, backend services, and React applications**
+**Comprehensive TypeScript coding standards for monorepos, backend services, and React applications.**
 
 ---
 
 ## Quick Reference
+pnpm repos:
 
 ```bash
 pnpm install                    # Install dependencies
@@ -35,11 +34,52 @@ pnpm typecheck                  # Type check only
 turbo run build                 # Build with caching
 ```
 
+yarn repos:
+```bash
+yarn                            # Install dependencies
+yarn build                      # Build all packages
+yarn test                       # Run tests
+yarn lint                       # Lint all packages
+yarn typecheck                  # Type check only
+yarn format                     # Format with prettier
+turbo run build                 # Build with caching
+```
+
 ---
 
-## Project Structure
+## Editor and tooling
 
-### Monorepo Layout (Turborepo)
+### VS Code / Cursor extensions
+
+**Required**
+
+- [ESLint](https://marketplace.cursorapi.com/items/?itemName=dbaeumer.vscode-eslint)
+- [Prettier](https://marketplace.cursorapi.com/items/?itemName=esbenp.prettier-vscode)
+
+**Recommended**
+
+- [Code Spell Checker](https://marketplace.cursorapi.com/items/?itemName=streetsidesoftware.code-spell-checker)
+- [Tailwind CSS IntelliSense](https://marketplace.cursorapi.com/items/?itemName=bradlc.vscode-tailwindcss) (when using Tailwind)
+
+### Formatting (Prettier)
+
+Install Prettier at the **workspace root** and keep versions aligned across `apps/` and `packages/`. Include `.vscode/settings.json` with at least:
+
+```json
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "prettier.requireConfig": true
+}
+```
+
+---
+
+## Project structure
+
+### Monorepo layout (Turborepo)
+
+Prefer **Turborepo**. Put UIs and APIs under `apps/`, shared libraries under `packages/`. Prefer **Vite** where a bundler is needed. Use **ESLint** with the shared patterns in this document.
 
 ```text
 myproject/
@@ -64,55 +104,120 @@ myproject/
 │       ├── base.json
 │       └── react.json
 ├── package.json                # Root workspace config
-├── pnpm-workspace.yaml
+├── pnpm-workspace.yaml         # Only for pnpm repos
+├── yarn.lock                   # Only for yarn repos
 └── turbo.json
 ```
 
-### Package.json Conventions
-
-```json
-{
-  "name": "@repo/mypackage",
-  "version": "0.0.0",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts",
-    "./models/*": "./src/models/*.ts"
-  },
-  "scripts": {
-    "build": "tsc -b",
-    "test": "vitest run",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*"
-  }
-}
-```
-
-### Semantic Release Configuration
-
-```json
-{
-  "name": "@repo/mypackage",
-  "version": "0.0.0",
-  "release": {
-    "branches": ["main"],
-    "plugins": [
-      "@semantic-release/commit-analyzer",
-      "@semantic-release/release-notes-generator",
-      "@semantic-release/npm",
-      "@semantic-release/github"
-    ]
-  }
-}
-```
-
-**Note:** Version `"0.0.0"` is intentional - semantic-release manages versioning based on commit messages.
+Keep dependency versions consistent across apps and packages so TypeScript and ESLint behave the same everywhere. For `turbo.json` and task pipelines, see [Turborepo Configuration](#turborepo-configuration).
 
 ---
+
+## App directory structure and import boundaries
+
+Organise code by **view groups or flows** in dedicated directories. Colocate hooks, components, context, helpers, and related code in each area. **Shared** code belongs under `/core`.
+
+Do **not** import across feature scopes; if something is needed in more than one scope, move it to `/core`. The only exception is **test utilities** under `core/utils/test-utils` (see ESLint exception below).
+
+Reference implementation for ESLint `no-restricted-imports` overrides:
+```
+/**
+ * Import scope rule: only allow imports to current scope or @/core.
+ *
+ * - Feature scopes (@/Schemas, @/Sources, @/Rules, @/Settings) may only import
+ *   from their own scope or @/core.
+ * - Core (@/core) may only import from @/core.
+ * - Relative parent imports (../) are not allowed; use @/ path aliases.
+ */
+
+const ERROR = 'error';
+
+export const SCOPES = ['Schemas', 'Sources', 'Rules', 'Settings'];
+
+const otherScopes = (current) =>
+  SCOPES.filter((s) => s !== current).flatMap((s) => [`@/${s}`, `@/${s}/**`]);
+
+const RULE_ID = 'no-restricted-imports';
+
+const noRelativeParentImports = {
+  group: ['../**'],
+  message: 'Relative parent imports (../) are not allowed. Use @/ path aliases instead.',
+};
+
+const scopeImportOverrides = SCOPES.map((scope) => ({
+  files: [`src/${scope}/**/*.{ts,tsx}`],
+  rules: {
+    [RULE_ID]: [
+      ERROR,
+      {
+        patterns: [
+          {
+            group: otherScopes(scope),
+            message: `Imports from other scopes are not allowed. Use only @/${scope} or @/core.`,
+          },
+          noRelativeParentImports,
+        ],
+      },
+    ],
+  },
+}));
+
+const coreImportOverride = {
+  files: ['src/core/**/*.{ts,tsx}'],
+  rules: {
+    [RULE_ID]: [
+      ERROR,
+      {
+        patterns: [
+          {
+            group: SCOPES.flatMap((s) => [`@/${s}`, `@/${s}/**`]),
+            message: 'Core must not import from feature scopes. Use only @/core.',
+          },
+          noRelativeParentImports,
+        ],
+      },
+    ],
+  },
+};
+
+/**
+ * Test wrapper may import across scopes - it needs to wrap providers/components
+ * from different feature areas for tests.
+ */
+const testWrapperException = {
+  files: ['src/core/utils/test-utils/**/*.{ts,tsx}'],
+  rules: {
+    [RULE_ID]: 'off',
+  },
+};
+
+/**
+ * App and other src files: only restrict relative parent imports.
+ */
+const appAndOtherImportsOverride = {
+  files: ['src/**/*.{ts,tsx}'],
+  rules: {
+    [RULE_ID]: [
+      ERROR,
+      {
+        patterns: [noRelativeParentImports],
+      },
+    ],
+  },
+};
+
+/** Rule ID for import scope restrictions. */
+export { RULE_ID };
+
+/** ESLint config overrides for import scope restrictions. */
+export const importScopeOverrides = [
+  appAndOtherImportsOverride,
+  ...scopeImportOverrides,
+  coreImportOverride,
+  testWrapperException,
+];
+
+```
 
 ## TypeScript Configuration
 
@@ -539,6 +644,35 @@ const getEvents = (filters: Filter[]) => {
 
 ## Testing
 
+### Stack and tooling
+
+Use **Vitest** as the test runner, **React Testing Library** for components, **MSW** to mock HTTP, and **Storybook** for visual regression where the project uses it.
+
+### React, hooks, and Storybook expectations
+
+- Visible components: add Storybook stories where your project requires visual coverage.
+- Hooks: test happy path, error paths, null/undefined inputs, and important conditional branches.
+- Components: add interaction tests for the main happy path—drive selects, inputs, and buttons and assert side effects (not only that the DOM updated).
+
+### Prefer `userEvent` over `fireEvent`
+
+`userEvent` exercises the same events real users trigger; synchronous `fireEvent` is a common source of flaky or misleading tests.
+
+```typescript
+import userEvent from "@testing-library/user-event";
+
+// ❌ BAD — fireEvent does not mirror real browser input timing
+fireEvent.click(screen.getByRole("button"));
+
+// ✅ GOOD — async userEvent matches browser behaviour
+const user = userEvent.setup();
+await user.click(await screen.findByRole("button"));
+```
+
+### Queries and test IDs
+
+Prefer roles, labels, and accessible names. Treat `data-testid` as a last resort—it often means the UI is not exposing something testable to assistive tech.
+
 ### Directory Structure
 
 Co-locate unit tests with source. Integration and E2E tests go in `tests/`.
@@ -828,14 +962,6 @@ export const errorToMessage = (error: unknown): string => {
 }
 ```
 
-### pnpm-workspace.yaml
-
-```yaml
-packages:
-  - "apps/*"
-  - "packages/*"
-```
-
 ---
 
 ## Naming Conventions
@@ -992,6 +1118,17 @@ esbuild src/main.ts \
   --sourcemap \
   --external:@effect/*
 ```
+
+---
+
+## HTTP Client (@tanstack/react-query)
+
+### OpenAPI and generated clients
+
+When an API has no maintained SDK, generate a thin client and types from its OpenAPI spec (`openapi.json` or equivalent). Regenerate whenever the spec changes: ideally the API repo publishes the spec and CI in this repo (or a codegen pipeline) opens a PR with updated types so `pnpm typecheck` fails if clients drift.
+
+
+Types should automatically propagate to component through @tanstack/react-query queries and mutations.
 
 ---
 
