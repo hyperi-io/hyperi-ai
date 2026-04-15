@@ -10,7 +10,7 @@
 # This wrapper handles: CLI detection (exit code 2) and arg forwarding.
 #
 # Usage: ./agents/claude.sh [--help] [--dry-run] [--force] [--no-managed]
-#                           [--no-superpowers] [--path PATH] [--self] [--verbose]
+#                           [--no-superpowers] [--path PATH] [--self] [--stealth] [--verbose]
 #
 set -euo pipefail
 

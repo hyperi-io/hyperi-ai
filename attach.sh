@@ -596,21 +596,52 @@ ensure_stealth_clone() {
     AI_DIR="$(basename "$target")"
 }
 
+# Resolve the SHARED git directory for PROJECT_ROOT.
+#
+# Returns the path that git actually consults for `info/exclude`. This is the
+# COMMON git dir, shared across all worktrees of the same repo. We deliberately
+# use --git-common-dir not --git-dir because per-worktree excludes
+# (.git/worktrees/<name>/info/exclude) are silently ignored by git -- only
+# .git/info/exclude on the shared git dir is honoured for ignore matching.
+#
+# This means stealth excludes apply to ALL worktrees of the project, which is
+# the right default for an external open-source project: no worktree should
+# accidentally commit AI artifacts.
+resolve_git_common_dir() {
+    local git_dir
+    if ! git_dir="$(git -C "$PROJECT_ROOT" rev-parse --git-common-dir 2>/dev/null)"; then
+        log_error "Not a git repository: $PROJECT_ROOT"
+        exit 1
+    fi
+    # rev-parse may return a relative path; make absolute relative to PROJECT_ROOT
+    case "$git_dir" in
+        /*) printf '%s\n' "$git_dir" ;;
+        *)  (cd "$PROJECT_ROOT" && cd "$git_dir" && pwd) ;;
+    esac
+}
+
 # Add entries to .git/info/exclude (stealth mode — local-only gitignore)
+#
+# Worktree-aware: writes to the SHARED git dir's info/exclude (via
+# --git-common-dir) because git ignores per-worktree info/exclude files.
+# This applies the stealth excludes to every worktree of the repo, which is
+# the desired behaviour for an external open-source project.
 setup_git_exclude() {
-    local exclude_file="$PROJECT_ROOT/.git/info/exclude"
+    local git_dir
+    git_dir="$(resolve_git_common_dir)"
+    local exclude_file="$git_dir/info/exclude"
     local marker="# hyperi-ai stealth attach"
 
     # Already configured?
     if [ -f "$exclude_file" ] && grep -qF "$marker" "$exclude_file"; then
         if [ "$VERBOSE" = true ]; then
-            log_info ".git/info/exclude already configured"
+            log_info "$exclude_file already configured"
         fi
         return
     fi
 
     if [ "$DRY_RUN" = true ]; then
-        log_info "Would add stealth exclusions to .git/info/exclude"
+        log_info "Would add stealth exclusions to $exclude_file"
         return
     fi
 
@@ -619,11 +650,12 @@ setup_git_exclude() {
 
 # hyperi-ai stealth attach
 .claude/
+.mcp.json
 STATE.md
 TODO.md
 CLAUDE.md
 EXCLUDE
-    log_success "Added stealth exclusions to .git/info/exclude"
+    log_success "Added stealth exclusions to $exclude_file"
 }
 
 # Copy file if it doesn't exist (or if --force)
@@ -784,8 +816,18 @@ run_single_agent() {
     log_info "Running ${agent} setup..."
     # Capture exit code without triggering set -e
     local exit_code=0
+    local stealth_flag=""
+    if [ "$STEALTH" = true ]; then
+        stealth_flag="--stealth"
+    fi
+    # Pass --path so the agent script's deploy logic finds STATE.md/TODO.md
+    # in the project root rather than its own auto-detected pwd (which when
+    # invoked from a system-wide hyperi-ai clone resolves to ~/.local/share).
+    # Pass --stealth so deploy_*.py skips .gitignore modification (the
+    # caller's setup_git_exclude has already added every artifact path to
+    # the shared .git/info/exclude).
     # shellcheck disable=SC2086
-    "$script" $force_flag $verbose_flag || exit_code=$?
+    "$script" --path "$PROJECT_ROOT" $force_flag $verbose_flag $stealth_flag || exit_code=$?
     return $exit_code
 }
 

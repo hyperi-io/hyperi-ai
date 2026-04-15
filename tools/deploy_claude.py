@@ -890,6 +890,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip superpowers plugin installation",
     )
+    p.add_argument(
+        "--stealth",
+        action="store_true",
+        help="Stealth mode: skip .gitignore modifications (caller is "
+        "responsible for adding artifact paths to .git/info/exclude)",
+    )
     return p.parse_args()
 
 
@@ -985,7 +991,11 @@ def main() -> int:
     write_version_stamp(
         ai_root, project_root, dry_run=args.dry_run, verbose=args.verbose
     )
-    ensure_gitignore(project_root, dry_run=args.dry_run, verbose=args.verbose)
+    if args.stealth:
+        if args.verbose:
+            log_info("Stealth mode: skipping .gitignore modifications")
+    else:
+        ensure_gitignore(project_root, dry_run=args.dry_run, verbose=args.verbose)
     print_summary(ai_root, project_root, args.agent_cli, dry_run=args.dry_run)
 
     return EXIT_SUCCESS
