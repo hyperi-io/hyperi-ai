@@ -11,16 +11,18 @@ source: languages/RUST.md
 
 # Rust Standards — HyperI Projects
 
+> Hot-path data pipelines (PB/hr scale). Pure Rust on `hyperi-rustlib` (transport, tiered-sink, resilience). SIMD JSON, zero-copy buffers, direct Kafka/gRPC. No Vector.dev on hot path.
+
+---
+
 ## Design Philosophy
 
-> **Hot path + scaling → Rust. Otherwise → Python/TypeScript.**
-
-1. **SIMD-first** — Use `sonic-rs`, `memchr`, `simd-json` for byte-volume ops. Never hand-roll.
-2. **Zero-copy by default** — `&[u8]`, `&str`, `Cow<'_, str>`, `Bytes`. Allocate only for mutation.
+1. **SIMD-first** — `sonic-rs`, `memchr`, `simd-json` for byte-volume ops. Never hand-roll.
+2. **Zero-copy by default** — Borrow `&[u8]`/`&str`. `Cow<'_, str>` for conditional ownership. `Bytes` for cross-task sharing.
 3. **Zero-allocation hot paths** — Pre-allocate at init. Object pools (`crossbeam`), arenas (`bumpalo`), `CompactString`. Hot path = zero `malloc` in `perf record`.
-4. **Measure, don't guess** — `cargo flamegraph`, `criterion`, `dhat`. No unvalidated optimisation.
+4. **Measure, don't guess** — `cargo flamegraph`, `criterion`, `dhat`. No optimization without profiling.
 5. **Use `hyperi-rustlib`** — Never roll bespoke config/logging/metrics/resilience.
-6. **PyO3 for Python bindings** — Expose Rust capability via PyO3/maturin, don't reimplement in Python.
+6. **PyO3 for Python bindings** — Expose Rust crates via PyO3/maturin, don't reimplement in Python.
 
 ---
 
@@ -36,8 +38,8 @@ source: languages/RUST.md
 
 ### Async Closures
 ```rust
-// ❌ fn retry<F, Fut, T>(f: F) where F: Fn() -> Fut, Fut: Future<Output = Result<T>>
-// ✅ Edition 2024
+// ❌ Old: fn retry<F, Fut, T>(f: F) where F: Fn() -> Fut, Fut: Future<Output = Result<T>>
+// ✅ 2024:
 fn retry<F: AsyncFn() -> Result<T>, T>(f: F) -> T { /* ... */ }
 ```
 
@@ -50,14 +52,17 @@ if let Some(resp) = get_response()
 ```
 
 ### Unsafe Changes
-- `unsafe_op_in_unsafe_fn` warn-by-default — wrap ops in explicit `unsafe {}`
-- `unsafe extern "C" { ... }` required for extern blocks
+- `unsafe_op_in_unsafe_fn` warn-by-default — wrap in explicit `unsafe {}` blocks
+- `unsafe extern "C" { ... }` required (not bare `extern "C"`)
 
 ### std Stabilisations (1.85–1.94)
-- `LazyLock::get()` — non-blocking init check (1.87)
-- `array_windows::<N>()` — compile-time sliding windows (1.94)
-- Const math: `usize::next_power_of_two`, `usize::div_ceil` (1.90+)
-- `std::io::IsTerminal` — replaces `atty` crate
+
+| API | Version | Replaces |
+|-----|---------|----------|
+| `LazyLock::get()` | 1.87.0 | Non-blocking init check |
+| `array_windows::<N>()` | 1.94.0 | `windows(N)` with compile-time size |
+| `usize::next_power_of_two` (const) | 1.90.0 | Runtime-only math |
+| `std::io::IsTerminal` | 1.70+ | `atty` crate (deprecated) |
 
 ---
 
@@ -65,51 +70,43 @@ if let Some(resp) = get_response()
 
 ```bash
 cargo build --release           # Release build
-cargo nextest run               # Tests (preferred)
+cargo nextest run               # Tests (preferred over cargo test)
 cargo clippy                    # Lint
 cargo fmt                       # Format
+cargo check                     # Fast type check
 cargo deny check                # License/advisory
-bacon                           # Continuous clippy on save
+bacon                           # Continuous clippy (replaces cargo watch)
 cargo tarpaulin --out Html      # Coverage
 ```
 
 ### Local-First Development (CRITICAL for AI Agents)
 
-**Rust CI = 30+ min. Do NOT push after every change.**
+**Rust CI takes 30+ min. Do NOT push after every change.**
+
+```
+Loop: write → cargo check → cargo clippy → cargo nextest run → commit locally
+Push ONLY when feature complete + tests pass locally.
+```
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
 | Push after every commit | Accumulate 3-10 local commits, push once | 30 min CI per push |
-| Push to "see if CI passes" | `cargo clippy && cargo nextest run` locally | Local = instant |
+| Push to "see if CI passes" | `cargo clippy && cargo nextest run` locally | Local is instant |
 | Push WIP to trigger CI | Commit locally, keep working | CI blocks pipeline |
 
-When `hyperi-ci` available: `hyperi-ci check`. Otherwise: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo nextest run --all-features`
-
-### String Types
-
-| Type | Use Case |
-|------|----------|
-| `String` | Owned, building strings |
-| `&str` | Parameters, borrowing |
-| `Cow<'a, str>` | Zero-copy with fallback |
-| `CompactString` | Short strings (≤24 bytes, stack) |
-| `Arc<str>` | Shared across threads |
+Use `bacon` — runs clippy/tests on save. Use `hyperi-ci check` when available.
 
 ---
 
 ## Code Style Rules
 
 ### Macros Over Copy-Paste
-Third similar `impl` block → write a macro.
+Three or more similar `impl` blocks → write a macro.
 
-### No TODO Comments → Use `todo!()`
+### `main.rs` — ~10 Lines Max
 ```rust
-// ❌ // TODO: implement this
-// ✅ todo!("implement processing - see TODO.md#processing")
-```
-
-### Keep `main.rs` Tiny (~10 lines)
-```rust
+#![forbid(unsafe_code)]
+use myapp::{run, Config, Error};
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let config = Config::from_args()?;
@@ -118,15 +115,32 @@ async fn main() -> Result<(), Error> {
 ```
 
 ### Module Organisation
-- `lib.rs`: module root, `pub use` public API, `mod prelude`
-- Private by default. Only `pub` what's needed. Use `pub(crate)` for internal.
-- `#[must_use]` on functions whose return values shouldn't be ignored
+```rust
+// lib.rs
+#![forbid(unsafe_code)]
+#![warn(clippy::all, clippy::pedantic)]
+pub use config::Config;
+pub use error::{Error, Result};
+pub mod prelude {
+    pub use crate::error::{Error, Result};
+    pub use tracing::{debug, error, info, warn, instrument};
+}
+mod config;
+mod error;
+mod pipeline;
+```
 
-### Parse Constructors
-"Parse, don't validate" — `Port::new(0)` returns `Err`, not panic.
+### Key Rules
 
-### Type-State Pattern
-Encode state transitions in types: `Request<Unvalidated>` → `Request<Validated>` → `Request<Ready>`. Only `Ready` has `.send()`.
+| Rule | Pattern |
+|------|---------|
+| Minimal visibility | `pub(crate)` default, `pub` only for API |
+| `#[must_use]` | On all functions whose return shouldn't be ignored |
+| No TODO comments | Use `todo!("msg")` — panics at runtime, won't be forgotten |
+| `dbg!()` freely | Remove before commit. CI: `clippy -D clippy::dbg_macro` |
+| Parse constructors | `Port::new(0)` → `Err(PortError::Zero)`. Validate at boundary. |
+| Type-state pattern | Encode state in types: `Request<Unvalidated>` → `Request<Ready>` |
+| Lean into generics | `fn process<T: AsRef<[u8]>>(input: T)` |
 
 ---
 
@@ -135,7 +149,7 @@ Encode state transitions in types: `Request<Unvalidated>` → `Request<Validated
 ### Required Files
 ```
 Cargo.toml, Cargo.lock, rustfmt.toml, clippy.toml, deny.toml,
-rust-toolchain.toml, .cargo/config.toml
+rust-toolchain.toml, .cargo/config.toml, src/{main,lib}.rs
 ```
 
 ### rustfmt.toml
@@ -155,40 +169,58 @@ components = ["rustfmt", "clippy", "llvm-tools-preview"]
 ```
 
 ### deny.toml
-Vulnerability = deny, unlicensed = deny, wildcards = deny, unknown-registry = deny. Allow: MIT, Apache-2.0, BSD-2/3, ISC, Zlib, MPL-2.0, FSL-1.1-ALv2.
+Deny: `vulnerability`, `unlicensed`, `unknown-registry`, `unknown-git`, `wildcards`.
+Allow licenses: MIT, Apache-2.0, BSD-2/3-Clause, ISC, Zlib, MPL-2.0, Unicode-DFS-2016.
+Warn: `multiple-versions`, `unmaintained`, `yanked`, `copyleft`.
 
-### Required Dev Tools
+### Required Tools
 ```bash
 cargo install cargo-nextest cargo-deny cargo-tarpaulin bacon cargo-chef
-cargo install hyperfine flamegraph tokio-console oha  # profiling
-cargo install cargo-audit cargo-outdated cargo-machete  # optional
+cargo install hyperfine flamegraph tokio-console oha  # Profiling
+cargo install cargo-audit cargo-outdated cargo-machete  # Optional
 ```
 
-### Docker Builds
-Use `cargo-chef` for layer caching: chef→planner→builder→runtime stages.
+### Docker: cargo-chef
+```dockerfile
+FROM rust:1.83-slim AS chef
+RUN cargo install cargo-chef
+# planner → recipe.json → cook deps (cached) → build app → runtime
+```
 
-### CI Pipeline
+### Feature-Gating Hygiene
+Every `#[cfg(feature = "X")]` module must declare its deps under feature `X`. Enforce:
+```bash
+cargo hack --each-feature --no-dev-deps check --lib
+cargo check --no-default-features --lib
+```
+
+### CI Opt-Out
 ```yaml
-quality: fmt --check → clippy -D warnings → deny check
-test: nextest run --all-features
-coverage: tarpaulin --out Lcov
+feature_matrix:
+  enabled: false
+  reason: "tracked in dfe-loader#87, remediating 2026-04-18"
 ```
+CI must fail if `enabled: false` without non-empty `reason`.
 
 ---
 
 ## Project Structure
 
-- **Binary:** `src/{main.rs, lib.rs, config.rs, error.rs}`, `tests/`, `benches/`
-- **Pipeline:** `src/pipeline/{reader,transformer,writer}.rs`, `src/types/{record,batch}.rs`, `src/utils/pool.rs`
+**Binary:** `src/{main,lib,config,error}.rs` + `tests/` + `benches/`
+**Pipeline:**
+```
+src/pipeline/{mod,reader,transformer,writer}.rs
+src/types/{mod,record,batch}.rs
+src/utils/pool.rs
+src/error.rs
+benches/{parsing,throughput}.rs
+```
 
 ---
 
 ## Error Handling
 
-- **Libraries:** `thiserror` for custom errors
-- **Applications:** `anyhow` for prototyping → migrate to proper types
-- Use `?` for propagation, not verbose `match`
-- Hot paths: non-allocating error enums (no `String` fields)
+**Libraries:** `thiserror`. **Applications:** `anyhow` (prototype) → custom types.
 
 ```rust
 #[derive(Error, Debug)]
@@ -203,101 +235,115 @@ pub enum PipelineError {
 pub type Result<T> = std::result::Result<T, PipelineError>;
 ```
 
+### Hot Path Errors — No Allocation
+```rust
+#[derive(Debug)]
+pub enum FastError { InvalidInput, BufferTooSmall, ParseFailed { offset: usize } }
+```
+
+### `.expect()` is a Smell
+
+| ❌ Don't | ✅ Do |
+|----------|-------|
+| `set_global_recorder(r).expect("install")` | `if let Err(e) = set_global_recorder(r) { warn!(...) }` |
+| `fn new(c: Config) -> Self { Self::try_new(c).expect("") }` | `fn new(c: Config) -> Result<Self, Error>` — one API, fallible |
+
 ---
 
 ## Ownership & Borrowing
 
-**Three rules:** one owner, dropped at scope end, either one `&mut` OR many `&`.
+Three rules: (1) one owner, (2) dropped at scope end, (3) one `&mut` XOR many `&`.
 
 | ❌ Don't | ✅ Do |
 |----------|-------|
-| `data.clone()` to read | `&data` (borrow) |
+| `data.clone()` to iterate | Borrow: `for item in &data.items` |
 | `fn greet(name: String)` | `fn greet(name: &str)` |
-| `process(data: &Vec<String>)` | `process(data: &[String])` |
+| Return references without lifetimes | `fn longest<'a>(x: &'a str, y: &'a str) -> &'a str` |
 
 ---
 
-## Structs & Enums
+## Structs, Enums, Traits
 
-- Derive `Debug, Clone, Serialize, Deserialize` as appropriate
-- Builder pattern for complex construction with validation in `.build()`
-- Newtype pattern (`struct UserId(pub u64)`) for type safety
+- **Builder pattern** for complex construction with validation in `.build()`
+- **Newtype** `struct UserId(pub u64)` for type safety
+- **Associated types** when one impl per type; **generic params** when multiple impls
+- **Sealed traits** to prevent external implementation
+- **Extension traits** to add methods to foreign types
+- **GATs** for lending iterators / zero-copy iteration over internal buffers
 
----
-
-## Traits & Generics
-
-- **Static dispatch** (`<T: Trait>`) for performance-critical code
-- **Dynamic dispatch** (`Box<dyn Trait>`) for heterogeneous collections, plugins
-- **Associated types** = "has one X"; **Generic params** = "can be many X"
-- **Sealed traits** for library APIs where adding methods must not break downstream
-- **GATs** for lending iterators / zero-copy iteration from internal buffers
-- **Blanket impls** for universal behaviour (`impl<T: Debug> Describable for T`)
+### Object Safety
+✅ `&self`/`&mut self` methods, no `Self` return, no generic methods → `dyn Trait`
+❌ Returns `Self`, generic methods, static methods → not object-safe
 
 ---
 
 ## Testing
 
 ```bash
-cargo nextest run                    # all tests
-cargo nextest run -- --ignored       # e2e (needs infra)
-cargo tarpaulin --out Html           # coverage
+cargo nextest run                          # all tests
+cargo nextest run -- --ignored             # e2e (needs infra)
+cargo tarpaulin --out Html                 # coverage
 ```
 
-### Structure
+### Directory Structure
 ```
-tests/common/mod.rs       # Shared helpers (NOT a test crate)
-tests/integration/mod.rs  # Single binary, submodules (3x compile speedup)
-tests/e2e/                # #[ignore], needs real infra
-tests/smoke.rs            # MANDATORY startup smoke test
-benches/throughput.rs     # criterion (harness = false)
+tests/common/mod.rs          # Shared helpers (NOT a test crate)
+tests/integration/mod.rs     # Single binary, submodules (3x faster compile)
+tests/e2e/                   # #[ignore], real infra
+tests/smoke.rs               # MANDATORY startup smoke test
+benches/throughput.rs         # criterion, harness = false
 ```
 
-### Mandatory Smoke Test
+### Startup Smoke Test (MANDATORY)
 ```rust
 #[tokio::test]
 async fn test_startup_boots_with_default_config() {
-    let result = Orchestrator::new(Config::default(), ...).await;
+    let config = Config::default();
+    let result = Orchestrator::new(config, metrics, shutdown).await;
     assert!(result.is_ok());
 }
 ```
 
-### Property-Based: `proptest`. Benchmarks: `criterion`.
+### Key Rules
+- Single-binary integration tests: one `mod.rs` with submodules = 1 link cycle
+- `tests/common/` as subdirectory (not `tests/common.rs`) to avoid phantom test binary
+- Property-based: `proptest`. Benchmarks: `criterion`.
+- Nextest: safe `env::set_var` (process-per-test). For tarpaulin: use env mutex.
 
 ---
 
 ## Async with Tokio
 
-**Key rule:** Never block in async. Use `tokio::fs`, `tokio::time::sleep`, `spawn_blocking` for CPU work >1ms.
+**Never block in async.** `tokio::time::sleep` not `std::thread::sleep`. `tokio::fs` not `std::fs`. CPU >1ms → `spawn_blocking`.
 
 ### Anti-Patterns
 
 | ❌ Don't | ✅ Do | Why |
 |----------|-------|-----|
 | `std::fs::read_to_string` in async | `tokio::fs::read_to_string` | Blocks runtime thread |
-| `std::thread::sleep` in async | `tokio::time::sleep` | Blocks runtime thread |
-| Hold `std::sync::Mutex` across `.await` | Minimise scope or use `tokio::sync::Mutex` | Deadlock risk |
+| `std::sync::Mutex` across `.await` | `tokio::sync::Mutex` or drop guard before `.await` | Deadlock risk |
 | `mpsc::unbounded_channel()` | `mpsc::channel(1024)` | No backpressure = OOM |
-| CPU work on async runtime | `spawn_blocking` | Starves other tasks |
+| CPU work on async runtime | `tokio::task::spawn_blocking(move \|\| {...})` | Starves other tasks |
 
 ### Backpressure
 ```rust
-let (tx, rx) = mpsc::channel::<Batch>(64);  // Bounded = backpressure
-// CPU stages: 2-4x worker count. I/O stages: 32-128.
-// NEVER unbounded in production.
+let (tx, rx) = mpsc::channel::<Batch>(64); // Bounded = backpressure cascades upstream
 ```
+- CPU-bound stages: 2-4× worker count
+- I/O-bound stages: 32-128
+- **Never unbounded** (exception: DAG completion channels)
 
 ### `select!` vs `spawn`
 
 | | `select!` | `spawn` |
-|--|-----------|---------|
-| Borrows | Can borrow local data | Requires `'static + Send` |
-| Use | Timeout races, shutdown signals | Background work, fan-out |
+|---|---|---|
+| Borrowing | Can borrow local data | Requires `'static + Send` |
+| Use case | Timeout races, shutdown signals | Background work, parallel I/O |
 
-### JoinSet = Structured Concurrency
+### Structured Concurrency — `JoinSet`
 Tasks cancelled when `JoinSet` dropped. No zombie tasks.
 
-### Bounded Concurrency Streams
+### Bounded Async Streams
 ```rust
 stream::iter(items)
     .map(|item| async move { transform(item).await })
@@ -309,88 +355,127 @@ stream::iter(items)
 
 ## Concurrency Patterns
 
+### `Send + Sync` Discipline
+Compile-time assertion for every public service type:
+```rust
+fn assert_send_sync<T: Send + Sync>() {}
+#[test]
+fn metrics_is_send_sync() { assert_send_sync::<MetricsManager>(); }
+```
+
+### `Arc<AtomicBool>` for Closed State
+Cheaper and clearer than oneshot channels. `Acquire`/`Release` ordering for flags. `Relaxed` for pure counters.
+
+### Sync Primitives
+
 | Primitive | Use Case |
 |-----------|----------|
 | `parking_lot::Mutex` | High-contention blocking |
-| `tokio::sync::Mutex` | Async contexts |
-| `AtomicU64` | Counters (Relaxed ordering) |
+| `tokio::sync::Mutex` | Across `.await` |
 | `DashMap` | Concurrent HashMap |
-| `crossbeam::channel` | Producer-consumer (lock-free) |
-| `rayon` | Parallel iterators, CPU-bound |
+| `AtomicU64` | Lock-free counters |
+| `crossbeam::channel` | Producer-consumer |
+
+### Concurrency Audit Script
+Run `scripts/audit-concurrency.sh` before release:
+1. Locks across `.await`
+2. Blocking in async (`std::fs`, `std::thread::sleep`)
+3. Unbounded channels
+4. Panicking `.send().unwrap()`
+5. Hot-loop allocation (`Vec::new`, `format!` in loops)
+6. `Regex::new` on hot path (not behind `LazyLock`)
+7. `Arc<Mutex<>>` where `Arc<T>` suffices
+8. `.clone()` storms (non-Arc)
+9. `Send + Sync` drift
+10. `par_iter` with `&mut` captures
 
 ---
 
 ## Adaptive Worker Pool (`hyperi-rustlib` `worker` feature)
 
-- `pool.process_batch()` → Rayon (CPU: parsing, CEL, routing)
-- `pool.fan_out_async()` → Tokio JoinSet (async I/O: enrichment, APIs)
-- Auto-scales on CPU/memory pressure with watermark bands
-- **Parallel-Then-Sequential pattern:** immutable `&` refs in parallel phase → `&mut` in sequential phase. Borrow checker enforces boundary.
+| API | Engine | Use For |
+|-----|--------|---------|
+| `pool.process_batch()` | Rayon (OS threads) | CPU: parsing, transforms, CEL, compression |
+| `pool.fan_out_async()` | Tokio JoinSet | Async I/O: enrichment, APIs, storage |
+
+Scales reactively: CPU < 0.60 → grow, 0.60-0.85 → hold, > 0.85 → shrink, > 0.95 → emergency shrink. Memory > 0.80 → hard cap.
+
+**Pattern: Parallel-then-Sequential** — immutable parallel phase (rayon) → drop borrows → mutable sequential phase (buffers, DLQ). Borrow checker enforces the boundary.
 
 ---
 
 ## Hot Path Optimization
 
-### Performance Lifecycle
-**Measure → Isolate → Optimize → Repeat**
+### Profiling Lifecycle: Measure → Isolate → Optimize → Repeat
 
-| Tool | Purpose |
-|------|---------|
-| `hyperfine` | Whole-binary benchmarking |
-| `cargo flamegraph` | CPU flame graphs |
-| `dhat` (feature-gated) | Heap allocation profiling |
-| `tokio-console` | Async task dashboard |
-| `oha` | HTTP load testing |
-| `criterion` | Micro-benchmarks |
+| Tool | Purpose | Command |
+|------|---------|---------|
+| `hyperfine` | Whole-binary timing | `hyperfine './target/release/pipeline data.txt'` |
+| `cargo flamegraph` | CPU flame graphs | `cargo flamegraph --bin pipeline -- data.txt` |
+| `dhat` | Heap profiling | `cargo run --features dhat-heap --release` |
+| `tokio-console` | Async task dashboard | `tokio-console` |
+| `oha` | HTTP load test | `oha -n 10000 -c 100 http://localhost:8080/` |
+| `criterion` | Micro-benchmarks | `cargo bench` |
 
-### NEVER Use Regex on Hot Paths
+### NEVER Regex on Hot Paths
 
-| ❌ Regex | ✅ Replace With |
-|----------|----------------|
+| Regex Pattern | Replace With |
+|---|---|
 | `Regex::new(r"\d+")` | `memchr` + `is_ascii_digit()` loop |
 | `Regex::new(r"key=(\w+)")` | `memmem::find` + scan to delimiter |
 | `Regex::new(r"\s+")` split | `split_ascii_whitespace()` |
+| `Regex::new(r"[,\t\|]")` | `memchr3(b',', b'\t', b'\|', data)` |
 | Grok patterns | `memchr` positional parsing |
 
-**Regex OK:** config parsing (startup), user-facing search, tests, <1000/sec.
-**Regex NEVER:** per-event processing, log parsing at volume, any hot loop.
+Regex acceptable: config parsing (once at startup), user-facing search, tests.
 
 ### Avoid `.collect()` in Loops
 ```rust
-// ❌ Vec per line (N allocations)
-let parts: Vec<&str> = line.split(',').collect();
-// ✅ Navigate iterator directly
-let mut parts = line.split(',');
-let ts = parts.next().unwrap_or_default();
+// ❌ N allocations
+for line in input.lines() {
+    let parts: Vec<&str> = line.split(',').collect();
+}
+// ✅ Zero allocations
+for line in input.lines() {
+    let mut parts = line.splitn(3, ',');
+    let ts = parts.next().unwrap_or_default();
+}
 ```
 
 ### Filter Early
-Cheapest byte is one you never process. Filter before expensive work.
+Apply cheapest filters first. Every stage downstream does less work.
 
 ### Inlining
-- `#[inline(always)]` — small hot predicates
-- `#[inline]` — frequently called functions
+- `#[inline(always)]` — small hot functions (e.g., `is_valid_char`)
+- `#[inline]` — frequently called
 - `#[cold] #[inline(never)]` — error paths
 
-### Avoid Allocations
+### Avoid Allocations in Hot Paths
 ```rust
-// ❌ format!() per call
-// ✅ Write to provided &mut String buffer
-// ✅ Return Cow<'_, str> for conditional allocation
+// ❌ format!() allocates
+fn process(r: &Record) -> String { format!("{}:{}", r.id, r.value) }
+// ✅ Write to provided buffer
+fn process(r: &Record, buf: &mut String) {
+    buf.clear();
+    write!(buf, "{}:{}", r.id, r.value).unwrap();
+}
+// ✅ Cow for conditional allocation
+fn normalize(s: &str) -> Cow<'_, str> {
+    if s.is_ascii_lowercase() { Cow::Borrowed(s) }
+    else { Cow::Owned(s.to_lowercase()) }
+}
 ```
-
-### Batch Processing
-Process in chunks (10K+) for amortised costs.
 
 ---
 
 ## Zero-Copy Data Processing
 
-- **References/slices** into source buffers
-- **`Cow<'_, str>`** for conditional ownership
-- **`memmap2::Mmap`** for large files (OS handles paging)
-- **Buffer reuse** with object pools
-- **Arena allocation** (`bumpalo`) — fast alloc, bulk dealloc per batch
+- **Slices** — `&[u8]`/`&str` into source buffers
+- **`Cow<'a, str>`** — borrow when possible, own when mutated
+- **`Arc<str>`** — shared immutable across threads (refcount only)
+- **`CompactString`** — ≤24 bytes on stack, no heap
+- **`memmap2::Mmap`** — memory-mapped files, OS handles paging
+- **Buffer reuse** — `BufferPool` with `clear()` + return, drop oversized
 
 ---
 
@@ -398,57 +483,60 @@ Process in chunks (10K+) for amortised costs.
 
 ### Runtime Detection
 ```rust
-static SIMD_CAP: OnceLock<SimdCapability> = OnceLock::new();
-// Dispatch: AVX2 → SSE4.2 → NEON → Scalar
+static SIMD: OnceLock<SimdCapability> = OnceLock::new();
+// Dispatch: Avx2 → Sse42 → Neon → Scalar
 ```
 
-### Key Crates
-- `sonic-rs` — SIMD JSON parsing, zero-copy field extraction
-- `memchr` — SIMD byte/substring search
-- `array_windows::<N>()` — compile-time sliding windows (1.94+)
-
-### sonic-rs Patterns
+### sonic-rs for JSON
 ```rust
-// Full parse
-sonic_rs::from_slice::<Value>(data)?;
-// Zero-copy field extraction (4-8x faster than DOM parse)
-sonic_rs::get_from_slice(payload, &["field"])?;
+sonic_rs::from_slice::<T>(data)?;                    // Full SIMD parse
+sonic_rs::get_from_slice(payload, &["field"])?;      // Zero-copy field extraction
 ```
+
+### memchr for String Search
+```rust
+memchr::memchr(b'\n', data);              // Single byte (SIMD)
+memchr::memchr3(b',', b'\t', b'|', data); // Any of 3
+memchr::memmem::Finder::new(pattern);     // Precompiled substring
+```
+
+### `array_windows::<N>()` (1.94.0+)
+Compile-time window size → auto-vectorisation. Prefer over `windows(N)`.
 
 ---
 
 ## Memory Management
 
-### Allocator Selection
+### Allocator
 ```rust
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
-// Alternative: mimalloc for mixed workloads
+// Or mimalloc for mixed workloads
 ```
 
-### Pre-allocation
-`Vec::with_capacity()`, `HashMap::with_capacity()` — always estimate size.
-
 ### Faster HashMaps
-- `FxHashMap` — internal use (not crypto-safe)
+- `FxHashMap` — fast internal (not DoS-resistant)
 - `AHashMap` — fast + DoS-resistant (good default)
-- `DashMap` — concurrent
+- `DashMap` — concurrent, fine-grained sharding
+- `IndexMap` — insertion-order preserving
+
+### Arena Allocation (`bumpalo`)
+```rust
+let bump = Bump::new();
+// Fast alloc in arena, bulk dealloc with bump.reset()
+```
 
 ### Object Pooling
-`crossbeam::queue::ArrayQueue` backed pool with `Pooled<T>` RAII return.
+`crossbeam::queue::ArrayQueue` — pre-populate, `get()` pops or creates, `Drop` returns.
 
 ---
 
-## At-Scale Patterns
+## At-Scale Performance Patterns
 
-### Tiered Buffer Architecture
-Hot (LRU-bounded memory) + Cold (disk spool, zstd compressed). `std::mem::take()` for zero-copy drain.
-
-### Kafka Offset Management
-`Arc<str>` for topic sharing. Commit only max offset per partition.
-
-### Lazy Allocation
-Check-then-allocate: fast path returns original (zero alloc), slow path transforms.
+### Tiered Buffer: Hot (memory, LRU) + Cold (disk spool, compressed)
+### Batch Processing: Count first → `Vec::with_capacity(exact)` → sequential write
+### Kafka Offsets: `Arc<str>` for topic (shared), commit max offset per partition
+### Lazy Allocation: Check before allocate. Zero-alloc fast path, allocate only in slow path.
 
 ### Release Profile
 ```toml
@@ -466,60 +554,52 @@ strip = false
 ```
 
 ### Build Performance
-- LLD default on Linux x86_64 since Rust 1.90 (no config needed)
-- `mold` for faster linking (verify with C++ deps first)
-- `sccache` for distributed build caching (S3/GCS/Redis)
-- PGO + BOLT: 15-35% runtime improvement for stable hot paths
+- LLD default since Rust 1.90. `mold` faster but verify with C++ deps.
+- `sccache` with S3/GCS/Redis for CI cache sharing.
+- PGO + BOLT: 15-35% improvement for stable hot-path services.
 
 ---
 
 ## Data Pipeline Architecture
 
-- **Stage trait** with `process(Input) -> Output`
-- **BatchAccumulator** — push items, flush when capacity reached via `std::mem::replace`
-- **Columnar batches** for cache-friendly sequential access
-- **Backpressure** via bounded channels + semaphores
+- **Stages** connected by bounded channels → backpressure cascades
+- **BatchAccumulator** — push items, flush when full or on drain
+- **Columnar processing** — `Vec<u64>`, `Vec<f64>` for cache-friendly access
+- **Semaphore** for max-in-flight control
 
 ---
 
 ## hyperi-rustlib
 
-> **For HyperI projects only.** Non-HyperI projects use generic patterns.
+> Skip for non-HyperI projects. Use generic patterns from rest of doc.
 
-### Feature Selection
-
-| Feature | Provides |
-|---------|----------|
-| `config` | 8-layer figment cascade |
-| `config-reload` | `SharedConfig<T>` hot-reload |
-| `logger` | Structured logging, JSON/text auto, sensitive masking |
-| `metrics` | `MetricsManager`, Prometheus `/metrics` |
-| `otel` / `otel-metrics` | OTLP tracing/metrics export |
-| `http-server` | Axum + `/healthz`, `/readyz` |
-| `resilience` | Circuit breaker, retry, bulkhead |
-| `transport-kafka` | rdkafka wrapper |
-| `transport-grpc` | tonic/prost |
-| `secrets` / `secrets-vault` / `secrets-aws` | Secret management |
-| `tiered-sink` | Hot buffer + disk spillover |
-| `spool` | Async FIFO (yaque + zstd) |
-| `scaling` | KEDA back-pressure signals |
-| `cli` | Standard clap framework |
-| `worker` | Adaptive worker pool (rayon + tokio) |
+```toml
+hyperi-rustlib = { version = ">=1.16", features = ["config", "logger", "metrics", "env", "runtime"] }
+```
 
 ### Use This, Not That
 
-| Need | ✅ hyperi-rustlib | ❌ Don't Roll |
-|------|------------------|--------------|
-| Config | `config::setup()` | Hand-rolled figment |
+| Need | Use (rustlib) | NOT (bespoke) |
+|------|--------------|---------------|
+| Config cascade | `config::setup()` | Hand-rolling figment/dotenvy |
 | Logging | `logger::setup_default()` | Manual tracing_subscriber |
-| Metrics | `MetricsManager::new("app")` | Raw metrics-exporter |
-| Circuit breaker | `resilience` feature | Hand-rolled state machine |
+| Metrics | `MetricsManager::new("app")` | Raw metrics-exporter-prometheus |
+| HTTP + health | `HttpServer` (`http-server`) | Bespoke axum + health routes |
+| Circuit breaker | `resilience` feature | Hand-rolled state machines |
 | Kafka | `transport-kafka` | Raw rdkafka ClientConfig |
+| Secrets | `SecretsManager` | Direct vault/AWS SDK |
+| Config reload | `SharedConfig<T>` + `ConfigReloader` | Custom file watcher |
+| Disk spillover | `TieredSink` | Custom spool logic |
+| CLI | `DfeApp` (`cli`) | Manual clap setup |
+| Scaling | `ScalingPressure` | Custom pressure math |
+
+### Config Cascade (8 layers, highest first)
+CLI args → env vars → `.env` → `settings.{env}.yaml` → `settings.yaml` → `defaults.yaml` → embedded → hard-coded
 
 ### Native System Dependencies
 
-| Feature | Build Package | Runtime |
-|---------|--------------|---------|
+| Feature | Build Pkg | Runtime Pkg |
+|---------|-----------|-------------|
 | `transport-kafka` | `librdkafka-dev` | `librdkafka1` |
 | `spool`, `tiered-sink` | `libzstd-dev` | `libzstd1` |
 
@@ -527,26 +607,18 @@ strip = false
 
 ## Observability
 
-Three pillars: **traces** (OTel OTLP), **metrics** (Prometheus), **logs** (structured JSON).
+Three pillars: **traces**, **metrics**, **logs** via OTLP.
 
-### Health Checks (K8s)
-```rust
-// GET /healthz → 200 if alive, 503 if dead
-// GET /readyz  → 200 if ready, 503 if draining
-// AtomicBool + Ordering::Release/Acquire
-```
-
-### tokio-console
-```bash
-RUSTFLAGS="--cfg tokio_unstable" cargo run --features tokio-console
-tokio-console  # in another terminal
-```
+- **Tracing:** `tracing` + `opentelemetry-otlp` + `tracing-opentelemetry`
+- **Metrics:** `metrics` + `metrics-exporter-prometheus` on `:9090/metrics`
+- **tokio-console:** `console-subscriber` (feature-gated, `tokio_unstable`)
+- **Health:** `GET /healthz` (liveness), `GET /readyz` (readiness) via `AtomicBool`
 
 ---
 
 ## HTTP Service Patterns (axum + tower)
 
-**axum 0.8+:** `/{param}` not `/:param}`, `/{*wildcard}` not `/*wildcard`.
+axum 0.8+: `/{param}` not `/:param`, `/{*wildcard}` not `/*wildcard`.
 
 ```rust
 Router::new()
@@ -557,80 +629,70 @@ Router::new()
     .with_state(state)
 ```
 
-Resilience: `tower::ServiceBuilder` → `BulkheadLayer` → `RetryLayer` → `CircuitBreakerLayer`.
+Resilience: `tower::ServiceBuilder` + `BulkheadLayer` + `RetryLayer` + `CircuitBreakerLayer`.
 
 ---
 
 ## Graceful Shutdown (K8s-Ready)
 
-1. Listen SIGTERM + SIGINT → `CancellationToken::cancel()`
-2. Mark unhealthy (readiness = false) → K8s stops routing
-3. Drain in-flight work (configurable timeout)
-4. Mark dead, exit
+1. SIGTERM received → `CancellationToken::cancel()`
+2. Mark `readyz` = false (K8s stops routing)
+3. Drain in-flight work (timeout = `terminationGracePeriodSeconds`)
+4. Mark `healthz` = false, exit
 
 ---
 
-## Configuration (HyperI Cascade)
+## Configuration
 
-8 layers (highest priority first): CLI args → env vars → `.env` → `settings.{env}.yaml` → `settings.yaml` → `defaults.yaml` → embedded defaults → hard-coded.
+`config-rs` with 7-layer cascade: defaults → `defaults.toml` → `settings.toml` → `settings.{env}.toml` → `.env` → env vars → CLI args.
 
 ---
 
-## Logging (HyperI Standard)
+## Logging
+
+`tracing` + `tracing-subscriber`. Auto-detect: terminal → pretty + colors; container → JSON + RFC 3339. `RUST_LOG=debug` override.
 
 ```rust
-// Terminal → pretty + colours
-// Container/CI → JSON + RFC 3339 timestamps
-// Auto-detect: std::io::stderr().is_terminal()
-// Hot paths: guard with tracing::enabled!(Level::DEBUG)
+#[instrument(skip(data), fields(record_count = data.len()))]
+async fn process_batch(data: &[Record]) -> Result<ProcessResult> { ... }
 ```
 
 ---
 
 ## Cargo.toml Best Practices
 
-```toml
-edition = "2024"
-rust-version = "1.94.0"
-
-[profile.release]
-lto = "thin"
-codegen-units = 1
-strip = true
-panic = "abort"
-
-[lints.rust]
-unsafe_code = "forbid"
-
-[lints.clippy]
-pedantic = "warn"
-unwrap_used = "deny"
-expect_used = "deny"
-```
-
 ### Version Pinning
-- `>=X.Y, <Z` default. `=X.Y.Z` only with `# pinned: reason` comment.
+```toml
+tokio = { version = ">=1.50, <2" }        # ✅ Default
+rdkafka = { version = "=0.39.0" }         # ⚠️ Pin + comment WHY
+```
 - Commit `Cargo.lock` for binaries. `cargo update` at every code review.
-- Fix deprecation warnings immediately.
+- Fix deprecation warnings immediately — never defer.
 
 ---
 
 ## Documentation (rustdoc)
 
-### Required Sections
-`# Errors` (fn→Result), `# Panics` (panicking fn), `# Safety` (unsafe fn), `# Examples` (all public API).
-
 ### Required Lints
 ```rust
-#![warn(missing_docs)]
-#![warn(clippy::missing_safety_doc, clippy::missing_errors_doc, clippy::missing_panics_doc)]
-#![warn(rustdoc::broken_intra_doc_links, rustdoc::bare_urls)]
+#![warn(missing_docs, clippy::missing_safety_doc, clippy::missing_errors_doc,
+        clippy::missing_panics_doc, rustdoc::broken_intra_doc_links,
+        rustdoc::private_intra_doc_links, rustdoc::bare_urls)]
 ```
 
-### CI
-```bash
-RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
-cargo test --doc --all-features
+### Required Sections
+`# Errors` (on `-> Result`), `# Panics` (on panicking fn), `# Safety` (on `unsafe fn`), `# Examples` (all public API).
+
+> No `rustdoc::invalid_codeblocks` lint exists. Real names: `invalid_codeblock_attributes` + `invalid_rust_codeblocks`.
+
+### docs.rs Metadata
+```toml
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+```
+```rust
+#![cfg_attr(docsrs, feature(doc_cfg))]
 ```
 
 ---
@@ -639,8 +701,8 @@ cargo test --doc --all-features
 
 ```rust
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
-#![deny(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
-#![allow(clippy::module_name_repetitions)]
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(clippy::module_name_repetitions, clippy::must_use_candidate)]
 ```
 
 ```bash
@@ -649,7 +711,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 
 ---
 
-## External Libraries & Registries
+## External Libraries & Private Registries
 
 ### Private Registry
 ```toml
@@ -660,26 +722,30 @@ index = "sparse+https://hyperi.jfrog.io/artifactory/api/cargo/hyperi-cargo-virtu
 
 ### Pure Rust vs C
 
-| Category | Prefer | C Wrapper (when needed) |
-|----------|--------|------------------------|
-| TLS | `rustls` | — |
-| JSON | `sonic-rs` | — |
-| Compression | `lz4_flex`, `snap` | `zstd` |
-| Kafka | — | `rdkafka` (no pure alt) |
-| Protobuf | `prost` | — |
+| Category | Pure Rust | C Wrapper |
+|----------|-----------|-----------|
+| TLS | `rustls` ✅ | OpenSSL |
+| JSON | `sonic-rs` ✅ | — |
+| Compression | `lz4_flex`, `snap` ✅ | `zstd` (C wrapper OK) |
+| Kafka | — | `rdkafka` (no pure alternative) |
+| Protobuf | `prost` ✅ | protobuf-native |
 
-`#![forbid(unsafe_code)]` in application code. All FFI via wrapper crates.
+### `forbid` vs `deny`
+
+| Crate type | Lint |
+|---|---|
+| Binaries, libs without FFI | `#![forbid(unsafe_code)]` |
+| Libs with direct FFI | `#![deny(unsafe_code)]` + `#[allow(unsafe_code)]` per block |
 
 ---
 
 ## FFI & Unsafe Rust
 
-- Edition 2024: `unsafe extern "C" { }`, explicit `unsafe {}` inside `unsafe fn`
-- `#[repr(C)]` for C-compatible structs. Opaque handles via `Box::into_raw`/`Box::from_raw`.
-- `catch_unwind` to prevent panic across FFI. `extern "C-unwind"` for intentional unwinding.
+- Minimal `unsafe` scope. `// SAFETY:` comment before every `unsafe` block.
+- `#[repr(C)]` for C-compatible structs. Opaque handles via zero-sized type.
+- `catch_unwind` at FFI boundary or use `extern "C-unwind"` (2024+).
 - `bindgen` for C→Rust headers. `cbindgen` for Rust→C headers.
-- **Minimal unsafe scope.** `// SAFETY:` comment before every `unsafe` block.
-- `cargo +nightly miri test` to verify unsafe code.
+- `cargo +nightly miri test` to detect UB in unsafe code.
 
 ---
 
@@ -688,54 +754,85 @@ index = "sparse+https://hyperi.jfrog.io/artifactory/api/cargo/hyperi-cargo-virtu
 | ❌ Wrong | ✅ Correct | Why |
 |----------|-----------|-----|
 | `serde_yaml` | `serde_yaml_ng` | Archived March 2024 |
-| `atty` | `std::io::IsTerminal` | Unmaintained, UB bug |
+| `atty` | `std::io::IsTerminal` | Unmaintained, UB |
 | `structopt` | `clap` 4.x derive | Merged into clap |
-| `dotenv` | `dotenvy` | Unmaintained |
+| `dotenv` | `dotenvy` | Unmaintained fork |
 | `warp` | `axum` 0.8+ | Maintenance-only |
-| `actix-web` (new) | `axum` | Ecosystem standard |
-| `thiserror` 1.x | `thiserror` 2.x | Major version |
-| `chrono` (new) | `time` or `jiff` | Lighter alternatives |
+| `actix-web` (new) | `axum` | Tower-native standard |
+| `thiserror` 1.x | `thiserror` 2.x | Improved derives |
 
-**Always web-search crate versions before using. AI training data is stale.**
+---
+
+## Recommended Crate Stack (March 2026)
+
+| Category | Crate | Version |
+|---|---|---|
+| Async | `tokio` | ≥1.50 |
+| HTTP framework | `axum` | ≥0.8.8 |
+| HTTP middleware | `tower-http` | ≥0.6.8 |
+| HTTP client | `reqwest` | ≥0.12 |
+| Serialisation | `serde` + `serde_json` | ≥1.0 |
+| SIMD JSON | `sonic-rs` | ≥0.5 |
+| YAML | `serde_yaml_ng` | ≥0.10 |
+| Errors (lib) | `thiserror` | ≥2.0 |
+| Errors (app) | `anyhow` | ≥1.0 |
+| Tracing | `tracing` / `tracing-subscriber` | ≥0.1 / ≥0.3 |
+| OTel | `opentelemetry` / `opentelemetry-otlp` | ≥0.31 |
+| Metrics | `metrics` / `metrics-exporter-prometheus` | ≥0.24 |
+| CLI | `clap` | ≥4.5 |
+| SQL | `sqlx` | ≥0.8 |
+| String search | `memchr` | ≥2.7 |
+| Concurrency | `dashmap` / `parking_lot` / `crossbeam` | latest |
+| Small strings | `compact_str` | ≥0.8 |
+| Resilience | `tower-resilience` | ≥0.4 |
+| Arena | `bumpalo` | ≥3.16 |
+| Benchmarks | `criterion` | ≥0.5 |
+| Coverage | `cargo-tarpaulin` | latest |
+| Tests | `cargo-nextest` | latest |
+
+---
+
+## 8 Common Mistakes
+
+| # | Mistake | Fix |
+|---|---------|-----|
+| 1 | `fn f(s: String)` when `&str` works | Accept `&str` |
+| 2 | `.clone()` to avoid borrow checker | Borrow `&` instead |
+| 3 | `.unwrap()` in production | `?`, `.ok_or()`, `.unwrap_or_default()` |
+| 4 | Manual memory management mindset | Let Rust drop automatically |
+| 5 | Ignoring compiler errors | Read the help — it tells you the fix |
+| 6 | Nested loops instead of iterators | `.filter().flat_map().map().collect()` |
+| 7 | Not using `rustfmt` + `clippy` | Run both. Always. |
+| 8 | Fighting borrow checker with `Rc<RefCell<>>` | Use indices, arenas, owned trees |
 
 ---
 
 ## AI Pitfalls
 
+> **Web search EVERY crate before using.** Your training data is stale. Check version, check if superseded.
+
 ### DO NOT Generate
-| ❌ | ✅ |
-|---|---|
-| `.unwrap()` in production | `.ok_or_else(\|\| Error::…)?` or `.unwrap_or_default()` |
-| `.clone()` to dodge borrow checker | Borrow with `&` |
-| `fn f(name: String)` | `fn f(name: &str)` |
-| `std::thread::sleep` in async | `tokio::time::sleep` |
-| `panic!()` for errors | `return Err(…)` |
-| `Box<dyn Error>` in libraries | `thiserror` custom enum |
-| `.into()` when types match | Direct return (clippy: useless_conversion) |
+- `.unwrap()` / `.expect()` without justification
+- `.clone()` to dodge borrow checker
+- `String` params where `&str` works
+- Blocking calls in async (`std::fs`, `std::thread::sleep`)
+- `panic!` for errors (use `Result`)
+- Incorrect lifetime annotations
+- `Box<dyn Error>` in libraries
+- Useless `.into()` where types already match
 
 ### AI Test Generation Traps
 
 | Trap | Fix |
 |------|-----|
-| Happy-path only | Test INVALID input, error paths |
-| Assertion-free tests | Every test MUST assert |
-| No boundary tests | 0, 1, empty, MAX, overflow |
-| Missing error paths | Test every error variant |
-| No smoke test | MANDATORY startup boot test |
-| No concurrency tests | `tokio::time::pause()`, race conditions |
+| Happy-path only | Test invalid input + all error variants |
+| Assertion-free tests | Every test MUST assert something meaningful |
+| Hardcoded oracles | Document WHY the expected value is correct |
+| No boundary tests | 0, 1, empty, MAX, overflow, negative |
+| No concurrency tests | `tokio::time::pause()`, `JoinSet`, race conditions |
+| Missing startup smoke | MANDATORY boot-with-default-config test |
 
----
-
-## Common Mistakes
-
-1. `String` when `&str` works
-2. Excessive `.clone()`
-3. `.unwrap()` in production
-4. Manual memory management mindset
-5. Ignoring compiler errors (read the suggestions!)
-6. Nested loops instead of iterator chains
-7. Not running `rustfmt` + `clippy`
-8. Fighting borrow checker with `Rc<RefCell<>>` — restructure with indices/arenas instead
+**Checklist:** Every error variant tested ∙ boundary values ∙ invalid input ∙ async timeout/cancel tests ∙ test fails when impl removed ∙ no `assert!(true)`.
 
 ---
 
@@ -744,4 +841,5 @@ index = "sparse+https://hyperi.jfrog.io/artifactory/api/cargo/hyperi-cargo-virtu
 - [Rust Book](https://doc.rust-lang.org/book/) · [Rust by Example](https://doc.rust-lang.org/rust-by-example/) · [Rustonomicon](https://doc.rust-lang.org/nomicon/)
 - [rustdoc Book](https://doc.rust-lang.org/rustdoc/) · [API Guidelines](https://rust-lang.github.io/api-guidelines/documentation.html)
 - [Tokio Tutorial](https://tokio.rs/tokio/tutorial) · [Async Book](https://rust-lang.github.io/async-book/)
-- [Perf Book](https://nnethercote.github.io/perf-book/) · [Clippy Lints](https://rust-lang.github.io/rust-clippy/)
+- [Performance Book](https://nnethercote.github.io/perf-book/) · [Criterion](https://bheisler.github.io/criterion.rs/book/)
+- [Clippy Lints](https://rust-lang.github.io/rust-clippy/) · [Rust Releases](https://releases.rs/)

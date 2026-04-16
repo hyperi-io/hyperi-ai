@@ -830,6 +830,51 @@ jobs:
         uses: codecov/codecov-action@v4
 ```
 
+### Feature-Gating Hygiene
+
+**Rule:** every `pub mod` behind `#[cfg(feature = "X")]` must have its
+dependencies declared by feature `X`. Don't rely on another feature pulling
+in `tracing`/`metrics`/`parking_lot` via transitive re-export.
+
+**Why:** when a downstream consumer enables only `X`, the transitive
+re-export disappears and the build breaks. The bug ships because the
+crate's own `--all-features` test masks it.
+
+**Practical rule:** if a module uses crate `C`, feature `X` enables that
+module → `X` must list `C` as a dep, even if `Y = ["C"]` is usually
+co-enabled. Same applies to free-standing methods: if `KafkaConfig::from_env`
+calls `crate::config::env_compat::EnvVar`, gate the method itself with
+`#[cfg(feature = "config")]`. The struct stays available; only the helper
+is gated.
+
+**Enforcement (hyperi-ci, default on):**
+
+```bash
+cargo hack --each-feature --no-dev-deps check --lib
+cargo check --no-default-features --lib    # also runs by default
+```
+
+The `--no-dev-deps` flag is load-bearing: dev-deps leak features into the
+build and mask the bug. Without it the broken case looks fine.
+
+### Opt-Out-With-Reason for Default-On CI Checks
+
+For any CI check that's default-on but might genuinely need temporary bypass
+during remediation, use this config shape:
+
+```yaml
+quality:
+  rust:
+    feature_matrix:
+      enabled: false
+      reason: "tracked in dfe-loader#87, remediating 2026-04-18"
+```
+
+**CI must fail at config-parse time if `enabled: false` is set without a
+non-empty `reason`.** This makes opt-out visible: every disable is
+git-blameable, points at an issue, and is auditable across repos. Quiet
+opt-outs always rot — you find them years later still disabled.
+
 ---
 
 ## Project Structure
@@ -1051,6 +1096,49 @@ fn parse_fast(input: &[u8]) -> Result<Record, FastError> {
     // Parse logic...
 }
 ```
+
+### Process-Fatal `.expect()` is a Smell
+
+`.expect()` in a non-fallible-named constructor crashes the whole process
+on duplicate init or any environmental hiccup. Two patterns to fix it:
+
+**1. "Set global X" failures — log and continue.** The existing global
+stays in place; the new attempt no-ops. Common case: `MetricsManager::new`
+called twice in tests, or `set_global_recorder` called by two layers that
+both want metrics.
+
+```rust
+// ❌ Process-fatal — crashes the second test run
+metrics::set_global_recorder(recorder).expect("install recorder");
+
+// ✅ Idempotent — keeps existing recorder, no-ops the second call
+if let Err(e) = metrics::set_global_recorder(recorder) {
+    tracing::warn!(error = %e, "global recorder already installed; keeping existing");
+}
+```
+
+**2. Constructors that wrap `try_*` with `.expect()` — delete the wrapper.**
+Either expose only `try_X` returning `Result`, or rename `try_X → X` and
+update callers to `?`. The `new() -> Self` panicking facade adds no value
+over `try_new() -> Result<Self, _>` and creates a hidden crash surface.
+
+```rust
+// ❌ Two APIs, one a hidden landmine
+impl HttpClient {
+    pub fn new(c: Config) -> Self {
+        Self::try_new(c).expect("TLS init failure")
+    }
+    pub fn try_new(c: Config) -> Result<Self, Error> { /* ... */ }
+}
+
+// ✅ One API, fallible — caller decides what to do
+impl HttpClient {
+    pub fn new(c: Config) -> Result<Self, Error> { /* ... */ }
+}
+```
+
+Same applies to `unwrap()` in equivalent positions. Reserve `.expect()` /
+`.unwrap()` for genuinely-impossible cases (and document the invariant).
 
 ---
 
@@ -2598,6 +2686,75 @@ async fn process_stream(items: Vec<Item>) -> Vec<Result<Output>> {
 
 ## Concurrency Patterns
 
+### `Send + Sync` Discipline
+
+Every public type stored in a global singleton (`OnceLock<T>`, `Arc<T>`,
+or any `static`) must be `Send + Sync`. The compiler infers this for
+plain data, but the moment you add a field that isn't (a `Cell<_>`, a
+raw pointer, a `Rc<_>`, a callback that captures `!Send` state), the
+whole struct silently loses the bound and downstream consumers can't
+share it across threads.
+
+**Defend with a compile-time assertion in your tests** for every public
+service type — the test fails to compile (loud, immediate) if someone
+adds a field that breaks the bound:
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_send_sync<T: Send + Sync>() {}
+
+    #[test]
+    fn metrics_manager_is_send_sync() {
+        assert_send_sync::<MetricsManager>();
+    }
+
+    #[test]
+    fn http_client_is_send_sync() {
+        assert_send_sync::<HttpClient>();
+    }
+}
+```
+
+This catches drift the day it happens, not when a downstream consumer
+files a bug six months later about "can't share my service across
+tasks".
+
+### `Arc<AtomicBool>` for Closed/Done State
+
+For "is this thing closed/shut down/draining" state shared across
+tasks, prefer `Arc<AtomicBool>` over passing oneshot channels around.
+It's cheaper, clearer at the call site, and doesn't require careful
+ownership routing.
+
+```rust
+// ❌ Oneshot ownership routing — every task needs the receiver, but it
+//    can only be consumed once
+let (close_tx, close_rx) = oneshot::channel();
+// ...have to clone subscribers, multiplex via broadcast, etc.
+
+// ✅ Atomic flag — every task reads, one task sets
+struct Connection {
+    closed: Arc<AtomicBool>,
+}
+
+impl Connection {
+    fn close(&self) {
+        self.closed.store(true, Ordering::Release);
+    }
+
+    fn is_closed(&self) -> bool {
+        self.closed.load(Ordering::Acquire)
+    }
+}
+```
+
+`Acquire`/`Release` ordering is the right default for closed-state
+flags. Use `Relaxed` only for pure counters (not flags that gate
+behaviour).
+
 ### Choosing Sync Primitives
 
 | Primitive | Use Case | Lock Type |
@@ -2786,6 +2943,167 @@ fn configure_rayon() {
         .unwrap();
 }
 ```
+
+---
+
+## Auditing for Concurrency Anti-Patterns
+
+> **The mutex hunt.** LLMs default to "small example" patterns
+> (`let x = Mutex::new(...)`, `tx.send().unwrap()`) that don't scale,
+> hide deadlocks, or block the runtime. Periodically audit the codebase
+> for these — they accumulate quietly and cost throughput before they
+> cost correctness.
+
+This is a reproducible, grep-based sweep. Run it before any release that
+touches hot paths, and any time you suspect throughput regression.
+
+### 1. Locks Held Across `.await` (deadlock + throughput killer)
+
+The most common scaling bug. `parking_lot`/`std::sync::Mutex` held over
+an await point can deadlock under load and serialises an entire async
+runtime worker thread.
+
+```bash
+# Suspect lines: a .lock() / .read() / .write() that has an .await later
+# in the same function. Manual review required after grep.
+rg -nU --multiline 'let .* = .*\.(lock|read|write)\(\)\s*[;)]\s*[\s\S]{0,400}\.await' src/
+rg -n '\.lock\(\)' src/ | rg -v 'tokio::sync'
+```
+
+For each hit, ask: "is this guard alive when control yields?" If yes,
+either `drop(guard)` before `.await` or switch to `tokio::sync::Mutex`.
+
+### 2. Blocking Calls Inside Async Functions
+
+`std::fs`, `std::thread::sleep`, `reqwest::blocking`, raw `Mutex` waits
+on contention — all block the runtime thread and starve every other
+task on it.
+
+```bash
+rg -n 'std::fs::|std::thread::sleep|reqwest::blocking|::blocking::' src/ | rg -v '#\[cfg\(test\)\]|tests/'
+```
+
+Replace with the `tokio::` equivalent or wrap in `tokio::task::spawn_blocking`.
+
+### 3. Unbounded Channels (memory bomb)
+
+```bash
+rg -n 'unbounded_channel|crossbeam_channel::unbounded' src/
+```
+
+Every hit needs justification. Default-deny: replace with `mpsc::channel(N)`
+or `crossbeam::channel::bounded(N)`. Only allowed for completion channels
+in DAG schedulers where the bound is structurally proven.
+
+### 4. `.unwrap()` / `.expect()` on Channel Send
+
+```bash
+rg -n '\.send\([^)]+\)\.unwrap\(\)|\.send\([^)]+\)\.expect\(' src/
+```
+
+A panicking `.send()` crashes the producer when the consumer dies. In
+hot paths this is a process-fatal race. Match on the receiver-dropped
+error and decide: log + continue, retry with backoff, or shut down
+gracefully.
+
+### 5. Allocation in the Hot Path
+
+```bash
+# Vec::new / vec! / String::new / format! / .to_string() / .to_owned()
+# inside loops — most hits are fine in cold paths, but worth scanning.
+rg -nU --multiline 'for .+\{[\s\S]{0,300}(Vec::new|vec!|String::new|format!|\.to_string\(\)|\.to_owned\(\))' src/
+```
+
+For each hit in a hot loop: pre-allocate outside, reuse via `.clear()`,
+or push into a caller-supplied buffer.
+
+### 6. Regex on Hot Paths
+
+```bash
+rg -n 'Regex::new|regex::Regex' src/ | rg -v 'OnceLock|LazyLock|once_cell|tests/'
+```
+
+`Regex::new` allocated every call is catastrophically slow. Wrap in
+`LazyLock<Regex>` if you must use regex on a hot path — but first ask:
+can `memchr::memmem` or `str::split` do the job? See "Regex on Hot Path"
+section earlier in this doc.
+
+### 7. `Arc<Mutex<T>>` Where `Arc<T>` Suffices
+
+```bash
+rg -n 'Arc<Mutex<' src/
+```
+
+Every hit: do you actually mutate, or only read? If only read, drop the
+`Mutex` — `Arc<T>` shares immutable state lock-free. If mutation is rare
+and short, consider `ArcSwap` (atomic pointer swap) over `RwLock`.
+
+### 8. `clone()` Storms
+
+```bash
+rg -n '\.clone\(\)' src/ | wc -l
+rg -n '\.clone\(\)' src/ | rg -v '(Arc::|tests/|build.rs)'
+```
+
+`.clone()` on `Arc` is cheap (refcount bump). `.clone()` on `String`,
+`Vec`, `HashMap` is a heap allocation. The grep above filters out the
+cheap ones; what's left is the audit list. Hot-path hits should become
+borrows.
+
+### 9. `Send + Sync` Drift on Public Types
+
+If a public type *was* `Send + Sync` and a recent change added a field
+that isn't, you'll find out when downstream code stops compiling. Defend
+proactively with compile-time tests (see "`Send + Sync` Discipline" above).
+To check the current state of any type:
+
+```bash
+# In a scratch test: assert_send_sync::<TypeName>()
+# Compile error tells you immediately.
+```
+
+### 10. Parallel Iterators Without `&self` Discipline
+
+`rayon::par_iter()` requires the closure to be `Send + Sync`. Common
+mistake: capturing a `&mut` field via the closure, which silently
+serialises the work back into one thread (or fails to compile). Audit:
+
+```bash
+rg -n '\.par_iter\(\)|\.par_bridge\(\)|\.into_par_iter\(\)' src/
+```
+
+For each hit, verify the closure does only `&self`/`&T` work (computation,
+read-only lookups). Mutable state belongs in a sequential post-pass —
+see "Two-Phase Pipeline" pattern.
+
+### Quick-Run Audit Script
+
+For a one-shot sweep before release, save this as `scripts/audit-concurrency.sh`:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+echo "== 1. Locks across .await =="
+rg -nU --multiline 'let .* = .*\.(lock|read|write)\(\)\s*[;)]\s*[\s\S]{0,400}\.await' src/ || true
+echo "== 2. Blocking in async =="
+rg -n 'std::fs::|std::thread::sleep|reqwest::blocking' src/ | rg -v 'tests/' || true
+echo "== 3. Unbounded channels =="
+rg -n 'unbounded_channel|crossbeam_channel::unbounded' src/ || true
+echo "== 4. Panicking .send() =="
+rg -n '\.send\([^)]+\)\.(unwrap|expect)\(' src/ || true
+echo "== 5. Hot-loop allocation =="
+rg -nU --multiline 'for .+\{[\s\S]{0,300}(Vec::new|vec!|String::new|format!)' src/ || true
+echo "== 6. Regex on hot path =="
+rg -n 'Regex::new' src/ | rg -v 'OnceLock|LazyLock|once_cell|tests/' || true
+echo "== 7. Arc<Mutex<> =="
+rg -n 'Arc<Mutex<' src/ || true
+echo "== 8. par_iter usage =="
+rg -n '\.par_iter\(\)|\.par_bridge\(\)|\.into_par_iter\(\)' src/ || true
+```
+
+Each section produces zero or more candidate lines for human review. Most
+hits will be legitimate; the point is making the small number of real
+issues impossible to miss.
 
 ---
 
@@ -5640,6 +5958,26 @@ use tokio_rustls::TlsAcceptor;
 // No direct unsafe blocks in application code
 ```
 
+### `forbid` vs `deny` for Libraries with FFI
+
+`forbid(unsafe_code)` is **non-overridable** — even
+`#[allow(unsafe_code)]` on an inner function will fail to compile. Use
+`forbid` for application code (binary crates, services). For libraries
+that have any direct FFI (e.g. `libc::statvfs` for filesystem stats,
+`libc::sysconf` for runtime detection), `forbid` is too strict and
+breaks compilation.
+
+| Crate type | Lint | Why |
+|---|---|---|
+| `bin` (services, CLIs) | `#![forbid(unsafe_code)]` | All FFI must go through wrapper crates |
+| `lib` with no direct FFI | `#![forbid(unsafe_code)]` | Same — strongest guarantee |
+| `lib` with direct FFI | `#![deny(unsafe_code)]` | Allows `#[allow(unsafe_code)]` on the specific FFI block; every override is grep-able |
+
+When using `deny`, every `unsafe` block must be preceded by an explicit
+`#[allow(unsafe_code)]` attribute and a `// SAFETY:` comment documenting
+the invariants. Reviewers can grep `#[allow(unsafe_code)]` to enumerate
+every override in the codebase.
+
 ---
 
 ## FFI and Unsafe Rust
@@ -6500,6 +6838,45 @@ struct Graph {
     edges: Vec<(usize, usize)>,
 }
 ```
+
+---
+
+## Reference Implementation: hyperi-rustlib
+
+The `hyperi-rustlib` crate is the reference implementation of every
+pattern in this document. For concrete code examples and current API,
+**read the crate source directly** — don't try to mirror it inline here.
+
+This section is intentionally short and **drift-safe**: when rustlib
+ships a new version, this section does not need updating. New rustlib
+capabilities only require an update here if a *general* pattern (one
+that other crates should mirror) emerges from the change.
+
+### When to update this document
+
+When rustlib lands a major new capability (a new module, a new
+abstraction model that downstream crates should mirror), check whether
+RUST.md needs:
+
+1. A new general pattern section documenting the *why* (motivation,
+   trade-offs, when to apply) — not the *what* (the API itself).
+2. An update to an existing pattern if the new capability supersedes it.
+
+If neither applies, no change to RUST.md. The capability lives in the
+rustlib source and its own README.
+
+### Adding the trigger to STATE.md
+
+Consumer projects depending on rustlib should keep a single line in
+their `STATE.md`:
+
+> When `hyperi-rustlib` adds a major new capability (new module, new
+> abstraction pattern), check `standards/languages/RUST.md §
+> Reference Implementation` to see if a new general pattern needs
+> documenting.
+
+This keeps the standards in sync without coupling them to every minor
+rustlib release.
 
 ---
 
