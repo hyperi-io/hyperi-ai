@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/inject_standards.py\"",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/inject_standards.py\"; [ ! -f \"$f\" ] || exec python3 \"$f\"",
             "statusMessage": "Loading coding standards..."
           }
         ]
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/on_compact.py\""
+            "command": "f=\"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/on_compact.py\"; [ ! -f \"$f\" ] || exec python3 \"$f\""
           }
         ]
       }
@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/auto_format.py\"",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/auto_format.py\"; [ ! -f \"$f\" ] || exec python3 \"$f\"",
             "statusMessage": "Formatting..."
           }
         ]
@@ -52,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/subagent_context.py\""
+            "command": "f=\"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/subagent_context.py\"; [ ! -f \"$f\" ] || exec python3 \"$f\""
           }
         ]
       }
@@ -63,11 +63,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/safety_guard.py\""
+            "command": "f=\"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/safety_guard.py\"; [ ! -f \"$f\" ] || exec python3 \"$f\""
           },
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/prefer_hyperi_ci.py\""
+            "command": "f=\"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/prefer_hyperi_ci.py\"; [ ! -f \"$f\" ] || exec python3 \"$f\""
           }
         ]
       }
@@ -77,7 +77,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/lint_check.py\""
+            "command": "f=\"$CLAUDE_PROJECT_DIR/hyperi-ai/hooks/lint_check.py\"; [ ! -f \"$f\" ] || exec python3 \"$f\""
           }
         ]
       }
