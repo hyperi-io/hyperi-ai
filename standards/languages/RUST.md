@@ -2316,6 +2316,11 @@ fn with_env<F: FnOnce()>(vars: &[(&str, &str)], f: F) {
 | Benchmarks (`benches/`) | `benchmark` | `cargo bench` |
 | Coverage | `coverage` | `cargo tarpaulin --skip-clean` |
 
+**Release-track builds apply additional optimisations based on
+`publish.channel`** (jemalloc + fat LTO at beta+, optional PGO/BOLT at
+release). See [Release-Track Build Optimisation (hyperi-ci)](#release-track-build-optimisation-hyperi-ci)
+for the full tier table and project setup.
+
 ---
 
 ---
@@ -4105,10 +4110,17 @@ static GLOBAL_MIMALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 ```toml
 # Cargo.toml features
 [features]
-default = ["jemalloc"]
+default = []                  # Do NOT put jemalloc in default — CI opts in per channel
 jemalloc = ["dep:tikv-jemallocator", "dep:tikv-jemalloc-ctl"]
 mimalloc = ["dep:mimalloc"]
 ```
+
+> **hyperi-ci note:** Leave `default = []` for the allocator features.
+> hyperi-ci opts into `jemalloc` automatically on `beta`/`release`
+> channels via `--features jemalloc`. Keeping it out of `default`
+> means local `cargo build` stays fast and allocator choice is an
+> explicit CI-time decision. See
+> [Release-Track Build Optimisation (hyperi-ci)](#release-track-build-optimisation-hyperi-ci).
 
 ### Lock-Free Concurrent Data Structures
 
@@ -4432,6 +4444,12 @@ codegen-units = 1
 # - Fat LTO: lto = true (slower compile, sometimes faster runtime)
 ```
 
+> **hyperi-ci note:** Leave `lto = "thin"` in `Cargo.toml`. hyperi-ci
+> overrides to `fat` at build time on `beta`/`release` channels via
+> `CARGO_PROFILE_RELEASE_LTO`. This keeps local `cargo build` fast
+> while release CI builds get maximum optimisation. See
+> [Release-Track Build Optimisation (hyperi-ci)](#release-track-build-optimisation-hyperi-ci).
+
 ### Build Performance
 
 #### Linker Selection
@@ -4498,6 +4516,130 @@ cargo pgo optimize -- --bolt
 PGO is most impactful for long-running services with stable hot paths
 (ingest pipelines, query engines). Not worth the complexity for CLI
 tools or short-lived processes.
+
+**In hyperi-ci projects, don't run these commands manually in CI** —
+hyperi-ci applies PGO/BOLT automatically on `release`-channel builds
+when configured. See the
+[Release-Track Build Optimisation (hyperi-ci)](#release-track-build-optimisation-hyperi-ci)
+section below.
+
+### Release-Track Build Optimisation (hyperi-ci)
+
+hyperi-ci applies build optimisations automatically based on the
+`publish.channel` set in `.hyperi-ci.yaml`. You declare intent in
+config; hyperi-ci decides *when* to apply each optimisation. Local
+`cargo build` commands are unaffected — this only applies to CI.
+
+#### Optimisation tiers by channel
+
+| Channel | Allocator | LTO | PGO | BOLT |
+|---------|-----------|-----|-----|------|
+| `spike` | system | thin | — | — |
+| `alpha` | system | thin | — | — |
+| `beta` | **jemalloc** | **fat** | — | — |
+| `release` | **jemalloc** | **fat** | opt-in | opt-in (needs PGO, Linux-only) |
+
+**Tier 1** (allocator + fat LTO) is enabled automatically at `beta` and
+`release` — zero extra config required. Expected gain: 15-25% throughput
+from jemalloc, 2-5% from fat LTO. CI build time increases by ~5-10 min
+(fat LTO is slower to compile than thin).
+
+**Tier 2** (PGO + BOLT) requires the project to provide a representative
+workload script. Expected gain: additional 10-20% from PGO, another
+5-15% from BOLT. CI build time increases by 30-60 min (instrumented
+build + workload run + optimised build).
+
+#### What projects need to do
+
+**For Tier 1 (automatic):** Declare the allocator feature in `Cargo.toml`:
+
+```toml
+[features]
+default = []
+jemalloc = ["dep:tikv-jemallocator", "dep:tikv-jemalloc-ctl"]
+mimalloc = ["dep:mimalloc"]
+
+[dependencies]
+tikv-jemallocator = { version = "0.6", optional = true }
+tikv-jemalloc-ctl = { version = "0.6", optional = true }
+mimalloc = { version = "0.1", optional = true }
+```
+
+And wire the global allocator in `main.rs`:
+
+```rust
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
+#[cfg(all(feature = "mimalloc", not(feature = "jemalloc")))]
+#[global_allocator]
+static GLOBAL_MIMALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+```
+
+That's it. hyperi-ci builds with `--features jemalloc` on
+`beta`/`release` and overrides `CARGO_PROFILE_RELEASE_LTO=fat` via env
+var at build time. You don't edit `[profile.release]` — the env var
+overrides at build time without mutating source.
+
+If the allocator feature is missing from `Cargo.toml`, hyperi-ci falls
+back to the system allocator and logs a warning. The release build
+doesn't fail.
+
+**For Tier 2 (opt-in PGO/BOLT):** Add to `.hyperi-ci.yaml`:
+
+```yaml
+build:
+  rust:
+    optimize:
+      pgo:
+        enabled: true
+        workload_cmd: "bash scripts/pgo-workload.sh"
+        duration_secs: 300
+      bolt:
+        enabled: true           # Linux only, requires pgo.enabled
+```
+
+The `workload_cmd` must exercise the binary's actual hot paths — a
+smoke test is not enough. A bad workload can produce **negative** PGO
+gains. Guidelines for writing a good workload:
+
+- Run the binary with a realistic config against real-or-realistic
+  input (Testcontainers for deps like ClickHouse/Kafka is fine)
+- Exercise parsing, transforms, writes — not just startup
+- Maintain sustained throughput for at least 5 minutes
+- Include the mix of message types you see in production
+
+#### Opting out or customising
+
+`.hyperi-ci.yaml` lets you override per-channel defaults:
+
+```yaml
+build:
+  rust:
+    optimize:
+      allocator: system         # Disable jemalloc on beta/release
+      lto: thin                 # Disable fat LTO on beta/release
+      # pgo/bolt omitted → off (the defaults)
+```
+
+#### Applies to binaries only
+
+Libraries (crates with no `[[bin]]` in `Cargo.toml`) don't get these
+optimisations — consumers choose their own release profile. hyperi-ci
+detects lib-only crates and skips the whole optimisation path.
+
+#### Build-time cost reference
+
+| Stage | Added time | Enabled when |
+|-------|-----------|--------------|
+| `--features jemalloc` | ~10s (one extra crate compile) | beta+ |
+| Fat LTO (`CARGO_PROFILE_RELEASE_LTO=fat`) | +5-10 min | beta+ |
+| PGO (instrument + workload + optimise) | +20-40 min | release + opt-in |
+| BOLT (extra profile pass) | +10-20 min | release + opt-in |
+
+These costs only apply to release-track CI builds. Pushes to feature
+branches or `spike`/`alpha` channels are unaffected.
 
 ### Inline Hints on Hot Paths
 
@@ -6919,6 +7061,22 @@ config-looking file (`defaults.yaml`, `clippy.toml`, `.cargo/config.toml`),
 
 The cost of checking is 30 seconds. The cost of editing the wrong file
 and believing CI is configured when it's not is an incident.
+
+### hyperi-ci Release-Track Optimisation Pitfalls
+
+When a project uses hyperi-ci, build optimisations are applied by CI
+based on `publish.channel`. Do NOT hand-tune these in source:
+
+| ❌ Don't | ✅ Do | Why |
+|---------|-------|-----|
+| Edit `[profile.release] lto = "fat"` in `Cargo.toml` | Leave `lto = "thin"`, let hyperi-ci override at build time | `CARGO_PROFILE_RELEASE_LTO=fat` env var overrides at build time without mutating source; local `cargo build` stays fast |
+| Add `default = ["jemalloc"]` to `[features]` | `default = []`, hyperi-ci opts in via `--features jemalloc` on beta+ | Keeps allocator choice an explicit CI-time decision; local `cargo build` stays fast |
+| Run `cargo pgo` / `cargo pgo bolt` in CI manually | Configure via `build.rust.optimize.pgo` / `.bolt` in `.hyperi-ci.yaml` | hyperi-ci handles channel gating, instrument/profile/optimise steps, and BOLT-Linux-only fallback |
+| Hand-write a GitHub Actions job for PGO/BOLT | Rely on the reusable `rust-ci.yml` workflow | Every project repeats the same pattern — DRY it up in hyperi-ci |
+| Treat PGO as always-on | Understand: PGO needs a *representative workload*. A bad workload can give negative speedup | Skip PGO until you have a workload script that exercises real hot paths for 5+ min |
+
+See [Release-Track Build Optimisation (hyperi-ci)](#release-track-build-optimisation-hyperi-ci)
+for the full contract.
 
 ### DO NOT Generate
 

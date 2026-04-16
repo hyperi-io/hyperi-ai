@@ -558,6 +558,56 @@ strip = false
 - `sccache` with S3/GCS/Redis for CI cache sharing.
 - PGO + BOLT: 15-35% improvement for stable hot-path services.
 
+### hyperi-ci Release-Track Optimisation
+
+hyperi-ci applies build optimisations by `publish.channel`. Do NOT
+hand-tune these in source — let CI decide per channel.
+
+| Channel | Allocator | LTO | PGO | BOLT |
+|---------|-----------|-----|-----|------|
+| `spike`/`alpha` | system | thin | — | — |
+| `beta` | **jemalloc** | **fat** | — | — |
+| `release` | **jemalloc** | **fat** | opt-in | opt-in (Linux only) |
+
+**Project setup (Tier 1 — automatic at beta+):**
+
+```toml
+# Cargo.toml — keep defaults minimal
+[profile.release]
+lto = "thin"                 # CI overrides to "fat" at beta+
+
+[features]
+default = []                 # Do NOT include jemalloc here
+jemalloc = ["dep:tikv-jemallocator", "dep:tikv-jemalloc-ctl"]
+mimalloc = ["dep:mimalloc"]
+```
+
+```rust
+// main.rs — wire allocator under feature flag
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+```
+
+**Tier 2 opt-in (PGO + BOLT on release only):**
+
+```yaml
+# .hyperi-ci.yaml
+build:
+  rust:
+    optimize:
+      pgo:
+        enabled: true
+        workload_cmd: "bash scripts/pgo-workload.sh"
+        duration_secs: 300
+      bolt:
+        enabled: true         # Linux-only, requires pgo
+```
+
+`workload_cmd` must exercise actual hot paths — bad workload = negative
+PGO gain. Libraries are skipped automatically. Opt out via
+`optimize.allocator: system` or `optimize.lto: thin`.
+
 ---
 
 ## Data Pipeline Architecture
@@ -820,6 +870,16 @@ index = "sparse+https://hyperi.jfrog.io/artifactory/api/cargo/hyperi-cargo-virtu
 - Incorrect lifetime annotations
 - `Box<dyn Error>` in libraries
 - Useless `.into()` where types already match
+
+### hyperi-ci Release-Track Pitfalls
+
+| ❌ Don't | ✅ Do |
+|----------|-------|
+| Edit `[profile.release] lto = "fat"` | Leave `lto = "thin"`, CI overrides via `CARGO_PROFILE_RELEASE_LTO` on beta+ |
+| Add `default = ["jemalloc"]` | `default = []`, CI opts in via `--features jemalloc` on beta+ |
+| Hand-run `cargo pgo` in CI | Configure `build.rust.optimize.pgo` in `.hyperi-ci.yaml` |
+| Treat PGO as always-on | PGO needs a representative workload — bad workload = negative gain |
+| Write custom GH Actions for PGO/BOLT | Rely on reusable `rust-ci.yml` + config |
 
 ### AI Test Generation Traps
 

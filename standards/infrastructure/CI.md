@@ -170,6 +170,60 @@ To graduate, change one line in `.hyperi-ci.yaml`. No code changes needed.
 
 ---
 
+## Channel-Tiered Build Optimisation (Rust Binaries)
+
+For Rust binary projects, hyperi-ci applies build optimisations
+automatically based on `publish.channel`. This keeps local `cargo build`
+fast while release-track CI builds get maximum optimisation.
+
+### Tier table
+
+| Channel | Allocator | LTO | PGO | BOLT |
+|---------|-----------|-----|-----|------|
+| `spike` / `alpha` | system | thin | — | — |
+| `beta` | **jemalloc** | **fat** | — | — |
+| `release` | **jemalloc** | **fat** | opt-in | opt-in (Linux only) |
+
+**Tier 1** (allocator + fat LTO on beta+) is automatic. Expected gain:
+15-25% throughput from jemalloc, 2-5% from fat LTO. CI build time
+increases by ~5-10 min.
+
+**Tier 2** (PGO + BOLT on release) requires opt-in per project via
+`build.rust.optimize` in `.hyperi-ci.yaml`. Expected gain: additional
+10-20% from PGO, 5-15% from BOLT. CI build time increases by 30-60 min.
+
+### Project setup
+
+Tier 1 needs only a Cargo.toml feature flag for `jemalloc`/`mimalloc`
+(see Rust standards). Tier 2 needs:
+
+```yaml
+build:
+  rust:
+    optimize:
+      pgo:
+        enabled: true
+        workload_cmd: "bash scripts/pgo-workload.sh"
+        duration_secs: 300
+      bolt:
+        enabled: true
+```
+
+### Scope
+
+- **Binaries only.** Libraries (no `[[bin]]` in `Cargo.toml`) skip the
+  whole optimisation path — consumers choose their own profile.
+- **Opt-out at any time.** Set `optimize.allocator: system` or
+  `optimize.lto: thin` to bypass Tier 1 for a specific project.
+- **Local builds unaffected.** Running `cargo build --release` on your
+  machine produces the same binary as before. Only hyperi-ci CI applies
+  the channel-specific overrides.
+
+See `standards/languages/RUST.md` — Release-Track Build Optimisation
+section — for the full contract.
+
+---
+
 ## Commit Message Format
 
 All commits must follow conventional commit format. This is enforced by:
