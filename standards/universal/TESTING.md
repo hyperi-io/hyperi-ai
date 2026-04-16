@@ -272,12 +272,134 @@ When generating integration tests for external tools, AI assistants MUST:
 
 ---
 
+## Integration Tests Are Mandatory
+
+Unit tests prove functions work in isolation. Integration tests prove the system works with its actual dependencies — the database it queries, the broker it publishes to, the API it calls. **Skipping integration tests is the single biggest source of "works on my machine" production failures.**
+
+Every project that talks to an external service MUST have integration tests against that service.
+
+### External Service Pattern: Existing-or-Docker
+
+When an integration test needs an external service (Postgres, Kafka, Redis, ClickHouse, OpenBao, etc.), follow this resolution order:
+
+1. **Check for existing-service config** — env vars or settings pointing at a real instance (`POSTGRES_URL`, `KAFKA_BROKERS`, `CLICKHOUSE_HOST`, etc.)
+2. **If set → use the existing service** — skip Docker, connect directly, run against the real thing
+3. **If unset → spin up Docker via testcontainers** — auto-managed lifecycle, deterministic version, parallel-safe
+
+**Why both:** Developers running tests against a shared dev cluster shouldn't pay the Docker startup cost. CI without an external cluster shouldn't fail to run integration tests. Both paths must work.
+
+```python
+# Python example — pytest fixture
+@pytest.fixture(scope="session")
+def postgres_url():
+    if url := os.getenv("POSTGRES_URL"):
+        # Existing service path — verify reachable, then use
+        wait_for_postgres(url, timeout=5)
+        return url
+    # Docker fallback
+    with PostgresContainer("postgres:16") as pg:
+        yield pg.get_connection_url()
+```
+
+```rust
+// Rust example — OnceLock-managed
+fn kafka_brokers() -> &'static str {
+    static BROKERS: OnceLock<String> = OnceLock::new();
+    BROKERS.get_or_init(|| {
+        std::env::var("KAFKA_BROKERS").unwrap_or_else(|_| {
+            // Docker fallback via testcontainers
+            start_kafka_container().bootstrap_servers()
+        })
+    })
+}
+```
+
+### Rules
+
+- **Same test code, both paths.** The test must not branch on which service it's hitting — the fixture handles resolution.
+- **Document required env vars** in `tests/README.md` — what to set, what version is expected.
+- **Pin Docker image versions** in fixtures — `postgres:16.2`, never `postgres:latest`.
+- **Tear down test data, not the service** — when using existing services, tests must clean up (drop test schemas, delete topics, etc.) but never `DROP DATABASE` shared infrastructure.
+- **CI defaults to Docker.** Existing-service mode is for local fast iteration and dedicated test clusters.
+
+### Service Selection Matrix
+
+| Service | Existing-service env var | Docker image (testcontainers) |
+|---------|-------------------------|------------------------------|
+| PostgreSQL | `POSTGRES_URL` / `DATABASE_URL` | `postgres:16` |
+| Kafka | `KAFKA_BROKERS` | `confluentinc/cp-kafka` |
+| Redis | `REDIS_URL` | `redis:7` |
+| ClickHouse | `CLICKHOUSE_HOST` + `CLICKHOUSE_PORT` | `clickhouse/clickhouse-server` |
+| OpenBao / Vault | `BAO_ADDR` + `BAO_TOKEN` | `openbao/openbao` |
+| MinIO / S3 | `S3_ENDPOINT` + `S3_ACCESS_KEY` | `minio/minio` |
+
+---
+
+## E2E Tests: Where Relevant, If at All
+
+E2E tests run the full system against real infrastructure end-to-end. They are **slow, flaky, expensive to maintain** — and irreplaceable for validating user-facing workflows that span multiple services.
+
+### When to write E2E tests
+
+- The project has user-facing workflows that traverse 3+ services (ingest → transform → store → query)
+- Releases ship to production without a manual QA pass
+- Integration tests can't catch interaction bugs (auth flows, distributed transactions, end-to-end backpressure)
+
+### When to skip E2E entirely
+
+- Pure libraries — `hyperi-rustlib`, `hyperi-pylib`. Integration tests against real downstream services are sufficient.
+- CLI tools with no service dependencies
+- Internal utilities used only by other code (covered by callers' tests)
+
+### Rules when E2E exists
+
+- Marked `#[ignore]` (Rust), `@pytest.mark.e2e` (Python), `//go:build e2e` (Go) — never run in default test invocation
+- Trigger only on PR to `release` branch — never on every push
+- 20-minute SLO — exceeds budget → split, parallelise, or cut scope
+- One environment, one truth — point at a dedicated staging cluster, not whatever a developer happens to have running
+- Failures block the release merge, not feature merges to main
+
+---
+
 ## Coverage
 
-- 80% minimum for all projects (CI-enforced)
-- 90% for AI-generated code
-- Measure with: `cargo tarpaulin` (Rust), `pytest-cov` (Python), `go test -cover` (Go)
-- Coverage that never runs in CI is fiction
+- **80% floor** — repo-wide minimum (CI-enforced). Drops below this block merge.
+- **90%+ goal** — what every project should be aiming at. Treat the gap between current and 90% as technical debt.
+- **≥90% hot path** — non-negotiable for performance-critical code (parsers, transforms, pipeline core, SIMD paths). Mark with `// HOT PATH` and enforce per-module thresholds.
+- **90%+ for AI-generated code** — extra scrutiny for machine-written logic.
+- Coverage that never runs in CI is fiction — measure in CI, fail on regression.
+
+### Explicit Exemptions
+
+The following are excluded from coverage thresholds. Configure exclusions **explicitly** in your coverage tool — implicit exemption is invisible exemption.
+
+| Category | Examples | Why |
+|----------|----------|-----|
+| **Generated code** | `*.pb.rs`, `_pb2.py`, OpenAPI clients, `gen/**`, `target/**` | Tested upstream, not authored by us |
+| **Test utilities** | `tests/common/`, `tests/fixtures/`, `conftest.py` helpers | Tests test code, not test infrastructure |
+| **Build scripts** | `build.rs`, `setup.py`, packaging glue, `scripts/ci-*` | Validated by the build itself |
+| **Vendored code** | `vendor/`, `third_party/` | Owned externally |
+
+Configure in `.tarpaulin.toml` (Rust), `pyproject.toml [tool.coverage.run] omit` (Python), `.golangci.yml` / coverage profile filtering (Go), or `vitest.config.ts coverage.exclude` (TS).
+
+### Coverage ≠ Test Quality
+
+Hitting 80% with `assert(true)` is worse than 60% with real tests. **Coverage is a floor, not a goal.** Tests at any threshold MUST include:
+
+- **Expected failures** — every error path, every exception variant, every `Err(...)` branch tested with the input that triggers it
+- **Complex data sets** — realistic payloads, malformed input, boundary values: `0`, `1`, max, empty, `None`/`null`, `NaN`, overflow, unicode edge cases
+- **Fuzzing where applicable** — anything that parses untrusted bytes (deserialisers, protocol handlers, regex inputs, file format readers) gets a fuzz harness
+- **Adversarial input** — what does it do with the worst input you can think of?
+
+Tools:
+
+| Language | Coverage | Fuzzing |
+|----------|----------|---------|
+| Rust | `cargo tarpaulin --out Html` | `cargo fuzz` (libFuzzer), `proptest` for property-based |
+| Python | `pytest --cov=src --cov-fail-under=80` | `hypothesis`, `atheris` |
+| Go | `go test -cover -coverprofile=cover.out ./...` | `go test -fuzz=Fuzz` (Go 1.18+) |
+| TypeScript | `vitest --coverage` (v8) | `fast-check` (property-based) |
+| C++ | `llvm-cov` | `libFuzzer`, OSS-Fuzz |
 
 ---
 
