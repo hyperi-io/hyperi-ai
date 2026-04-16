@@ -1357,6 +1357,147 @@ async with httpx.AsyncClient(timeout=30.0) as client:
 
 ---
 
+## Resilience Patterns
+
+Every Python service that talks to anything outside its own process
+needs four resilience primitives: **timeout, retry, circuit breaker,
+bulkhead.** Skip any one and you'll discover which the hard way during
+an incident.
+
+### The Four Primitives
+
+| Primitive | Job | Without it |
+|---|---|---|
+| **Timeout** | Bound the time you'll wait for a single call | A single slow dependency hangs your worker forever |
+| **Retry** (with backoff + jitter) | Recover from transient failures | A 0.1s blip surfaces as a user-facing error |
+| **Circuit breaker** | Stop hammering a known-down dependency | You retry-storm the dependency back to its grave on every recovery |
+| **Bulkhead** (concurrency cap) | Limit concurrent calls so one bad dep can't starve the rest | A slow downstream consumes all your tasks/threads |
+
+Apply them as a **layered stack**, outermost to innermost:
+`bulkhead → circuit_breaker → retry → timeout → call`. Bulkhead first
+because it's the cheapest fail-fast; timeout innermost because retries
+must each have their own clock.
+
+### Circuit Breaker State Machine
+
+Three states; transitions are time-driven:
+
+```text
+                  failure_threshold consecutive failures
+        CLOSED ─────────────────────────────────────► OPEN
+          ▲                                            │
+          │ success                       cooldown_seconds
+          │                                            │
+          │   success                                  ▼
+          └────────────────────────── HALF_OPEN ◄──────┘
+                                          │
+                                          │ any failure
+                                          └──────────► OPEN (back to cooldown)
+```
+
+- **CLOSED** — calls flow through; track consecutive failures.
+- **OPEN** — calls fail immediately (no network call) for `cooldown_seconds`.
+- **HALF_OPEN** — let exactly one probe through; success closes the
+  circuit, any failure re-opens it.
+
+Required behaviours, regardless of the library you choose:
+
+- **Per-target** instance, not global. One breaker per `(service, endpoint)` tuple.
+- **Thread-safe** counters (Python: `threading.Lock` or `asyncio.Lock`).
+- **Distinguish** infrastructure failures (count) from business errors
+  (don't count) — a 404 is not a circuit-opening event.
+- **Emit metrics** on every state transition (`circuit_breaker_state`
+  gauge with `target` label).
+- **Context-manager API** — `with breaker: result = call()` so the
+  breaker can't be forgotten on the failure path.
+
+### Retry: Exponential Backoff With Jitter
+
+Always jitter. Synchronised retry from N clients without jitter is a
+DDoS on your already-struggling dependency.
+
+```python
+# ✅ stamina (recommended) — async-aware, jitter built in
+from stamina import retry
+
+@retry(on=httpx.HTTPError, attempts=3, wait_initial=0.1, wait_jitter=1.0)
+async def fetch(url: str) -> dict:
+    async with httpx.AsyncClient(timeout=10) as client:
+        r = await client.get(url)
+        r.raise_for_status()
+        return r.json()
+```
+
+**Retry rules:**
+
+- **Only retry idempotent operations** — never blindly retry POST/PUT
+  unless the API is idempotent (Stripe `Idempotency-Key`, etc.).
+- **Cap attempts AND total time** — `attempts=3, wait_max=10` not
+  "retry until success".
+- **Don't retry 4xx** (except 408, 425, 429) — the request is the
+  problem, retrying won't help.
+- **Don't retry inside a circuit breaker's OPEN window** — the breaker
+  is your "stop trying" signal.
+
+### Bulkhead: Concurrency Limits Per Dependency
+
+```python
+# ✅ Per-dependency semaphore — slow downstream X can't starve calls to Y
+class ServiceClient:
+    def __init__(self, max_concurrent: int = 10):
+        self._sem = asyncio.Semaphore(max_concurrent)
+
+    async def call(self, payload: dict) -> dict:
+        async with self._sem:
+            async with asyncio.timeout(5):
+                return await self._http.post("/api", json=payload)
+```
+
+One semaphore per *external* dependency, sized by that dependency's
+known concurrency tolerance. Without bulkheads, a single slow dependency
+will consume your entire async task pool until everything is blocked.
+
+### Library Choices
+
+| Need | Recommended | Notes |
+|---|---|---|
+| Retry with backoff/jitter | `stamina` | Sync + async, type-hinted, structured logging hooks |
+| Circuit breaker | `purgatory` or roll your own | The state machine is small; rolling your own is fine if you need custom failure classification |
+| Bulkhead | `asyncio.Semaphore` (async) / `threading.BoundedSemaphore` (sync) | Stdlib is sufficient |
+| Timeout | `asyncio.timeout()` (3.11+) | Replaces older `asyncio.wait_for` |
+
+Avoid `tenacity` for new code — `stamina` is its modern successor with
+better defaults, async support, and cleaner API.
+
+### Anti-Patterns
+
+```python
+# ❌ Retry without jitter — synchronised retry storm
+for attempt in range(3):
+    try:
+        return call()
+    except Exception:
+        time.sleep(2 ** attempt)  # All clients retry at same instants
+
+# ❌ Retry without timeout — each attempt can hang forever
+@retry(attempts=5)
+async def hang():
+    return await client.get(url)  # No timeout = single attempt = forever
+
+# ❌ Catching `Exception` in retry classifier — retries on bugs too
+@retry(on=Exception, attempts=10)  # Retries TypeError, KeyError, etc.
+
+# ❌ Global circuit breaker — one bad endpoint trips ALL calls
+breaker = CircuitBreaker()  # Module-level singleton — wrong granularity
+
+# ❌ No bulkhead — one slow dep starves everything
+results = await asyncio.gather(*[
+    call_anything(i) for i in range(10_000)
+])  # Unbounded concurrency
+```
+
+---
+
 ## Container Deployment (Docker + K8s)
 
 95% of HyperI Python services run inside containers on Kubernetes.
