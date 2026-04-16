@@ -15,59 +15,85 @@ source: languages/PYTHON.md
 
 # Python Standards — HyperI Projects
 
-**Minimum Python: 3.12+** (lockstep across all projects)
+**Minimum Python Version: 3.12+** (lockstep across all projects)
 
-## AI Anti-Patterns — Fix These First
+## Design Philosophy
 
-| ❌ Dead / Old | ✅ Use Instead | Why |
+- Python = everything except hot path (hot path → Rust)
+- Optimise for expressiveness, ecosystem, recruitability — not microseconds
+- Promote shared patterns to `hyperi-pylib`
+- Always use `uv` and Astral tooling (`ruff`, `ty`)
+- System utilities: Python 3 + stdlib only; everything else uses `uv` + `.venv`
+- Rust-Python bridge via PyO3/maturin when Rust crate useful in Python
+
+```bash
+uv add maturin --dev
+maturin develop  # Build + install Rust bindings in current venv
+```
+
+## AI Anti-Patterns — CRITICAL
+
+> **Web search EVERY Python library before using it.** AI training data is full of deprecated patterns.
+
+### Deprecated Packages
+
+| ❌ Don't Use | ✅ Use Instead | Why |
 |---|---|---|
 | `psycopg2` / `psycopg2-binary` | `psycopg[binary]` (v3) | Legacy, build issues |
 | `python-jose` | `joserfc` or `PyJWT` | Unmaintained |
-| `requests` (new async code) | `httpx` | Async, HTTP/2, typed |
-| `flask` (new APIs) | `fastapi` or `litestar` | Async-native, Pydantic |
+| `requests` (async code) | `httpx` | Async, HTTP/2, typed |
+| `flask` (new APIs) | `fastapi` or `litestar` | Async-native, auto-docs |
 | `datetime.utcnow()` | `datetime.now(UTC)` | Deprecated 3.12 |
 | `pkg_resources` | `importlib.metadata` | Deprecated, slow |
 | `distutils` | `setuptools` or `hatchling` | Removed 3.12 |
-| `setup.py` / `setup.cfg` | `pyproject.toml` | PEP 517/518 |
-| `cgi` / `cgitb` | ASGI framework | Removed 3.13 |
+| `setup.py`/`setup.cfg` | `pyproject.toml` | PEP 517/518 |
+| `cgi`/`cgitb` | ASGI framework | Removed 3.13 |
 | `unittest.mock` | Real deps (testcontainers) | No mocks policy |
 | `asyncio.ensure_future()` | `asyncio.create_task()` | Superseded |
 | `typing.List/Dict/Optional` | `list[str]`, `str \| None` | Built-in generics 3.9+ |
-| `os.path` (new code) | `pathlib.Path` | Cleaner API |
+| `os.path` (new code) | `pathlib.Path` | OO, cleaner |
 | `print()` for logging | `logger.info()` | Structured, maskable |
 | `subprocess.run(shell=True)` | `subprocess.run([...])` | Injection risk |
 | `pip install` | `uv add` | uv is standard |
 | `python -m venv` | `uv venv` | uv is standard |
-| `requirements.txt` (primary) | `pyproject.toml` + `uv.lock` | Modern packaging |
+| `requirements.txt` | `pyproject.toml` + `uv.lock` | Modern packaging |
+
+### Patterns AI Always Gets Wrong
 
 ```python
-# ❌ EVERY model does this
+# ❌ Old typing imports
 from typing import List, Dict, Optional, Union
-T = TypeVar("T")
-# ✅ Python 3.12+
+# ✅ Built-in generics (3.12+)
 list[str], dict[str, int], str | None, tuple[int, ...]
-def first[T](items: list[T]) -> T | None: ...
-```
 
-```python
+# ❌ Old TypeVar generic syntax
+T = TypeVar("T")
+# ✅ 3.12+ syntax
+def first[T](items: list[T]) -> T | None: ...
+
 # ❌ datetime.utcnow()
 now = datetime.utcnow()
 # ✅ Timezone-aware
-from datetime import datetime, UTC
 now = datetime.now(UTC)
-```
 
-```python
+# ❌ requests (blocking)
+r = requests.get(url)
+# ✅ httpx async
+async with httpx.AsyncClient() as client:
+    r = await client.get(url)
+
+# ❌ os.path
+path = os.path.join(base_dir, "config", "settings.yaml")
+# ✅ pathlib
+path = Path(base_dir) / "config" / "settings.yaml"
+
 # ❌ Bare except / swallowed exceptions
-except Exception:
-    pass  # NEVER
-# ✅ Specific, always handle
+except Exception: pass
+# ✅ Specific, logged, re-raised
 except ValueError as e:
     logger.error("Invalid input", error=str(e))
     raise
-```
 
-```python
 # ❌ Mutable default arguments
 def process(items=[]):
 # ✅ None default
@@ -78,11 +104,11 @@ def process(items: list[str] | None = None):
 ## Quick Reference
 
 ```bash
-uv tool install hyperi-ci && hyperi-ci init  # Setup
-hyperi-ci check          # Quality + test (or: make check)
-hyperi-ci check --quick  # Quality only (or: make quality)
-hyperi-ci run test       # Test (or: make test)
-hyperi-ci run build      # Build (or: make build)
+uv tool install hyperi-ci && hyperi-ci init   # Setup
+hyperi-ci check          # or make check       # Quality + test
+hyperi-ci check --quick  # or make quality     # Quality only
+hyperi-ci run test       # or make test        # Test
+hyperi-ci run build      # or make build       # Build
 ```
 
 ## Python 3.12+ Features to Use
@@ -103,19 +129,16 @@ class Stack[T]:
 
 ```python
 match command:
-    case {"action": "create", "name": str(name)}:
-        create_resource(name)
-    case _:
-        raise ValueError(f"Unknown: {command}")
+    case {"action": "create", "name": str(name)}: create_resource(name)
+    case {"action": "delete", "id": int(id)}: delete_resource(id)
+    case _: raise ValueError(f"Unknown command: {command}")
 ```
 
 ### Walrus Operator `:=`
 
 ```python
-if results := get_results():
-    process(results)
-while chunk := f.read(8192):
-    process(chunk)
+if results := get_results(): process(results)
+while chunk := f.read(8192): process(chunk)
 valid = [y for x in data if (y := transform(x)) is not None]
 ```
 
@@ -126,7 +149,7 @@ from enum import StrEnum
 class Status(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
-# Works directly as string — no .value needed
+# Works as string directly: status == "pending"
 ```
 
 ### TaskGroup + ExceptionGroup (3.11+)
@@ -134,12 +157,11 @@ class Status(StrEnum):
 ```python
 async with asyncio.TaskGroup() as tg:
     tasks = [tg.create_task(process(item)) for item in items]
-# Cancels remaining on failure, collects ALL exceptions
-try:
-    await process_batch(items)
+# Cancels remaining on failure, collects ALL exceptions as ExceptionGroup
+
+try: await process_batch(items)
 except* ValueError as eg:
-    for exc in eg.exceptions:
-        logger.error("Validation failed", error=str(exc))
+    for exc in eg.exceptions: logger.error("Validation failed", error=str(exc))
 ```
 
 ### tomllib (3.11+ stdlib)
@@ -151,25 +173,33 @@ with open("pyproject.toml", "rb") as f:
 # For writing TOML: use tomli-w
 ```
 
-### Template Strings (3.14, future)
+### Template Strings (3.14 — future)
 
-`t"SELECT * FROM users WHERE id = {user_id}"` → produces `Template`, not string.
+`t"SELECT * FROM users WHERE id = {user_id}"` produces `Template` object, not string — safe for SQL/HTML.
 
 ## Type Hints (Required)
 
 ```python
-# ✅ Modern — REQUIRED
+# ✅ Modern syntax — REQUIRED
 def process(items: list[str]) -> dict[str, int]: ...
 def optional(value: str | None = None) -> str | None: ...
 type Handler[T] = Callable[[T], None]
 
-# ❌ NEVER in new code
-from typing import List, Dict, Optional, TypeVar
+# ✅ All public functions need type hints
+# ✅ Variable annotations for non-obvious types
+users: list[User] = []
 ```
 
-- All public functions need type hints
-- Variable annotations for non-obvious types
-- Avoid circular imports with `TYPE_CHECKING` guard + string annotations
+### Avoiding Circular Imports
+
+```python
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from myapp.models import User
+def get_user(user_id: int) -> "User":
+    from myapp.models import User  # Runtime import
+    return User.get(user_id)
+```
 
 ## Code Style: Clarity Over Cleverness
 
@@ -185,56 +215,60 @@ from typing import List, Dict, Optional, TypeVar
 ### Formatting
 
 - **4 spaces** (never tabs)
-- **88 char line length** (Black default)
+- **88 chars** line length (Black default)
 - Trailing commas in multi-line constructs
-- Ruff + Black handle formatting — no bikeshedding
+- Ruff handles import ordering automatically (stdlib → third-party → local)
 
-### Imports
-
-Three groups, blank line between, alphabetical within:
+### Import Rules
 
 ```python
-# Standard library
-import os
-from pathlib import Path
-# Third-party
-import httpx
-from fastapi import FastAPI
-# Local
-from hyperi_pylib import logger
+# ✅ Import modules, not individual items (Google rule)
+import os                           # ✅
+from os import path                 # ❌
+# Exception: well-known short imports
+from pathlib import Path            # ✅
+from typing import Protocol         # ✅
+from dataclasses import dataclass   # ✅
 ```
-
-No wildcard imports. Ruff `I` rules enforce order.
 
 ### Google-Sourced Rules
 
-| ❌ Don't | ✅ Do | Why |
-|---|---|---|
-| `if value == None` | `if value is None` | `__eq__` can be overridden |
-| Mutable global state `CACHE = {}` | DI or function returning fresh dict | Breaks testability |
-| Broad `try/except Exception: pass` | Minimal-scope specific exceptions | Hides bugs |
-| Semicolons `x = 1; y = 2` | One statement per line | Readability |
-| `get_full_name()` methods | `@property full_name` | Pythonic |
-| Nested comprehensions | Explicit loops | Readability |
-| Metaclasses, `__getattr__` hacks, `exec()` | Simple classes | Debuggability |
-| `from os import path` | `import os` then `os.path` | Origin obvious |
-
-**Exception:** well-known short imports OK: `from pathlib import Path`, `from typing import Protocol`, `from dataclasses import dataclass`
-
-### Comprehensions
-
 ```python
-[x**2 for x in range(10)]  # ✅ Single clause OK
-# ❌ No nested/multi-clause — use explicit loop
+# Use `is` for None/True/False
+if value is None: ...               # ✅
+if value == None: ...               # ❌
+
+# No mutable global state
+CACHE = {}                          # ❌
+
+# Minimise try/except scope
+# No semicolons — ever
+# Properties over get/set methods
+# No "power features" (metaclasses, __getattr__ hacks, exec, sys._getframe)
+# Comprehensions: ONE clause max, no nesting
+# Default arguments MUST be immutable
 ```
 
-### Comments
+### Clarity Examples
 
-- Explain **WHY**, not WHAT
-- Never number comments (hard to maintain)
-- Use intermediate variables with descriptive names over dense expressions
+```python
+# ❌ Dense lambda chain
+result = list(map(lambda x: x[1], filter(lambda x: x[0] > 10, data)))
+# ✅ Clear steps
+filtered = [item for item in data if item[0] > 10]
+result = [value for _, value in filtered]
+
+# ❌ Unexplained logic
+if (a and b) or (c and not d): process()
+# ✅ Named conditions
+both_met = a and b
+special_case = c and not d
+if both_met or special_case: process()
+```
 
 ## Docstrings (PEP 257 + Google Style)
+
+**Convention: Google style.** Imperative mood, period-terminated summary, `"""` always.
 
 ```python
 def calculate_discount(price: float, percent: float) -> float:
@@ -242,35 +276,42 @@ def calculate_discount(price: float, percent: float) -> float:
 
     Args:
         price: Original price in cents.
-        percent: Discount percentage (0-100).
+        percent: Discount percentage (0-100 inclusive).
 
     Returns:
         Discounted price in cents.
 
     Raises:
-        ValueError: If percent outside [0, 100].
+        ValueError: If ``percent`` is outside [0, 100].
     """
 ```
 
-**Required sections:** `Args:` (public with params), `Returns:`, `Raises:`, `Attributes:` (classes), `Examples:` (non-obvious APIs).
+**Required sections:** `Args:` (public with params), `Returns:`/`Yields:`, `Raises:`, `Attributes:` (classes), `Examples:` (non-obvious APIs).
 
-**PEP 257 rules:** imperative mood first line ending with period, blank line after summary, triple double-quotes, closing `"""` on own line for multi-line.
-
-### Ruff D Configuration
+### Ruff D Rules Config
 
 ```toml
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "D"]
-ignore = ["D203", "D213"]  # Conflict pairs
+ignore = ["D203", "D213"]  # Conflict resolution
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
 ```
 
-Key enforced rules: D100-D103 (missing docstrings), D205 (blank line after summary), D400 (period), D401 (imperative mood), D417 (missing arg descriptions).
+**Enforcement: warn by default** (ratchet pattern). Promote to blocking once backlog cleared:
 
-**Sphinx:** enable `sphinx.ext.napoleon` with `napoleon_google_docstring = True`.
+```yaml
+# .hyperi-ci.yaml
+quality:
+  python:
+    ruff_docstrings: blocking   # Once backlog is zero
+```
+
+**Adoption on existing codebases:** enable D globally, add `per-file-ignores` for legacy modules, remove as documented. Enable napoleon in Sphinx `conf.py` for Google-style parsing.
 
 ## Modern Patterns
 
@@ -295,16 +336,17 @@ class EventKey:
 def read_events(path: Path):
     with path.open() as f:
         for line in f:
-            if line.strip():
-                yield json.loads(line)
+            if line.strip(): yield json.loads(line)
 ```
 
-### Protocols over ABC
+### functools.singledispatch
 
 ```python
-class Sendable(Protocol):
-    def send(self, data: bytes) -> None: ...
-# Structural typing — no inheritance needed
+@singledispatch
+def serialize(obj) -> str:
+    raise TypeError(f"Cannot serialize {type(obj)}")
+@serialize.register
+def _(obj: dict) -> str: return json.dumps(obj)
 ```
 
 ### Pydantic (Validation + Settings)
@@ -321,7 +363,18 @@ class UserCreate(BaseModel):
         return v
 ```
 
-For config: use `hyperi_pylib.config.settings` (8-layer cascade). Use `pydantic_settings.BaseSettings` only for non-HyperI projects.
+For settings: use `hyperi_pylib.config.settings` in HyperI projects; `pydantic_settings.BaseSettings` elsewhere.
+
+### Protocols (Structural Typing)
+
+Use `Protocol` over `ABC` — structural (duck typing with type checking), no inheritance required.
+
+```python
+class Sendable(Protocol):
+    def send(self, data: bytes) -> None: ...
+def dispatch(sender: Sendable, payload: bytes) -> None:
+    sender.send(payload)
+```
 
 ### FastAPI Dependency Injection
 
@@ -330,12 +383,7 @@ async def get_db():
     db = await connect_db()
     try: yield db
     finally: await db.close()
-
 DB = Annotated[Database, Depends(get_db)]
-
-@app.get("/users/{user_id}")
-async def get_user(user_id: int, db: DB) -> User:
-    return await db.fetch_user(user_id)
 ```
 
 ### Context Managers
@@ -348,35 +396,24 @@ def managed_connection(url: str):
     finally: conn.close()
 ```
 
-### functools.singledispatch
-
-```python
-@singledispatch
-def serialize(obj) -> str:
-    raise TypeError(f"Cannot serialize {type(obj)}")
-@serialize.register
-def _(obj: dict) -> str:
-    return json.dumps(obj)
-```
-
 ## Async & Concurrency
 
 ### Decision Matrix
 
 | Workload | Use | Why |
 |---|---|---|
-| I/O-bound, async libs | `asyncio` | 100K+ connections |
+| I/O-bound, async libs | `asyncio` | Scales 100K+ connections |
 | I/O-bound, blocking libs | `threading` / `ThreadPoolExecutor` | Sync libs need threads |
 | CPU-bound | `multiprocessing` / `ProcessPoolExecutor` | Bypasses GIL |
-| Mixed blocking + async | `asyncio` + `asyncio.to_thread()` | Bridge sync→async |
+| Mixed blocking + async | `asyncio` + `to_thread()` | Bridge sync→async |
 | CPU-bound at HyperI | **Rust** | Don't fight the language |
 
-### TaskGroup (preferred over gather)
+### TaskGroup — Use Over gather()
 
 ```python
 async with asyncio.TaskGroup() as tg:
     tasks = [tg.create_task(fetch(url), name=url) for url in urls]
-return [t.result() for t in tasks]
+# Cancels on failure, propagates all exceptions
 ```
 
 ### Concurrency Limiting
@@ -384,24 +421,23 @@ return [t.result() for t in tasks]
 ```python
 sem = asyncio.Semaphore(50)
 async def limited_fetch(url: str) -> dict:
-    async with sem:
-        return await fetch(url)
+    async with sem: return await fetch(url)
 ```
 
 ❌ Never `gather(*[fetch(url) for url in million_urls])` — OOM.
 
 ### Common Async Pitfalls
 
-| ❌ Don't | ✅ Do | Why |
-|---|---|---|
-| `fetch_data()` (missing await) | `await fetch_data()` | Coroutine never executes |
-| Sequential `a = await f1(); b = await f2()` | `TaskGroup` with both | No concurrency |
-| `requests.get(url)` in async | `httpx.AsyncClient` or `asyncio.to_thread()` | Blocks event loop |
-| No timeout on I/O | `async with asyncio.timeout(30):` | Hangs forever |
+| ❌ Don't | ✅ Do |
+|---|---|
+| Forget `await` (silently returns coroutine) | Always `await` or `create_task()` |
+| Sequential `await a; await b` | `TaskGroup` for concurrency |
+| `requests.get()` in async (blocks loop) | `httpx.AsyncClient` or `to_thread()` |
+| No timeout on I/O | `async with asyncio.timeout(30):` |
 
 ### Free-Threaded Python (3.14+)
 
-GIL can be disabled (PEP 779). Not used at HyperI yet — CPU work is in Rust. Monitor ecosystem readiness.
+GIL optional (PEP 779). Not used at HyperI yet — CPU work is in Rust. Monitor ecosystem readiness.
 
 ## Container Deployment (Docker + K8s)
 
@@ -423,14 +459,13 @@ USER appuser
 CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-**Rules:** Multi-stage always, non-root always, exec form CMD always, pin Python version.
+**Rules:** Multi-stage always. Non-root always. Exec form CMD always. Pin Python version. Deps first for layer caching.
 
 ### Health Check Endpoints
 
 ```python
 @app.get("/health")
-async def liveness():
-    return {"status": "ok"}
+async def liveness(): return {"status": "ok"}
 
 @app.get("/ready")
 async def readiness():
@@ -439,7 +474,14 @@ async def readiness():
     return {"status": "ready" if ok else "not_ready", "checks": checks}
 ```
 
-K8s: `livenessProbe` → `/health`, `readinessProbe` → `/ready`.
+```yaml
+livenessProbe:
+  httpGet: { path: /health, port: 8000 }
+  initialDelaySeconds: 5
+readinessProbe:
+  httpGet: { path: /ready, port: 8000 }
+  initialDelaySeconds: 10
+```
 
 ### Graceful Shutdown
 
@@ -454,14 +496,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 ```
 
-Set `terminationGracePeriodSeconds: 30` in K8s deployment spec.
+Set `terminationGracePeriodSeconds: 30` in K8s deployment.
 
 ### Structured Logging in Containers
 
-- Log to stdout always (K8s collects)
-- JSON format in containers, human-readable in terminal
-- Include correlation/request IDs
-- Never log secrets — `hyperi_pylib.logger` auto-masks
+Log to stdout always. JSON in containers, human-readable in terminal. Use `hyperi_pylib.logger` — auto-detects, auto-masks secrets, includes correlation IDs.
 
 ## hyperi-pylib
 
@@ -469,17 +508,20 @@ Set `terminationGracePeriodSeconds: 30` in K8s deployment spec.
 
 ### Quick Start
 
+```toml
+dependencies = ["hyperi-pylib[http,metrics]"]
+```
+
 ```python
 from hyperi_pylib.logger import logger
 from hyperi_pylib.config import settings
-from hyperi_pylib import build_database_url
 host = settings.database.host  # 8-layer cascade: ENV > .env > YAML > defaults
 logger.info("Starting", version="1.0.0", host=host)
 ```
 
 ### Use This, Not That
 
-| ❌ Don't | ✅ hyperi-pylib | Module |
+| ❌ Don't | ✅ Use | Module |
 |---|---|---|
 | Hand-rolled config | `settings.database.host` | `config` |
 | Raw `logging`/`print()` | `logger.info("msg", key=val)` | `logger` |
@@ -493,22 +535,15 @@ logger.info("Starting", version="1.0.0", host=host)
 
 ### Feature Extras
 
-```bash
-uv add "hyperi-pylib"                                      # Core
-uv add "hyperi-pylib[http,metrics]"                        # Common
-uv add "hyperi-pylib[http,metrics,kafka]"                  # + Kafka
-uv add "hyperi-pylib[http,metrics,kafka,opentelemetry]"    # + OTel
-```
-
-| Extra | Provides |
-|---|---|
-| `http` | httpx + stamina retries |
-| `metrics` | Prometheus client + psutil |
-| `kafka` | confluent-kafka + schema inference |
-| `expression` | CEL evaluation (Rust/PyO3) |
-| `cache` | cashews + msgpack + psycopg pool |
-| `opentelemetry` | OTel SDK + OTLP + Prometheus |
-| `secrets` | Vault + AWS + GCP + Azure backends |
+| Extra | Provides | Size |
+|---|---|---|
+| `http` | httpx + stamina retries | ~1 MB |
+| `metrics` | Prometheus + psutil | ~1 MB |
+| `kafka` | confluent-kafka + schema inference | ~11 MB |
+| `expression` | CEL evaluation (Rust/PyO3) | ~6 MB |
+| `cache` | cashews + msgpack + psycopg pool | ~14 MB |
+| `opentelemetry` | OTel SDK + OTLP + Prometheus | ~4 MB |
+| `secrets` | All backends (Vault/AWS/GCP/Azure) | varies |
 
 ### Key Imports
 
@@ -528,7 +563,7 @@ uv add "hyperi-pylib[http,metrics,kafka,opentelemetry]"    # + OTel
 | Task | ✅ Use | ❌ Not |
 |---|---|---|
 | Create venv | `uv venv` | `python -m venv` |
-| Install deps | `uv sync` | `pip install -r` |
+| Install deps | `uv sync --locked` | `pip install -r` |
 | Add package | `uv add <pkg>` | `pip install` |
 | Add dev dep | `uv add --dev <pkg>` | — |
 | Run script | `uv run python script.py` | `python script.py` |
@@ -540,50 +575,99 @@ uv add "hyperi-pylib[http,metrics,kafka,opentelemetry]"    # + OTel
 
 ```toml
 dependencies = [
-    "httpx>=0.27",              # ✅ Default: >= range
-    "pydantic>=2.0,<3",         # ✅ Upper bound for known breaking majors
-    "cryptography==44.0.1",     # ⚠️ Pin only with documented reason
+    "httpx>=0.27",              # ✅ >= range (default)
+    "pydantic>=2.0,<3",         # ✅ >= with upper bound
+    "cryptography==44.0.1",     # ⚠️ Pin only when forced — document WHY
 ]
 ```
 
-- `uv.lock` always committed — this IS your reproducible pin
-- `uv lock --upgrade` at every code review — mandatory
-- `pip-audit` in CI — fails on CVEs
-- Fix deprecation warnings immediately — never defer
+- `>=X.Y` — default. `uv.lock` provides reproducibility.
+- `==X.Y.Z` — only for known regressions or security audit. Add comment.
+- `uv.lock` — always committed.
+- `uv lock --upgrade` at every code review. Stale deps = security risk.
+- `pip-audit` in CI — fails on CVEs.
+- **Fix deprecation warnings immediately** — never defer.
 
-### Rust-Python Bridge (PyO3)
+### When Native Python Is Acceptable
 
-```bash
-uv add maturin --dev
-maturin develop  # Build + install Rust bindings in current venv
+Only for: external projects without uv, third-party codebases, system-level scripts outside project context.
+
+## Package Structure
+
+```text
+myproject/
+├── src/mypackage/
+│   ├── __init__.py
+│   └── module.py
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── e2e/
+├── pyproject.toml
+├── VERSION              # Source of truth
+└── uv.lock              # Commit this
 ```
 
-Consider PyO3 bindings over native Python when Rust crate provides the capability.
+Use `uv init --package` (src layout). Never flat layout for real projects.
+
+## Ruff Configuration
+
+```toml
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "D"]
+ignore = ["E501", "D203", "D213"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+```
+
+**E/W:** PEP 8 | **F:** Logic errors | **I:** Import sorting | **N:** Naming | **UP:** Modern syntax | **D:** Docstrings
+
+## Black Formatting
+
+88 chars, double quotes, trailing commas. `black src/` to format. Accept Black's decisions — no bikeshedding.
 
 ## Security Standards
 
-- `bandit -r src/ -ll` — medium/high blocks CI
-- `pip-audit` — CVE scanning blocks CI
-- Parameterised queries always (never f-string SQL)
-- Never `eval()`/`exec()` with external input
-- Never `pickle.loads()` with untrusted data
-- `subprocess.run([...])` list args (never `shell=True`)
+- `bandit -r src/ -ll` — medium/high, blocks CI
+- `pip-audit` — CVE scanning, blocks CI
+
+```python
+# ❌ SQL injection
+query = f"SELECT * FROM users WHERE id = {user_id}"
+# ✅ Parameterized
+cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+
+# ❌ eval/exec with external input — NEVER
+# ❌ pickle.loads(untrusted_data) — RCE risk, use json
+```
 
 ## Testing — No Mocks Policy
 
-### Project Layout
+> **No mocks. Test against real dependencies.**
 
-Always `src/` layout (`uv init --package`). Never flat layout for real projects.
+```python
+# ❌ FORBIDDEN
+from unittest.mock import patch, MagicMock
 
-```text
-tests/
-├── conftest.py        # Shared fixtures
-├── unit/              # Fast, isolated
-├── integration/       # testcontainers
-├── e2e/               # Full infrastructure
-├── fixtures/          # Static test data
-└── smoke/             # MANDATORY startup test
+# ✅ Real deps via testcontainers
+@pytest.fixture(scope="session")
+def db():
+    with PostgresContainer() as postgres:
+        yield create_connection(postgres.get_connection_url())
+
+def test_save_user(db):
+    user_id = save_user(db, {"name": "Alice"})
+    assert db.get_user(user_id).name == "Alice"
 ```
+
+**One exception:** freezing time (`time-machine` preferred over `freezegun`).
 
 ### Startup Smoke Test (MANDATORY)
 
@@ -593,54 +677,40 @@ def test_app_boots_with_default_config():
     assert app is not None
 ```
 
-### No Mocks — Real Dependencies
+### Directory Structure
 
-```python
-# ❌ FORBIDDEN
-from unittest.mock import patch, MagicMock
-
-# ✅ testcontainers
-@pytest.fixture(scope="session")
-def db():
-    with PostgresContainer() as postgres:
-        yield create_connection(postgres.get_connection_url())
+```text
+tests/
+├── conftest.py        # Shared fixtures
+├── unit/              # Fast, isolated
+├── integration/       # testcontainers
+├── e2e/               # Full infrastructure
+├── fixtures/          # Static test data
+└── smoke/             # MANDATORY startup tests
 ```
-
-**One exception:** `time-machine` for freezing time (preferred over `freezegun`).
 
 ### Fixture Scoping
 
-| Scope | Use for |
-|---|---|
-| `function` (default) | Isolated per-test state |
-| `module` | Expensive setup shared within file |
-| `session` | DB engine, HTTP pool across entire run |
+| Scope | Use for | Teardown |
+|---|---|---|
+| `function` (default) | Isolated per-test state | After each test |
+| `module` | Expensive shared within file | After file |
+| `session` | DB engine, HTTP pool | After full run |
 
-Use `yield` for teardown (not `return`).
+Use `yield` for teardown (runs even on failure).
 
 ### Async Testing
 
 ```python
-pytestmark = pytest.mark.anyio  # NOT asyncio
-# Specify backend:
-@pytest.fixture(scope="session")
-def anyio_backend():
-    return "asyncio"
+pytestmark = pytest.mark.anyio  # Use anyio, not asyncio marker
+async def test_fetch_data(http_client):
+    response = await http_client.get("/api/data")
+    assert response.status_code == 200
 ```
 
-FastAPI: use `httpx.AsyncClient` with `ASGITransport`.
+For FastAPI: `httpx.AsyncClient` with `ASGITransport`.
 
-### Marks for CI Filtering
-
-```toml
-[tool.pytest.ini_options]
-markers = [
-    "integration: requires external services",
-    "e2e: full infrastructure",
-    "slow: exceeding 30 seconds",
-    "smoke: critical-path startup",
-]
-```
+### CI Stage Mapping
 
 | Directory | CI Stage | Trigger |
 |---|---|---|
@@ -654,37 +724,56 @@ markers = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["-v", "--tb=short", "--strict-markers", "--import-mode=importlib"]
+
 [tool.coverage.run]
 source = ["src"]
 [tool.coverage.report]
 fail_under = 80
 ```
 
+### AI Test Generation Traps
+
+| Trap | What AI Does | What You Need |
+|---|---|---|
+| Happy-path only | Tests valid input | Tests INVALID input, checks it fails correctly |
+| Mirror tests | Assertions duplicate implementation | Assertions check observable behaviour |
+| Assertion-free | Calls functions, never asserts | Every test MUST assert meaningfully |
+| Missing error paths | No exception tests | Test every exception your code raises |
+| No boundary tests | Values 5, 10 | Zero, one, max, overflow, empty, None |
+| No startup smoke | Individual functions only | Mandatory smoke test |
+
+**Treat AI-generated tests as drafts.** Add edge cases and failure paths yourself.
+
 ## Production at Scale — Controls
 
-### Mandatory CI Tools
+### Mandatory CI
 
 | Tool | Purpose | Blocking? |
 |---|---|---|
-| `ruff` | Lint + format | ✅ |
+| `ruff` | Lint + format | ✅ Yes |
 | `ty` / `pyright` | Type checking | ⚠️→✅ |
-| `bandit` | Security (medium/high) | ✅ |
-| `pip-audit` | CVE scanning | ✅ |
-| `pytest` | Tests + coverage | ✅ (80% min) |
-| `vulture` | Dead code detection | ✅ |
+| `bandit` | Security (medium/high) | ✅ Yes |
+| `pip-audit` | CVE scanning | ✅ Yes |
+| `pytest` | Tests + coverage | ✅ Yes (80% min) |
+| `vulture` | Dead code detection | ✅ Yes |
 
 ### Exception Handling
 
 ```python
-# ❌ Generic swallowing
+# ❌ Generic swallow — worst production failure
 except Exception: pass
-# ❌ Log without raise
-except Exception as e: logger.error(f"Failed: {e}")
 
-# ✅ Specific, contextual, re-raise or convert
+# ✅ Specific, logged with context, re-raised or wrapped
 except ConnectionError as e:
-    logger.error("DB unreachable", host=settings.database.host)
+    logger.error("DB unreachable", host=settings.database.host, error=str(e))
     raise ServiceUnavailableError("Database connection failed") from e
+```
+
+### Never `print()` in Production
+
+```python
+# ❌ print(f"Processing {user.email}")  # PII leak, no structure
+# ✅ logger.info("Processing user", user_id=user.id)
 ```
 
 ### Nuitka Compilation (Nice to Have)
@@ -693,40 +782,24 @@ except ConnectionError as e:
 nuitka --standalone --onefile my_tool.py  # Native binary, faster startup
 ```
 
-## Ruff Configuration
-
-```toml
-[tool.ruff]
-line-length = 88
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "D"]
-ignore = ["E501", "D203", "D213"]
-[tool.ruff.lint.pydocstyle]
-convention = "google"
-[tool.ruff.lint.per-file-ignores]
-"tests/**" = ["D"]
-```
-
-**Rule series:** E/W (PEP 8), F (logic errors), I (import sort), N (naming), UP (modern syntax), D (docstrings).
-
-**Black:** 88 chars, double quotes. Accept its formatting. `black src/` or `black --check src/`.
-
 ## Temporary Files
 
+- **Dev/CI:** `./.tmp/` for project-scoped temp
+- **Production:** `tempfile` module (never hardcode `/tmp`)
+
 ```python
-# ✅ Production: use tempfile module
 with tempfile.NamedTemporaryFile(suffix=".dat") as tmp:
-    tmp.write(data)
+    tmp.write(data); process(tmp.name)
 with tempfile.TemporaryDirectory(prefix="myapp-") as tmpdir:
     work_in(tmpdir)
 ```
 
-❌ Never hardcode `/tmp`, use predictable names, or skip cleanup.
-Dev/CI scratch: use `./.tmp/`.
+❌ Never hardcode `/tmp`, use predictable names, skip cleanup.
+✅ Always context managers, random names, `0o700` permissions.
 
 ## Bash Minimalism
 
-Bash is a thin caller only. >20 lines or `jq`/`sed`/`awk` → rewrite in Python.
+Bash = thin wrapper only. If >20 lines, pipes to `jq`, complex conditionals, string manipulation → **use Python**.
 
 ```bash
 #!/usr/bin/env bash
@@ -735,56 +808,36 @@ command -v python3 >/dev/null 2>&1 || { echo "Python 3 required"; exit 1; }
 exec python3 "$(dirname "$0")/real_logic.py" "$@"
 ```
 
-## Package Structure
-
-```text
-myproject/
-├── src/mypackage/
-│   ├── __init__.py
-│   └── module.py
-├── tests/
-├── pyproject.toml
-├── VERSION          # Source of truth
-└── uv.lock          # Always committed
-```
-
-`src/` layout mandatory — use `uv init --package`.
-
 ## For AI Code Assistants
 
 ### Package Verification — MANDATORY
 
-Before suggesting ANY `import` or `uv add`:
+1. **Verify exists** on PyPI before suggesting any `import`/`uv add`
+2. **Actively maintained:** release <12mo, responsive issues, >1 maintainer
+3. **Widely used:** >10K downloads/month for production deps
+4. **Check for superseding packages** (psycopg2→psycopg, requests→httpx, tomli→tomllib)
+5. **License:** no GPL/AGPL/SSPL
 
-1. **Verify exists** on PyPI
-2. **Actively maintained** — release within 12 months, responsive issues
-3. **Widely used** — >10K downloads/month for production deps
-4. **Not superseded** — check deprecated packages table above
-5. **License compatible** — no GPL/AGPL/SSPL
-
-**Red flags:** last release >18 months, "looking for maintainer", pinned to Python ≤3.8, no py.typed.
+**Red flags:** last release >18mo, "looking for maintainer", pinned to Python ≤3.8, no `py.typed`
 
 ### Silent Failure — Worst AI Anti-Pattern
 
 ```python
-# ❌ AI generates this — silently returns None
-except Exception:
-    return None
+# ❌ AI generates: silently returns None on error
+except Exception: return None
 # ✅ Fail explicitly
 except DatabaseError as e:
     raise UserNotFoundError(user_id) from e
 ```
 
-### AI Test Generation Traps
+### Quick Checklist
 
-| Trap | What AI does | What you need |
-|---|---|---|
-| Happy-path only | Tests valid input | Tests INVALID input, error states |
-| Mirror tests | Assertions duplicate implementation | Check observable behaviour |
-| Assertion-free | Calls functions, never asserts | Every test MUST assert meaningfully |
-| No boundary tests | Values 5, 10 | Zero, one, max, empty, None, -1 |
-| No error path tests | Skips exceptions | Test every raiseable exception |
-| No async edge cases | Sequential only | Timeout, cancellation, concurrency |
-| No smoke test | Individual functions only | Mandatory app-boots test |
-
-**Treat AI-generated tests as drafts.** Add edge cases, failure paths, adversarial inputs yourself. When AI generates both code AND tests, the same blind spots appear in both.
+- [ ] No `from typing import List/Dict/Optional`
+- [ ] No `datetime.utcnow()`
+- [ ] No mutable default arguments
+- [ ] No bare `except Exception: pass`
+- [ ] No f-string SQL
+- [ ] No `eval()`/`pickle.loads()` with external input
+- [ ] All deps use `>=` not `==` (unless documented reason)
+- [ ] `uv add` not `pip install`
+- [ ] Verified package exists on PyPI before suggesting

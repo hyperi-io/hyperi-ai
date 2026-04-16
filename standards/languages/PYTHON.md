@@ -42,14 +42,15 @@ paths:
 6. [Code Style](#code-style-clarity-over-cleverness) — naming, formatting, imports, clarity, Google rules
 7. [Modern Patterns](#modern-patterns) — dataclasses, Pydantic, Protocols, DI, generators
 8. [Async & Concurrency](#async--concurrency) — asyncio, TaskGroup, threading, decision matrix
-9. [Container Deployment](#container-deployment-docker--k8s) — Docker, K8s, health checks, shutdown
-10. [hyperi-pylib](#hyperi-pylib) — config, logging, metrics, HTTP, Kafka, secrets
+9. [Resilience Patterns](#resilience-patterns) — circuit breaker, retry, timeout, bulkhead
+10. [Container Deployment](#container-deployment-docker--k8s) — Docker, K8s, probe trinity, shutdown
 11. [Dependencies (uv)](#dependencies-uv) — uv-first, version pinning, update policy
 12. [Security](#security-standards) — bandit, SQL injection, secrets
-13. [Testing](#testing--no-mocks-policy) — no mocks, testcontainers, fixtures
-14. [Production Controls](#production-at-scale--controls) — CI enforcement, exceptions, Nuitka
-15. [For AI Assistants](#for-ai-code-assistants) — package verification, slopsquatting, pitfalls
-16. [Resources](#resources)
+13. [Testing](#testing--no-mocks-policy) — no mocks, testcontainers, fixtures, fixture cascade
+14. [Production Controls](#production-at-scale--controls) — CI enforcement, log flooding, fail-fast startup
+15. [hyperi-pylib](#hyperi-pylib--use-it-dont-reinvent-it) — capability summary, drift-safe
+16. [For AI Assistants](#for-ai-code-assistants) — verification, slopsquatting, cross-repo drift, ratchet rule
+17. [Resources](#resources)
 
 ---
 
@@ -284,6 +285,20 @@ assert status == "running"  # True
 assert f"Status: {status}" == "Status: running"
 ```
 
+**When to pick `StrEnum` vs plain `Enum`:**
+
+- **`StrEnum`** — any enum whose value crosses a serialisation boundary
+  (JSON response body, log field, metric label, K8s probe status,
+  database column, message header). The string identity means downstream
+  consumers see the same value whether the producer sent the enum or the
+  raw string — no `.value` accessor sprinkled through the codebase.
+- **`Enum`** — purely-internal state machines that never leave the
+  process (e.g., a worker's lifecycle phase used only for branching).
+  If you ever serialise it, you'll wish you'd picked `StrEnum`.
+
+Default to `StrEnum` if uncertain — converting from `Enum` later is a
+breaking change for anyone consuming the serialised form.
+
 ### ExceptionGroup and TaskGroup (3.11+)
 
 ```python
@@ -380,16 +395,46 @@ def calculate_discount(price: float, percent: float) -> float:
     return price * (1 - percent / 100)
 ```
 
-### Avoiding Circular Imports
+### `from __future__ import annotations` — Default On
+
+Put `from __future__ import annotations` at the top of every module.
+This makes all annotations string-deferred (PEP 563 semantics), which:
+
+- Sidesteps almost all circular-import pain — type names in
+  signatures don't need to be resolvable at module-load time.
+- Removes the need for sprinkled `"User"` string annotations and
+  `if TYPE_CHECKING:` guards in most places.
+- Cheap at runtime — annotations are stored as strings until something
+  actually inspects them (rare in production paths).
+- Forward-compatible — PEP 649 (Python 3.14) shifts the defaults again,
+  but `__future__` keeps your code stable across the transition.
 
 ```python
+# At the top of EVERY module
+from __future__ import annotations
+
+from myapp.models import User  # Plain import works — no TYPE_CHECKING needed
+
+def get_user(user_id: int) -> User:  # No quotes needed
+    return User.get(user_id)
+```
+
+### Avoiding Circular Imports
+
+With `from __future__ import annotations` at the top of every module,
+most circular-import problems disappear. The remaining cases are imports
+that need the actual symbol *at module load time* (subclassing, decorator
+arguments, `isinstance` checks). For those, keep `TYPE_CHECKING`:
+
+```python
+from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from myapp.models import User  # Only for type checking
 
-def get_user(user_id: int) -> "User":  # String annotation
-    from myapp.models import User  # Runtime import
+def get_user(user_id: int) -> User:  # No quotes needed thanks to __future__
+    from myapp.models import User    # Runtime import — needed for User.get()
     return User.get(user_id)
 ```
 
@@ -740,14 +785,49 @@ convention = "google"   # Enables Google-style Args/Returns/Raises parsing
 | D401 | First line should be in imperative mood ("Save" not "Saves") |
 | D417 | Missing argument descriptions (Google convention) |
 
+### Enforcement Level (HyperI Default: warn, not block)
+
+Docstring hygiene is a **ratchet, not a gate**. hyperi-ci runs ruff `D`
+rules at **warn level** by default (`quality.python.ruff_docstrings: warn`)
+— failures are surfaced but do not fail the pipeline. This mirrors the
+Rust [rustdoc hint](RUST.md#documentation-rustdoc) approach: turning on
+`D` rules cold against a 30k-line codebase produces hundreds of warnings,
+which would block every PR until backfilled. The ratchet pattern lets
+projects close the gap incrementally.
+
+Promote to `blocking` once the existing backlog is cleared:
+
+```yaml
+# .hyperi-ci.yaml
+quality:
+  python:
+    ruff_docstrings: blocking   # Once backlog is zero
+```
+
+### Adoption Strategy on Existing Codebases
+
+The same problem Rust has — `#![warn(missing_docs)]` on a mature crate
+floods CI — applies here. `--select D` on a multi-thousand-file project
+generates a wave of D100/D101/D103. Phased adoption:
+
+1. **Always-on immediately** (no churn): D200, D205, D400, D401, D417.
+   These only warn on existing docstrings — fix in place as touched.
+2. **Per-package ratchet**: enable `D` globally in `pyproject.toml` and add
+   `per-file-ignores` for legacy modules: `"src/legacy/**" = ["D100", "D101", "D103"]`.
+   Remove the ignore as each module is documented. New modules added without
+   the ignore are forced to be complete.
+3. **Project-wide enforcement**: once `per-file-ignores` for D is gone from
+   the last legacy module, promote `quality.python.ruff_docstrings` from
+   `warn` to `blocking` in `.hyperi-ci.yaml`.
+
 ### Tooling
 
 | Tool | Role |
 |---|---|
-| **Ruff (`D` rules)** | Lint PEP 257 + Google convention. Blocks CI. |
+| **Ruff (`D` rules)** | Lint PEP 257 + Google convention. **Warn** by default in hyperi-ci; promote to blocking once backlog cleared. |
 | **Sphinx** | Native reST parser; Google style requires [`sphinx.ext.napoleon`](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html). |
 | **Pyright / ty** | Consume all three conventions (reST, Google, NumPy) for hover tooltips and signature help. |
-| **pytest `--doctest-modules`** | Execute `Examples:` blocks as tests. |
+| **pytest `--doctest-modules`** | Execute `Examples:` blocks as tests. Failures block CI. |
 
 **Enable napoleon in Sphinx `conf.py`:**
 
@@ -925,12 +1005,19 @@ names = [user.name for user in users]
 
 ## Modern Patterns
 
-### Dataclasses (with slots and frozen)
+### Dataclasses (slots+frozen by default)
+
+**Default to `slots=True`. Add `frozen=True` for any value object,
+config object, or snapshot.** This costs one decorator argument and
+buys ~30% memory reduction (no `__dict__`), faster attribute access,
+hashability (when frozen), and a typo-catching invariant (assignment
+to undeclared attrs raises). The only reason NOT to use `slots=True`
+is multiple inheritance from non-slotted bases — rare.
 
 ```python
 from dataclasses import dataclass, field
 
-# ✅ Use slots=True for memory efficiency (no __dict__)
+# ✅ Default — mutable record with slots
 @dataclass(slots=True)
 class User:
     id: int
@@ -939,14 +1026,34 @@ class User:
     active: bool = True
     tags: list[str] = field(default_factory=list)
 
-# ✅ Use frozen=True for immutable value objects
+# ✅ Value object / config / snapshot — frozen + slots
 @dataclass(frozen=True, slots=True)
 class EventKey:
     source: str
     event_type: str
     timestamp: float
-    # Hashable — can be used as dict key or set member
+    # Hashable — usable as dict key or set member.
+    # Immutable — safe to share across threads/coroutines.
+
+# ✅ Config dataclass — frozen so accidentally mutating settings raises
+@dataclass(frozen=True, slots=True)
+class RetryConfig:
+    max_attempts: int = 3
+    initial_backoff_ms: int = 100
+    max_backoff_ms: int = 30_000
+
+# ❌ Avoid bare @dataclass — gives up memory + typo safety for nothing
+@dataclass
+class Order:                  # Has __dict__, accepts arbitrary attrs
+    id: int
 ```
+
+**Decision tree:**
+
+- "Will this be mutated after construction?" → `slots=True` only
+- "Is this a value/config/snapshot/event?" → `slots=True, frozen=True`
+- "Will I use it as a dict key or set member?" → `slots=True, frozen=True`
+- "Pydantic model with validation?" → use Pydantic (separate trade-off)
 
 ### Generators for Lazy Processing
 
@@ -1377,132 +1484,6 @@ logger.info("Request processed", request_id=req_id, duration_ms=42)
 - Include correlation/request IDs for distributed tracing
 - Never log secrets (hyperi-pylib auto-masks)
 - Use `hyperi_pylib.logger` — it handles all of this
-
----
-
-## hyperi-pylib
-
-> **This section applies when `hyperi-pylib` is in `pyproject.toml`.**
-> For non-HyperI projects, skip this section and use the generic patterns.
-
-`hyperi-pylib` is the shared Python library for all HyperI Python projects.
-It provides config, logging, metrics, HTTP, Kafka, secrets, CLI framework,
-and more. Available on PyPI. **Use it — never roll bespoke versions of what
-it provides.**
-
-### Quick Start
-
-```toml
-# pyproject.toml
-[project]
-dependencies = [
-    "hyperi-pylib",                    # Core (logging, config, runtime, cli)
-    "hyperi-pylib[http,metrics]",      # With extras
-]
-```
-
-```python
-from hyperi_pylib.logger import logger
-from hyperi_pylib.config import settings
-from hyperi_pylib import build_database_url, get_runtime_paths
-
-# Config: 8-layer cascade is AUTOMATIC (ENV > .env > YAML > defaults)
-host = settings.database.host
-port = settings.api.port
-
-# Logging: auto-detects console vs container, masks sensitive fields
-logger.info("Service starting", version="1.0.0", host=host)
-
-# Database URLs from environment
-postgres_url = build_database_url("postgresql")
-```
-
-### Use This, Not That
-
-| ❌ Don't | ✅ Use hyperi-pylib | Module |
-|---|---|---|
-| Hand-rolled config loading | `settings.database.host` | `config` |
-| Raw `logging` / `print()` | `logger.info("msg", key=val)` | `logger` |
-| Build DB URLs manually | `build_database_url("postgresql")` | `database` |
-| Raw `httpx` with retry | `hyperi_pylib.http` (stamina retries) | `http` |
-| Raw prometheus-client | `create_metrics()` | `metrics` |
-| Raw confluent-kafka | `hyperi_pylib.kafka` | `kafka` |
-| Hand-rolled CLI with argparse | Subclass `DfeApp` | `cli` |
-| Direct Vault/AWS/GCP calls | `SecretsManager` | `secrets` |
-| Manual container detection | `get_runtime_paths()` | `runtime` |
-
-### Feature Extras
-
-```bash
-uv add "hyperi-pylib"                              # Core only
-uv add "hyperi-pylib[http,metrics]"                # Common
-uv add "hyperi-pylib[http,metrics,kafka]"          # + Kafka
-uv add "hyperi-pylib[http,metrics,kafka,opentelemetry]"  # + OTel
-```
-
-| Extra | Provides | Size |
-|---|---|---|
-| `http` | httpx + stamina retries | ~1 MB |
-| `metrics` | Prometheus client + psutil | ~1 MB |
-| `kafka` | confluent-kafka + schema inference | ~11 MB |
-| `expression` | CEL expression evaluation (Rust/PyO3) | ~6 MB |
-| `cache` | cashews + msgpack + psycopg pool | ~14 MB |
-| `opentelemetry` | OTel SDK + OTLP + Prometheus exporters | ~4 MB |
-| `secrets` | All backends (Vault + AWS + GCP + Azure) | varies |
-
----
-
-## Configuration and Logging (hyperi-pylib)
-
-**Python uses hyperi-pylib for zero-config cascade and logging.**
-
-### Configuration Cascade
-
-```python
-# Zero-config - cascade is AUTOMATIC via Dynaconf
-from hyperi_pylib.config import settings
-
-# Direct attribute access (Pythonic)
-host = settings.database.host         # Cascade automatic!
-port = settings.database.port         # ENV > .env > files > defaults
-
-# Dict-style with fallback
-host = settings.get("database.host", "localhost")
-timeout = settings.get("api.timeout", 30)
-```
-
-**ENV Key Auto-Generation:**
-
-```text
-database.host         → MYAPP_DATABASE_HOST
-api.timeout           → MYAPP_API_TIMEOUT
-```
-
-### Logging
-
-```python
-# Zero-config logging with RFC 3339, sensitive masking, auto-detect console
-from hyperi_pylib import logger
-
-logger.info("Processing", user_id=123)
-logger.error("Failed", error=str(e), exc_info=True)
-```
-
-**Console (dev):** Solarized colours, emojis for levels
-**Container/CI:** RFC 3339 JSON, ASCII-only
-
-### hyperi-pylib Imports
-
-| Need | Import |
-|------|--------|
-| Logging | `from hyperi_pylib import logger` |
-| Config | `from hyperi_pylib.config import settings` |
-| Runtime paths | `from hyperi_pylib import get_runtime_paths` |
-| Database URLs | `from hyperi_pylib import build_database_url` |
-| Metrics | `from hyperi_pylib import create_metrics` |
-| CLI | `from hyperi_pylib import Application` |
-
-**Why:** Zero-config, container-aware, production-ready, ENV-based
 
 ---
 
@@ -2118,6 +2099,79 @@ exec python3 "$(dirname "$0")/real_logic.py" "$@"
 - Anything that needs to work reliably on macOS and Linux (→ Python)
 
 See `standards/languages/BASH.md` for bash standards when bash IS appropriate.
+
+---
+
+## hyperi-pylib — Use It, Don't Reinvent It
+
+> **Applies when `hyperi-pylib` is in `pyproject.toml`.** Skip if you're
+> outside the HyperI ecosystem.
+
+`hyperi-pylib` is the shared Python library every HyperI Python service
+depends on. It exists so the same problems aren't solved fifteen
+different ways across fifteen different projects.
+
+**The rule: if pylib provides it, use it.** Don't roll a bespoke version.
+Bespoke versions drift, miss container detection, miss sensitive-field
+masking, miss the cascade, and are the things that page you at 2am.
+
+### What pylib provides (drift-safe summary)
+
+The capabilities below are stable; the API surface is not. For current
+imports, function signatures, and feature extras, see the pylib README
+at <https://github.com/hyperi-io/hyperi-pylib>. **Do not** mirror the API
+surface here — it will rot.
+
+- **Configuration cascade** — 8-layer Dynaconf-based settings (CLI → ENV
+  → `.env` → `settings.{env}.yaml` → `settings.yaml` → `defaults.yaml` →
+  pylib defaults → hard-coded). Auto ENV key generation.
+- **Structured logging** — auto-detects console vs container, RFC 3339
+  timestamps, JSON in containers, sensitive-field masking, no setup.
+- **Runtime detection** — container-aware path resolution, environment
+  introspection, K8s vs bare-metal awareness.
+- **CLI framework** — subclass the standard app class to get arg parsing,
+  config wiring, lifecycle hooks, version reporting for free.
+- **HTTP client** — httpx wrapped with stamina retries, sane defaults,
+  observability hooks.
+- **Kafka** — confluent-kafka wrapper with schema inference, structured
+  config, metric emission.
+- **Metrics** — Prometheus client + psutil with HyperI naming convention
+  applied automatically.
+- **Secrets** — unified interface over Vault, AWS, GCP, Azure, file.
+- **Cache** — pluggable cache backends (in-memory, PostgreSQL with
+  msgpack serialisation).
+- **Database URLs** — driver-aware URL builders that respect the cascade.
+- **Resilience** — circuit breakers, retries, bulkheads via standard
+  patterns.
+- **Health endpoints** — `/healthz` + `/readyz` plumbing for K8s probes.
+- **OpenTelemetry** — OTel SDK + OTLP exporter wired to the metrics namespace.
+- **Expression evaluation** — CEL via Rust/PyO3 for fast safe runtime
+  expression evaluation.
+
+### When to update this document
+
+This section is **deliberately drift-safe**: capability descriptions
+won't change when pylib refactors a function signature. Only update this
+section when pylib gains (or loses) a **whole capability** — e.g., a new
+top-level subsystem like "GraphQL client" appearing or "Kafka" being
+removed. For everything else, the pylib repo is the source of truth.
+
+The pylib `STATE.md` carries a reminder to revisit this section on major
+capability changes.
+
+### Use This, Not That
+
+| ❌ Don't | ✅ Use pylib for | Module |
+|---|---|---|
+| Hand-rolled config loaders | The cascade | `config` |
+| `print()` or raw `logging` | Structured logger | `logger` |
+| Manual container detection | Runtime helpers | `runtime` |
+| Build DB URLs by string concat | URL builders | `database` |
+| Raw `httpx` with hand-rolled retry | HTTP client | `http` |
+| Raw `confluent-kafka` glue | Kafka helpers | `kafka` |
+| Raw `prometheus_client` | Metrics helpers | `metrics` |
+| Direct Vault / AWS / GCP secret SDK calls | Secrets manager | `secrets` |
+| Custom CLI wiring with argparse | CLI framework | `cli` |
 
 ---
 
