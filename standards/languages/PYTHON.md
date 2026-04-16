@@ -789,11 +789,10 @@ convention = "google"   # Enables Google-style Args/Returns/Raises parsing
 
 Docstring hygiene is a **ratchet, not a gate**. hyperi-ci runs ruff `D`
 rules at **warn level** by default (`quality.python.ruff_docstrings: warn`)
-— failures are surfaced but do not fail the pipeline. This mirrors the
-Rust [rustdoc hint](RUST.md#documentation-rustdoc) approach: turning on
-`D` rules cold against a 30k-line codebase produces hundreds of warnings,
-which would block every PR until backfilled. The ratchet pattern lets
-projects close the gap incrementally.
+— failures are surfaced but do not fail the pipeline. Turning on `D`
+rules cold against a 30k-line codebase produces — and did to me — hundreds
+of warnings which would block every PR until backfilled. The ratchet
+pattern lets projects close the gap incrementally.
 
 Promote to `blocking` once the existing backlog is cleared:
 
@@ -806,8 +805,8 @@ quality:
 
 ### Adoption Strategy on Existing Codebases
 
-The same problem Rust has — `#![warn(missing_docs)]` on a mature crate
-floods CI — applies here. `--select D` on a multi-thousand-file project
+Enabling a new lint on a mature codebase floods CI with hundreds of
+pre-existing violations. `--select D` on a multi-thousand-file project
 generates a wave of D100/D101/D103. Phased adoption:
 
 1. **Always-on immediately** (no churn): D200, D205, D400, D401, D417.
@@ -1534,45 +1533,81 @@ CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "
 - Pin Python version (no `python:latest`)
 - Install deps first for layer caching
 
-### Health Check Endpoints
+### Health Check Endpoints — The Probe Trinity
+
+K8s defines **three** probes, not two. Most Python services ship only
+liveness + readiness and discover the missing third (startup) the hard
+way when their slow-starting service gets killed by liveness during init.
+
+| Probe | Question it answers | Failure action |
+|---|---|---|
+| **Startup** | "Has the service finished initialising?" | Restart pod (but not until `failureThreshold * periodSeconds` has elapsed) |
+| **Liveness** | "Is the process still alive and not deadlocked?" | Restart pod immediately |
+| **Readiness** | "Should I send traffic to this pod right now?" | Remove from Service endpoints, but don't restart |
+
+**The discipline that's easy to get wrong:**
+
+- **Liveness must NEVER check downstream dependencies.** If your DB is
+  down, you don't want K8s killing every replica — that converts a
+  recoverable outage into a crash loop. Liveness checks the *process*,
+  not its dependencies.
+- **Readiness checks dependencies AND requires explicit `set_ready()`.**
+  Two gates: (a) the app called `set_ready()` after init completed, AND
+  (b) all registered dependency checks pass. Either gate failing pulls
+  the pod out of rotation.
+- **Startup is liveness with patience.** During slow init, startup probe
+  runs; once it passes, K8s switches to liveness. Without a startup
+  probe, you have to set generous `initialDelaySeconds` on liveness,
+  which delays detection of real liveness failures forever after.
 
 ```python
 from fastapi import FastAPI
-from hyperi_pylib.runtime import is_container
 
 app = FastAPI()
+_ready = False  # Flipped to True once init complete
+_started = False
 
-@app.get("/health")
+@app.get("/healthz")
 async def liveness():
-    """Liveness probe — is the process alive?"""
+    """Liveness — is the PROCESS alive? Do not check dependencies."""
     return {"status": "ok"}
 
-@app.get("/ready")
+@app.get("/readyz")
 async def readiness():
-    """Readiness probe — are dependencies connected?"""
+    """Readiness — should we send traffic? Checks deps AND set_ready()."""
+    if not _ready:
+        return {"status": "not_ready", "reason": "init_incomplete"}, 503
     checks = {
         "database": await check_db(),
-        "redis": await check_redis(),
+        "kafka": await check_kafka(),
     }
-    ok = all(checks.values())
-    return {"status": "ready" if ok else "not_ready", "checks": checks}
+    if not all(checks.values()):
+        return {"status": "not_ready", "checks": checks}, 503
+    return {"status": "ready", "checks": checks}
+
+@app.get("/startupz")
+async def startup():
+    """Startup — has init finished? Used until app passes once."""
+    return {"status": "ok" if _started else "starting"}, (200 if _started else 503)
 ```
 
 Map to K8s probes:
+
 ```yaml
+startupProbe:
+  httpGet: { path: /startupz, port: 8000 }
+  failureThreshold: 30        # Allow up to 30 * periodSeconds for slow init
+  periodSeconds: 5
+
 livenessProbe:
-  httpGet:
-    path: /health
-    port: 8000
-  initialDelaySeconds: 5
+  httpGet: { path: /healthz, port: 8000 }
   periodSeconds: 10
+  # NO initialDelaySeconds — startup probe handles slow start
 
 readinessProbe:
-  httpGet:
-    path: /ready
-    port: 8000
-  initialDelaySeconds: 10
+  httpGet: { path: /readyz, port: 8000 }
   periodSeconds: 5
+  # No initialDelaySeconds — pod is just out of rotation until it's ready
 ```
 
 ### Graceful Shutdown
@@ -2034,6 +2069,86 @@ def anyio_backend():
     return "asyncio"
 ```
 
+### Service Fixture Cascade — Real Deps Without CI Pain
+
+The "no mocks" policy means tests depend on real services (PostgreSQL,
+Kafka, Vault, etc.). This creates a tension: developers running locally
+already have services up; CI runners don't. The cascade resolves this
+without mocks and without per-environment branches in test code.
+
+**Pattern: probe → docker-compose → skip.**
+
+```python
+# tests/conftest.py
+import socket
+import subprocess
+from collections.abc import Iterator
+from pathlib import Path
+import pytest
+
+def _tcp_open(host: str, port: int, timeout: float = 0.3) -> bool:
+    """Cheap port probe — does NOT speak the protocol."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+@pytest.fixture(scope="session")
+def postgres_dsn() -> Iterator[str]:
+    """PostgreSQL DSN. Tries: existing instance → docker compose → skip."""
+    dsn_env = "postgresql://test:test@localhost:5432/test"
+
+    # 1. Already running locally? (developer machine, devex cluster)
+    if _tcp_open("localhost", 5432):
+        yield dsn_env
+        return
+
+    # 2. Docker available? Start compose stack for the test session.
+    compose_file = Path(__file__).parent / "docker-compose.test.yml"
+    if compose_file.exists() and _docker_available():
+        subprocess.run(
+            ["docker", "compose", "-f", str(compose_file), "up", "-d", "postgres"],
+            check=True,
+        )
+        _wait_for_port("localhost", 5432, timeout=30)
+        yield dsn_env
+        subprocess.run(
+            ["docker", "compose", "-f", str(compose_file), "down"],
+            check=False,
+        )
+        return
+
+    # 3. Neither available? Skip — do NOT mock.
+    pytest.skip("PostgreSQL not available (no local instance, no docker)")
+
+def _docker_available() -> bool:
+    return subprocess.run(
+        ["docker", "info"], capture_output=True
+    ).returncode == 0
+```
+
+**Why this works:**
+
+- **Local dev:** developer already has services up via `make services` or
+  the devex cluster — fixture short-circuits at step 1, tests run instantly.
+- **CI:** runner has Docker — fixture starts compose at step 2, tears
+  down after the session.
+- **Constrained environment** (no Docker, no local services): fixture
+  skips at step 3 — test is reported as skipped, not as a fake pass.
+
+**Rules:**
+
+- The TCP probe must NOT do a protocol handshake — keep it cheap so
+  fixture setup adds <1s when service is already up.
+- Compose teardown should be best-effort (`check=False`) so a failed
+  test doesn't leave broken containers behind.
+- **Every integration fixture** uses this cascade — including Kafka,
+  Vault, Redis, ClickHouse. Otherwise CI yellows-out half your tests
+  on the first runner that lacks one service.
+- **Mark fixtures `scope="session"`** when using compose — starting and
+  stopping per-test will dominate test runtime.
+
 ### Marks for CI Filtering
 
 Tag tests so CI runs the right subset at the right time.
@@ -2155,6 +2270,138 @@ print(f"Processing {user.email}")  # PII leak!
 # ✅ Structured logging — level-aware, JSON in containers, auto-masks secrets
 logger.info("Processing user", user_id=user.id)  # No PII
 ```
+
+### Sensitive Field Baseline — What Counts as a Secret
+
+"Don't log secrets" is the rule; this is the starter set of field names
+a logger or serialiser must mask. Add to it; never remove from it.
+Anything matching (case-insensitive, substring) gets `***MASKED***`:
+
+```python
+SENSITIVE_FIELDS = frozenset({
+    # Credentials
+    "password", "passwd", "pwd", "secret", "token", "api_key",
+    "apikey", "access_key", "private_key", "client_secret",
+    "refresh_token", "bearer", "credentials",
+    # Auth artefacts
+    "authorization", "auth", "session", "cookie", "csrf",
+    # PKI / crypto material
+    "cert", "certificate", "private", "ssh_key", "tls_key",
+    # PII commonly mishandled
+    "ssn", "tfn", "medicare", "credit_card", "card_number", "cvv",
+    "email", "phone", "address",
+    # Cloud provider tokens (substring catches AWS_*, GCP_*, etc.)
+    "aws_secret", "gcp_key", "azure_key",
+})
+```
+
+Apply masking at the **serialisation boundary** — inside the logger's
+JSON formatter, inside the metric label sanitiser, inside the API
+response model. Masking at the call site (`logger.info("token=***")`)
+is unreliable because someone will eventually pass the unmasked value
+through `**kwargs`.
+
+Treat the masked set as a *floor*, not a ceiling — projects with
+domain-specific secrets (license keys, customer IDs in some industries)
+extend it. Never narrow it: an over-masked log is annoying, an
+under-masked log is a breach.
+
+### Log Flooding Protection
+
+Hot-path code logs at the wrong level once and you've shipped a service
+that emits 50K log lines/sec into Loki. Apply these rules before the
+first deploy, not after the first incident.
+
+| ❌ Don't | ✅ Do | Why |
+|---|---|---|
+| `logger.warn` / `logger.error` inside per-message loops | Sample (1-in-N) + emit a counter metric | Million identical lines drown the real signal |
+| Log sustained state every iteration | Log on **state transition** only (failed→ok, ok→failed) | One line per recovery, not one per check |
+| `logger.info` in request handlers | `logger.debug` for per-request; reserve `info` for lifecycle | 10k req/s = 10k log lines/s |
+| Format big payloads at warn/error | Guard with `if logger.isEnabledFor(logging.DEBUG):` | Skip expensive `repr()` when filtered |
+| Log every retry attempt | Log first failure + final outcome | Retries already imply intermediate failures |
+
+```python
+# ✅ Sampled logging in a hot loop
+import random
+
+DROP_SAMPLE_RATE = 1000  # log 1 in 1000
+
+for msg in stream:
+    try:
+        process(msg)
+    except ValidationError as e:
+        DROPPED_COUNTER.inc()  # always count
+        if random.randint(1, DROP_SAMPLE_RATE) == 1:
+            logger.warning("Validation drop sample",
+                           error=str(e), sample_rate=DROP_SAMPLE_RATE)
+
+# ✅ State-transition logging — quiet during steady state
+class HealthMonitor:
+    def __init__(self) -> None:
+        self._last_state = "unknown"
+
+    def check(self, ok: bool) -> None:
+        new = "ok" if ok else "failed"
+        if new != self._last_state:
+            (logger.info if ok else logger.error)(
+                "health state change", old=self._last_state, new=new
+            )
+            self._last_state = new
+```
+
+For repeated identical messages with varying scalars (UUIDs,
+timestamps, IPs), normalise the message body before sampling so
+"failed to lookup user 7a3b…" and "failed to lookup user 91ce…" hash
+to the same key. A rate-limit logging filter that does this lives in
+`hyperi-pylib`'s logger.
+
+### Fail Fast at Startup
+
+If config is invalid, fail at startup — not at first use. If a metric
+label has unbounded cardinality, fail at registration — not at first
+emit. If a feature flag points to a missing secret, fail in the
+constructor — not in the first request.
+
+```python
+# ❌ Lazy validation — first failed request is the first you hear about it
+class PaymentService:
+    def __init__(self, config: dict) -> None:
+        self._config = config
+
+    async def charge(self, amount: int) -> None:
+        api_key = self._config["stripe"]["api_key"]  # KeyError at first call
+        ...
+
+# ✅ Eager validation — process refuses to boot with bad config
+@dataclass(frozen=True, slots=True)
+class StripeConfig:
+    api_key: str
+    webhook_secret: str
+
+    def __post_init__(self) -> None:
+        if not self.api_key.startswith(("sk_test_", "sk_live_")):
+            raise ValueError(f"Invalid Stripe key prefix: {self.api_key[:8]}…")
+        if len(self.webhook_secret) < 32:
+            raise ValueError("Webhook secret too short — likely placeholder")
+
+class PaymentService:
+    def __init__(self, config: StripeConfig) -> None:
+        self._config = config  # If we got here, config is valid
+```
+
+**Things that should fail at startup, never lazily:**
+
+- Missing required config keys
+- Malformed connection strings, invalid URLs, bad ports
+- Metric label cardinality exceeding declared bound
+- Feature flags referencing secrets that don't resolve
+- Schema/migration drift between code and database
+- Missing or expired TLS certificates
+- Container Linux capabilities or filesystem permissions you depend on
+
+The startup probe will keep K8s patient while your service shouts about
+the misconfiguration to its logs. The alternative — first request at
+3am surfaces a `KeyError` — is the worst possible failure mode.
 
 ### Nuitka Compilation (Nice to Have)
 
@@ -2375,6 +2622,69 @@ def get_user(user_id: int) -> User:
     except DatabaseError as e:
         raise UserNotFoundError(user_id) from e
 ```
+
+### Cross-Repo Doc Drift — Capabilities, Not API Surface
+
+When a doc in repo A describes a thing implemented in repo B (e.g., this
+file's `## hyperi-pylib` section pointing at `hyperi-pylib`), the doc
+WILL drift the moment B refactors a function signature or renames a
+module. The mitigation is structural, not vigilance:
+
+- **Describe capabilities, not API surface.** "Provides a unified
+  secrets manager over Vault, AWS, GCP, Azure" doesn't drift. "Use
+  `SecretsManager.get('foo')`" drifts the next time the API changes.
+- **Link out for current detail.** Point readers at the source-repo
+  README or generated API docs as the source of truth — never copy
+  signatures into a downstream doc.
+- **Add a cross-repo reminder in the source repo's `STATE.md`.** State
+  exactly when an update IS required (whole new capability or whole
+  removed capability) and when it ISN'T (signature change, version bump,
+  refactor). Without this, both sides drift.
+- **Updating downstream docs is a code-review item for the source repo,
+  not the downstream repo.** The repo making the change owns the
+  cascade. Add it to the source repo's PR checklist.
+
+### Two-File Source-of-Truth Is a Footgun
+
+If the same configuration / data / spec lives in two file paths, one of
+them WILL rot. We hit this with `config/defaults.yaml` and
+`src/hyperi_ci/config/defaults.yaml` in `hyperi-ci` — both files
+existed, only the second was loaded at runtime, so the first quietly
+diverged for months while readers (humans + AI) continued editing it
+believing they were configuring CI.
+
+**The rule for AI assistants:** before editing a config-looking file,
+**verify it's actually loaded.** Grep for the path in the loader code.
+If the file isn't loaded by anything, treat it as suspicious, not as
+authoritative.
+
+**The rule for repo owners:** never duplicate. Pick one canonical
+location (typically `src/<package>/config/...` for in-package defaults)
+and delete every other copy. If you genuinely need the file in two
+places (e.g., source vs build artefact), enforce identity in CI with a
+diff check, or symlink one to the other.
+
+### Ratchet, Not Gate — Introducing New Lints
+
+When introducing a new lint or check on an existing codebase, the naive
+move is to set it to `blocking` and watch CI fail for everyone for the
+next month. The ratchet pattern is the disciplined alternative — same
+end state, no productivity cliff:
+
+1. **Phase 1 — warn-level globally.** Add the lint at warn level so
+   violations are visible but don't block PRs. Surface count in CI
+   summary.
+2. **Phase 2 — per-package opt-out.** Add the lint at `error` globally
+   AND `per-file-ignores` for legacy modules. New code is forced to
+   comply; legacy is grandfathered with a visible TODO list.
+3. **Phase 3 — full enforcement.** Once `per-file-ignores` for the rule
+   is empty, promote to `blocking` and remove the escape hatches.
+
+This is exactly the pattern PYTHON.md uses for ruff `D` rules (docstring
+coverage). Apply it for any new
+quality bar — type strictness ratchets, dead-code detection, security
+linters, cyclomatic-complexity caps. The pattern is: **introduce as
+warn, ratchet to blocking, never introduce as blocking.**
 
 ---
 

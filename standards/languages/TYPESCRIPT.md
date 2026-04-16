@@ -1505,6 +1505,59 @@ const AuthMiddleware = HttpMiddleware.make((app) =>
 
 ---
 
+## Health Check Endpoints — The Probe Trinity (Backend Only)
+
+> **Applies to Node.js services deployed to K8s.** Skip for React/Vite frontends.
+
+K8s needs three probes. Getting them wrong causes cascading restarts or traffic to unready pods.
+
+| Probe | Path | Checks | Fails → |
+|-------|------|--------|---------|
+| **Startup** | `/healthz/startup` | App finished initialising | K8s kills + restarts pod |
+| **Liveness** | `/healthz/live` | Process is not deadlocked | K8s kills + restarts pod |
+| **Readiness** | `/healthz/ready` | Deps healthy AND ready flag set | K8s stops routing traffic |
+
+**Liveness must NEVER check dependencies.** If your DB is down, restarting the app makes it worse. Liveness checks only that the process can respond.
+
+**Readiness must check dependencies AND an explicit ready flag** that you clear during graceful shutdown (before draining in-flight work).
+
+```typescript
+// Minimal probe implementation — Effect or plain http framework
+let ready = false;
+
+const probes = {
+  "/healthz/startup": () => ({ status: ready ? 200 : 503 }),
+  "/healthz/live":    () => ({ status: 200 }), // Always 200 if process is alive
+  "/healthz/ready":   async () => {
+    if (!ready) return { status: 503 };
+    const dbOk = await checkDb();
+    return { status: dbOk ? 200 : 503 };
+  },
+};
+
+// On startup complete:
+ready = true;
+
+// On SIGTERM (before draining):
+process.on("SIGTERM", () => { ready = false; /* then drain */ });
+```
+
+```yaml
+# K8s manifest (compact)
+startupProbe:
+  httpGet: { path: /healthz/startup, port: 8080 }
+  failureThreshold: 30
+  periodSeconds: 2
+livenessProbe:
+  httpGet: { path: /healthz/live, port: 8080 }
+  periodSeconds: 10
+readinessProbe:
+  httpGet: { path: /healthz/ready, port: 8080 }
+  periodSeconds: 5
+```
+
+---
+
 ## Error Recovery Patterns
 
 ### Fallback Values
@@ -1523,35 +1576,96 @@ const getUserWithFallback = (userId: string) =>
 
 ### Circuit Breaker
 
+> **Applies to Node.js services calling external APIs.** Frontend apps use different patterns (React Query, SWR).
+
+The circuit breaker has three states: **CLOSED** (normal), **OPEN** (fast-fail), **HALF_OPEN** (probe).
+
+```
+CLOSED ──(failures >= threshold)──► OPEN ──(timeout expires)──► HALF_OPEN
+  ▲                                                                │
+  └──────────────(probe succeeds)──────────────────────────────────┘
+                 (probe fails) ──► OPEN
+```
+
 ```typescript
 import { Effect, Schedule } from "effect";
+
+type CBState = "CLOSED" | "OPEN" | "HALF_OPEN";
 
 const withCircuitBreaker = <A, E>(
   effect: Effect.Effect<A, E>,
   maxFailures: number = 5,
 ) => {
+  let state: CBState = "CLOSED";
   let failures = 0;
   let lastFailure = 0;
   const resetTimeout = 60000;  // 1 minute
 
   return Effect.suspend(() => {
     const now = Date.now();
-    if (failures >= maxFailures && now - lastFailure < resetTimeout) {
-      return Effect.fail(new CircuitOpenError());
+
+    if (state === "OPEN") {
+      if (now - lastFailure >= resetTimeout) {
+        state = "HALF_OPEN";  // Allow one probe request
+      } else {
+        return Effect.fail(new CircuitOpenError());
+      }
     }
 
     return effect.pipe(
       Effect.tap(() => {
-        failures = 0;  // Reset on success
+        failures = 0;
+        state = "CLOSED";
       }),
       Effect.tapError(() => {
         failures++;
         lastFailure = Date.now();
+        if (failures >= maxFailures || state === "HALF_OPEN") {
+          state = "OPEN";
+        }
       }),
     );
   });
 };
 ```
+
+### Bulkhead (Concurrency Limiter)
+
+> **Applies to Node.js services calling external APIs.** Frontend apps use different patterns (React Query, SWR).
+
+Prevents one slow downstream from consuming all connections. Limit concurrent in-flight calls per dependency.
+
+```typescript
+class Semaphore {
+  private current = 0;
+  private readonly queue: Array<() => void> = [];
+
+  constructor(private readonly max: number) {}
+
+  async acquire(): Promise<void> {
+    if (this.current < this.max) { this.current++; return; }
+    return new Promise<void>((resolve) => this.queue.push(resolve));
+  }
+
+  release(): void {
+    const next = this.queue.shift();
+    if (next) { next(); } else { this.current--; }
+  }
+}
+
+// Usage: one semaphore per downstream dependency
+const dbBulkhead = new Semaphore(10);    // Max 10 concurrent DB queries
+const apiBulkhead = new Semaphore(5);    // Max 5 concurrent API calls
+```
+
+### Resilience Anti-Patterns
+
+| ❌ Don't | ✅ Do | Why |
+|----------|-------|-----|
+| No timeout on HTTP calls | `Effect.timeout("30 seconds")` on every external call | Hung connection blocks indefinitely |
+| Retry without jitter | `Schedule.jittered` on every retry schedule | Thundering herd after outage recovery |
+| Global circuit breaker for all deps | One circuit breaker per downstream dependency | DB outage should not open the cache circuit |
+| Retry 4xx client errors | Only retry 5xx and network errors | 400/401/404 will never succeed on retry |
 
 ### Graceful Degradation
 
@@ -1684,6 +1798,62 @@ const handleResult = (result: Result) =>
 - [ ] Startup smoke test exists
 
 **Treat AI-generated tests as drafts.** Add the edge cases, failure paths, and adversarial inputs yourself.
+
+---
+
+## For AI Code Assistants: Cross-Repo Doc Drift
+
+When referencing another HyperI repo (e.g. `hyperi-rustlib`, `hyperi-ci`, `dfe-engine`), describe **capabilities**, not API surface. Signatures change; capabilities are stable.
+
+| ❌ Don't | ✅ Do |
+|----------|-------|
+| "`hyperi-ci` exports `function push(opts: PushOpts)`" | "`hyperi-ci` provides a `push` command that handles pre-checks and rebase" |
+| Mirror type definitions from another repo | Link to the source repo for current types |
+| Copy config schemas from upstream | Reference the upstream config docs by URL or file path |
+
+Two repos describing the same API → one rots. Always link out for current detail. If you notice a cross-repo discrepancy, flag it in `STATE.md` under a "Cross-repo drift" heading so it gets fixed at the source.
+
+---
+
+## Two-File Source-of-Truth Footgun
+
+Before editing a config file (`tsconfig.json`, `.eslintrc.*`, `vite.config.ts`, etc.), verify it is actually loaded. Monorepos often have stale copies that nothing reads.
+
+```bash
+# Which tsconfig does tsc actually use?
+npx tsc --showConfig | head -5
+
+# Which eslint config is active?
+npx eslint --print-config src/index.ts | head -20
+```
+
+If you find two copies of the same config, **delete the stale one**. Two copies means one rots. This is especially common after migrating from `.eslintrc.json` to `eslint.config.js`, or from `tsconfig.json` to project references with `tsconfig.build.json`.
+
+---
+
+## Ratchet, Not Gate: Introducing Stricter Lint and Type Rules
+
+When adding a new ESLint rule or stricter `tsconfig` setting to an existing codebase, never introduce it at `"error"` level. A 500-warning diff is not a PR anyone will review.
+
+**Phase 1 — Warn:** Add the rule as `"warn"`. CI stays green. Developers see the warnings in their editor.
+
+**Phase 2 — Override legacy:** Use per-directory ESLint overrides to suppress warnings in legacy code. New code is clean from day one.
+
+```javascript
+// eslint.config.js — ratchet pattern
+{
+  files: ["src/legacy/**/*.ts"],
+  rules: { "@typescript-eslint/no-floating-promises": "off" },
+},
+{
+  files: ["src/**/*.ts"],
+  rules: { "@typescript-eslint/no-floating-promises": "warn" },
+},
+```
+
+**Phase 3 — Promote:** Once legacy overrides are empty, promote to `"error"` and remove the overrides.
+
+This applies equally to `tsconfig` flags like `noUncheckedIndexedAccess` or `noUncheckedSideEffectImports` — enable in a new `tsconfig.strict.json` that only new packages extend, then migrate old packages one at a time.
 
 ---
 

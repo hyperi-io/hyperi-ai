@@ -1223,6 +1223,90 @@ func (c *Client) GetWithRetry(ctx context.Context, url string, maxRetries int) (
 }
 ```
 
+### Circuit Breaker
+
+Prevent cascading failures by tracking consecutive errors and short-circuiting
+calls to a failing downstream. State machine: CLOSED (normal) -> OPEN (failing,
+reject immediately) -> HALF_OPEN (allow one probe request).
+
+```go
+type CircuitBreaker struct {
+    mu           sync.Mutex
+    state        string // "closed", "open", "half_open"
+    failures     int
+    threshold    int
+    openUntil    time.Time
+    cooldown     time.Duration
+}
+
+func NewCircuitBreaker(threshold int, cooldown time.Duration) *CircuitBreaker {
+    return &CircuitBreaker{state: "closed", threshold: threshold, cooldown: cooldown}
+}
+
+func (cb *CircuitBreaker) Allow() bool {
+    cb.mu.Lock()
+    defer cb.mu.Unlock()
+    switch cb.state {
+    case "closed":
+        return true
+    case "open":
+        if time.Now().After(cb.openUntil) {
+            cb.state = "half_open"
+            return true
+        }
+        return false
+    case "half_open":
+        return false // Only one probe at a time
+    }
+    return false
+}
+
+func (cb *CircuitBreaker) RecordSuccess() {
+    cb.mu.Lock()
+    defer cb.mu.Unlock()
+    cb.failures = 0
+    cb.state = "closed"
+}
+
+func (cb *CircuitBreaker) RecordFailure() {
+    cb.mu.Lock()
+    defer cb.mu.Unlock()
+    cb.failures++
+    if cb.failures >= cb.threshold {
+        cb.state = "open"
+        cb.openUntil = time.Now().Add(cb.cooldown)
+    }
+}
+```
+
+### Bulkhead (Concurrency Limiter)
+
+Use a buffered channel as a semaphore to cap concurrent calls to a resource.
+
+```go
+type Bulkhead struct {
+    sem chan struct{}
+}
+
+func NewBulkhead(maxConcurrent int) *Bulkhead {
+    return &Bulkhead{sem: make(chan struct{}, maxConcurrent)}
+}
+
+func (b *Bulkhead) Execute(ctx context.Context, fn func() error) error {
+    select {
+    case b.sem <- struct{}{}:
+        defer func() { <-b.sem }()
+        return fn()
+    case <-ctx.Done():
+        return fmt.Errorf("bulkhead: %w", ctx.Err())
+    }
+}
+```
+
+**Library choices:** `github.com/sony/gobreaker` for production circuit breakers
+with metrics hooks. `golang.org/x/sync/semaphore` for weighted bulkheads where
+different operations cost different amounts.
+
 ---
 
 ## JSON and XML Handling
@@ -1416,6 +1500,52 @@ func (w *Worker) Stop() {
     close(w.done)
     w.wg.Wait()
 }
+```
+
+### Health Check Endpoints — The Probe Trinity
+
+K8s defines three probes. Getting the boundaries wrong causes cascading restarts.
+
+| Probe | Path | Checks | Failure means |
+|-------|------|--------|---------------|
+| **Startup** | `/startupz` | Same as liveness | Pod is still booting (K8s waits patiently) |
+| **Liveness** | `/healthz` | Process is alive, no deadlocks | Pod is broken, kill and restart |
+| **Readiness** | `/readyz` | Downstream deps OK AND explicit ready flag | Stop routing traffic, don't kill |
+
+**Key discipline:** Liveness MUST NEVER check downstream dependencies. If your
+database goes down and liveness fails, K8s restarts your pod, which cannot help.
+Readiness checks deps. Startup is liveness with a longer `failureThreshold` for
+slow-starting services (JVM, large caches, migration runners).
+
+```go
+var ready atomic.Bool
+
+func registerProbes(mux *http.ServeMux) {
+    mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+        w.WriteHeader(http.StatusOK) // Always 200 — process is alive
+    })
+    mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
+        if !ready.Load() {
+            http.Error(w, "not ready", http.StatusServiceUnavailable)
+            return
+        }
+        // Check downstream deps here (DB ping, cache ping, etc.)
+        w.WriteHeader(http.StatusOK)
+    })
+    mux.HandleFunc("/startupz", func(w http.ResponseWriter, _ *http.Request) {
+        w.WriteHeader(http.StatusOK) // Same as liveness
+    })
+}
+
+// After init completes:
+// ready.Store(true)
+```
+
+```yaml
+# K8s pod spec (compact)
+startupProbe:    { httpGet: { path: /startupz, port: 8080 }, failureThreshold: 30, periodSeconds: 2 }
+livenessProbe:   { httpGet: { path: /healthz, port: 8080 }, periodSeconds: 10 }
+readinessProbe:  { httpGet: { path: /readyz, port: 8080 }, periodSeconds: 5 }
 ```
 
 ---
@@ -1859,6 +1989,66 @@ func processFile(path string) error {
 - [ ] Startup smoke test exists
 
 **Treat AI-generated tests as drafts.** Add the error rows, nil cases, and race condition tests yourself.
+
+---
+
+## Cross-Repo Doc Drift
+
+When this document references capabilities from another repository (e.g.
+"use library X for config cascade"), describe **what it does**, not the API
+surface. Function signatures, struct fields, and constructor arguments change
+across versions. If you copy them here, they rot.
+
+- **Describe capabilities:** "Library X provides a 7-layer config cascade with
+  ENV auto-mapping" — this stays true across minor versions.
+- **Link out for current detail:** point to the source repo's docs or godoc for
+  exact usage. The source repo owns its own API surface.
+- **Cross-repo reminder:** when a downstream doc references your repo, add a
+  note in your repo's `STATE.md` listing the downstream reference so you know
+  who to notify on breaking changes.
+
+---
+
+## Two-File Source-of-Truth Footgun
+
+Before editing any configuration file, verify it is actually loaded by the
+application. Grep the loader code for the filename or path.
+
+If two copies of a config exist (e.g. `config.yaml` and `config/settings.yaml`)
+and only one is loaded, **delete the stale copy immediately**. A stale config
+file that looks authoritative is an incident waiting to happen.
+
+Cost of checking: 30 seconds. Cost of editing the wrong file: an incident.
+
+---
+
+## Ratchet Not Gate for golangci-lint
+
+When introducing a new linter to an existing codebase, never start it at error
+level. A wall of failures discourages adoption and blocks unrelated PRs.
+
+**Phase 1 — Warn:** Add the linter and suppress it from blocking CI. Use
+`severity: warning` in linter config or add broad `exclude-rules` entries.
+
+**Phase 2 — Carve out legacy:** Add `exclude-dirs` for packages that predate the
+linter. New code must comply from day one.
+
+**Phase 3 — Promote:** Once the legacy dirs are clean, remove the exclusions and
+promote to error level.
+
+```yaml
+# .golangci.yml — phase 1 example
+linters:
+  enable:
+    - wrapcheck
+issues:
+  exclude-rules:
+    - path: internal/legacy/
+      linters: [wrapcheck]
+```
+
+Never introduce a new linter at error level on an existing codebase — it blocks
+everyone and gets reverted instead of adopted.
 
 ---
 

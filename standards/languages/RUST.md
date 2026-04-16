@@ -6903,6 +6903,23 @@ The following sections are specific guidance for AI code assistants working with
 > For HyperI projects: check if `hyperi-rustlib` already provides what you need
 > before reaching for any third-party crate. See [hyperi-rustlib](#hyperi-rustlib).
 
+### Verify Config Files Are Actually Loaded
+
+If the same configuration lives at two file paths, one of them WILL rot
+while editors (humans and AI) continue modifying it. Before editing a
+config-looking file (`defaults.yaml`, `clippy.toml`, `.cargo/config.toml`),
+**verify it's actually loaded:**
+
+1. Grep the loader code for the file path — confirm the runtime reads
+   THIS copy, not a different one at `src/<package>/config/...`.
+2. If only one copy is loaded and the other is stale, delete the stale
+   one rather than editing it.
+3. If both are genuinely needed (e.g., source vs build artefact), enforce
+   identity in CI (`diff` check or symlink).
+
+The cost of checking is 30 seconds. The cost of editing the wrong file
+and believing CI is configured when it's not is an incident.
+
 ### DO NOT Generate
 
 ```rust
