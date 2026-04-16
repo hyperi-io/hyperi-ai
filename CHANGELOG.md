@@ -38,6 +38,35 @@
 
 ### Bug Fixes
 
+* add gitleaks allowlist for example API keys in documentation ([1bfaa7e](https://github.com/hyperi-io/hyperi-ai/commit/1bfaa7ea88e0c9ff191494d4e04a4ecb58a52031))
+* add Torvalds versioning policy to CI.md source ([a24e3b3](https://github.com/hyperi-io/hyperi-ai/commit/a24e3b326f3a21359f327e9fafe25daade5a8bdd))
+* add useless .into() to Rust AI error handling pitfalls ([ecba8d1](https://github.com/hyperi-io/hyperi-ai/commit/ecba8d19a68b3701a7914a9b7c6ac9e957576c97))
+* **hooks:** guard hook invocations against missing scripts ([c42a8d3](https://github.com/hyperi-io/hyperi-ai/commit/c42a8d31bac274001e4f35d2c8efbaf1023b3b9b))
+* **rust:** correct rustdoc lint name + add adoption strategy ([d7455ce](https://github.com/hyperi-io/hyperi-ai/commit/d7455ce8d1e16afc417cd9b30f7e2d0a531c36bf))
+* **rust:** feature-gating, panic discipline, concurrency audit, rustlib reference ([6384702](https://github.com/hyperi-io/hyperi-ai/commit/6384702b1beb571cd5b8dd7e261344d99f5138a2))
+* **stealth:** worktree-aware excludes + skip .gitignore + .mcp.json hidden ([cac1de7](https://github.com/hyperi-io/hyperi-ai/commit/cac1de76e3c602b38897c681730545dae17be469))
+
+
+### Documentation
+
+* add adaptive worker pool section to RUST.md source (not generated rules) ([3f98039](https://github.com/hyperi-io/hyperi-ai/commit/3f98039c8629cacfe1e49f7798f3c9b56eedbada))
+* add commit type enforcement plan for AI guardrails ([c68955b](https://github.com/hyperi-io/hyperi-ai/commit/c68955bee36b1ba1fabd03220ae246a1d8a9489a))
+* **python:** additional docstring section edits ([a81f04a](https://github.com/hyperi-io/hyperi-ai/commit/a81f04a8bbe9b3a390e882072232a3dd8ced33af))
+* **python:** refine docstring conventions section + regenerate rules ([bd1937e](https://github.com/hyperi-io/hyperi-ai/commit/bd1937e3e32d59b77fbc1ad691b33e85b208552f))
+* **standards:** add documentation conventions to all language standards ([2e4fa26](https://github.com/hyperi-io/hyperi-ai/commit/2e4fa2607563a3fe5e08ef64e33b85e1ff2be4fc))
+* **standards:** enforce rustdoc (RFC 1574/C-DOCS) and docstring (PEP 257/Google) conventions ([fc8394d](https://github.com/hyperi-io/hyperi-ai/commit/fc8394d62372bcb151a519dc90ab91f1f6c4f74c))
+
+## [3.15.0](https://github.com/hyperi-io/hyperi-ai/compare/3.14.0...3.15.0) (2026-04-16)
+
+
+### Features
+
+* add AI/ML training restriction policy and crawler blocklist ([2c62d07](https://github.com/hyperi-io/hyperi-ai/commit/2c62d07052db79c22a44e5abffe6804faf209ffe))
+* add prefer-hyperi-ci hook + push command docs + CLI UX consistency ([838074f](https://github.com/hyperi-io/hyperi-ai/commit/838074f244e01ac85243051eaf4768da8ccc46be))
+
+
+### Bug Fixes
+
 * add Torvalds versioning policy to CI.md source ([a24e3b3](https://github.com/hyperi-io/hyperi-ai/commit/a24e3b326f3a21359f327e9fafe25daade5a8bdd))
 * add useless .into() to Rust AI error handling pitfalls ([ecba8d1](https://github.com/hyperi-io/hyperi-ai/commit/ecba8d19a68b3701a7914a9b7c6ac9e957576c97))
 * **hooks:** guard hook invocations against missing scripts ([c42a8d3](https://github.com/hyperi-io/hyperi-ai/commit/c42a8d31bac274001e4f35d2c8efbaf1023b3b9b))
