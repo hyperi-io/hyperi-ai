@@ -1,0 +1,14 @@
+# Gitleaks configuration — allowlist false positives
+# All entries below are dummy/example values in documentation and test files.
+
+[[allowlists]]
+description = "Example API keys in coding standards and test documentation"
+paths = [
+  '''standards/''',
+  '''tests/''',
+]
+regexes = [
+  '''sk-1234567890''',
+  '''ghp_fromenv789''',
+  '''ak_prod_12345''',
+]
