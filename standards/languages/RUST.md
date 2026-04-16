@@ -5346,17 +5346,67 @@ pub unsafe fn write_raw(ptr: *const u8, len: usize) { /* ... */ }
 Crate root (`lib.rs` / `main.rs`) **must** include:
 
 ```rust
-#![warn(missing_docs)]                        // rustc built-in: every public item needs docs
-#![warn(clippy::missing_safety_doc)]          // # Safety on unsafe fn
-#![warn(clippy::missing_errors_doc)]          // # Errors on fn -> Result
-#![warn(clippy::missing_panics_doc)]          // # Panics on panicking fn
-#![warn(rustdoc::broken_intra_doc_links)]     // [`Foo`] must resolve
-#![warn(rustdoc::private_intra_doc_links)]    // Don't link to private items from public docs
-#![warn(rustdoc::invalid_codeblocks)]         // Malformed ```rust blocks
-#![warn(rustdoc::bare_urls)]                  // <https://...> not https://...
+#![warn(missing_docs)]                              // rustc built-in: every public item needs docs
+#![warn(clippy::missing_safety_doc)]                // # Safety on unsafe fn
+#![warn(clippy::missing_errors_doc)]                // # Errors on fn -> Result
+#![warn(clippy::missing_panics_doc)]                // # Panics on panicking fn
+#![warn(rustdoc::broken_intra_doc_links)]           // [`Foo`] must resolve
+#![warn(rustdoc::private_intra_doc_links)]          // Don't link to private items from public docs
+#![warn(rustdoc::invalid_codeblock_attributes)]     // Bad ```rust attribute syntax
+#![warn(rustdoc::invalid_rust_codeblocks)]          // Malformed ```rust blocks (not parseable)
+#![warn(rustdoc::bare_urls)]                        // <https://...> not https://...
 ```
 
+> **Lint name pitfall:** there is no `rustdoc::invalid_codeblocks` lint. The
+> two real names are split: `invalid_codeblock_attributes` (e.g. typos in
+> ` ```rust,no-run` vs `no_run`) and `invalid_rust_codeblocks` (parser
+> failure inside the block). AI assistants regularly hallucinate the
+> singular name — always verify with `cargo doc -W rustdoc::<name>` first.
+
 Bins with no public API may relax `missing_docs`; libraries may not.
+
+### Adoption Strategy on Mature Crates
+
+`#![warn(missing_docs)]` on a 30-module library can produce 400+ warnings
+overnight. Don't let that block the rest of the rustdoc hygiene work.
+Phased adoption:
+
+1. **Always-on immediately** (cheap, no churn): broken-link, bare-url,
+   private-link, invalid-codeblock — these only warn on existing docs.
+2. **Per-module ratchet**: add `#![warn(missing_docs)]` to the crate root
+   along with `#[allow(missing_docs)]` on each legacy module file. Remove
+   the allow as each module is documented. New modules added without the
+   allow are forced to be complete.
+3. **Crate-wide enforcement**: once `#[allow(missing_docs)]` is gone from
+   the last module, promote the crate-level warn to `deny`.
+
+### docs.rs Metadata (libraries published to crates.io)
+
+For feature badges to render on docs.rs, both `Cargo.toml` and `lib.rs`
+need the cooperating attributes:
+
+```toml
+# Cargo.toml
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+```
+
+```rust
+// lib.rs
+#![cfg_attr(docsrs, feature(doc_cfg))]
+```
+
+```rust
+// Re-exports / pub mod gated on a feature
+#[cfg(feature = "metrics")]
+#[cfg_attr(docsrs, doc(cfg(feature = "metrics")))]
+pub mod metrics;
+```
+
+Without these three pieces, docs.rs renders a feature-gated public API as
+"private" with no badge. With them, every gated item shows a clear
+"Available on crate feature `metrics` only" tag.
 
 ### Doctests (C-EXAMPLE)
 
