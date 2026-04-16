@@ -632,24 +632,53 @@ for item in items:
 # 2. Validate permissions
 ```
 
-### Docstrings (PEP 257)
+### Docstrings (PEP 257 + Google Style)
+
+**Specs and conventions (authoritative sources):**
+
+| Spec | Scope | Notes |
+|---|---|---|
+| [PEP 257](https://peps.python.org/pep-0257/) | Core docstring conventions | Where docstrings go, one-line vs multi-line, imperative mood, `__doc__` semantics. Deliberately minimal — says nothing about params/returns sections. |
+| [PEP 256](https://peps.python.org/pep-0256/) | Docstring Processing System framework (historical) | Meta-PEP about tool consumption. Mostly historical context. |
+| [PEP 287](https://peps.python.org/pep-0287/) | reStructuredText as standard docstring markup | Source of Sphinx's `:param:` / `:returns:` / `:raises:` style. |
+| [Google Python Style Guide §3.8](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings) | **HyperI convention** | Defines `Args:` / `Returns:` / `Raises:` / `Attributes:` / `Examples:`. |
+| [NumPy docstring guide](https://numpydoc.readthedocs.io/en/latest/format.html) | Alternative (not used at HyperI) | Underlined section headers, more verbose. |
+
+**HyperI convention: Google style** (parses cleanly via Sphinx napoleon, Pyright/ty hover, ruff D rules).
+
+**PEP 257 structural rules (enforced by ruff D):**
+
+- First line: short imperative summary ending with period ("Save user" not "Saves user").
+- Blank line after summary if docstring is multi-line.
+- Triple double-quotes (`"""`), never triple single-quotes.
+- Module docstring is first statement; package docstring goes in `__init__.py`.
+- Class docstring documents the class; no duplicate docstring on `__init__`.
+- Closing `"""` on its own line for multi-line docstrings.
 
 ```python
-"""User authentication utilities."""  # Module docstring
+"""User authentication utilities."""  # Module docstring — first line of file
+
 
 def calculate_discount(price: float, percent: float) -> float:
-    """
-    Calculate discounted price.
+    """Calculate discounted price.
+
+    Longer description here if the summary line is not enough. Explain
+    intent, invariants, and anything a caller needs to know that is not
+    obvious from the signature.
 
     Args:
-        price: Original price
-        percent: Discount percentage (0-100)
+        price: Original price in cents.
+        percent: Discount percentage (0-100 inclusive).
 
     Returns:
-        Discounted price
+        Discounted price in cents.
 
     Raises:
-        ValueError: If percent is invalid
+        ValueError: If ``percent`` is outside [0, 100].
+
+    Examples:
+        >>> calculate_discount(1000, 10)
+        900.0
     """
     if not 0 <= percent <= 100:
         raise ValueError(f"Invalid percent: {percent}")
@@ -657,17 +686,79 @@ def calculate_discount(price: float, percent: float) -> float:
 
 
 class User:
-    """
-    User account representation.
+    """User account representation.
 
     Attributes:
-        user_id: Unique identifier
-        email: Email address
+        user_id: Unique identifier.
+        email: Email address (validated on construction).
     """
-    pass
 ```
 
-**Use imperative mood:** "Save user" not "Saves user"
+**Required sections (Google style):**
+
+| Section | When required |
+|---|---|
+| `Args:` | Any public function/method with parameters (not `self`/`cls`). |
+| `Returns:` | Any public function/method that returns a value. |
+| `Yields:` | Generators/iterators (instead of `Returns:`). |
+| `Raises:` | Every exception the caller may need to handle. |
+| `Attributes:` | Public classes — document every public attribute. |
+| `Examples:` | Non-obvious APIs — doctestable preferred (runnable by pytest `--doctest-modules`). |
+
+### Docstring enforcement (ruff D rules)
+
+**Ruff's `D` rules implement pydocstyle** — structural PEP 257 checks plus convention-specific rules for Google / NumPy.
+
+```toml
+# pyproject.toml
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "D"]   # D = pydocstyle
+ignore = [
+    "D203",  # Conflicts with D211 (no blank line before class docstring)
+    "D213",  # Conflicts with D212 (summary on first line, not second)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"   # Enables Google-style Args/Returns/Raises parsing
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]      # Tests do not need docstrings
+"**/__init__.py" = ["D104"]  # Optional: skip package docstring if empty
+```
+
+**Key D rules (enforced):**
+
+| Rule | Enforces |
+|---|---|
+| D100 | Missing module docstring |
+| D101 | Missing class docstring |
+| D102 | Missing method docstring (public) |
+| D103 | Missing function docstring (public) |
+| D200 | One-line docstring should fit on one line |
+| D205 | Blank line required between summary and description |
+| D400 | First line should end with period |
+| D401 | First line should be in imperative mood ("Save" not "Saves") |
+| D417 | Missing argument descriptions (Google convention) |
+
+### Tooling
+
+| Tool | Role |
+|---|---|
+| **Ruff (`D` rules)** | Lint PEP 257 + Google convention. Blocks CI. |
+| **Sphinx** | Native reST parser; Google style requires [`sphinx.ext.napoleon`](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html). |
+| **Pyright / ty** | Consume all three conventions (reST, Google, NumPy) for hover tooltips and signature help. |
+| **pytest `--doctest-modules`** | Execute `Examples:` blocks as tests. |
+
+**Enable napoleon in Sphinx `conf.py`:**
+
+```python
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",  # Parses Google/NumPy docstrings into reST
+]
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+```
 
 ---
 
@@ -1556,11 +1647,23 @@ myproject/
 # pyproject.toml
 [tool.ruff]
 line-length = 88
-select = ["E", "F", "I", "N", "UP"]
-ignore = ["E501"]  # Black handles line length
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "D"]
+ignore = [
+    "E501",  # Black handles line length
+    "D203",  # Conflicts with D211
+    "D213",  # Conflicts with D212
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"   # PEP 257 + Google Args/Returns/Raises
 
 [tool.ruff.lint.isort]
 force-single-line = false
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
 ```
 
 **Common rule series:**
@@ -1570,6 +1673,7 @@ force-single-line = false
 - **I:** Import sorting (replaces isort)
 - **N:** Naming conventions
 - **UP:** Modern syntax upgrades
+- **D:** pydocstyle — PEP 257 + Google convention (see Docstrings section)
 
 ---
 
@@ -2204,8 +2308,17 @@ When AI generates BOTH the code AND the tests, the same blind spots appear in bo
 **Official PEPs:**
 
 - PEP 8 - Style Guide: <https://peps.python.org/pep-0008/>
-- PEP 257 - Docstrings: <https://peps.python.org/pep-0257/>
+- PEP 256 - Docstring Processing System framework (historical): <https://peps.python.org/pep-0256/>
+- PEP 257 - Docstring Conventions: <https://peps.python.org/pep-0257/>
+- PEP 287 - reStructuredText Docstring Format: <https://peps.python.org/pep-0287/>
 - PEP 484 - Type Hints: <https://peps.python.org/pep-0484/>
+
+**Docstring conventions:**
+
+- Google Python Style Guide §3.8: <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>
+- NumPy docstring guide: <https://numpydoc.readthedocs.io/en/latest/format.html>
+- Sphinx napoleon extension: <https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html>
+- pydocstyle (ruff D rules): <https://docs.astral.sh/ruff/rules/#pydocstyle-d>
 
 **Tools:**
 

@@ -65,13 +65,14 @@ This doc covers HyperI-specific patterns and hard-won lessons from production sy
 27. [Configuration (HyperI Cascade)](#configuration-hyperi-cascade)
 28. [Logging (HyperI Standard)](#logging-hyperi-standard)
 29. [Cargo.toml Best Practices](#cargotoml-best-practices)
-30. [Clippy Configuration](#clippy-configuration)
-31. [External Libraries and Private Registries](#external-libraries-and-private-registries)
-32. [FFI and Unsafe Rust](#ffi-and-unsafe-rust)
-33. [8 Common Rust Mistakes](#8-common-rust-mistakes)
-34. [AI Pitfalls to Avoid](#ai-pitfalls-to-avoid)
-35. [Coming from Other Languages](#coming-from-other-languages)
-36. [Resources](#resources)
+30. [Documentation (rustdoc)](#documentation-rustdoc)
+31. [Clippy Configuration](#clippy-configuration)
+32. [External Libraries and Private Registries](#external-libraries-and-private-registries)
+33. [FFI and Unsafe Rust](#ffi-and-unsafe-rust)
+34. [8 Common Rust Mistakes](#8-common-rust-mistakes)
+35. [AI Pitfalls to Avoid](#ai-pitfalls-to-avoid)
+36. [Coming from Other Languages](#coming-from-other-languages)
+37. [Resources](#resources)
 
 ---
 
@@ -5279,6 +5280,131 @@ on the next Rust edition or dependency major release.
 
 ---
 
+## Documentation (rustdoc)
+
+**Authoritative sources:**
+
+| Source | Scope |
+|---|---|
+| [`rustdoc` Book](https://doc.rust-lang.org/rustdoc/) | How rustdoc parses and renders doc comments (`///`, `//!`), intra-doc links, doctest execution. |
+| [RFC 1574 — API Documentation Conventions](https://rust-lang.github.io/rfcs/1574-more-api-documentation-conventions.html) | Established the `# Errors`, `# Panics`, `# Safety`, `# Examples` section conventions. |
+| [Rust API Guidelines — Documentation (C-DOCS)](https://rust-lang.github.io/api-guidelines/documentation.html) | Living checklist. This is the canonical style guide HyperI follows. |
+
+### Required Doc Comment Structure (C-DOC-SECT)
+
+Every public item (`pub fn`, `pub struct`, `pub trait`, `pub enum`, `pub const`, module) **must** carry a doc comment with:
+
+1. **Summary line** — single sentence, ends with period, imperative mood (RFC 1574).
+2. **Extended description** — only where the signature is not self-explanatory.
+3. **Section headings**, exactly as shown below, in this order, where applicable:
+
+| Section | Required when | Enforced by |
+|---|---|---|
+| `# Errors` | Function returns `Result<_, _>` | `clippy::missing_errors_doc` |
+| `# Panics` | Function may panic (array indexing, `unwrap`, `expect`, `assert!`) | `clippy::missing_panics_doc` |
+| `# Safety` | Item is `unsafe fn` or `unsafe trait` | `clippy::missing_safety_doc` (built-in clippy default) |
+| `# Examples` | All public API items (strongly recommended, C-EXAMPLE) | Not auto-enforced — require in review |
+
+```rust
+/// Parses a configuration file into a [`Config`].
+///
+/// The parser tolerates trailing whitespace and comments starting with `#`.
+///
+/// # Errors
+///
+/// Returns [`ConfigError::Io`] if the file cannot be read, and
+/// [`ConfigError::Parse`] if the file contains invalid syntax.
+///
+/// # Panics
+///
+/// Panics if `path` contains interior NUL bytes (OS limitation).
+///
+/// # Examples
+///
+/// ```
+/// use myapp::{Config, parse_config};
+/// let config: Config = parse_config("config.toml")?;
+/// # Ok::<(), myapp::ConfigError>(())
+/// ```
+pub fn parse_config(path: &str) -> Result<Config, ConfigError> {
+    // ...
+}
+
+/// Writes `len` bytes from `ptr` into the destination buffer.
+///
+/// # Safety
+///
+/// - `ptr` must be valid for reads of `len` bytes.
+/// - `ptr` must be properly aligned for `u8`.
+/// - The memory at `ptr` must not be mutated by another thread for the
+///   duration of this call.
+pub unsafe fn write_raw(ptr: *const u8, len: usize) { /* ... */ }
+```
+
+### Required Lints (HyperI)
+
+Crate root (`lib.rs` / `main.rs`) **must** include:
+
+```rust
+#![warn(missing_docs)]                        // rustc built-in: every public item needs docs
+#![warn(clippy::missing_safety_doc)]          // # Safety on unsafe fn
+#![warn(clippy::missing_errors_doc)]          // # Errors on fn -> Result
+#![warn(clippy::missing_panics_doc)]          // # Panics on panicking fn
+#![warn(rustdoc::broken_intra_doc_links)]     // [`Foo`] must resolve
+#![warn(rustdoc::private_intra_doc_links)]    // Don't link to private items from public docs
+#![warn(rustdoc::invalid_codeblocks)]         // Malformed ```rust blocks
+#![warn(rustdoc::bare_urls)]                  // <https://...> not https://...
+```
+
+Bins with no public API may relax `missing_docs`; libraries may not.
+
+### Doctests (C-EXAMPLE)
+
+- Every non-trivial public function should have a runnable doctest in `# Examples`.
+- Hide setup with `#` prefix lines (not rendered, still executed):
+
+```rust
+/// # Examples
+///
+/// ```
+/// # use myapp::Client;
+/// let client = Client::new("http://localhost:8080");
+/// assert_eq!(client.ping()?, "pong");
+/// # Ok::<(), myapp::Error>(())
+/// ```
+```
+
+- Use ` ```no_run ` for examples that need external resources, ` ```ignore ` sparingly with a comment explaining why.
+- CI runs doctests via `cargo test --doc` — failures block merge.
+
+### Intra-Doc Links (C-LINK)
+
+Prefer `[`Foo`]` over manual URLs — rustdoc resolves them to the correct crate version:
+
+```rust
+/// Returns a [`Config`] built from the default cascade.
+/// See [`Config::from_env`] for env-only loading.
+```
+
+### Crate-Level Docs (C-CRATE-DOC)
+
+`lib.rs` starts with `//!` module docs covering:
+
+- One-paragraph summary of what the crate does.
+- "Quick start" example.
+- Feature-flag matrix if applicable.
+
+### CI Commands
+
+```bash
+cargo doc --no-deps --all-features --document-private-items  # Build docs
+cargo test --doc --all-features                              # Run doctests
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps               # Fail on rustdoc warnings
+cargo clippy --all-targets --all-features -- -D warnings     # Enforces missing_*_doc lints
+```
+
+---
+
 ## Clippy Configuration
 
 ### clippy.toml
@@ -5335,6 +5461,14 @@ cargo clippy --all-targets --all-features -- -D warnings
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::panic)]
 #![deny(clippy::expect_used)]
+
+// Documentation enforcement (see Documentation section)
+#![warn(missing_docs)]
+#![warn(clippy::missing_safety_doc)]
+#![warn(clippy::missing_errors_doc)]
+#![warn(clippy::missing_panics_doc)]
+#![warn(rustdoc::broken_intra_doc_links)]
+#![warn(rustdoc::private_intra_doc_links)]
 ```
 
 ---
@@ -6666,6 +6800,9 @@ When AI generates BOTH the code AND the tests, the same probabilistic assumption
 - Rust by Example: <https://doc.rust-lang.org/rust-by-example/>
 - Rust Reference: <https://doc.rust-lang.org/reference/>
 - Rustonomicon (unsafe): <https://doc.rust-lang.org/nomicon/>
+- rustdoc Book: <https://doc.rust-lang.org/rustdoc/>
+- Rust API Guidelines (C-DOCS): <https://rust-lang.github.io/api-guidelines/documentation.html>
+- RFC 1574 — API Documentation Conventions: <https://rust-lang.github.io/rfcs/1574-more-api-documentation-conventions.html>
 
 ### Tools
 
