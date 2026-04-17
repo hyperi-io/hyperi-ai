@@ -613,6 +613,21 @@ build:
 PGO gain. Libraries are skipped automatically. Opt out via
 `optimize.allocator: system` or `optimize.lto: thin` (not recommended).
 
+**Consumer-facing docs in hyperi-ci** (added in hyperi-ci v1.8):
+
+- `docs/RUST-RELEASE-TRACK-OPTIMISATION.md` — preconditions, opt-in,
+  verification, troubleshooting
+- `docs/PGO-WORKLOAD-GUIDE.md` — the four rules, anti-patterns, profile
+  quality metrics
+- `templates/pgo-workload/` — copy-paste skeletons (`http-server.sh`,
+  `grpc-server.sh`, `kafka-producer.sh`, `kafka-consumer.sh`,
+  `multi-protocol.sh`)
+
+**Reference implementation**: `dfe-receiver` — first DFE binary with
+Tier 2 opted in. See its `scripts/pgo-workload.sh` +
+`src/bin/pgo-driver.rs` for the multi-protocol pattern (linked Rust
+driver that reuses project proto types).
+
 ---
 
 ## Data Pipeline Architecture
