@@ -180,13 +180,21 @@ fast while release-track CI builds get maximum optimisation.
 
 | Channel | Allocator | LTO | PGO | BOLT |
 |---------|-----------|-----|-----|------|
-| `spike` / `alpha` | system | thin | — | — |
+| `spike` / `alpha` | **jemalloc** | thin | — | — |
 | `beta` | **jemalloc** | **fat** | — | — |
 | `release` | **jemalloc** | **fat** | opt-in | opt-in (Linux only) |
 
-**Tier 1** (allocator + fat LTO on beta+) is automatic. Expected gain:
-15-25% throughput from jemalloc, 2-5% from fat LTO. CI build time
-increases by ~5-10 min.
+**Allocator is jemalloc at every channel. No exceptions, no mimalloc.**
+DFE binaries standardise on jemalloc for a consistent profiling story
+(`jeprof`, `MALLOC_CONF=prof:true`) and uniform perf-trace symbols
+across the fleet. See `standards/languages/RUST.md` — *Allocator
+Policy*.
+
+**Tier 1 cost reference:**
+- jemalloc: ~10s extra compile per CI run, cached after first build
+- Fat LTO (beta+ only): +5-10 min per CI run, 2-5% runtime improvement
+
+Tier 1 is automatic at every channel (jemalloc) / beta+ (fat LTO).
 
 **Tier 2** (PGO + BOLT on release) requires opt-in per project via
 `build.rust.optimize` in `.hyperi-ci.yaml`. Expected gain: additional
@@ -194,8 +202,9 @@ increases by ~5-10 min.
 
 ### Project setup
 
-Tier 1 needs only a Cargo.toml feature flag for `jemalloc`/`mimalloc`
-(see Rust standards). Tier 2 needs:
+Tier 1 needs only the `jemalloc` feature declared in `Cargo.toml` and
+wired in `main.rs` (see Rust standards — *Global Allocator Selection*
+and *Release-Track Build Optimisation*). Tier 2 needs:
 
 ```yaml
 build:

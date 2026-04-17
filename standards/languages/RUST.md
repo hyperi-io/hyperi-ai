@@ -4095,31 +4095,29 @@ Production patterns from HyperI data pipelines handling PB/s scale.
 
 ### Global Allocator Selection
 
+**DFE binaries use jemalloc.** No bake-offs, no per-project allocator
+selection — see [Allocator Policy](#allocator-policy) in the
+Release-Track section below.
+
 ```rust
-// main.rs - jemalloc for long-running servers
+// main.rs
 #[cfg(feature = "jemalloc")]
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
-
-// Fallback to mimalloc (often faster for mixed workloads)
-#[cfg(all(feature = "mimalloc", not(feature = "jemalloc")))]
-#[global_allocator]
-static GLOBAL_MIMALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 ```
 
 ```toml
 # Cargo.toml features
 [features]
-default = []                  # Do NOT put jemalloc in default — CI opts in per channel
+default = []                  # Do NOT put jemalloc in default — CI opts in
 jemalloc = ["dep:tikv-jemallocator", "dep:tikv-jemalloc-ctl"]
-mimalloc = ["dep:mimalloc"]
 ```
 
-> **hyperi-ci note:** Leave `default = []` for the allocator features.
-> hyperi-ci opts into `jemalloc` automatically on `beta`/`release`
-> channels via `--features jemalloc`. Keeping it out of `default`
-> means local `cargo build` stays fast and allocator choice is an
-> explicit CI-time decision. See
+> **hyperi-ci note:** Leave `default = []` for the jemalloc feature.
+> hyperi-ci opts in automatically at **every** channel via
+> `--features jemalloc`. Keeping it out of `default` means local
+> `cargo build` stays fast when developers don't need the allocator
+> compile overhead. See
 > [Release-Track Build Optimisation (hyperi-ci)](#release-track-build-optimisation-hyperi-ci).
 
 ### Lock-Free Concurrent Data Structures
@@ -4534,35 +4532,65 @@ config; hyperi-ci decides *when* to apply each optimisation. Local
 
 | Channel | Allocator | LTO | PGO | BOLT |
 |---------|-----------|-----|-----|------|
-| `spike` | system | thin | — | — |
-| `alpha` | system | thin | — | — |
+| `spike` | **jemalloc** | thin | — | — |
+| `alpha` | **jemalloc** | thin | — | — |
 | `beta` | **jemalloc** | **fat** | — | — |
 | `release` | **jemalloc** | **fat** | opt-in | opt-in (needs PGO, Linux-only) |
 
-**Tier 1** (allocator + fat LTO) is enabled automatically at `beta` and
-`release` — zero extra config required. Expected gain: 15-25% throughput
-from jemalloc, 2-5% from fat LTO. CI build time increases by ~5-10 min
-(fat LTO is slower to compile than thin).
+**Allocator is jemalloc at every channel. No exceptions.** DFE binaries
+standardise on jemalloc — one allocator, one profiling story
+(`jeprof`, `MALLOC_CONF=prof:true`), one set of perf-trace symbols. See
+*Allocator Policy* below for the rationale and how to deviate if you
+genuinely must.
+
+**LTO** tiers at beta+. Thin at spike/alpha preserves fast iteration;
+fat at beta+ trades ~5-10 min extra CI time for 2-5% runtime
+improvement on shipping binaries. Thin vs fat LTO binaries behave
+identically, just run at different speeds.
 
 **Tier 2** (PGO + BOLT) requires the project to provide a representative
-workload script. Expected gain: additional 10-20% from PGO, another
-5-15% from BOLT. CI build time increases by 30-60 min (instrumented
-build + workload run + optimised build).
+workload script. Expected gain: 10-20% from PGO, another 5-15% from
+BOLT. CI build time increases by 30-60 min (instrumented build +
+workload run + optimised build).
+
+#### Allocator Policy
+
+**DFE Rust binaries use jemalloc. This is not a per-project decision.**
+
+Rationale:
+
+- **Workload fit.** DFE apps are long-running servers with large,
+  multi-threaded allocations — jemalloc's sweet spot. Every DFE binary
+  that has made an allocator choice has picked jemalloc.
+- **Tooling consistency.** `jeprof` heap profiling works on every DFE
+  binary from day one. Other allocators (mimalloc, snmalloc) have no
+  comparable tooling.
+- **Symbol consistency.** hyperi-rustlib is built around jemalloc
+  assumptions. Mixing allocators in the process graph creates "which
+  `je_*` vs `mi_*` is this?" confusion in perf traces.
+- **Fragmentation avoidance.** Per-project allocator bake-offs are a
+  process that never gets done, while unused allocator features rot in
+  `Cargo.toml`. One allocator = one debugging story = less cognitive
+  load.
+
+**Deviation requires a platform-team RFC** with benchmark evidence on
+production-representative workload (not microbenchmarks). The escape
+hatch exists in the hyperi-ci config schema (`optimize.allocator:
+<other>`) for the rare case where the RFC succeeds, but this is not a
+casual override.
 
 #### What projects need to do
 
-**For Tier 1 (automatic):** Declare the allocator feature in `Cargo.toml`:
+**For Tier 1 (automatic):** Declare the jemalloc feature in `Cargo.toml`:
 
 ```toml
 [features]
 default = []
 jemalloc = ["dep:tikv-jemallocator", "dep:tikv-jemalloc-ctl"]
-mimalloc = ["dep:mimalloc"]
 
 [dependencies]
 tikv-jemallocator = { version = "0.6", optional = true }
 tikv-jemalloc-ctl = { version = "0.6", optional = true }
-mimalloc = { version = "0.1", optional = true }
 ```
 
 And wire the global allocator in `main.rs`:
@@ -4571,20 +4599,17 @@ And wire the global allocator in `main.rs`:
 #[cfg(feature = "jemalloc")]
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
-
-#[cfg(all(feature = "mimalloc", not(feature = "jemalloc")))]
-#[global_allocator]
-static GLOBAL_MIMALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 ```
 
-That's it. hyperi-ci builds with `--features jemalloc` on
-`beta`/`release` and overrides `CARGO_PROFILE_RELEASE_LTO=fat` via env
-var at build time. You don't edit `[profile.release]` — the env var
+That's it. hyperi-ci builds with `--features jemalloc` at **every**
+channel and overrides `CARGO_PROFILE_RELEASE_LTO=fat` via env var on
+`beta`/`release`. You don't edit `[profile.release]` — the env var
 overrides at build time without mutating source.
 
-If the allocator feature is missing from `Cargo.toml`, hyperi-ci falls
+If the `jemalloc` feature is missing from `Cargo.toml`, hyperi-ci falls
 back to the system allocator and logs a warning. The release build
-doesn't fail.
+doesn't fail — but the binary won't have jemalloc linked and won't
+match the standard profiling tooling. Fix the Cargo.toml.
 
 **For Tier 2 (opt-in PGO/BOLT):** Add to `.hyperi-ci.yaml`:
 
@@ -4633,13 +4658,14 @@ detects lib-only crates and skips the whole optimisation path.
 
 | Stage | Added time | Enabled when |
 |-------|-----------|--------------|
-| `--features jemalloc` | ~10s (one extra crate compile) | beta+ |
+| `--features jemalloc` | ~10s (one extra crate compile, cached) | **every channel** |
 | Fat LTO (`CARGO_PROFILE_RELEASE_LTO=fat`) | +5-10 min | beta+ |
 | PGO (instrument + workload + optimise) | +20-40 min | release + opt-in |
 | BOLT (extra profile pass) | +10-20 min | release + opt-in |
 
-These costs only apply to release-track CI builds. Pushes to feature
-branches or `spike`/`alpha` channels are unaffected.
+jemalloc compile cost is small and consistent across channels. Fat LTO
+and PGO/BOLT are tiered to preserve fast iteration on `spike`/`alpha`
+while still producing optimised `beta`/`release` binaries.
 
 ### Inline Hints on Hot Paths
 
@@ -7070,7 +7096,9 @@ based on `publish.channel`. Do NOT hand-tune these in source:
 | ❌ Don't | ✅ Do | Why |
 |---------|-------|-----|
 | Edit `[profile.release] lto = "fat"` in `Cargo.toml` | Leave `lto = "thin"`, let hyperi-ci override at build time | `CARGO_PROFILE_RELEASE_LTO=fat` env var overrides at build time without mutating source; local `cargo build` stays fast |
-| Add `default = ["jemalloc"]` to `[features]` | `default = []`, hyperi-ci opts in via `--features jemalloc` on beta+ | Keeps allocator choice an explicit CI-time decision; local `cargo build` stays fast |
+| Add `default = ["jemalloc"]` to `[features]` | `default = []`, hyperi-ci opts in via `--features jemalloc` at every channel | Keeps allocator compile cost out of local `cargo build`; CI always opts in |
+| Declare `mimalloc` feature in `Cargo.toml` | jemalloc only — do NOT add `mimalloc` features | DFE binaries standardise on jemalloc. No per-project bake-offs, no unused dead features. See [Allocator Policy](#allocator-policy). |
+| Pick mimalloc because it "seems faster for my case" | jemalloc, always, unless you have a platform-team-approved RFC with prod-workload benchmarks | Fragmentation = every project debugged with different tooling. One allocator, one `jeprof`, one debugging story |
 | Run `cargo pgo` / `cargo pgo bolt` in CI manually | Configure via `build.rust.optimize.pgo` / `.bolt` in `.hyperi-ci.yaml` | hyperi-ci handles channel gating, instrument/profile/optimise steps, and BOLT-Linux-only fallback |
 | Hand-write a GitHub Actions job for PGO/BOLT | Rely on the reusable `rust-ci.yml` workflow | Every project repeats the same pattern — DRY it up in hyperi-ci |
 | Treat PGO as always-on | Understand: PGO needs a *representative workload*. A bad workload can give negative speedup | Skip PGO until you have a workload script that exercises real hot paths for 5+ min |

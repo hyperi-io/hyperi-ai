@@ -507,12 +507,14 @@ Compile-time window size → auto-vectorisation. Prefer over `windows(N)`.
 
 ## Memory Management
 
-### Allocator
+### Allocator — jemalloc, every DFE binary, no exceptions
 ```rust
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
-// Or mimalloc for mixed workloads
 ```
+One allocator across the fleet = one profiling story (`jeprof`), one
+set of perf-trace symbols, one debugging playbook. Deviations require
+a platform-team RFC with prod-workload benchmarks.
 
 ### Faster HashMaps
 - `FxHashMap` — fast internal (not DoS-resistant)
@@ -565,11 +567,15 @@ hand-tune these in source — let CI decide per channel.
 
 | Channel | Allocator | LTO | PGO | BOLT |
 |---------|-----------|-----|-----|------|
-| `spike`/`alpha` | system | thin | — | — |
+| `spike`/`alpha` | **jemalloc** | thin | — | — |
 | `beta` | **jemalloc** | **fat** | — | — |
 | `release` | **jemalloc** | **fat** | opt-in | opt-in (Linux only) |
 
-**Project setup (Tier 1 — automatic at beta+):**
+**Allocator is jemalloc at every channel. No exceptions, no mimalloc.**
+DFE binaries standardise on jemalloc for consistent profiling
+(`jeprof`) and symbol story across the fleet.
+
+**Project setup (Tier 1 — jemalloc automatic at every channel, fat LTO at beta+):**
 
 ```toml
 # Cargo.toml — keep defaults minimal
@@ -577,13 +583,12 @@ hand-tune these in source — let CI decide per channel.
 lto = "thin"                 # CI overrides to "fat" at beta+
 
 [features]
-default = []                 # Do NOT include jemalloc here
+default = []                 # Do NOT include jemalloc here — CI opts in
 jemalloc = ["dep:tikv-jemallocator", "dep:tikv-jemalloc-ctl"]
-mimalloc = ["dep:mimalloc"]
 ```
 
 ```rust
-// main.rs — wire allocator under feature flag
+// main.rs — wire jemalloc under feature flag
 #[cfg(feature = "jemalloc")]
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
@@ -606,7 +611,7 @@ build:
 
 `workload_cmd` must exercise actual hot paths — bad workload = negative
 PGO gain. Libraries are skipped automatically. Opt out via
-`optimize.allocator: system` or `optimize.lto: thin`.
+`optimize.allocator: system` or `optimize.lto: thin` (not recommended).
 
 ---
 
@@ -876,7 +881,9 @@ index = "sparse+https://hyperi.jfrog.io/artifactory/api/cargo/hyperi-cargo-virtu
 | ❌ Don't | ✅ Do |
 |----------|-------|
 | Edit `[profile.release] lto = "fat"` | Leave `lto = "thin"`, CI overrides via `CARGO_PROFILE_RELEASE_LTO` on beta+ |
-| Add `default = ["jemalloc"]` | `default = []`, CI opts in via `--features jemalloc` on beta+ |
+| Add `default = ["jemalloc"]` | `default = []`, CI opts in via `--features jemalloc` at **every** channel |
+| Declare `mimalloc` feature in Cargo.toml | jemalloc only — DFE binaries don't use mimalloc |
+| Pick mimalloc "because it might be faster" | jemalloc always; deviation requires platform-team RFC with prod benchmarks |
 | Hand-run `cargo pgo` in CI | Configure `build.rust.optimize.pgo` in `.hyperi-ci.yaml` |
 | Treat PGO as always-on | PGO needs a representative workload — bad workload = negative gain |
 | Write custom GH Actions for PGO/BOLT | Rely on reusable `rust-ci.yml` + config |
